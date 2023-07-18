@@ -1,0 +1,40 @@
+{
+  "name": "smart-contracts-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky install",
+    "clean": "rm -rf cache out",
+    "build": "forge build --sizes",
+    "test": "forge test -vvv --gas-report",
+    "coverage": "forge coverage --report lcov",
+    "lint": "pnpm run lint:sol && pnpm run prettier:check",
+    "lint:fix": "pnpm lint:sol:fix && pnpm run prettier:write",
+    "lint:sol": "forge fmt --check && npx solhint \"{script,src,test}/**/*.sol\"",
+    "lint:sol:fix": "forge fmt && npx solhint --fix \"{script,src,test}/**/*.sol\"",
+    "prettier:check": "npx prettier --check \"**/*.{json,md,yml,yaml}\"",
+    "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
+  },
+  "lint-staged": {
+    "*.sol": [
+      "forge fmt",
+      "npx solhint --fix"
+    ],
+    "**/*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^17.6.6",
+    "@commitlint/config-conventional": "^17.6.6",
+    "@types/node": "^20.4.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.3",
+    "prettier": "^3.0.0",
+    "solhint": "^3.4.1"
+  }
+}
