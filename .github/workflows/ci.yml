@@ -83,9 +83,7 @@ jobs:
   compare-gas-reports:
     name: Compare gas reports
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    permissions: write-all
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
