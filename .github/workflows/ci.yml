@@ -69,18 +69,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge build --sizes
-
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         id: slither
         continue-on-error: true
         with:
           sarif: results.sarif
-          ignore-compile: true
 
   test:
     name: Test
