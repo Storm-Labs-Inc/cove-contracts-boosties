@@ -21,7 +21,7 @@
       "forge fmt",
       "npx solhint --fix"
     ],
-    "*.{json,md,yml,yaml}": [
+    "**/*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
   },
