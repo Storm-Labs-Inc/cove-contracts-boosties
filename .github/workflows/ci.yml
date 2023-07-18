@@ -49,26 +49,6 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18.16.1
-          cache: pnpm
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
-
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         id: slither
