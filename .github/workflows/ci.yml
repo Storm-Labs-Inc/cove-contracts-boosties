@@ -8,6 +8,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
+  NODE_VERSION: 18.16.1
 
 jobs:
   lint:
@@ -27,7 +28,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18.16.1
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
       - name: Install Foundry
@@ -55,6 +56,7 @@ jobs:
         continue-on-error: true
         with:
           sarif: results.sarif
+          node-version: ${{ env.NODE_VERSION }}
 
   test:
     name: Test
