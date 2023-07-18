@@ -1,5 +1,4 @@
 # directories
-.yarn/
 **/broadcast
 **/cache
 **/lib
@@ -11,5 +10,6 @@
 *.log
 .pnp.*
 coverage.json
-yarn-debug.log*
-yarn-error.log*
+
+# pnpm
+pnpm-lock.yaml
