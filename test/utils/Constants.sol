@@ -6,7 +6,7 @@ contract Constants {
     uint256 internal constant _MAX_UINT256 = type(uint256).max;
 
     struct Users {
-        // Default admin for all contracts.
+        // Default admin for all Sablier V2 contracts.
         address payable admin;
         // Impartial user.
         address payable alice;
