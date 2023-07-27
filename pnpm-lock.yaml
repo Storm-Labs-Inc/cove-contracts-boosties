@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+dependencies:
+  '@openzeppelin/contracts':
+    specifier: ^4.9.2
+    version: 4.9.2
+
 devDependencies:
   '@commitlint/cli':
     specifier: ^17.6.6
@@ -240,6 +245,10 @@ packages:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
+
+  /@openzeppelin/contracts@4.9.2:
+    resolution: {integrity: sha512-mO+y6JaqXjWeMh9glYVzVu8HYPGknAAnWyxTRhGeckOruyXQMNnlcW6w/Dx9ftLeIQk6N+ZJFuVmTwF7lEIFrg==}
+    dev: false
 
   /@solidity-parser/parser@0.16.1:
     resolution: {integrity: sha512-PdhRFNhbTtu3x8Axm0uYpqOy/lODYQK+MlYSgqIsq2L8SFYEHJPHNUiOTAJbDGzNjjr1/n9AcIayxafR/fWmYw==}
