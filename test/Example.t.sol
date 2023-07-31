@@ -29,6 +29,21 @@ contract CounterTest is Test, BaseTest {
         assert(_dai.balanceOf(address(users["Bob"])) == 1_000_000e18);
     }
 
+    // sample of using vm.ffi *must be run with --ffi flag*
+    // function testMyFFI () public {
+    //     string[] memory cmds = new string[](2);
+    //     cmds[0] = "cat";
+    //     cmds[1] = "address.txt"; // assume contains abi-encoded address.
+    //     bytes memory result = vm.ffi(cmds);
+    //     address loadedAddress = abi.decode(result, (address));
+    //     // Do something with the address
+    //     // ...
+    // }
+
+    // Below tests must be run with a local node running
+    // ex. $anvil
+    /*
+
     function testForkNetwork() public {
         BaseTest.forkNetwork("localhost");
         assertEq(BaseTest.forks["localhost"].blockNumber, block.number);
@@ -47,4 +62,5 @@ contract CounterTest is Test, BaseTest {
         BaseTest.selectNamedFork("AURORA");
         assertEq(vm.activeFork(), BaseTest.forks["AURORA"].forkId);
     }
+    */
 }
