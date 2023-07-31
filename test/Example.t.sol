@@ -4,11 +4,13 @@ pragma solidity ^0.8.17;
 import "../src/Counter.sol";
 import "./utils/BaseTest.t.sol";
 
-contract ExampleTest is Test, BaseTest {
+contract CounterTest is Test, BaseTest {
     Counter public counter;
 
     function setUp() public override {
         BaseTest.setUp();
+        // counter = new Counter();
+        // counter.setNumber(0);
     }
 
     function testUserSetup() public view {
@@ -28,16 +30,21 @@ contract ExampleTest is Test, BaseTest {
     }
 
     function testForkNetwork() public {
-        BaseTest.forkNetwork("mainnet");
-        assertEq(BaseTest.forks["mainnet"].blockNumber, block.number);
-        assertEq(vm.activeFork(), BaseTest.forks["mainnet"].forkId);
+        BaseTest.forkNetwork("localhost");
+        assertEq(BaseTest.forks["localhost"].blockNumber, block.number);
     }
 
     function testForkNetworkAt() public {
-        uint256 desiredBlockNumber = 10;
-        BaseTest.forkNetworkAt("mainnet", desiredBlockNumber);
-        assertEq(BaseTest.forks["mainnet"].blockNumber, desiredBlockNumber);
-        assertEq(block.number, desiredBlockNumber);
-        assertEq(vm.activeFork(), BaseTest.forks["mainnet"].forkId);
+        BaseTest.forkNetworkAt("MAINNET", 10);
+        assertEq(BaseTest.forks["MAINNET"].blockNumber, block.number);
+    }
+
+    function testMultipleNetwork() public {
+        BaseTest.forkNetwork("MAINNET");
+        BaseTest.forkNetwork("AURORA");
+        BaseTest.selectNamedFork("MAINNET");
+        assertEq(vm.activeFork(), BaseTest.forks["MAINNET"].forkId);
+        BaseTest.selectNamedFork("AURORA");
+        assertEq(vm.activeFork(), BaseTest.forks["AURORA"].forkId);
     }
 }

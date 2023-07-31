@@ -2,8 +2,8 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
-import {ERC20} from "openzeppelin-contracts-v4.9.3/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "openzeppelin-contracts-v4.9.3/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {Constants} from "./Constants.sol";
 
@@ -76,13 +76,18 @@ abstract contract BaseTest is Test, Constants {
 
     /**
      * @dev Creates a fork at a given block.
-     * @param network The name of the network, matches an entry in the foundry.toml
+     * @param network The name of the network, matches an entry in the .env like: "network"_RPC_URL.
      * @param blockNumber The block number to fork from.
      * @return The fork id.
      */
     // TODO: Why does this break when the fork functions are overloaded
     function forkNetworkAt(string memory network, uint256 blockNumber) public returns (uint256) {
-        string memory rpcURL = vm.rpcUrl(network);
+        string memory rpcURL;
+        if (keccak256(bytes(network)) == keccak256(bytes("localhost"))) {
+            rpcURL = "http://localhost:8545/";
+        } else {
+            rpcURL = vm.envString(string(abi.encodePacked(network, "_RPC_URL")));
+        }
         uint256 forkId = vm.createSelectFork(rpcURL, blockNumber);
         forks[network] = Fork({forkId: forkId, blockNumber: blockNumber});
         console2.log("Started fork ", network, " at block ", block.number);
@@ -92,12 +97,18 @@ abstract contract BaseTest is Test, Constants {
 
     /**
      * @dev Creates a fork at the latest block number.
-     * @param network The name of the network, matches an entry in the foundry.toml
+     * @param network The name of the network, matches an entry in the .env like: "network"_RPC_URL.
      * @return The fork id.
      */
     function forkNetwork(string memory network) public returns (uint256) {
-        string memory rpcURL = vm.rpcUrl(network);
+        string memory rpcURL;
+        if (keccak256(bytes(network)) == keccak256(bytes("localhost"))) {
+            rpcURL = "http://localhost:8545/";
+        } else {
+            rpcURL = vm.envString(string(abi.encodePacked(network, "_RPC_URL")));
+        }
         uint256 forkId = vm.createSelectFork(rpcURL);
+        // vm.ffi(["anvil", "mine()"])
         forks[network] = Fork({forkId: forkId, blockNumber: block.number});
         console2.log("Started fork ", network, "at block ", block.number);
         console2.log("with id", forkId);
