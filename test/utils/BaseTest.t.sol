@@ -76,18 +76,13 @@ abstract contract BaseTest is Test, Constants {
 
     /**
      * @dev Creates a fork at a given block.
-     * @param network The name of the network, matches an entry in the .env like: "network"_RPC_URL.
+     * @param network The name of the network, matches an entry in the foundry.toml
      * @param blockNumber The block number to fork from.
      * @return The fork id.
      */
     // TODO: Why does this break when the fork functions are overloaded
     function forkNetworkAt(string memory network, uint256 blockNumber) public returns (uint256) {
-        string memory rpcURL;
-        if (keccak256(bytes(network)) == keccak256(bytes("localhost"))) {
-            rpcURL = "http://localhost:8545/";
-        } else {
-            rpcURL = vm.envString(string(abi.encodePacked(network, "_RPC_URL")));
-        }
+        string memory rpcURL = vm.rpcUrl(network);
         uint256 forkId = vm.createSelectFork(rpcURL, blockNumber);
         forks[network] = Fork({forkId: forkId, blockNumber: blockNumber});
         console2.log("Started fork ", network, " at block ", block.number);
@@ -97,18 +92,12 @@ abstract contract BaseTest is Test, Constants {
 
     /**
      * @dev Creates a fork at the latest block number.
-     * @param network The name of the network, matches an entry in the .env like: "network"_RPC_URL.
+     * @param network The name of the network, matches an entry in the foundry.toml
      * @return The fork id.
      */
     function forkNetwork(string memory network) public returns (uint256) {
-        string memory rpcURL;
-        if (keccak256(bytes(network)) == keccak256(bytes("localhost"))) {
-            rpcURL = "http://localhost:8545/";
-        } else {
-            rpcURL = vm.envString(string(abi.encodePacked(network, "_RPC_URL")));
-        }
+        string memory rpcURL = vm.rpcUrl(network);
         uint256 forkId = vm.createSelectFork(rpcURL);
-        // vm.ffi(["anvil", "mine()"])
         forks[network] = Fork({forkId: forkId, blockNumber: block.number});
         console2.log("Started fork ", network, "at block ", block.number);
         console2.log("with id", forkId);

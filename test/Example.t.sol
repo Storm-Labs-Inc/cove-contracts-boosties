@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "../src/Counter.sol";
 import "./utils/BaseTest.t.sol";
 
-contract CounterTest is Test, BaseTest {
+contract ExampleTest is Test, BaseTest {
     Counter public counter;
 
     function setUp() public override {
@@ -29,38 +29,24 @@ contract CounterTest is Test, BaseTest {
         assert(_dai.balanceOf(address(users["Bob"])) == 1_000_000e18);
     }
 
-    // sample of using vm.ffi *must be run with --ffi flag*
-    // function testMyFFI () public {
-    //     string[] memory cmds = new string[](2);
-    //     cmds[0] = "cat";
-    //     cmds[1] = "address.txt"; // assume contains abi-encoded address.
-    //     bytes memory result = vm.ffi(cmds);
-    //     address loadedAddress = abi.decode(result, (address));
-    //     // Do something with the address
-    //     // ...
-    // }
-
-    // Below tests must be run with a local node running
-    // ex. $anvil
-    /*
-
     function testForkNetwork() public {
-        BaseTest.forkNetwork("localhost");
-        assertEq(BaseTest.forks["localhost"].blockNumber, block.number);
+        BaseTest.forkNetwork("mainnet");
+        assertEq(BaseTest.forks["mainnet"].blockNumber, block.number);
+        assertEq(vm.activeFork(), BaseTest.forks["mainnet"].forkId);
     }
 
     function testForkNetworkAt() public {
-        BaseTest.forkNetworkAt("MAINNET", 10);
-        assertEq(BaseTest.forks["MAINNET"].blockNumber, block.number);
+        BaseTest.forkNetworkAt("mainnet", 10);
+        assertEq(BaseTest.forks["mainnet"].blockNumber, block.number);
+        assertEq(vm.activeFork(), BaseTest.forks["mainnet"].forkId);
     }
 
     function testMultipleNetwork() public {
-        BaseTest.forkNetwork("MAINNET");
-        BaseTest.forkNetwork("AURORA");
-        BaseTest.selectNamedFork("MAINNET");
-        assertEq(vm.activeFork(), BaseTest.forks["MAINNET"].forkId);
-        BaseTest.selectNamedFork("AURORA");
-        assertEq(vm.activeFork(), BaseTest.forks["AURORA"].forkId);
+        BaseTest.forkNetwork("mainnet");
+        BaseTest.forkNetwork("aurora");
+        BaseTest.selectNamedFork("mainnet");
+        assertEq(vm.activeFork(), BaseTest.forks["mainnet"].forkId);
+        BaseTest.selectNamedFork("aurora");
+        assertEq(vm.activeFork(), BaseTest.forks["aurora"].forkId);
     }
-    */
 }
