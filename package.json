@@ -8,6 +8,8 @@
     "clean": "rm -rf cache out",
     "build": "forge build --sizes",
     "test": "forge test -vvv --gas-report",
+    "compile": "forge-deploy gen-deployer && forge build",
+    "deploy": "forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast --private-key $DEPLOYER_PRIVATE_KEY -v && forge-deploy sync;",
     "coverage": "forge coverage --report lcov",
     "lint": "pnpm run lint:sol && pnpm run prettier:check",
     "lint:fix": "pnpm lint:sol:fix && pnpm run prettier:write",
