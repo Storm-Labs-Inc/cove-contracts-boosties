@@ -8,3 +8,8 @@ libs = ["lib"]
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"
 
+
+fs_permissions = [
+	{ access = "read", path = "./deployments"},
+	{ access = "read", path = "./out"}
+]
