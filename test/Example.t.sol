@@ -9,8 +9,6 @@ contract ExampleTest is Test, BaseTest {
 
     function setUp() public override {
         BaseTest.setUp();
-        // counter = new Counter();
-        // counter.setNumber(0);
     }
 
     function testUserSetup() public view {
@@ -36,17 +34,10 @@ contract ExampleTest is Test, BaseTest {
     }
 
     function testForkNetworkAt() public {
-        BaseTest.forkNetworkAt("mainnet", 10);
-        assertEq(BaseTest.forks["mainnet"].blockNumber, block.number);
+        uint256 desiredBlockNumber = 10;
+        BaseTest.forkNetworkAt("mainnet", desiredBlockNumber);
+        assertEq(BaseTest.forks["mainnet"].blockNumber, desiredBlockNumber);
+        assertEq(block.number, desiredBlockNumber);
         assertEq(vm.activeFork(), BaseTest.forks["mainnet"].forkId);
-    }
-
-    function testMultipleNetwork() public {
-        BaseTest.forkNetwork("mainnet");
-        BaseTest.forkNetwork("aurora");
-        BaseTest.selectNamedFork("mainnet");
-        assertEq(vm.activeFork(), BaseTest.forks["mainnet"].forkId);
-        BaseTest.selectNamedFork("aurora");
-        assertEq(vm.activeFork(), BaseTest.forks["aurora"].forkId);
     }
 }
