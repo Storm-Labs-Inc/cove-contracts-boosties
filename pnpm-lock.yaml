@@ -11,6 +11,9 @@ devDependencies:
   '@commitlint/config-conventional':
     specifier: ^17.6.6
     version: 17.6.6
+  '@openzeppelin/contracts-v4.9.3':
+    specifier: npm:@openzeppelin/contracts@4.9.3
+    version: /@openzeppelin/contracts@4.9.3
   '@types/node':
     specifier: ^20.4.2
     version: 20.4.2
@@ -242,6 +245,10 @@ packages:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
+    dev: true
+
+  /@openzeppelin/contracts@4.9.3:
+    resolution: {integrity: sha512-He3LieZ1pP2TNt5JbkPA4PNT9WC3gOTOlDcFGJW4Le4QKqwmiNJCRt44APfxMxvq7OugU/cqYuPcSBzOw38DAg==}
     dev: true
 
   /@solidity-parser/parser@0.16.1:
