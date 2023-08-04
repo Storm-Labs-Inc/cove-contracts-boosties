@@ -1,9 +1,9 @@
 pragma solidity ^0.8.17;
 
 // import {Vm} from "forge-std/Vm.sol";
-import "../src/Counter.sol";
+import "src/Counter.sol";
 import "./utils/BaseTest.t.sol";
-import "../script/Deploy.s.sol";
+import "script/Deploy.s.sol";
 import "forge-deploy/Deployer.sol";
 
 contract ExampleTest is Test, BaseTest {
