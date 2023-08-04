@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "forge-std/Test.sol";
-import {ERC20} from "openzeppelin-contracts-v4.9.3/token/ERC20/ERC20.sol";
-import {IERC20} from "openzeppelin-contracts-v4.9.3/token/ERC20/IERC20.sol";
-import {StdCheats} from "forge-std/StdCheats.sol";
-import {Constants} from "./Constants.sol";
+import { Test, console2 } from "forge-std/Test.sol";
+import { ERC20 } from "openzeppelin-contracts-v4.9.3/token/ERC20/ERC20.sol";
+import { IERC20 } from "openzeppelin-contracts-v4.9.3/token/ERC20/IERC20.sol";
+import { StdCheats } from "forge-std/StdCheats.sol";
+import { Constants } from "./Constants.sol";
 
 abstract contract BaseTest is Test, Constants {
     //// VARIABLES ////
@@ -27,8 +27,8 @@ abstract contract BaseTest is Test, Constants {
         _usdc = new ERC20("USDC Stablecoin", "USDC");
         _dai = new ERC20("Dai Stablecoin", "DAI");
 
-        vm.label({account: address(_usdc), newLabel: "USDC"});
-        vm.label({account: address(_dai), newLabel: "DAI"});
+        vm.label({ account: address(_usdc), newLabel: "USDC" });
+        vm.label({ account: address(_dai), newLabel: "DAI" });
 
         // Create users for testing.
         createUser("admin");
@@ -50,9 +50,9 @@ abstract contract BaseTest is Test, Constants {
      */
     function createUser(string memory name) public returns (address payable) {
         address payable user = payable(makeAddr(name));
-        vm.deal({account: user, newBalance: 100 ether});
-        deal({token: address(_usdc), to: user, give: 1_000_000e18});
-        deal({token: address(_dai), to: user, give: 1_000_000e18});
+        vm.deal({ account: user, newBalance: 100 ether });
+        deal({ token: address(_usdc), to: user, give: 1_000_000e18 });
+        deal({ token: address(_dai), to: user, give: 1_000_000e18 });
         users[name] = user;
         return user;
     }
@@ -84,7 +84,7 @@ abstract contract BaseTest is Test, Constants {
     function forkNetworkAt(string memory network, uint256 blockNumber) public returns (uint256) {
         string memory rpcURL = vm.rpcUrl(network);
         uint256 forkId = vm.createSelectFork(rpcURL, blockNumber);
-        forks[network] = Fork({forkId: forkId, blockNumber: blockNumber});
+        forks[network] = Fork({ forkId: forkId, blockNumber: blockNumber });
         console2.log("Started fork ", network, " at block ", block.number);
         console2.log("with id", forkId);
         return forkId;
@@ -98,7 +98,7 @@ abstract contract BaseTest is Test, Constants {
     function forkNetwork(string memory network) public returns (uint256) {
         string memory rpcURL = vm.rpcUrl(network);
         uint256 forkId = vm.createSelectFork(rpcURL);
-        forks[network] = Fork({forkId: forkId, blockNumber: block.number});
+        forks[network] = Fork({ forkId: forkId, blockNumber: block.number });
         console2.log("Started fork ", network, "at block ", block.number);
         console2.log("with id", forkId);
         return forkId;

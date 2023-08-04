@@ -1,12 +1,12 @@
 pragma solidity ^0.8.17;
 
 // import {Vm} from "forge-std/Vm.sol";
-import "src/Counter.sol";
-import "./utils/BaseTest.t.sol";
-import "script/Deploy.s.sol";
-import "forge-deploy/Deployer.sol";
+import { Counter } from "src/Counter.sol";
+import { BaseTest } from "./utils/BaseTest.t.sol";
+import { Deployments } from "script/Deployments.s.sol";
+import { Deployer } from "forge-deploy/Deployer.sol";
 
-contract ExampleTest is Test, BaseTest {
+contract TestDeployExample is BaseTest {
     Counter public counter;
 
     function setUp() public override {

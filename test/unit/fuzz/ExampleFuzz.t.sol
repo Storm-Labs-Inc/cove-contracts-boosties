@@ -1,9 +1,9 @@
 pragma solidity 0.8.17;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
 contract Safe {
-    receive() external payable {}
+    receive() external payable { }
 
     function withdraw() external {
         payable(msg.sender).transfer(address(this).balance);
@@ -15,7 +15,7 @@ contract SafeTest is Test {
 
     // Needed so the test contract itself can receive ether
     // when withdrawing
-    receive() external payable {}
+    receive() external payable { }
 
     function setUp() public {
         _safe = new Safe();
