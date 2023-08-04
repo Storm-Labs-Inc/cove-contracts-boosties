@@ -6,14 +6,14 @@ import { BaseTest } from "./utils/BaseTest.t.sol";
 import { Deployments } from "script/Deployments.s.sol";
 import { Deployer } from "forge-deploy/Deployer.sol";
 
-contract TestDeployExample is BaseTest {
+contract DeploymentsTest is BaseTest {
     Counter public counter;
 
     function setUp() public override {
         BaseTest.setUp();
     }
 
-    function testDeploy() public {
+    function testDeployments() public {
         Deployments deployments = new Deployments();
         counter = deployments.deploy();
         Deployer currentDeployer = deployments.getCurrentDeployer();
