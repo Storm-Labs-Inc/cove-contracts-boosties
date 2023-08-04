@@ -67,6 +67,18 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+
+      - name: Install Node.js
+        uses: buildjet/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -75,7 +87,7 @@ jobs:
       - name: Run Forge build and tests
         run: |
           forge --version
-          forge build --sizes
+          pnpm build
           forge test -vvv
         env:
           # make fuzzing semi-deterministic to avoid noisy gas cost estimation
@@ -93,6 +105,18 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+
+      - name: Install Node.js
+        uses: buildjet/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -101,7 +125,7 @@ jobs:
       - name: Run Forge build and tests
         run: |
           forge --version
-          forge build --sizes
+          pnpm build
           forge test --gas-report > gasreport.ansi
         env:
           # make fuzzing semi-deterministic to avoid noisy gas cost estimation
@@ -140,6 +164,18 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+
+      - name: Install Node.js
+        uses: buildjet/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -147,6 +183,7 @@ jobs:
 
       - name: Run Forge Coverage
         run: |
+          pnpm build
           forge coverage --report lcov
         env:
           # make fuzzing semi-deterministic to avoid noisy gas cost estimation
