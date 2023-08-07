@@ -50,13 +50,37 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+
+      - name: Install Node.js
+        uses: buildjet/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build forge-deploy generated contracts
+        run: pnpm build
+
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         id: slither
-        continue-on-error: true
         with:
+          ignore-compile: true
           sarif: results.sarif
           node-version: ${{ env.NODE_VERSION }}
+          slither-config: slither.config.json
 
   test:
     name: Test
