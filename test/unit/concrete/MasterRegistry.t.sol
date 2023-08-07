@@ -151,6 +151,7 @@ contract MasterRegistryTest is BaseTest {
         assert(masterRegistry.hasRole(_adminRole, users["alice"]));
 
         // Verify the user can grant the manager role
+        vm.stopPrank();
         vm.prank(users["alice"]);
         masterRegistry.grantRole(_managerRole, users["bob"]);
     }
@@ -197,6 +198,7 @@ contract MasterRegistryTest is BaseTest {
         assert(masterRegistry.hasRole(_adminRole, users["alice"]));
 
         // Revoke the admin role from the user from the owner
+        vm.stopPrank();
         vm.prank(users["alice"]);
         masterRegistry.revokeRole(_adminRole, users["alice"]);
 
