@@ -10,7 +10,7 @@ import {
     DeployOptions
 } from "generated/deployer/DeployerFunctions.g.sol";
 import { Counter } from "src/Counter.sol";
-import { MasterRegistry } from "src/Contracts/MasterRegistry.sol";
+import { MasterRegistry } from "src/MasterRegistry.sol";
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { BaseTest } from "../../utils/BaseTest.t.sol";
-import { MasterRegistry } from "src/contracts/MasterRegistry.sol";
+import { MasterRegistry } from "src/MasterRegistry.sol";
 import { Deployments } from "script/Deployments.s.sol";
 
 contract MasterRegistryTest is BaseTest {
