@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build forge-deploy generated contracts
+      - name: Create artifacts for src contracts
         run: forge build --build-info --skip test script
 
       - name: Run Slither
