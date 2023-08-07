@@ -15,7 +15,7 @@ contract DeploymentsTest is BaseTest {
 
     function testDeployments() public {
         Deployments deployments = new Deployments();
-        counter = deployments.deploy();
+        counter = deployments.deployCounter();
         Deployer currentDeployer = deployments.getCurrentDeployer();
         currentDeployer.has("Counter");
     }
