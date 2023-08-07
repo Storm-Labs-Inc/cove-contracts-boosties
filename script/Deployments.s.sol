@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 import { DeployScript } from "forge-deploy/DeployScript.sol";
 // generated from looking at contracts with ./forge-deploy gen-deployer

@@ -1,4 +1,4 @@
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 // import {Vm} from "forge-std/Vm.sol";
 import { Counter } from "src/Counter.sol";

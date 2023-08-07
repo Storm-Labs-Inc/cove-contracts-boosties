@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 import { Test, console2 } from "forge-std/Test.sol";
 import { ERC20 } from "openzeppelin-contracts-v4.9.3/token/ERC20/ERC20.sol";
