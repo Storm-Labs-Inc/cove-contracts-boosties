@@ -71,7 +71,7 @@ jobs:
         run: pnpm install
 
       - name: Build forge-deploy generated contracts
-        run: pnpm build
+        run: pnpm forge-deploy gen-deployer && forge build --build-info
 
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
