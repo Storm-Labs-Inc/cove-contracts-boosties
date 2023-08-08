@@ -21,6 +21,7 @@ contract BasketRegistry is AccessControl, IBasketRegistry, BaseBoringBatchable {
      * @param version version of the registry
      */
     event AddRegistry(bytes32 indexed name, address registryAddress, uint256 version);
+    event UpdateRegistry(bytes32 indexed name, address registryAddress, uint256 version);
 
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
@@ -28,21 +29,39 @@ contract BasketRegistry is AccessControl, IBasketRegistry, BaseBoringBatchable {
     }
 
     /// @inheritdoc IBasketRegistry
-    function addBasket(bytes32 registryName, address registryAddress, address baseAsset) external payable override {
+    function addBasket(bytes32 basketName, address basketAddress, address baseAsset) external payable override {
         require(hasRole(PROTOCOL_MANAGER_ROLE, msg.sender), "MR: msg.sender is not allowed");
-        require(registryName != 0, "MR: name cannot be empty");
-        require(registryAddress != address(0), "MR: address cannot be empty");
+        require(basketName != 0, "MR: name cannot be empty");
+        require(basketAddress != address(0), "MR: address cannot be empty");
         require(baseAsset != address(0), "MR: baseAsset cannot be empty");
-        address[] storage registry = _basketRegistryMap[registryName];
+        address[] storage registry = _basketRegistryMap[basketName];
         uint256 version = registry.length;
-        // TODO find a way to ensure baskets in this mapping are current
+        // This function should only be used for new entries, not to update an existing entry.
+        require(version == 0, "MR: registry already exists");
         address[] storage baseAssetBaskets = _baseAssetToBaskets[baseAsset];
-        version == 0 ? baseAssetBaskets.push(registryAddress) : ();
-        registry.push(registryAddress);
-        require(_reverseBasketRegistry[registryAddress].name == 0, "MR: duplicate registry address");
-        _reverseBasketRegistry[registryAddress] = ReverseBasketRegistryData(registryName, version, baseAsset);
+        baseAssetBaskets.push(basketAddress);
+        registry.push(basketAddress);
+        require(_reverseBasketRegistry[basketAddress].name == 0, "MR: duplicate registry address");
+        _reverseBasketRegistry[basketAddress] = ReverseBasketRegistryData(basketName, version, baseAsset);
+        emit AddRegistry(basketName, basketAddress, version);
+    }
 
-        emit AddRegistry(registryName, registryAddress, version);
+    /// @inheritdoc IBasketRegistry
+    function updateBasket(bytes32 basketName, address basketAddress, address baseAsset) external payable override {
+        require(hasRole(PROTOCOL_MANAGER_ROLE, msg.sender), "MR: msg.sender is not allowed");
+        require(basketName != 0, "MR: name cannot be empty");
+        require(basketAddress != address(0), "MR: address cannot be empty");
+        require(baseAsset != address(0), "MR: baseAsset cannot be empty");
+        address[] storage registry = _basketRegistryMap[basketName];
+        uint256 version = registry.length;
+        // This function should only be used for updating an entry, not creating a new one.
+        require(version > 0, "MR: not an existing basket address");
+        address[] storage baseAssetBaskets = _baseAssetToBaskets[baseAsset];
+        baseAssetBaskets.push(basketAddress);
+        registry.push(basketAddress);
+        require(_reverseBasketRegistry[basketAddress].name == 0, "MR: duplicate registry address");
+        _reverseBasketRegistry[basketAddress] = ReverseBasketRegistryData(basketName, version, baseAsset);
+        emit UpdateRegistry(basketName, basketAddress, version);
     }
 
     /// @inheritdoc IBasketRegistry
@@ -86,18 +105,6 @@ contract BasketRegistry is AccessControl, IBasketRegistry, BaseBoringBatchable {
 
     /// @inheritdoc IBasketRegistry
     function resloveBaseAssetToBaskets(address baseAsset) external view override returns (address[] memory) {
-        // Only include baskets that are current
-        address[] storage baskets = _baseAssetToBaskets[baseAsset];
-        uint256 length = baskets.length;
-        address[] memory currentBaskets = new address[](length);
-        uint256 currentBasketCount = 0;
-        for (uint256 i = 0; i < length; i++) {
-            ReverseBasketRegistryData memory data = _reverseBasketRegistry[baskets[i]];
-            if (data.baseAsset == baseAsset) {
-                currentBaskets[currentBasketCount] = baskets[i];
-                currentBasketCount++;
-            }
-        }
-        return currentBaskets;
+        return _baseAssetToBaskets[baseAsset];
     }
 }

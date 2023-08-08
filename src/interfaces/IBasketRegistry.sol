@@ -23,6 +23,14 @@ interface IBasketRegistry {
     function addBasket(bytes32 basketName, address basketAddress, address baseAsset) external payable;
 
     /**
+     * @notice Update a current basket entry to the master list.
+     * @param basketName name for the basket
+     * @param basketAddress address of the new basket
+     * @param baseAsset address of the base asset of the basket
+     */
+    function updateBasket(bytes32 basketName, address basketAddress, address baseAsset) external payable;
+
+    /**
      * @notice Resolves a name to the latest basket address. Reverts if no match is found.
      * @param name name for the basket
      * @return address address of the latest basket with the matching name
