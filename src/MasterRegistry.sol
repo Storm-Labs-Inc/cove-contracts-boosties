@@ -99,7 +99,6 @@ contract MasterRegistry is AccessControl, IMasterRegistry, BaseBoringBatchable {
         name = data.name;
         version = data.version;
         uint256 length = _registryMap[name].length;
-        require(length > 0, "MR: no version found for address");
         isLatest = version == length - 1;
     }
 }
