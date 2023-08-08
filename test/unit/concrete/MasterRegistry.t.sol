@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { BaseTest } from "../../utils/BaseTest.t.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 import { Deployments } from "script/Deployments.s.sol";
+import { Errors } from "src/interfaces/Errors.sol";
 
 contract MasterRegistryTest is BaseTest {
     MasterRegistry public masterRegistry;
@@ -24,46 +25,46 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testEmptyStringAdd() public {
-        vm.expectRevert("MR: name cannot be empty");
+        vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         masterRegistry.addRegistry("", address(1));
     }
 
     function testEmptyAddressAdd() public {
-        vm.expectRevert("MR: address cannot be empty");
+        vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         masterRegistry.addRegistry("test", address(0));
     }
 
     function testDuplicateAddressAdd() public {
         masterRegistry.addRegistry("test", address(1));
-        vm.expectRevert("MR: duplicate registry address");
+        vm.expectRevert(abi.encodeWithSelector(Errors.DuplicateRegistryAddress.selector, address(1)));
         masterRegistry.addRegistry("test2", address(1));
     }
 
     function testDuplicateAddRegistry() public {
         masterRegistry.addRegistry("test", address(1));
-        vm.expectRevert("MR: registry name found, please use updateRegistry");
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameFound.selector, "test"));
         masterRegistry.addRegistry("test", address(2));
     }
 
     function testEmptyStringUpdate() public {
-        vm.expectRevert("MR: name cannot be empty");
+        vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         masterRegistry.updateRegistry("", address(1));
     }
 
     function testEmptyAddressUpdate() public {
-        vm.expectRevert("MR: address cannot be empty");
+        vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         masterRegistry.updateRegistry("test", address(0));
     }
 
     function testDuplicateAddressUpdate() public {
         masterRegistry.addRegistry("test", address(1));
         masterRegistry.addRegistry("test2", address(2));
-        vm.expectRevert("MR: duplicate registry address");
+        vm.expectRevert(abi.encodeWithSelector(Errors.DuplicateRegistryAddress.selector, address(1)));
         masterRegistry.updateRegistry("test", address(1));
     }
 
     function testNonExistantUpdate() public {
-        vm.expectRevert("MR: registry entry does not exist, please use addRegistry");
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, "test"));
         masterRegistry.updateRegistry("test", address(1));
     }
 
@@ -79,12 +80,12 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testResolveNameToLatestNotFoundName() public {
-        vm.expectRevert("MR: no match found for name");
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, "test1"));
         masterRegistry.resolveNameToLatestAddress("test1");
     }
 
     function testResolveToAllAddressesNotFoundName() public {
-        vm.expectRevert("MR: no match found for name");
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, "test1"));
         masterRegistry.resolveNameToAllAddresses("test1");
     }
 
@@ -98,10 +99,10 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testResolveNameAndVersionAddresseNotFound() public {
-        vm.expectRevert("MR: no match found for name and version");
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameVersionNotFound.selector, "test1", 0));
         masterRegistry.resolveNameAndVersionToAddress("test1", 0);
         masterRegistry.addRegistry("test1", address(1));
-        vm.expectRevert("MR: no match found for name and version");
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameVersionNotFound.selector, "test1", 1));
         masterRegistry.resolveNameAndVersionToAddress("test1", 1);
     }
 
@@ -113,7 +114,7 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testResolveAddressToRegistryNotFound() public {
-        vm.expectRevert("MR: no match found for address");
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryAddressNotFound.selector, address(1)));
         masterRegistry.resolveAddressToRegistryData(address(1));
     }
 
@@ -142,7 +143,7 @@ contract MasterRegistryTest is BaseTest {
     function testAddRegistryPermissions() public {
         vm.stopPrank();
         vm.startPrank(users["alice"]);
-        vm.expectRevert("MR: msg.sender is not allowed");
+        vm.expectRevert(abi.encodeWithSelector(Errors.CallerNotProtocolManager.selector, users["alice"]));
         masterRegistry.addRegistry("test1", address(1));
     }
 
@@ -150,7 +151,7 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.addRegistry("test1", address(1));
         vm.stopPrank();
         vm.startPrank(users["alice"]);
-        vm.expectRevert("MR: msg.sender is not allowed");
+        vm.expectRevert(abi.encodeWithSelector(Errors.CallerNotProtocolManager.selector, users["alice"]));
         masterRegistry.updateRegistry("test1", address(2));
     }
 
