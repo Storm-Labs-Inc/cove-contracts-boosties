@@ -37,7 +37,8 @@ contract BasketRegistry is AccessControl, IBasketRegistry, BaseBoringBatchable {
         address[] storage registry = _basketRegistryMap[basketName];
         uint256 version = registry.length;
         // This function should only be used for new entries, not to update an existing entry.
-        require(version == 0, "MR: registry already exists");
+        require(version == 0, "MR: basket name found, please use updateBasket");
+        // TODO add check for baseAsset is correct in basket contrac
         address[] storage baseAssetBaskets = _baseAssetToBaskets[baseAsset];
         baseAssetBaskets.push(basketAddress);
         registry.push(basketAddress);
@@ -55,7 +56,8 @@ contract BasketRegistry is AccessControl, IBasketRegistry, BaseBoringBatchable {
         address[] storage registry = _basketRegistryMap[basketName];
         uint256 version = registry.length;
         // This function should only be used for updating an entry, not creating a new one.
-        require(version > 0, "MR: not an existing basket address");
+        require(version > 0, "MR: basket entry does not exist, please use addBasket");
+        // TODO add check for baseAsset is correct in basket contrac
         address[] storage baseAssetBaskets = _baseAssetToBaskets[baseAsset];
         baseAssetBaskets.push(basketAddress);
         registry.push(basketAddress);
@@ -99,12 +101,13 @@ contract BasketRegistry is AccessControl, IBasketRegistry, BaseBoringBatchable {
         version = data.version;
         baseAsset = data.baseAsset;
         uint256 length = _basketRegistryMap[name].length;
-        require(length > 0, "MR: no version found for address");
         isLatest = version == length - 1;
     }
 
     /// @inheritdoc IBasketRegistry
-    function resloveBaseAssetToBaskets(address baseAsset) external view override returns (address[] memory) {
+    function resolveBaseAssetToBaskets(address baseAsset) external view override returns (address[] memory) {
+        require(baseAsset != address(0), "MR: baseAsset cannot be empty");
+        require(_baseAssetToBaskets[baseAsset].length > 0, "MR: no match found for baseAsset");
         return _baseAssetToBaskets[baseAsset];
     }
 }

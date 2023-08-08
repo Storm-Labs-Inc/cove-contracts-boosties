@@ -70,5 +70,5 @@ interface IBasketRegistry {
      * @param baseAsset address of a base asset you want to resolve
      * @return baskets array of baskets that contain the given base asset
      */
-    function resloveBaseAssetToBaskets(address baseAsset) external view returns (address[] memory);
+    function resolveBaseAssetToBaskets(address baseAsset) external view returns (address[] memory);
 }
