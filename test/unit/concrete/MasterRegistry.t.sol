@@ -19,23 +19,52 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testInit() public view {
-        assert(masterRegistry.hasRole(masterRegistry.DEFAULT_ADMIN_ROLE(), users["admin"]));
+        assert(masterRegistry.hasRole(adminRole, users["admin"]));
+        assert(masterRegistry.hasRole(managerRole, users["admin"]));
     }
 
-    function testEmptyString() public {
+    function testEmptyStringAdd() public {
         vm.expectRevert("MR: name cannot be empty");
         masterRegistry.addRegistry("", address(1));
     }
 
-    function testEmptyAddress() public {
+    function testEmptyAddressAdd() public {
         vm.expectRevert("MR: address cannot be empty");
         masterRegistry.addRegistry("test", address(0));
     }
 
-    function testDuplicateAddress() public {
+    function testDuplicateAddressAdd() public {
         masterRegistry.addRegistry("test", address(1));
         vm.expectRevert("MR: duplicate registry address");
         masterRegistry.addRegistry("test2", address(1));
+    }
+
+    function testDuplicateAddRegistry() public {
+        masterRegistry.addRegistry("test", address(1));
+        vm.expectRevert("MR: registry name found, please use updateRegistry");
+        masterRegistry.addRegistry("test", address(2));
+    }
+
+    function testEmptyStringUpdate() public {
+        vm.expectRevert("MR: name cannot be empty");
+        masterRegistry.updateRegistry("", address(1));
+    }
+
+    function testEmptyAddressUpdate() public {
+        vm.expectRevert("MR: address cannot be empty");
+        masterRegistry.updateRegistry("test", address(0));
+    }
+
+    function testDuplicateAddressUpdate() public {
+        masterRegistry.addRegistry("test", address(1));
+        masterRegistry.addRegistry("test2", address(2));
+        vm.expectRevert("MR: duplicate registry address");
+        masterRegistry.updateRegistry("test", address(1));
+    }
+
+    function testNonExistantUpdate() public {
+        vm.expectRevert("MR: registry entry does not exist, please use addRegistry");
+        masterRegistry.updateRegistry("test", address(1));
     }
 
     function testAddRegistry() public {
@@ -45,7 +74,7 @@ contract MasterRegistryTest is BaseTest {
 
     function testAddRegistryWithSameName() public {
         masterRegistry.addRegistry("test1", address(1));
-        masterRegistry.addRegistry("test1", address(2));
+        masterRegistry.updateRegistry("test1", address(2));
         assertEq(masterRegistry.resolveNameToLatestAddress("test1"), address(2));
     }
 
@@ -61,7 +90,7 @@ contract MasterRegistryTest is BaseTest {
 
     function testResolveNameToAllAddresses() public {
         masterRegistry.addRegistry("test1", address(1));
-        masterRegistry.addRegistry("test1", address(2));
+        masterRegistry.updateRegistry("test1", address(2));
         masterRegistry.resolveNameToAllAddresses("test1");
         address[] memory res = masterRegistry.resolveNameToAllAddresses("test1");
         assertEq(res[0], address(1));
@@ -78,7 +107,7 @@ contract MasterRegistryTest is BaseTest {
 
     function testResolveNameAndVersionToAddress() public {
         masterRegistry.addRegistry("test1", address(1));
-        masterRegistry.addRegistry("test1", address(2));
+        masterRegistry.updateRegistry("test1", address(2));
         assertEq(masterRegistry.resolveNameAndVersionToAddress("test1", 0), address(1));
         assertEq(masterRegistry.resolveNameAndVersionToAddress("test1", 1), address(2));
     }
@@ -90,7 +119,7 @@ contract MasterRegistryTest is BaseTest {
 
     function testResolveAddressToRegistryData() public {
         masterRegistry.addRegistry("test1", address(1));
-        masterRegistry.addRegistry("test1", address(2));
+        masterRegistry.updateRegistry("test1", address(2));
         masterRegistry.addRegistry("test2", address(3));
         (bytes32 name, uint256 version, bool isLatest) = masterRegistry.resolveAddressToRegistryData(address(1));
         assertEq(name, "test1");
@@ -108,6 +137,21 @@ contract MasterRegistryTest is BaseTest {
 
     function testManagerRole() public {
         assertEq(masterRegistry.getRoleAdmin(managerRole), bytes32(0));
+    }
+
+    function testAddRegistryPermissions() public {
+        vm.stopPrank();
+        vm.startPrank(users["alice"]);
+        vm.expectRevert("MR: msg.sender is not allowed");
+        masterRegistry.addRegistry("test1", address(1));
+    }
+
+    function testUpdateRegistryPermissions() public {
+        masterRegistry.addRegistry("test1", address(1));
+        vm.stopPrank();
+        vm.startPrank(users["alice"]);
+        vm.expectRevert("MR: msg.sender is not allowed");
+        masterRegistry.updateRegistry("test1", address(2));
     }
 
     // Try granting manager role from an account without admin role

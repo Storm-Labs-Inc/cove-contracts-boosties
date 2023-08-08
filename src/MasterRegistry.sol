@@ -25,6 +25,7 @@ contract MasterRegistry is AccessControl, IMasterRegistry, BaseBoringBatchable {
      * @param version version of the registry
      */
     event AddRegistry(bytes32 indexed name, address registryAddress, uint256 version);
+    event UpdateRegistry(bytes32 indexed name, address registryAddress, uint256 version);
 
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
@@ -39,11 +40,29 @@ contract MasterRegistry is AccessControl, IMasterRegistry, BaseBoringBatchable {
 
         address[] storage registry = _registryMap[registryName];
         uint256 version = registry.length;
+        // This function should only be used to create a new registry entry.
+        require(version == 0, "MR: registry name found, please use updateRegistry");
         registry.push(registryAddress);
         require(_reverseRegistry[registryAddress].name == 0, "MR: duplicate registry address");
         _reverseRegistry[registryAddress] = ReverseRegistryData(registryName, version);
 
         emit AddRegistry(registryName, registryAddress, version);
+    }
+
+    /// @inheritdoc IMasterRegistry
+    function updateRegistry(bytes32 registryName, address registryAddress) external payable override {
+        require(hasRole(PROTOCOL_MANAGER_ROLE, msg.sender), "MR: msg.sender is not allowed");
+        require(registryName != 0, "MR: name cannot be empty");
+        require(registryAddress != address(0), "MR: address cannot be empty");
+        address[] storage registry = _registryMap[registryName];
+        uint256 version = registry.length;
+        // This function should only be used update an existing registry entry.
+        require(version > 0, "MR: registry entry does not exist, please use addRegistry");
+        registry.push(registryAddress);
+        require(_reverseRegistry[registryAddress].name == 0, "MR: duplicate registry address");
+        _reverseRegistry[registryAddress] = ReverseRegistryData(registryName, version);
+
+        emit UpdateRegistry(registryName, registryAddress, version);
     }
 
     /// @inheritdoc IMasterRegistry

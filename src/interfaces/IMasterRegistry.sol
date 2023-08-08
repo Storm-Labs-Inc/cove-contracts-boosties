@@ -21,6 +21,13 @@ interface IMasterRegistry {
     function addRegistry(bytes32 registryName, address registryAddress) external payable;
 
     /**
+     * @notice Add a new registry entry to the master list.
+     * @param registryName name for the registry
+     * @param registryAddress address of the new registry
+     */
+    function updateRegistry(bytes32 registryName, address registryAddress) external payable;
+
+    /**
      * @notice Resolves a name to the latest registry address. Reverts if no match is found.
      * @param name name for the registry
      * @return address address of the latest registry with the matching name
