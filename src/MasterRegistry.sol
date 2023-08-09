@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.18;
-pragma experimental ABIEncoderV2;
 
-import { AccessControl } from "openzeppelin-contracts-v4.9.3/access/AccessControl.sol";
-import { Multicall } from "openzeppelin-contracts-v4.9.3/utils/Multicall.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { IMasterRegistry } from "./interfaces/IMasterRegistry.sol";
 
 /**
  * @title MasterRegistry
  * @notice This contract holds list of other registries or contracts and its historical versions.
  */
-contract MasterRegistry is AccessControl, IMasterRegistry, Multicall {
+contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     /// @notice Role responsible for adding registries.
     bytes32 public constant PROTOCOL_MANAGER_ROLE = keccak256("PROTOCOL_MANAGER_ROLE");
 
