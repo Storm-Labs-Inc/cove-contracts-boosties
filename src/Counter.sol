@@ -11,6 +11,12 @@ contract Counter {
 
     function setNumber(uint256 newNumber) public {
         number = newNumber;
+        for (uint256 i = 0; i < 100; i++) {
+            number++;
+        }
+        for (uint256 i = 0; i < 100; i++) {
+            number--;
+        }
     }
 
     function increment() public {
