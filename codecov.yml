@@ -2,3 +2,4 @@ ignore:
   - "test"
   - "script"
   - "generated"
+  - "src/helper/*"

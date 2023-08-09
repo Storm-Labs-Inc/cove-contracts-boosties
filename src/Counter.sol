@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 contract Counter {
     uint256 public number;
-    address public owner;
+    address public immutable owner;
 
     constructor() {
         owner = msg.sender;
