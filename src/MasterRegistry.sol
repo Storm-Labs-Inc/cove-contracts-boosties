@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.18;
 pragma experimental ABIEncoderV2;
 
 import { AccessControl } from "openzeppelin-contracts-v4.9.3/access/AccessControl.sol";

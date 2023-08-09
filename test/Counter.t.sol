@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 import { BaseTest } from "./utils/BaseTest.t.sol";
 import { Counter } from "src/Counter.sol";
