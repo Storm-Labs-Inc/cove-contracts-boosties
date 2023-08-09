@@ -263,4 +263,26 @@ contract MasterRegistryTest is BaseTest {
         // Check the user no longer has the admin role
         assert(!masterRegistry.hasRole(adminRole, users["admin"]));
     }
+
+    function testMulticallAdd() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(masterRegistry.addRegistry.selector, bytes32("test1"), address(1));
+        calls[1] = abi.encodeWithSelector(masterRegistry.addRegistry.selector, bytes32("test2"), address(2));
+        masterRegistry.multicall(calls);
+        assertEq(masterRegistry.resolveNameToLatestAddress("test1"), address(1));
+        assertEq(masterRegistry.resolveNameToLatestAddress("test2"), address(2));
+    }
+
+    function testMulticallUpdate() public {
+        masterRegistry.addRegistry("test1", address(1));
+        masterRegistry.addRegistry("test2", address(2));
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(masterRegistry.updateRegistry.selector, bytes32("test1"), address(11));
+        calls[1] = abi.encodeWithSelector(masterRegistry.updateRegistry.selector, bytes32("test2"), address(22));
+        masterRegistry.multicall(calls);
+        assertEq(masterRegistry.resolveNameAndVersionToAddress("test1", 0), address(1));
+        assertEq(masterRegistry.resolveNameAndVersionToAddress("test2", 0), address(2));
+        assertEq(masterRegistry.resolveNameToLatestAddress("test1"), address(11));
+        assertEq(masterRegistry.resolveNameToLatestAddress("test2"), address(22));
+    }
 }
