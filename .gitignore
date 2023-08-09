@@ -53,3 +53,5 @@ lcov.info
 
 # forge-deploy cli binary
 /forge-deploy
+
+.python-version
