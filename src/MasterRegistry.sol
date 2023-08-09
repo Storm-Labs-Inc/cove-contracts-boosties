@@ -11,7 +11,7 @@ import { IMasterRegistry } from "./interfaces/IMasterRegistry.sol";
  * @title MasterRegistry
  * @notice This contract holds list of other registries or contracts and its historical versions.
  */
-contract MasterRegistry is AccessControl, IMasterRegistry {
+contract MasterRegistry is AccessControl, IMasterRegistry, Multicall {
     /// @notice Role responsible for adding registries.
     bytes32 public constant PROTOCOL_MANAGER_ROLE = keccak256("PROTOCOL_MANAGER_ROLE");
 
