@@ -4,14 +4,14 @@ pragma solidity 0.8.17;
 pragma experimental ABIEncoderV2;
 
 import { AccessControl } from "openzeppelin-contracts-v4.9.3/access/AccessControl.sol";
-import { BaseBoringBatchable } from "./helper/BaseBoringBatchable.sol";
+import { Multicall } from "openzeppelin-contracts-v4.9.3/utils/Multicall.sol";
 import { IMasterRegistry } from "./interfaces/IMasterRegistry.sol";
 
 /**
  * @title MasterRegistry
  * @notice This contract holds list of other registries or contracts and its historical versions.
  */
-contract MasterRegistry is AccessControl, IMasterRegistry, BaseBoringBatchable {
+contract MasterRegistry is AccessControl, IMasterRegistry {
     /// @notice Role responsible for adding registries.
     bytes32 public constant PROTOCOL_MANAGER_ROLE = keccak256("PROTOCOL_MANAGER_ROLE");
 
@@ -25,6 +25,12 @@ contract MasterRegistry is AccessControl, IMasterRegistry, BaseBoringBatchable {
      * @param version version of the registry
      */
     event AddRegistry(bytes32 indexed name, address registryAddress, uint256 version);
+    /**
+     * @notice Update a current registry entry to the master list.
+     * @param name address of the added pool
+     * @param registryAddress address of the registry
+     * @param version version of the registry
+     */
     event UpdateRegistry(bytes32 indexed name, address registryAddress, uint256 version);
 
     /// @notice Thrown when the registry name given is empty.
@@ -93,7 +99,7 @@ contract MasterRegistry is AccessControl, IMasterRegistry, BaseBoringBatchable {
     /// @inheritdoc IMasterRegistry
     function resolveNameAndVersionToAddress(bytes32 name, uint256 version) external view override returns (address) {
         address[] storage registry = _registryMap[name];
-        if (version > registry.length) revert RegistryNameVersionNotFound(name, version);
+        if (version >= registry.length) revert RegistryNameVersionNotFound(name, version);
         return registry[version];
     }
 

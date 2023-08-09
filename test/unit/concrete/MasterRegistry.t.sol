@@ -42,7 +42,7 @@ contract MasterRegistryTest is BaseTest {
 
     function testDuplicateAddRegistry() public {
         masterRegistry.addRegistry("test", address(1));
-        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameFound.selector, "test"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameFound.selector, bytes32("test")));
         masterRegistry.addRegistry("test", address(2));
     }
 
@@ -64,7 +64,7 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testNonExistantUpdate() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, "test"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, bytes32("test")));
         masterRegistry.updateRegistry("test", address(1));
     }
 
@@ -80,12 +80,12 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testResolveNameToLatestNotFoundName() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, "test1"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, bytes32("test1")));
         masterRegistry.resolveNameToLatestAddress("test1");
     }
 
     function testResolveToAllAddressesNotFoundName() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, "test1"));
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, bytes32("test1")));
         masterRegistry.resolveNameToAllAddresses("test1");
     }
 
@@ -99,10 +99,10 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function testResolveNameAndVersionAddresseNotFound() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameVersionNotFound.selector, "test1", 0));
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameVersionNotFound.selector, bytes32("test1"), 0));
         masterRegistry.resolveNameAndVersionToAddress("test1", 0);
         masterRegistry.addRegistry("test1", address(1));
-        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameVersionNotFound.selector, "test1", 1));
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameVersionNotFound.selector, bytes32("test1"), 1));
         masterRegistry.resolveNameAndVersionToAddress("test1", 1);
     }
 
