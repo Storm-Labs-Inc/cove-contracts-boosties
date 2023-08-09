@@ -11,11 +11,9 @@ contract Counter {
 
     function setNumber(uint256 newNumber) public {
         number = newNumber;
+        uint256 random = 0;
         for (uint256 i = 0; i < 100; i++) {
-            number++;
-        }
-        for (uint256 i = 0; i < 100; i++) {
-            number--;
+            random++;
         }
     }
 
