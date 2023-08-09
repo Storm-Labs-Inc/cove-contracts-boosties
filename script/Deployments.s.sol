@@ -32,7 +32,7 @@ contract Deployments is DeployScript {
 
     function deployMasterRegistry(address admin) external returns (MasterRegistry) {
         options = DeployOptions({ salt: 1337 });
-        return deployer.deploy_MasterRegistry("Counter", admin, options);
+        return deployer.deploy_MasterRegistry("MasterRegistry", admin, options);
     }
 
     function getCurrentDeployer() external view returns (Deployer) {
