@@ -5,9 +5,11 @@
 
 # For local deploy to fork
 
-- $anvil --rpc-url <fork_network_rpc_url>
-- in another window $pnpm localDeploy
-- deployments will be in deployments/<chainId>-fork
-- make sure to not commit broadcast/
-- if trying to deploy new contract either use the default deployer functins or generate them with $./forge-deploy
-  gen-deployer
+- `pnpm install`
+- `anvil --rpc-url <fork_network_rpc_url>`
+- `pnpm build`
+- in another window `pnpm localDeploy`
+- deployments will be in `deployments/<chainId>-fork`
+- make sure to not commit `broadcast/`
+- if trying to deploy new contract either use the default deployer functions or generate them with
+  `$./forge-deploy gen-deployer`
