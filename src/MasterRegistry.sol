@@ -14,7 +14,9 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     /// @notice Role responsible for adding registries.
     bytes32 public constant PROTOCOL_MANAGER_ROLE = keccak256("PROTOCOL_MANAGER_ROLE");
 
+    //slither-disable-next-line uninitialized-state
     mapping(bytes32 => address[]) private _registryMap;
+    //slither-disable-next-line uninitialized-state
     mapping(address => ReverseRegistryData) private _reverseRegistry;
 
     /**
