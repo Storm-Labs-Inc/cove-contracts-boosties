@@ -39,8 +39,6 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     /// @notice Thrown when the registry address given is empty.
     error AddressEmpty();
     /// @notice Thrown when the caller is not the protocol manager.
-    error CallerNotProtocolManager(address caller);
-    /// @notice Thrown when the registry name is found when calling addRegistry().
     error RegistryNameFound(bytes32 name);
     /// @notice Thrown when the registry name is not found but is expected to be.
     error RegistryNameNotFound(bytes32 name);
@@ -57,8 +55,15 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     }
 
     /// @inheritdoc IMasterRegistry
-    function addRegistry(bytes32 registryName, address registryAddress) external payable override {
-        if (!hasRole(PROTOCOL_MANAGER_ROLE, msg.sender)) revert CallerNotProtocolManager(msg.sender);
+    function addRegistry(
+        bytes32 registryName,
+        address registryAddress
+    )
+        external
+        payable
+        override
+        onlyRole(PROTOCOL_MANAGER_ROLE)
+    {
         if (registryName == 0) revert NameEmpty();
         if (registryAddress == address(0)) revert AddressEmpty();
 
@@ -74,8 +79,15 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     }
 
     /// @inheritdoc IMasterRegistry
-    function updateRegistry(bytes32 registryName, address registryAddress) external payable override {
-        if (!hasRole(PROTOCOL_MANAGER_ROLE, msg.sender)) revert CallerNotProtocolManager(msg.sender);
+    function updateRegistry(
+        bytes32 registryName,
+        address registryAddress
+    )
+        external
+        payable
+        override
+        onlyRole(PROTOCOL_MANAGER_ROLE)
+    {
         if (registryName == 0) revert NameEmpty();
         if (registryAddress == address(0)) revert AddressEmpty();
         address[] storage registry = _registryMap[registryName];
