@@ -46,7 +46,6 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
         address registryAddress
     )
         external
-        payable
         override
         onlyRole(PROTOCOL_MANAGER_ROLE)
     {
@@ -74,7 +73,6 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
         address registryAddress
     )
         external
-        payable
         override
         onlyRole(PROTOCOL_MANAGER_ROLE)
     {

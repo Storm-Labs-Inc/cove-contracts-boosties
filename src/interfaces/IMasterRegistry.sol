@@ -17,14 +17,14 @@ interface IMasterRegistry {
      * @param registryName name for the registry
      * @param registryAddress address of the new registry
      */
-    function addRegistry(bytes32 registryName, address registryAddress) external payable;
+    function addRegistry(bytes32 registryName, address registryAddress) external;
 
     /**
      * @notice Update an existing registry entry to the master list. Reverts if no match is found.
      * @param registryName name for the registry
      * @param registryAddress address of the new registry
      */
-    function updateRegistry(bytes32 registryName, address registryAddress) external payable;
+    function updateRegistry(bytes32 registryName, address registryAddress) external;
 
     /**
      * @notice Resolves a name to the latest registry address. Reverts if no match is found.
