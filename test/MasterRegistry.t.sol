@@ -131,6 +131,12 @@ contract MasterRegistryTest is BaseTest {
         assertEq(res[1], addr2);
     }
 
+    function testFuzz_revertWhenNamNotFound_resolveNameToAllAddresses(bytes32 name) public {
+        vm.assume(name != bytes32(0));
+        vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));
+        masterRegistry.resolveNameToAllAddresses(name);
+    }
+
     function testFuzz_revertWhenNameAndVersionNotFound_resolveNameAndVersionToAddress(
         bytes32 name,
         address addr
