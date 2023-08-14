@@ -24,21 +24,28 @@ contract BasketRegistryTest is BaseTest {
         assert(basketRegistry.hasRole(managerRole, users["admin"]));
     }
 
-    function test_revertWhenCalledWithEmptyString_addRegistry(address addr, address baseAsset) public {
+    function testFuzz_revertWhenCalledWithEmptyString_addRegistry(address addr, address baseAsset) public {
         vm.assume(addr != address(0));
         vm.assume(baseAsset != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         basketRegistry.addRegistry("", addr, baseAsset);
     }
 
-    function test_revertWhenCalledWithEmptyAddress_addRegistry(bytes32 name, address baseAsset) public {
+    function testFuzz_revertWhenCalledWithEmptyAddress_addRegistry(bytes32 name, address baseAsset) public {
         vm.assume(name != bytes32(0));
         vm.assume(baseAsset != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         basketRegistry.addRegistry(name, address(0), baseAsset);
     }
 
-    function test_revertWhenCalledWithDuplicateAddress_addRegistry(
+    function testFuzz_revertWhenCalledWithEmptyBaseAssetAddress_addRegistry(bytes32 name, address addr) public {
+        vm.assume(name != bytes32(0));
+        vm.assume(addr != address(0));
+        vm.expectRevert(abi.encodeWithSelector(Errors.BaseAssetAddressEmpty.selector));
+        basketRegistry.addRegistry(name, addr, address(0));
+    }
+
+    function testFuzz_revertWhenCalledWithDuplicateAddress_addRegistry(
         bytes32 name,
         bytes32 name2,
         address addr,
@@ -57,7 +64,7 @@ contract BasketRegistryTest is BaseTest {
         basketRegistry.addRegistry(name2, addr, baseAsset);
     }
 
-    function test_revertWhenCalledWithDuplicateName_addRegistry(
+    function testFuzz_revertWhenCalledWithDuplicateName_addRegistry(
         bytes32 name,
         address addr,
         address addr2,
@@ -81,6 +88,13 @@ contract BasketRegistryTest is BaseTest {
         vm.assume(baseAsset != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         basketRegistry.updateRegistry("", addr, baseAsset);
+    }
+
+    function testFuzz_revertWhenCalledWithEmptyBaseAssetAddress_updateRegistry(bytes32 name, address addr) public {
+        vm.assume(name != bytes32(0));
+        vm.assume(addr != address(0));
+        vm.expectRevert(abi.encodeWithSelector(Errors.BaseAssetAddressEmpty.selector));
+        basketRegistry.updateRegistry(name, addr, address(0));
     }
 
     function testFuzz_revertWhenCalledWithEmptyAddress_updateRegistry(bytes32 name, address baseAsset) public {
@@ -112,7 +126,7 @@ contract BasketRegistryTest is BaseTest {
         basketRegistry.updateRegistry(name, addr2, baseAsset);
     }
 
-    function test_revertWhenNameNotFound_updateRegistry(bytes32 name, address addr, address baseAsset) public {
+    function testFuzz_revertWhenNameNotFound_updateRegistry(bytes32 name, address addr, address baseAsset) public {
         vm.assume(addr != address(0));
         vm.assume(name != bytes32(0));
         vm.assume(baseAsset != address(0));

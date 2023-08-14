@@ -24,19 +24,25 @@ contract MasterRegistryTest is BaseTest {
         assert(masterRegistry.hasRole(managerRole, users["admin"]));
     }
 
-    function test_revertWhenCalledWithEmptyString_addRegistry(address addr) public {
+    function testFuzz_revertWhenCalledWithEmptyString_addRegistry(address addr) public {
         vm.assume(addr != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         masterRegistry.addRegistry("", addr);
     }
 
-    function test_revertWhenCalledWithEmptyAddress_addRegistry(bytes32 name) public {
+    function testFuzz_revertWhenCalledWithEmptyAddress_addRegistry(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         masterRegistry.addRegistry(name, address(0));
     }
 
-    function test_revertWhenCalledWithDuplicateAddress_addRegistry(bytes32 name, bytes32 name2, address addr) public {
+    function testFuzz_revertWhenCalledWithDuplicateAddress_addRegistry(
+        bytes32 name,
+        bytes32 name2,
+        address addr
+    )
+        public
+    {
         vm.assume(name != name2);
         vm.assume(name != bytes32(0));
         vm.assume(name2 != bytes32(0));
@@ -46,7 +52,7 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.addRegistry(name2, addr);
     }
 
-    function test_revertWhenCalledWithDuplicateName_addRegistry(bytes32 name, address addr, address addr2) public {
+    function testFuzz_revertWhenCalledWithDuplicateName_addRegistry(bytes32 name, address addr, address addr2) public {
         vm.assume(addr != addr2);
         vm.assume(name != bytes32(0));
         vm.assume(addr != address(0));
@@ -89,7 +95,7 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.updateRegistry(name, addr2);
     }
 
-    function test_revertWhenNameNotFound_updateRegistry(bytes32 name, address addr) public {
+    function testFuzz_revertWhenNameNotFound_updateRegistry(bytes32 name, address addr) public {
         vm.assume(addr != address(0));
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));

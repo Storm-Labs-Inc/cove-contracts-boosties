@@ -87,6 +87,7 @@ contract BasketRegistry is IBasketRegistry, AccessControl, Multicall {
         // Check for empty values.
         if (registryName == 0) revert Errors.NameEmpty();
         if (registryAddress == address(0)) revert Errors.AddressEmpty();
+        if (baseAsset == address(0)) revert Errors.BaseAssetAddressEmpty();
 
         // Check that the registry name already exists in the registry.
         address[] storage registry = _registryMap[registryName];
