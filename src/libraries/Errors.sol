@@ -12,6 +12,12 @@ library Errors {
     /// @notice Thrown when the registry address given is empty.
     error AddressEmpty();
 
+    /// @notice Thrown when the base asset address given is empty.
+    error BaseAssetAddressEmpty();
+
+    /// @notice Thrown when the base asset does not resolve to any baskets.
+    error BaseAssetNotFound(address baseAsset);
+
     /// @notice Thrown when the registry name is found when calling addRegistry().
     error RegistryNameFound(bytes32 name);
 
