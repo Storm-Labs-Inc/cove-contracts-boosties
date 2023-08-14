@@ -33,12 +33,17 @@
   "devDependencies": {
     "@commitlint/cli": "^17.6.6",
     "@commitlint/config-conventional": "^17.6.6",
-    "@openzeppelin/contracts-v4.9.3": "npm:@openzeppelin/contracts@4.9.3",
     "@types/node": "^20.4.2",
     "forge-deploy": "^0.2.0",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.3",
     "prettier": "^3.0.0",
     "solhint": "^3.4.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "4.9.3"
+  },
+  "peerDependencies": {
+    "@openzeppelin/contracts": "4.9.3"
   }
 }

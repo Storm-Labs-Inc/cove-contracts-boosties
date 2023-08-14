@@ -71,7 +71,7 @@ jobs:
         run: pnpm install
 
       - name: Create artifacts for src contracts
-        run: forge build --build-info --skip test script
+        run: pnpm forge-deploy gen-deployer && forge build --build-info
 
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0

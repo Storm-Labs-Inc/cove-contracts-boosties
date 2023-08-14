@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+dependencies:
+  '@openzeppelin/contracts':
+    specifier: 4.9.3
+    version: 4.9.3
+
 devDependencies:
   '@commitlint/cli':
     specifier: ^17.6.6
@@ -11,9 +16,6 @@ devDependencies:
   '@commitlint/config-conventional':
     specifier: ^17.6.6
     version: 17.6.6
-  '@openzeppelin/contracts-v4.9.3':
-    specifier: npm:@openzeppelin/contracts@4.9.3
-    version: /@openzeppelin/contracts@4.9.3
   '@types/node':
     specifier: ^20.4.2
     version: 20.4.2
@@ -249,7 +251,7 @@ packages:
 
   /@openzeppelin/contracts@4.9.3:
     resolution: {integrity: sha512-He3LieZ1pP2TNt5JbkPA4PNT9WC3gOTOlDcFGJW4Le4QKqwmiNJCRt44APfxMxvq7OugU/cqYuPcSBzOw38DAg==}
-    dev: true
+    dev: false
 
   /@solidity-parser/parser@0.16.1:
     resolution: {integrity: sha512-PdhRFNhbTtu3x8Axm0uYpqOy/lODYQK+MlYSgqIsq2L8SFYEHJPHNUiOTAJbDGzNjjr1/n9AcIayxafR/fWmYw==}

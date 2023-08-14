@@ -1,6 +1,6 @@
 ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
-openzeppelin-contracts-v4.9.3/=node_modules/@openzeppelin/contracts-v4.9.3/
+@openzeppelin/=node_modules/@openzeppelin/
 forge-deploy/=node_modules/forge-deploy/contracts/
 src/=src/
 script/=script/
