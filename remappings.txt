@@ -1,5 +1,7 @@
 ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
+tokenized-strategy/=lib/tokenized-strategy/src/
+tokenized-strategy-periphery/=lib/tokenized-strategy-periphery/src/
 @openzeppelin/=node_modules/@openzeppelin/
 forge-deploy/=node_modules/forge-deploy/contracts/
 src/=src/
