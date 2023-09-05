@@ -4,6 +4,12 @@
 [submodule "lib/tokenized-strategy"]
 	path = lib/tokenized-strategy
 	url = https://github.com/yearn/tokenized-strategy
+	branch = master
 [submodule "lib/tokenized-strategy-periphery"]
 	path = lib/tokenized-strategy-periphery
 	url = https://github.com/yearn/tokenized-strategy-periphery
+	branch = master
+[submodule "lib/yearn-vaults-v3"]
+	path = lib/yearn-vaults-v3
+	url = https://github.com/yearn/yearn-vaults-v3
+	branch = master
