@@ -17,3 +17,7 @@
 	path = lib/veYFI
 	url = https://github.com/yearn/veYFI
 	branch = master
+[submodule "lib/snekmate"]
+	path = lib/snekmate
+	url = https://github.com/pcaversaccio/snekmate
+	branch = main
