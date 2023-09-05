@@ -5,6 +5,11 @@ contract Constants {
     uint40 internal constant _JAN_1_2023 = 1_672_531_200;
     uint256 internal constant _MAX_UINT256 = type(uint256).max;
 
+    // Ethereum mainnet addresses.
+    address public constant ETH_YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    address public constant ETH_VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
+    address public constant VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
+
     struct Users {
         // Default admin for all contracts.
         address payable admin;
