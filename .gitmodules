@@ -13,3 +13,7 @@
 	path = lib/yearn-vaults-v3
 	url = https://github.com/yearn/yearn-vaults-v3
 	branch = master
+[submodule "lib/veYFI"]
+	path = lib/veYFI
+	url = https://github.com/yearn/veYFI
+	branch = master
