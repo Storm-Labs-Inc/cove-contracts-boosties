@@ -184,6 +184,7 @@ contract MasterRegistryTest is BaseTest {
         vm.assume(addr2 != address(0));
         vm.assume(addr3 != address(0));
         vm.assume(addr != addr2);
+        vm.assume(addr2 != addr3);
         vm.assume(addr != addr3);
         masterRegistry.addRegistry(name, addr);
         masterRegistry.updateRegistry(name, addr2);
