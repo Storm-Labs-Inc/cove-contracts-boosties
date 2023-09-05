@@ -19,11 +19,10 @@ interface _CheatCodes {
 
 contract VyperDeployer {
     // solhint-disable-next-line private-vars-leading-underscore
-    address constant HEVM_ADDRESS = address(bytes20(uint160(uint256(keccak256("hevm cheat code")))));
+    address private constant HEVM_ADDRESS = address(bytes20(uint160(uint256(keccak256("hevm cheat code")))));
 
     /// @notice Initializes cheat codes in order to use ffi to compile Vyper contracts
-    // solhint-disable-next-line private-vars-leading-underscore
-    _CheatCodes cheatCodes = _CheatCodes(HEVM_ADDRESS);
+    _CheatCodes private _cheatCodes = _CheatCodes(HEVM_ADDRESS);
 
     /**
      * @dev Compiles a Vyper contract and returns the address that the contract
@@ -41,7 +40,7 @@ contract VyperDeployer {
         cmds[1] = string.concat(path, fileName, ".vy");
 
         ///@notice compile the Vyper contract and return the bytecode
-        bytes memory bytecode = cheatCodes.ffi(cmds);
+        bytes memory bytecode = _cheatCodes.ffi(cmds);
 
         ///@notice deploy the bytecode with the create instruction
         address deployedAddress;
@@ -72,7 +71,7 @@ contract VyperDeployer {
         cmds[1] = string.concat(path, fileName, ".vy");
 
         ///@notice compile the Vyper contract and return the bytecode
-        bytes memory _bytecode = cheatCodes.ffi(cmds);
+        bytes memory _bytecode = _cheatCodes.ffi(cmds);
 
         //add args to the deployment bytecode
         bytes memory bytecode = abi.encodePacked(_bytecode, args);
