@@ -9,9 +9,6 @@
 	path = lib/veYFI
 	url = https://github.com/yearn/veYFI
 	branch = master
-[submodule "lib/create-util"]
-	path = lib/create-util
-	url = https://github.com/pcaversaccio/create-util
 [submodule "lib/tokenized-strategy"]
 	path = lib/tokenized-strategy
 	url = https://github.com/yearn/tokenized-strategy

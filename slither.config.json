@@ -1,4 +1,4 @@
 {
-  "filter_paths": "(mocks/|test/|script/|lib/|node_modules/|generated/utils/)",
+  "filter_paths": "(mocks/|test/|script/|lib/|node_modules/|generated/)",
   "solc_remaps": ["@openzeppelin=node_modules/@openzeppelin/", "forge-std/=lib/forge-std/src/"]
 }
