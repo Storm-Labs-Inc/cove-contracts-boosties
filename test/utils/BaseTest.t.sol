@@ -6,6 +6,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 import { Constants } from "./Constants.sol";
+import { VyperDeployer } from "./VyperDeployer.sol";
 
 abstract contract BaseTest is Test, Constants {
     //// VARIABLES ////
@@ -20,6 +21,9 @@ abstract contract BaseTest is Test, Constants {
     //// TEST CONTRACTS
     ERC20 internal _usdc;
     ERC20 internal _dai;
+
+    //// HELPER CONTRACTS
+    VyperDeployer public vyperDeployer = new VyperDeployer();
 
     //// SETUP FUNCTION ////
     function setUp() public virtual {
@@ -106,5 +110,10 @@ abstract contract BaseTest is Test, Constants {
 
     function selectNamedFork(string memory network) public {
         vm.selectFork(forks[network].forkId);
+    }
+
+    function airdrop(ERC20 _asset, address _to, uint256 _amount) public {
+        uint256 balanceBefore = _asset.balanceOf(_to);
+        deal(address(_asset), _to, balanceBefore + _amount);
     }
 }
