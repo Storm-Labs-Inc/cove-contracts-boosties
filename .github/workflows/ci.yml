@@ -73,10 +73,14 @@ jobs:
       - name: Remove script and test files for faster analysis
         run: rm -rf script/* test/*
 
+      - name: Generate build info manually
+        run: forge build --build-info
+
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         id: slither
         with:
+          ignore-compile: true
           sarif: results.sarif
           node-version: ${{ env.NODE_VERSION }}
           slither-config: slither.config.json
