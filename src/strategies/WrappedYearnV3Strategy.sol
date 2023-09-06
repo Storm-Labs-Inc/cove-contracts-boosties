@@ -18,7 +18,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
     }
 
     function setStakingDelegate(address delegateAddress) external {
-        yearnStakingDelegateAddress = DelegateAddress;
+        yearnStakingDelegateAddress = delegateAddress;
     }
 
     function _deployFunds(uint256 _amount) internal override {
