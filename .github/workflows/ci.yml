@@ -70,8 +70,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Create artifacts for src contracts
-        run: rm -rf script/* test/* && forge build --build-info
+      - name: Remove script and test files for faster analysis
+        run: rm -rf script/* test/*
 
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
