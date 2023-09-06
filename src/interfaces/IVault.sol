@@ -30,4 +30,18 @@ interface IVault {
     function shutdown_vault() external;
 
     function shutdown() external view returns (bool);
+
+    function deposit(uint256 assets, address receiver) external returns (uint256);
+
+    function balance_of(address _address) external view returns (uint256);
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner,
+        // solhint-disable-next-line func-param-name-mixedcase,var-name-mixedcase
+        uint256 max_loss,
+        address[] memory strategies
+    )
+        external
+        returns (uint256);
 }

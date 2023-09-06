@@ -23,26 +23,17 @@ abstract contract BaseTest is Test, Constants {
     ERC20 internal _dai;
 
     //// HELPER CONTRACTS
-    VyperDeployer public vyperDeployer = new VyperDeployer();
+    VyperDeployer public vyperDeployer;
 
     //// SETUP FUNCTION ////
     function setUp() public virtual {
-        // Deploy test token contracts.
-        _usdc = new ERC20("USDC Stablecoin", "USDC");
-        _dai = new ERC20("Dai Stablecoin", "DAI");
-
-        vm.label({ account: address(_usdc), newLabel: "USDC" });
-        vm.label({ account: address(_dai), newLabel: "DAI" });
-
         // Create users for testing.
         createUser("admin");
         createUser("alice");
-        createUser("attacker");
-        createUser("recipient");
-        createUser("sender");
+        vyperDeployer = new VyperDeployer();
 
         // Warp to Jan 1, 2023 at 00:00 GMT to provide a more realistic testing environment.
-        vm.warp(_JAN_1_2023);
+        // vm.warp(_JAN_1_2023);
     }
 
     //// HELPERS ////
@@ -55,8 +46,8 @@ abstract contract BaseTest is Test, Constants {
     function createUser(string memory name) public returns (address payable) {
         address payable user = payable(makeAddr(name));
         vm.deal({ account: user, newBalance: 100 ether });
-        deal({ token: address(_usdc), to: user, give: 1_000_000e18 });
-        deal({ token: address(_dai), to: user, give: 1_000_000e18 });
+        // deal({ token: address(_usdc), to: user, give: 1_000_000e18 });
+        // deal({ token: address(_dai), to: user, give: 1_000_000e18 });
         users[name] = user;
         return user;
     }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
+import { console2 as console } from "forge-std/console2.sol";
+
 ///@notice This cheat codes interface is named _CheatCodes so you can use the CheatCodes interface in other testing
 /// files without errors
 // solhint-disable-next-line contract-name-camelcase
@@ -71,6 +73,7 @@ contract VyperDeployer {
         cmds[1] = string.concat(path, fileName, ".vy");
 
         ///@notice compile the Vyper contract and return the bytecode
+        console.log("cmds ", cmds[1]);
         bytes memory _bytecode = _cheatCodes.ffi(cmds);
 
         //add args to the deployment bytecode
