@@ -19,7 +19,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         mockStrategy = setUpStrategy("Mock USDC Strategy", USDC);
         wrappedYearnV3Strategy = setUpWrappedStrategy("Wrapped YearnV3 Strategy", USDC);
         vm.label(address(wrappedYearnV3Strategy), "Wrapped YearnV3 Strategy");
-        // create array of addresses to be passed to deployVaultV3 instantiated with mockStrategy address
         address[] memory strategies = new address[](1);
         strategies[0] = address(mockStrategy);
         deployVaultV3("USDC Vault", USDC, strategies);

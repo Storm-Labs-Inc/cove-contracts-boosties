@@ -46,8 +46,6 @@ abstract contract BaseTest is Test, Constants {
     function createUser(string memory name) public returns (address payable) {
         address payable user = payable(makeAddr(name));
         vm.deal({ account: user, newBalance: 100 ether });
-        // deal({ token: address(_usdc), to: user, give: 1_000_000e18 });
-        // deal({ token: address(_dai), to: user, give: 1_000_000e18 });
         users[name] = user;
         return user;
     }
