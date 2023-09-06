@@ -8,6 +8,11 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "tokenized-strategy-periphery/test/mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
 
+import { Gauge } from "src/veYFI/Gauge.sol";
+import { GaugeFactory } from "src/veYFI/GaugeFactory.sol";
+import { OYfi } from "src/veYFI/OYfi.sol";
+import { Registry } from "src/veYFI/Registry.sol";
+
 // Interfaces
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
 import { IVault } from "src/interfaces/IVault.sol";
@@ -71,6 +76,53 @@ contract YearnV3BaseTest is BaseTest {
         tpVaultManagement = users["tpVaultManagement"];
         tpPerformanceFeeRecipient = users["tpPerformanceFeeRecipient"];
         tpKeeper = users["tpKeeper"];
+    }
+
+    /// VE-YFI related functions ///
+
+    function deployOYFI(address owner) public returns (address) {
+        vm.prank(owner);
+        return address(new OYfi());
+    }
+
+    function deployOYFIRewardPool(address oYfi, uint256 startTime) public returns (address) {
+        return vyperDeployer.deployContract(
+            "lib/veYFI/contracts/", "OYFIRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
+        );
+    }
+
+    function deployOptions(
+        address oYfi,
+        address owner,
+        address priceFeed,
+        address curvePool
+    )
+        public
+        returns (address)
+    {
+        return vyperDeployer.deployContract(
+            "lib/veYFI/contracts/", "Options", abi.encode(ETH_YFI, oYfi, ETH_VE_YFI, owner, priceFeed, curvePool)
+        );
+    }
+
+    function deployGauge(address oYFI, address oYFIRewardPool) public returns (address) {
+        return address(new Gauge(ETH_VE_YFI, oYFI, oYFIRewardPool));
+    }
+
+    function deployGaugeFactory(address gaugeImplementation) public returns (address) {
+        return address(new GaugeFactory(gaugeImplementation));
+    }
+
+    function deployVeYFIRegistry(
+        address owner,
+        address gaugeFactory,
+        address veYFIRewardPool
+    )
+        public
+        returns (address)
+    {
+        vm.prank(owner);
+        return address(new Registry(ETH_VE_YFI, ETH_YFI, gaugeFactory, veYFIRewardPool));
     }
 
     // Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault

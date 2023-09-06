@@ -10,6 +10,7 @@ contract Constants {
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant ETH_YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
     address public constant ETH_VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
+    address public constant YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address public constant VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
 
     struct Users {
