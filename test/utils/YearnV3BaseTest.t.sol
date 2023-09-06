@@ -65,13 +65,25 @@ contract YearnV3BaseTest is BaseTest {
         return address(new OYfi());
     }
 
-    function deployOYFIRewardPool(address oYFI, uint256 startTime) public returns (address) {
+    function deployOYFIRewardPool(address oYfi, uint256 startTime) public returns (address) {
         return vyperDeployer.deployContract(
-            "lib/veYFI/contracts/", "OYFIRewardPool", abi.encode(ETH_VE_YFI, oYFI, startTime)
+            "lib/veYFI/contracts/", "OYFIRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
         );
     }
 
-    function deployOptions() public returns (address) { }
+    function deployOptions(
+        address oYfi,
+        address owner,
+        address priceFeed,
+        address curvePool
+    )
+        public
+        returns (address)
+    {
+        return vyperDeployer.deployContract(
+            "lib/veYFI/contracts/", "Options", abi.encode(ETH_YFI, oYfi, ETH_VE_YFI, owner, priceFeed, curvePool)
+        );
+    }
 
     function deployGauge(address oYFI, address oYFIRewardPool) public returns (address) {
         return address(new Gauge(ETH_VE_YFI, oYFI, oYFIRewardPool));
