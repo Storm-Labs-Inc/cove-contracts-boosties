@@ -9,7 +9,7 @@ interface IWrappedYearnV3Strategy is IBaseTokenizedStrategy, ITokenizedStrategy 
     // its defined in both interfaces inherited.
     function asset() external view override(IBaseTokenizedStrategy, IERC4626) returns (address);
 
-    function setYeildSource(address v3VaultAddress) external;
+    function setYieldSource(address v3VaultAddress) external;
 
     function setStakingDelegate(address yearnStakingDelegateAddress) external;
 }

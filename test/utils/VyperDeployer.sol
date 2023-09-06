@@ -73,7 +73,6 @@ contract VyperDeployer {
         cmds[1] = string.concat(path, fileName, ".vy");
 
         ///@notice compile the Vyper contract and return the bytecode
-        console.log("cmds ", cmds[1]);
         bytes memory _bytecode = _cheatCodes.ffi(cmds);
 
         //add args to the deployment bytecode

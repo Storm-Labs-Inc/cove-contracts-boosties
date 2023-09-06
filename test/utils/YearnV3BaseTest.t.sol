@@ -62,7 +62,7 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function _createThirdPartyRelatedAddresses() internal {
-        // Create yearn related user addresses
+        // Create third party related user addresses
         createUser("tpManagement");
         createUser("tpVaultManagement");
         createUser("tpPerformanceFeeRecipient");
@@ -116,7 +116,6 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function setUpStrategy(string memory name, address asset) public returns (IStrategy) {
-        console.log("Settting up mock strat");
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IStrategy _strategy = IStrategy(address(new MockStrategy(address(asset))));
         // set keeper
@@ -138,9 +137,7 @@ contract YearnV3BaseTest is BaseTest {
 
     // Deploy a strategy that wraps a vault.
     function setUpWrappedStrategy(string memory name, address asset) public returns (IWrappedYearnV3Strategy) {
-        console.log("Settting up wrapped strat");
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        // vm.prank(users["alice"]);
         IWrappedYearnV3Strategy _wrappedStrategy =
             IWrappedYearnV3Strategy(address(new WrappedYearnV3Strategy(address(asset))));
         // set keeper

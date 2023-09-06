@@ -24,7 +24,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         strategies[0] = address(mockStrategy);
         deployVaultV3("USDC Vault", USDC, strategies);
         deployedVault = IVault(deployedVaults["USDC Vault"]);
-        wrappedYearnV3Strategy.setYeildSource(deployedVaults["USDC Vault"]);
+        wrappedYearnV3Strategy.setYieldSource(deployedVaults["USDC Vault"]);
         wrappedYearnV3Strategy.setStakingDelegate(users["alice"]);
     }
 
