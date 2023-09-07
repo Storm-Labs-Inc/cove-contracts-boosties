@@ -50,15 +50,10 @@ contract YearnV3BaseTest is BaseTest {
         _createYearnRelatedAddresses();
         _createThirdPartyRelatedAddresses();
 
-        // Give alice some YFI
-        address alice = users["alice"];
-        airdrop(ERC20(ETH_YFI), alice, 1e18);
-
-        // Lock some YFI to get veYFI
-        vm.startPrank(alice);
-        IERC20(ETH_YFI).approve(ETH_VE_YFI, 1e18);
-        IVotingYFI(ETH_VE_YFI).modify_lock(1e18, block.timestamp + 365 * 4 days, alice);
-        vm.stopPrank();
+        // create admin user that would be the default owner of deployed contracts unless specified
+        createUser("admin");
+        // create a naive user alice
+        createUser("alice");
 
         setUpVotingYfiStack();
     }

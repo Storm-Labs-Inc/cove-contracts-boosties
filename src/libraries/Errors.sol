@@ -29,4 +29,9 @@ library Errors {
 
     /// @notice Thrown when a duplicate registry address is found.
     error DuplicateRegistryAddress(address registryAddress);
+
+    //// YEARN STAKING DELEGATE ////
+    error ZeroAddress();
+
+    error OnlyManager();
 }

@@ -27,13 +27,8 @@ abstract contract BaseTest is Test, Constants {
 
     //// SETUP FUNCTION ////
     function setUp() public virtual {
-        // Create users for testing.
-        createUser("admin");
-        createUser("alice");
+        // Instantiate vyper deployer
         vyperDeployer = new VyperDeployer();
-
-        // Warp to Jan 1, 2023 at 00:00 GMT to provide a more realistic testing environment.
-        // vm.warp(_JAN_1_2023);
     }
 
     //// HELPERS ////
