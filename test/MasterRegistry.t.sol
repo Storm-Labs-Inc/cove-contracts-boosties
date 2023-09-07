@@ -13,6 +13,8 @@ contract MasterRegistryTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
+        createUser("admin");
+        createUser("alice");
         vm.startPrank(users["admin"]);
         masterRegistry = new MasterRegistry(users["admin"]);
         adminRole = masterRegistry.DEFAULT_ADMIN_ROLE();
