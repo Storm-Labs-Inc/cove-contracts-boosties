@@ -34,9 +34,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     }
 
     function testWrappedStrategyDeposit() public {
-        vm.startPrank(users["alice"]);
         deal({ token: USDC, to: users["alice"], give: 1_000_000e18 });
-        ERC20(USDC).approve(address(wrappedYearnV3Strategy), 1e18);
-        wrappedYearnV3Strategy.deposit(1e18, address(this));
+        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], 1e18);
     }
 }

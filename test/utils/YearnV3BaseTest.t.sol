@@ -22,6 +22,7 @@ import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.
 contract YearnV3BaseTest is BaseTest {
     using SafeERC20 for IERC20;
 
+    ERC20 public baseAsset = ERC20(USDC);
     mapping(string => address) public deployedVaults;
     mapping(string => address) public deployedStrategies;
 
@@ -208,5 +209,46 @@ contract YearnV3BaseTest is BaseTest {
         vm.label(address(_wrappedStrategy), name);
 
         return _wrappedStrategy;
+    }
+
+    function logStratInfo(address strategy) public view {
+        IWrappedYearnV3Strategy wrappedYearnV3Strategy = IWrappedYearnV3Strategy(strategy);
+        console.log("****************************************");
+        console.log("price per share: ", wrappedYearnV3Strategy.pricePerShare());
+        console.log("total assets: ", wrappedYearnV3Strategy.totalAssets());
+        console.log("total supply: ", wrappedYearnV3Strategy.totalSupply());
+        console.log("total debt: ", wrappedYearnV3Strategy.totalDebt());
+        console.log("balance of test executor: ", wrappedYearnV3Strategy.balanceOf(address(this)));
+        console.log("strat USDC balance: ", ERC20(USDC).balanceOf(address(wrappedYearnV3Strategy)));
+    }
+
+    function logVaultInfo(string memory name) public view {
+        IVault deployedVault = IVault(deployedVaults[name]);
+        console.log("****************************************");
+        console.log(
+            "current debt in strat: ",
+            deployedVault.strategies(deployedStrategies["Wrapped YearnV3 Strategy"]).currentDebt
+        );
+        console.log("vault USDC balance: ", ERC20(USDC).balanceOf(address(deployedVault)));
+        console.log("vault total debt: ", deployedVault.totalDebt());
+        console.log("vault total idle assets: ", deployedVault.totalIdle());
+    }
+
+    function depositIntoStrategy(IWrappedYearnV3Strategy _strategy, address _user, uint256 _amount) public {
+        vm.prank(_user);
+        baseAsset.approve(address(_strategy), _amount);
+
+        vm.prank(_user);
+        _strategy.deposit(_amount, _user);
+    }
+
+    function mintAndDepositIntoStrategy(IWrappedYearnV3Strategy _strategy, address _user, uint256 _amount) public {
+        airdrop(baseAsset, _user, _amount);
+        depositIntoStrategy(_strategy, _user, _amount);
+    }
+
+    function addDebtToStrategy(IVault _vault, IStrategy _strategy, uint256 _amount) public {
+        vm.prank(vaultManagement);
+        _vault.update_debt(address(_strategy), _amount);
     }
 }

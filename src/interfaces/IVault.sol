@@ -33,6 +33,8 @@ interface IVault {
 
     function deposit(uint256 assets, address receiver) external returns (uint256);
     function balanceOf(address owner) external view returns (uint256);
+    function totalDebt() external view returns (uint256);
+    function totalIdle() external view returns (uint256);
     function withdraw(
         uint256 assets,
         address receiver,
