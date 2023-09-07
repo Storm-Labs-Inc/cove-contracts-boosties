@@ -42,7 +42,7 @@ contract YearnV3BaseTest is BaseTest {
     address public gaugeFactory;
     address public gaugeRegistry;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         // Fork ethereum mainnet
         forkNetwork("mainnet");
         super.setUp();
