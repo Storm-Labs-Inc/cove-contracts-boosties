@@ -9,7 +9,6 @@ import {
     Deployer,
     DeployOptions
 } from "generated/deployer/DeployerFunctions.g.sol";
-import { Counter } from "src/Counter.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -23,16 +22,7 @@ contract Deployments is DeployScript {
     DeployOptions public options;
 
     function deploy() public {
-        deployCounter();
         deployMasterRegistry(msg.sender);
-    }
-
-    function deployCounter() public returns (Counter) {
-        // Using generated function with name deploy_<contract_name>
-        options = DeployOptions({ salt: 1337 });
-        return deployer.deploy_Counter("Counter", options);
-        // Using default deployer function
-        // return Counter(deployer.deploy("Counter", "Counter.sol:Counter", ""));
     }
 
     function deployMasterRegistry(address admin) public returns (MasterRegistry) {

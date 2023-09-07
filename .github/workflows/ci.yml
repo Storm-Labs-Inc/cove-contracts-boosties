@@ -9,6 +9,7 @@ on:
 env:
   FOUNDRY_PROFILE: ci
   NODE_VERSION: 18.16.1
+  PYTHON_VERSION: 3.9.17
 
 jobs:
   lint:
@@ -109,6 +110,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements-ci.txt
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -149,6 +159,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements-ci.txt
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -211,6 +230,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements-ci.txt
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
