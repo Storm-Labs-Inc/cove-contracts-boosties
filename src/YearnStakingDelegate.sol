@@ -13,9 +13,10 @@ contract YearnStakingDelegate is AccessControl {
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     /// @notice Mapping of vault to gauge
+    // slither-disable-next-line uninitialized-state
     mapping(address vault => address gauge) public associatedGauge;
+    // slither-disable-next-line uninitialized-state
     mapping(address user => mapping(address vault => uint256 balance)) public balances;
-    address public manager;
 
     struct RewardSplit {
         uint80 treasury;
