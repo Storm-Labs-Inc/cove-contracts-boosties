@@ -10,6 +10,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -50,5 +51,34 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         require(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)) == 0, "lock failed");
         // Slightly less than 1e18 due to rounding
         require(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)) == 999_999_999_971_481_600, "lock failed");
+    }
+
+    function test_earlyUnlock() public {
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
+
+        vm.startPrank(users["alice"]);
+        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
+        yearnStakingDelegate.lockYfi(1e18);
+        vm.stopPrank();
+
+        vm.startPrank(users["admin"]);
+        yearnStakingDelegate.setPerpetualLock(false);
+        yearnStakingDelegate.earlyUnlock(users["admin"]);
+        vm.stopPrank();
+
+        require(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)) == 0, "early unlock failed");
+    }
+
+    function test_earlyUnlock_revertsPerpeutalLockEnabled() public {
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
+
+        vm.startPrank(users["alice"]);
+        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
+        yearnStakingDelegate.lockYfi(1e18);
+        vm.stopPrank();
+
+        vm.startPrank(users["admin"]);
+        vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
+        yearnStakingDelegate.earlyUnlock(users["admin"]);
     }
 }

@@ -53,6 +53,7 @@ contract YearnStakingDelegate is AccessControl {
         shouldPerpetuallyLock = true;
         _setRewardSplit(0, 0, 1e18);
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _setupRole(MANAGER_ROLE, admin);
         _setupRole(MANAGER_ROLE, manager);
 
         // Interactions
@@ -113,7 +114,7 @@ contract YearnStakingDelegate is AccessControl {
 
     /// @notice Set perpetual lock status
     /// @param _shouldPerpetuallyLock if true, lock YFI for 4 years after each harvest
-    function setPerpetualLock(bool _shouldPerpetuallyLock) external onlyRole(MANAGER_ROLE) {
+    function setPerpetualLock(bool _shouldPerpetuallyLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
         shouldPerpetuallyLock = _shouldPerpetuallyLock;
     }
 
