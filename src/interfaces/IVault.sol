@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.18;
 
-interface IVault {
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
+interface IVault is IERC4626 {
     struct StrategyParams {
         uint256 activation;
         uint256 lastReport;
@@ -35,10 +37,6 @@ interface IVault {
     function balanceOf(address owner) external view returns (uint256);
     function totalDebt() external view returns (uint256);
     function totalIdle() external view returns (uint256);
-    function approve(address spender, uint256 amount) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function previewWithdraw(uint256 assets) external view returns (uint256);
-    function maxWithdraw(address owner) external view returns (uint256);
     function withdraw(
         uint256 assets,
         address receiver,

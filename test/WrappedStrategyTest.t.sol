@@ -35,23 +35,26 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assert(deployedStrategies["Mock USDC Strategy"] != address(0));
     }
 
-    function test_deposit_throughWrappedStrategyDeposit() public {
-        deal({ token: USDC, to: users["alice"], give: 1_000_000e18 });
-        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], 1e18);
+    function testFuzz_deposit_throughWrappedStrategyDeposit(uint256 amount) public {
+        vm.assume(amount != 0);
+        deal({ token: USDC, to: users["alice"], give: amount });
+        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
+        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
 
     function test_withdraw_throughWrappedStrategy() public {
+        uint256 amount = 1e18;
         address stakingDelegate = wrappedYearnV3Strategy.yearnStakingDelegateAddress();
-        deal({ token: USDC, to: users["alice"], give: 1_000_000e18 });
-        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], 1e18);
+        deal({ token: USDC, to: users["alice"], give: amount });
+        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
 
         vm.prank(stakingDelegate);
-        deployedVault.approve(address(wrappedYearnV3Strategy), 1e18);
+        deployedVault.approve(address(wrappedYearnV3Strategy), amount);
 
         uint256 userBalanceBefore = ERC20(USDC).balanceOf(users["alice"]);
         vm.prank(users["alice"]);
-        wrappedYearnV3Strategy.withdraw(1e18, users["alice"], users["alice"], 0);
+        wrappedYearnV3Strategy.withdraw(amount, users["alice"], users["alice"], 0);
         uint256 userBalanceAfter = ERC20(USDC).balanceOf(users["alice"]);
-        require(userBalanceAfter > userBalanceBefore, "user balance should increase after withdraw");
+        require(userBalanceAfter - userBalanceBefore == amount, "user balance should increase by amount after withdraw");
     }
 }
