@@ -33,5 +33,5 @@ library Errors {
     //// YEARN STAKING DELEGATE ////
     error ZeroAddress();
 
-    error OnlyManager();
+    error PerpetualLockEnabled();
 }
