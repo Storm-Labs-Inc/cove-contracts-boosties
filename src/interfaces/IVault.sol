@@ -35,6 +35,10 @@ interface IVault {
     function balanceOf(address owner) external view returns (uint256);
     function totalDebt() external view returns (uint256);
     function totalIdle() external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function previewWithdraw(uint256 assets) external view returns (uint256);
+    function maxWithdraw(address owner) external view returns (uint256);
     function withdraw(
         uint256 assets,
         address receiver,
