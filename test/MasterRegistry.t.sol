@@ -5,6 +5,7 @@ import { BaseTest } from "./utils/BaseTest.t.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 import { Deployments } from "script/Deployments.s.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract MasterRegistryTest is BaseTest {
     MasterRegistry public masterRegistry;
@@ -13,10 +14,21 @@ contract MasterRegistryTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
+        createUser("admin");
+        createUser("alice");
         vm.startPrank(users["admin"]);
         masterRegistry = new MasterRegistry(users["admin"]);
         adminRole = masterRegistry.DEFAULT_ADMIN_ROLE();
         managerRole = masterRegistry.PROTOCOL_MANAGER_ROLE();
+    }
+
+    function _formatAccessControlError(address addr, bytes32 role) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            "AccessControl: account ",
+            Strings.toHexString(addr),
+            " is missing role ",
+            Strings.toHexString(uint256(role), 32)
+        );
     }
 
     function test_init() public view {
@@ -24,19 +36,19 @@ contract MasterRegistryTest is BaseTest {
         assert(masterRegistry.hasRole(managerRole, users["admin"]));
     }
 
-    function test_revertWhenCalledWithEmptyString_addRegistry(address addr) public {
+    function test_addRegistry_revertWhenCalledWithEmptyString(address addr) public {
         vm.assume(addr != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         masterRegistry.addRegistry("", addr);
     }
 
-    function test_revertWhenCalledWithEmptyAddress_addRegistry(bytes32 name) public {
+    function test_addRegistry_revertWhenCalledWithEmptyAddress(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         masterRegistry.addRegistry(name, address(0));
     }
 
-    function test_revertWhenCalledWithDuplicateAddress_addRegistry(bytes32 name, bytes32 name2, address addr) public {
+    function test_addRegistry_revertWhenCalledWithDuplicateAddress(bytes32 name, bytes32 name2, address addr) public {
         vm.assume(name != name2);
         vm.assume(name != bytes32(0));
         vm.assume(name2 != bytes32(0));
@@ -46,7 +58,7 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.addRegistry(name2, addr);
     }
 
-    function test_revertWhenCalledWithDuplicateName_addRegistry(bytes32 name, address addr, address addr2) public {
+    function test_addRegistry_revertWhenCalledWithDuplicateName(bytes32 name, address addr, address addr2) public {
         vm.assume(addr != addr2);
         vm.assume(name != bytes32(0));
         vm.assume(addr != address(0));
@@ -57,19 +69,19 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.addRegistry(name, addr2);
     }
 
-    function testFuzz_revertWhenCalledWithEmptyString_updateRegistry(address addr) public {
+    function testFuzz_updateRegistry_revertWhenCalledWithEmptyString(address addr) public {
         vm.assume(addr != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         masterRegistry.updateRegistry("", addr);
     }
 
-    function testFuzz_revertWhenCalledWithEmptyAddress_updateRegistry(bytes32 name) public {
+    function testFuzz_updateRegistry_revertWhenCalledWithEmptyAddress(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         masterRegistry.updateRegistry(name, address(0));
     }
 
-    function testFuzz_revertWhenCalledWithDuplicateAddress_updateRegistry(
+    function testFuzz_updateRegistry_revertWhenCalledWithDuplicateAddress(
         bytes32 name,
         bytes32 name2,
         address addr,
@@ -89,7 +101,7 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.updateRegistry(name, addr2);
     }
 
-    function test_revertWhenNameNotFound_updateRegistry(bytes32 name, address addr) public {
+    function test_updateRegistry_revertWhenNameNotFound(bytes32 name, address addr) public {
         vm.assume(addr != address(0));
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));
@@ -113,7 +125,7 @@ contract MasterRegistryTest is BaseTest {
         assertEq(masterRegistry.resolveNameToLatestAddress(name), addr2);
     }
 
-    function testFuzz_revertWhenNameNotFound_resolveNameToLatestAddress(bytes32 name) public {
+    function testFuzz_resolveNameToLatestAddress_revertWhenNameNotFound(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));
         masterRegistry.resolveNameToLatestAddress(name);
@@ -131,13 +143,13 @@ contract MasterRegistryTest is BaseTest {
         assertEq(res[1], addr2);
     }
 
-    function testFuzz_revertWhenNamNotFound_resolveNameToAllAddresses(bytes32 name) public {
+    function testFuzz_resolveNameToAllAddresses_revertWhenNamNotFound(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));
         masterRegistry.resolveNameToAllAddresses(name);
     }
 
-    function testFuzz_revertWhenNameAndVersionNotFound_resolveNameAndVersionToAddress(
+    function testFuzz_resolveNameAndVersionToAddress_revertWhenNameAndVersionNotFound(
         bytes32 name,
         address addr
     )
@@ -163,7 +175,7 @@ contract MasterRegistryTest is BaseTest {
         assertEq(masterRegistry.resolveNameAndVersionToAddress(name, 1), addr2);
     }
 
-    function testFuzz_revertWhenRegistryAddressNotFound_resolveAddressToRegistryData(address addr) public {
+    function testFuzz_resolveAddressToRegistryData_revertWhenRegistryAddressNotFound(address addr) public {
         vm.assume(addr != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryAddressNotFound.selector, addr));
         masterRegistry.resolveAddressToRegistryData(addr);
@@ -207,18 +219,16 @@ contract MasterRegistryTest is BaseTest {
         assertEq(masterRegistry.getRoleAdmin(managerRole), bytes32(0));
     }
 
-    function testFuzz_revertWhenCalledByNonManager_addRegistry(bytes32 name, address addr) public {
+    function testFuzz_addRegistry_revertWhenCalledByNonManager(bytes32 name, address addr) public {
         vm.assume(name != bytes32(0));
         vm.assume(addr != address(0));
         vm.stopPrank();
         vm.startPrank(users["alice"]);
-        vm.expectRevert(
-            "AccessControl: account 0x328809bc894f92807417d2dad6b7c998c1afdac6 is missing role 0xda3bb1ed6d0047074a23ab55d6b8b4ebc655563ba5a668a4ed7540883cb393b0"
-        );
+        vm.expectRevert(_formatAccessControlError(users["alice"], managerRole));
         masterRegistry.addRegistry(name, addr);
     }
 
-    function testFuzz_revertWhenCalledByNonManager_updateRegistry(bytes32 name, address addr, address addr2) public {
+    function testFuzz_updateRegistry_revertWhenCalledByNonManager(bytes32 name, address addr, address addr2) public {
         vm.assume(name != bytes32(0));
         vm.assume(addr != address(0));
         vm.assume(addr2 != address(0));
@@ -226,20 +236,16 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.addRegistry(name, addr);
         vm.stopPrank();
         vm.startPrank(users["alice"]);
-        vm.expectRevert(
-            "AccessControl: account 0x328809bc894f92807417d2dad6b7c998c1afdac6 is missing role 0xda3bb1ed6d0047074a23ab55d6b8b4ebc655563ba5a668a4ed7540883cb393b0"
-        );
+        vm.expectRevert(_formatAccessControlError(users["alice"], managerRole));
         masterRegistry.updateRegistry(name, addr2);
     }
 
     // Try granting manager role from an account without admin role
-    function test_revertWhenCalledByNonAdmin_grantRole() public {
+    function test_grantRole_revertWhenCalledByNonAdmin() public {
         vm.stopPrank();
         vm.startPrank(users["alice"]);
         // account is users["alice"]'s address, role is bytes(0) as defined in the contract
-        vm.expectRevert(
-            "AccessControl: account 0x328809bc894f92807417d2dad6b7c998c1afdac6 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
-        );
+        vm.expectRevert(_formatAccessControlError(users["alice"], adminRole));
         masterRegistry.grantRole(managerRole, users["alice"]);
     }
 
@@ -271,13 +277,11 @@ contract MasterRegistryTest is BaseTest {
         masterRegistry.grantRole(managerRole, users["bob"]);
     }
 
-    function test_revertWhenRevokeRoleWithoutAdmin_revokeRole_managerRole() public {
+    function test_revokeRole_managerRole_revertWhenRevokeRoleWithoutAdmin() public {
         vm.stopPrank();
         vm.startPrank(users["alice"]);
         // account is users["alice"]'s address, role is bytes(0) as defined in the contract
-        vm.expectRevert(
-            "AccessControl: account 0x328809bc894f92807417d2dad6b7c998c1afdac6 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
-        );
+        vm.expectRevert(_formatAccessControlError(users["alice"], adminRole));
         masterRegistry.revokeRole(managerRole, users["admin"]);
         vm.stopPrank();
     }
