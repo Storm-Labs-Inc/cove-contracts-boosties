@@ -36,6 +36,12 @@ contract YearnV3BaseTest is BaseTest {
     address public tpPerformanceFeeRecipient;
     address public tpKeeper;
 
+    address public oYFI;
+    address public oYFIRewardPool;
+    address public gaugeImpl;
+    address public gaugeFactory;
+    address public gaugeRegistry;
+
     function setUp() public virtual override {
         // Fork ethereum mainnet
         forkNetwork("mainnet");
@@ -44,15 +50,12 @@ contract YearnV3BaseTest is BaseTest {
         _createYearnRelatedAddresses();
         _createThirdPartyRelatedAddresses();
 
-        // Give alice some YFI
-        address alice = users["alice"];
-        airdrop(ERC20(ETH_YFI), alice, 1e18);
+        // create admin user that would be the default owner of deployed contracts unless specified
+        createUser("admin");
+        // create a naive user alice
+        createUser("alice");
 
-        // Lock some YFI to get veYFI
-        vm.startPrank(alice);
-        IERC20(ETH_YFI).approve(ETH_VE_YFI, 1e18);
-        IVotingYFI(ETH_VE_YFI).modify_lock(1e18, block.timestamp + 365 * 4 days, alice);
-        vm.stopPrank();
+        setUpVotingYfiStack();
     }
 
     function _createYearnRelatedAddresses() internal {
@@ -80,6 +83,13 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     /// VE-YFI related functions ///
+    function setUpVotingYfiStack() public {
+        oYFI = deployOYFI(users["admin"]);
+        oYFIRewardPool = deployOYFIRewardPool(oYFI, block.timestamp + 1 days);
+        gaugeImpl = deployGauge(oYFI, oYFIRewardPool);
+        gaugeFactory = deployGaugeFactory(gaugeImpl);
+        gaugeRegistry = deployVeYFIRegistry(users["admin"], gaugeFactory, oYFIRewardPool);
+    }
 
     function deployOYFI(address owner) public returns (address) {
         vm.prank(owner);
@@ -106,8 +116,8 @@ contract YearnV3BaseTest is BaseTest {
         );
     }
 
-    function deployGauge(address oYFI, address oYFIRewardPool) public returns (address) {
-        return address(new Gauge(ETH_VE_YFI, oYFI, oYFIRewardPool));
+    function deployGauge(address _oYFI, address _oYFIRewardPool) public returns (address) {
+        return address(new Gauge(ETH_VE_YFI, _oYFI, _oYFIRewardPool));
     }
 
     function deployGaugeFactory(address gaugeImplementation) public returns (address) {
@@ -116,14 +126,14 @@ contract YearnV3BaseTest is BaseTest {
 
     function deployVeYFIRegistry(
         address owner,
-        address gaugeFactory,
+        address _gaugeFactory,
         address veYFIRewardPool
     )
         public
         returns (address)
     {
         vm.prank(owner);
-        return address(new Registry(ETH_VE_YFI, ETH_YFI, gaugeFactory, veYFIRewardPool));
+        return address(new Registry(ETH_VE_YFI, ETH_YFI, _gaugeFactory, veYFIRewardPool));
     }
 
     // Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
