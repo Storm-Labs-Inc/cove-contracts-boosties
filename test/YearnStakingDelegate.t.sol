@@ -56,10 +56,11 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
 
         require(IERC20(oYFI).balanceOf(testGauge) == 1e18, "queueNewRewards failed");
+
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
     }
 
     function test_constructor() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
         require(yearnStakingDelegate.yfi() == ETH_YFI, "yfi");
         require(yearnStakingDelegate.oYfi() == oYFI, "oYfi");
         require(yearnStakingDelegate.veYfi() == ETH_VE_YFI, "veYfi");
@@ -67,9 +68,13 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         require(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]), "admin");
     }
 
-    function test_lockYFI() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
+    function test_setAssociatedGauge() public {
+        vm.prank(users["manager"]);
+        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        require(yearnStakingDelegate.associatedGauge(testVault) == testGauge, "setAssociatedGauge failed");
+    }
 
+    function test_lockYFI() public {
         vm.startPrank(users["alice"]);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
         yearnStakingDelegate.lockYfi(1e18);
@@ -81,8 +86,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_earlyUnlock() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
-
         vm.startPrank(users["alice"]);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
         yearnStakingDelegate.lockYfi(1e18);
@@ -97,8 +100,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_earlyUnlock_revertsPerpeutalLockEnabled() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
-
         vm.startPrank(users["alice"]);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
         yearnStakingDelegate.lockYfi(1e18);
