@@ -118,6 +118,13 @@ contract YearnStakingDelegate is AccessControl {
         shouldPerpetuallyLock = _shouldPerpetuallyLock;
     }
 
+    function setAssociatedGauge(address vault, address gauge) external onlyRole(MANAGER_ROLE) {
+        if (gauge == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        associatedGauge[vault] = gauge;
+    }
+
     function _setRewardSplit(uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) internal {
         require(treasuryPct + compoundPct + veYfiPct == 1e18, "Split must add up to 100%");
         rewardSplit = RewardSplit(treasuryPct, compoundPct, veYfiPct);
