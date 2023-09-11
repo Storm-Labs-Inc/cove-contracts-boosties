@@ -11,11 +11,16 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { IGaugeFactory } from "src/interfaces/IGaugeFactory.sol";
+import { IGauge } from "src/interfaces/IGauge.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
     YearnStakingDelegate public yearnStakingDelegate;
+    IStrategy public mockStrategy;
+    address public testVault;
+    address public testGauge;
 
     function setUp() public override {
         super.setUp();
@@ -29,6 +34,28 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Give alice some YFI
         airdrop(ERC20(ETH_YFI), users["alice"], 1e18);
+
+        // Deploy mock strategy
+        mockStrategy = setUpStrategy("Mock USDC Strategy", USDC);
+        address[] memory strategies = new address[](1);
+        strategies[0] = address(mockStrategy);
+
+        // Deploy vault
+        testVault = deployVaultV3("USDC Vault", USDC, strategies);
+
+        // Deploy gauge
+        testGauge = IGaugeFactory(gaugeFactory).createGauge(testVault, users["admin"]);
+
+        // Give admin some oYFI
+        airdrop(ERC20(oYFI), users["admin"], 1e18);
+
+        // Start new rewards
+        vm.startPrank(users["admin"]);
+        IERC20(oYFI).approve(testGauge, 1e18);
+        IGauge(testGauge).queueNewRewards(1e18);
+        vm.stopPrank();
+
+        require(IERC20(oYFI).balanceOf(testGauge) == 1e18, "queueNewRewards failed");
     }
 
     function test_constructor() public {
