@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.18;
 
-interface IVault {
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
+interface IVault is IERC4626 {
     struct StrategyParams {
         uint256 activation;
         uint256 lastReport;
