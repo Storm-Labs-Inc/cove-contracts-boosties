@@ -34,4 +34,6 @@ library Errors {
     error ZeroAddress();
 
     error PerpetualLockEnabled();
+
+    error NoAssociatedGauge();
 }

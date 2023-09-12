@@ -11,11 +11,16 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { IGaugeFactory } from "src/interfaces/IGaugeFactory.sol";
+import { IGauge } from "src/interfaces/IGauge.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
     YearnStakingDelegate public yearnStakingDelegate;
+    IStrategy public mockStrategy;
+    address public testVault;
+    address public testGauge;
 
     function setUp() public override {
         super.setUp();
@@ -26,13 +31,32 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         createUser("alice");
         // create manager of the yearnStakingDelegate
         createUser("manager");
+        // create an address that will act as a wrapped strategy
+        createUser("wrappedStrategy");
 
         // Give alice some YFI
         airdrop(ERC20(ETH_YFI), users["alice"], 1e18);
+
+        // Deploy vault
+        testVault = deployVaultV3("USDC Test Vault", USDC, new address[](0));
+        // Deploy gauge
+        testGauge = deployGaugeViaFactory(testVault, users["admin"], "USDC Test Vault Gauge");
+
+        // Give admin some oYFI
+        airdrop(ERC20(oYFI), users["admin"], 1e18);
+
+        // Start new rewards
+        vm.startPrank(users["admin"]);
+        IERC20(oYFI).approve(testGauge, 1e18);
+        IGauge(testGauge).queueNewRewards(1e18);
+        vm.stopPrank();
+
+        require(IERC20(oYFI).balanceOf(testGauge) == 1e18, "queueNewRewards failed");
+
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
     }
 
     function test_constructor() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
         require(yearnStakingDelegate.yfi() == ETH_YFI, "yfi");
         require(yearnStakingDelegate.oYfi() == oYFI, "oYfi");
         require(yearnStakingDelegate.veYfi() == ETH_VE_YFI, "veYfi");
@@ -40,9 +64,13 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         require(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]), "admin");
     }
 
-    function test_lockYFI() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
+    function test_setAssociatedGauge() public {
+        vm.prank(users["manager"]);
+        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        require(yearnStakingDelegate.associatedGauge(testVault) == testGauge, "setAssociatedGauge failed");
+    }
 
+    function test_lockYFI() public {
         vm.startPrank(users["alice"]);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
         yearnStakingDelegate.lockYfi(1e18);
@@ -54,8 +82,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_earlyUnlock() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
-
         vm.startPrank(users["alice"]);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
         yearnStakingDelegate.lockYfi(1e18);
@@ -70,8 +96,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_earlyUnlock_revertsPerpeutalLockEnabled() public {
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
-
         vm.startPrank(users["alice"]);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
         yearnStakingDelegate.lockYfi(1e18);
@@ -80,5 +104,53 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.startPrank(users["admin"]);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
         yearnStakingDelegate.earlyUnlock(users["admin"]);
+    }
+
+    function testFuzz_depositToGauge(uint256 vaultBalance) public {
+        vm.assume(vaultBalance > 0);
+        vm.startPrank(users["manager"]);
+        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        vm.stopPrank();
+
+        airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
+
+        vm.startPrank(users["wrappedStrategy"]);
+        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
+        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
+        vm.stopPrank();
+
+        // Check the yearn staking delegate has received the gauge tokens
+        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
+        // Check the gauge has received the vault tokens
+        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
+    }
+
+    function testFuzz_withdrawFromGauge(uint256 vaultBalance) public {
+        vm.assume(vaultBalance > 0);
+        vm.startPrank(users["manager"]);
+        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        vm.stopPrank();
+
+        airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
+
+        vm.startPrank(users["wrappedStrategy"]);
+        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
+        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
+        vm.stopPrank();
+
+        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
+        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
+
+        // Start withdraw process
+        vm.startPrank(users["wrappedStrategy"]);
+        yearnStakingDelegate.withdrawFromGauge(testVault, vaultBalance);
+        vm.stopPrank();
+
+        // Check the yearn staking delegate has released the gauge tokens
+        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == 0, "withdrawFromGauge failed");
+        // Check the gauge has released the vault tokens
+        require(IERC20(testVault).balanceOf(testGauge) == 0, "withdrawFromGauge failed");
+        // Check that wrappedStrategy has received the vault tokens
+        require(IERC20(testVault).balanceOf(users["wrappedStrategy"]) == vaultBalance, "withdrawFromGauge failed");
     }
 }
