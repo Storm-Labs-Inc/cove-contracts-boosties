@@ -100,7 +100,7 @@ contract YearnV3BaseTest is BaseTest {
 
     function _deployOYFIRewardPool(address oYfi, uint256 startTime) internal returns (address) {
         return vyperDeployer.deployContract(
-            "lib/veYFI/contracts/", "OYFIRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
+            "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
         );
     }
 
