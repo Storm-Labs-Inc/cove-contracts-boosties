@@ -2,15 +2,15 @@
 pragma solidity ^0.8.18;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ICurveBasePool } from "./interfaces/ICurveBasePool.sol";
 
 contract CurveSwapper {
     // Optional Variable to be set to not sell dust.
-    uint256 public minAmountToSell;
+    uint256 public minAmountToSell = 0;
+    uint256 public slippageFactor = 95;
 
-    constructor() {
-        minAmountToSell = 0;
-    }
+    constructor() { }
 
     /**
      * @dev Used to swap a specific amount of `_from` to `_to`.
@@ -38,9 +38,11 @@ contract CurveSwapper {
         if (_amountIn > minAmountToSell) {
             _checkAllowance(_curvePool, _from, _amountIn);
             (int128 fromIndex, int128 toIndex) = _getTokenIndexes(_curvePool, _from, _to);
-            uint256 minAmount = _getAmountOut(_curvePool, fromIndex, toIndex, _amountIn);
+            uint256 minAmount = (_getAmountOut(_curvePool, fromIndex, toIndex, _amountIn) * slippageFactor) / 100;
             require(minAmount >= _minAmountOut, "minAmountOut not met");
+            SafeERC20.safeTransferFrom(ERC20(_from), msg.sender, address(this), _amountIn);
             ICurveBasePool(_curvePool).exchange(fromIndex, toIndex, _amountIn, minAmount);
+            SafeERC20.safeTransfer(ERC20(_to), msg.sender, ERC20(_to).balanceOf(address(this)));
         }
     }
     /**
@@ -79,14 +81,18 @@ contract CurveSwapper {
      * @return . The indexes of '_from' and '_to' respectively.
      */
     function _getTokenIndexes(address _curvePool, address _from, address _to) internal view returns (int128, int128) {
-        int128 fromIndex;
-        int128 toIndex;
-        for (uint256 i = 0; i < 4; i++) {
-            if (ICurveBasePool(_curvePool).coins(uint256(i)) == _from) {
+        int128 fromIndex = -1;
+        int128 toIndex = -1;
+
+        for (uint256 i = 0; i < 100; i++) {
+            if (fromIndex == -1 && ICurveBasePool(_curvePool).coins(i) == _from) {
                 fromIndex = int128(int256(i));
             }
-            if (ICurveBasePool(_curvePool).coins(i) == _to) {
+            if (toIndex == -1 && ICurveBasePool(_curvePool).coins(i) == _to) {
                 toIndex = int128(int256(i));
+            }
+            if (fromIndex != -1 && toIndex != -1) {
+                break;
             }
         }
         return (fromIndex, toIndex);

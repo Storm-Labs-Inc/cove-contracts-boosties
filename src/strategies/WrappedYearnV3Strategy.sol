@@ -3,13 +3,12 @@
 pragma solidity ^0.8.18;
 
 import { BaseTokenizedStrategy } from "tokenized-strategy/BaseTokenizedStrategy.sol";
-import { SolidlySwapper } from "tokenized-strategy-periphery/swappers/SolidlySwapper.sol";
+import { CurveSwapper } from "../CurveSwapper.sol";
 import { IVault } from "src/interfaces/IVault.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// TODO: remove abstract once implemented
-contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
+contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveSwapper {
     address public vaultAddress;
     address public yearnStakingDelegateAddress;
 
@@ -23,6 +22,18 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
 
     function setStakingDelegate(address delegateAddress) external {
         yearnStakingDelegateAddress = delegateAddress;
+    }
+
+    function swapFrom(
+        address _curvePool,
+        address _from,
+        address _to,
+        uint256 _amountIn,
+        uint256 _minAmountOut
+    )
+        external
+    {
+        _swapFrom(_curvePool, _from, _to, _amountIn, _minAmountOut);
     }
 
     function _deployFunds(uint256 _amount) internal override {

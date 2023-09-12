@@ -41,9 +41,35 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         // deposit into strategy happens
         depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
         // check for expected changes
-        require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == amount);
+        require(
+            deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == amount,
+            "vault shares not given to delegate"
+        );
         require(deployedVault.totalSupply() == amount, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
+    }
+
+    function test_deposit_wrappedStrategyDepositWithSwap() public {
+        uint256 amount = 1e20;
+        vm.assume(amount != 0);
+        deal({ token: DAI, to: users["alice"], give: amount });
+        // swap to DAI to USDC
+        vm.startPrank(users["alice"]);
+        ERC20(DAI).approve(address(wrappedYearnV3Strategy), amount);
+        wrappedYearnV3Strategy.swapFrom(CRV3POOL, DAI, USDC, amount, 0);
+        // User balance after swap
+        require(ERC20(DAI).balanceOf(users["alice"]) == 0, "Swap was not successful");
+        uint256 balanceAfterSwap = ERC20(USDC).balanceOf(users["alice"]);
+        // deposit into strategy happens
+        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], balanceAfterSwap);
+        // check for expected changes
+        require(
+            deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == balanceAfterSwap,
+            "vault shares not given to delegate"
+        );
+        require(deployedVault.totalSupply() == balanceAfterSwap, "vault total_supply did not update correctly");
+        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == balanceAfterSwap, "Deposit was not successful");
+        // vm.stopPrank(); TODO: [FAIL. Reason: No prank in progress to stop], not sure why,works fine without
     }
 
     function test_withdraw_throughWrappedStrategy() public {
@@ -57,7 +83,10 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.prank(users["alice"]);
         wrappedYearnV3Strategy.withdraw(amount, users["alice"], users["alice"], 0);
         // check for expected changes
-        require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == 0);
+        require(
+            deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == 0,
+            "vault shares not given to delegate"
+        );
         require(deployedVault.totalSupply() == 0, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == 0, "Withdraw was not successful");
         require(ERC20(USDC).balanceOf(users["alice"]) == amount, "user balance should be deposit amount after withdraw");

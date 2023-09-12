@@ -12,6 +12,7 @@ contract Constants {
     address public constant ETH_VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
     address public constant YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address public constant VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
+    address public constant CRV3POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 
     struct Users {
         // Default admin for all contracts.
