@@ -31,17 +31,14 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         createUser("alice");
         // create manager of the yearnStakingDelegate
         createUser("manager");
+        // create an address that will act as a wrapped strategy
+        createUser("wrappedStrategy");
 
         // Give alice some YFI
         airdrop(ERC20(ETH_YFI), users["alice"], 1e18);
 
-        // Deploy mock strategy
-        mockStrategy = setUpStrategy("Mock USDC Strategy", USDC);
-        address[] memory strategies = new address[](1);
-        strategies[0] = address(mockStrategy);
-
         // Deploy vault
-        testVault = deployVaultV3("USDC Vault", USDC, strategies);
+        testVault = deployVaultV3("USDC Vault", USDC, new address[](0));
 
         // Deploy gauge
         testGauge = IGaugeFactory(gaugeFactory).createGauge(testVault, users["admin"]);
@@ -108,5 +105,53 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.startPrank(users["admin"]);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
         yearnStakingDelegate.earlyUnlock(users["admin"]);
+    }
+
+    function testFuzz_depositToGauge(uint256 vaultBalance) public {
+        vm.assume(vaultBalance > 0);
+        vm.startPrank(users["manager"]);
+        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        vm.stopPrank();
+
+        airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
+
+        vm.startPrank(users["wrappedStrategy"]);
+        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
+        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
+        vm.stopPrank();
+
+        // Check the yearn staking delegate has received the gauge tokens
+        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
+        // Check the gauge has received the vault tokens
+        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
+    }
+
+    function testFuzz_withdrawFromGauge(uint256 vaultBalance) public {
+        vm.assume(vaultBalance > 0);
+        vm.startPrank(users["manager"]);
+        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        vm.stopPrank();
+
+        airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
+
+        vm.startPrank(users["wrappedStrategy"]);
+        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
+        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
+        vm.stopPrank();
+
+        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
+        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
+
+        // Start withdraw process
+        vm.startPrank(users["wrappedStrategy"]);
+        yearnStakingDelegate.withdrawFromGauge(testVault, vaultBalance);
+        vm.stopPrank();
+
+        // Check the yearn staking delegate has released the gauge tokens
+        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == 0, "withdrawFromGauge failed");
+        // Check the gauge has released the vault tokens
+        require(IERC20(testVault).balanceOf(testGauge) == 0, "withdrawFromGauge failed");
+        // Check that wrappedStrategy has received the vault tokens
+        require(IERC20(testVault).balanceOf(users["wrappedStrategy"]) == vaultBalance, "withdrawFromGauge failed");
     }
 }

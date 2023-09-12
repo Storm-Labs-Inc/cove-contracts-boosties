@@ -14,11 +14,12 @@ contract YearnStakingDelegate is AccessControl {
 
     struct RewardSplit {
         uint80 treasury;
-        uint80 compound;
+        uint80 strategy;
         uint80 veYfi;
     }
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant STRATEGY_ROLE = keccak256("STRATEGY_ROLE");
 
     /// @notice Mapping of vault to gauge
     // slither-disable-next-line uninitialized-state
@@ -61,29 +62,45 @@ contract YearnStakingDelegate is AccessControl {
         IERC20(yfi).approve(veYfi, type(uint256).max);
     }
 
-    function harvest(address vault) external {
+    function harvest(address vault) external onlyRole(STRATEGY_ROLE) {
         // TODO: implement harvest
+        // Checks
+        address gauge = associatedGauge[vault];
+        if (gauge == address(0)) {
+            revert Errors.NoAssociatedGauge();
+        }
         address strategy = msg.sender;
         address treasury = address(0);
+
+        // Interactions
         IGauge(associatedGauge[vault]).getReward(address(this));
         uint256 rewardAmount = IERC20(oYfi).balanceOf(address(this));
+
         // Do actions based on configured parameters
         IERC20(oYfi).transfer(treasury, rewardAmount * uint256(rewardSplit.treasury) / 1e18);
-        IERC20(oYfi).transfer(strategy, rewardAmount * uint256(rewardSplit.compound) / 1e18);
+        IERC20(oYfi).transfer(strategy, rewardAmount * uint256(rewardSplit.strategy) / 1e18);
         uint256 yfiAmount = _swapOYfiToYfi(rewardAmount * uint256(rewardSplit.veYfi) / 1e18);
         _lockYfi(yfiAmount);
     }
 
     function depositToGauge(address vault, uint256 amount) external {
+        address gauge = associatedGauge[vault];
+        if (gauge == address(0)) {
+            revert Errors.NoAssociatedGauge();
+        }
         balances[msg.sender][vault] += amount;
         IERC20(vault).transferFrom(msg.sender, address(this), amount);
-        IERC20(vault).approve(associatedGauge[vault], amount);
-        IGauge(associatedGauge[vault]).deposit(amount, address(this));
+        IERC20(vault).approve(gauge, amount);
+        IGauge(gauge).deposit(amount, address(this));
     }
 
     function withdrawFromGauge(address vault, uint256 amount) external {
+        address gauge = associatedGauge[vault];
+        if (gauge == address(0)) {
+            revert Errors.NoAssociatedGauge();
+        }
         balances[msg.sender][vault] -= amount;
-        IGauge(associatedGauge[vault]).withdraw(amount, address(msg.sender), address(this));
+        IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
     // Swaps any held oYFI to YFI using oYFI/YFI path on Curve
