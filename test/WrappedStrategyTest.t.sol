@@ -42,7 +42,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
         // check for expected changes
         require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == amount);
-        require(deployedVault.total_supply() == amount, "vault total_supply did not update correctly");
+        require(deployedVault.totalSupply() == amount, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
 
@@ -58,7 +58,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.withdraw(amount, users["alice"], users["alice"], 0);
         // check for expected changes
         require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == 0);
-        require(deployedVault.total_supply() == 0, "vault total_supply did not update correctly");
+        require(deployedVault.totalSupply() == 0, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == 0, "Withdraw was not successful");
         require(ERC20(USDC).balanceOf(users["alice"]) == amount, "user balance should be deposit amount after withdraw");
     }
