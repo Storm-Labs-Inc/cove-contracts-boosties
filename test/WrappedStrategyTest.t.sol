@@ -38,15 +38,12 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     function testFuzz_deposit_throughWrappedStrategyDeposit(uint256 amount) public {
         vm.assume(amount != 0);
         deal({ token: USDC, to: users["alice"], give: amount });
-        uint256 vaultSupplyBefore = deployedVault.total_supply();
-        uint256 userBalanceBefore = wrappedYearnV3Strategy.balanceOf(users["alice"]);
         // deposit into strategy happens
         depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
         // check for expected changes
-        uint256 vaultSupplyAfter = deployedVault.total_supply();
-        uint256 userBalanceAfter = wrappedYearnV3Strategy.balanceOf(users["alice"]);
-        require(vaultSupplyBefore < vaultSupplyAfter, "vault total_supply did not update correctly");
-        require(userBalanceAfter - userBalanceBefore == amount, "Deposit was not successful");
+        require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == amount);
+        require(deployedVault.total_supply() == amount, "vault total_supply did not update correctly");
+        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
 
     function test_withdraw_throughWrappedStrategy() public {
@@ -54,19 +51,15 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         address stakingDelegate = wrappedYearnV3Strategy.yearnStakingDelegateAddress();
         deal({ token: USDC, to: users["alice"], give: amount });
         depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
-
         vm.prank(stakingDelegate);
         deployedVault.approve(address(wrappedYearnV3Strategy), amount);
-
-        uint256 userBalanceBefore = ERC20(USDC).balanceOf(users["alice"]);
-        uint256 vaultSupplyBefore = deployedVault.total_supply();
         // withdraw from strategy happens
         vm.prank(users["alice"]);
         wrappedYearnV3Strategy.withdraw(amount, users["alice"], users["alice"], 0);
         // check for expected changes
-        uint256 userBalanceAfter = ERC20(USDC).balanceOf(users["alice"]);
-        uint256 vaultSupplyAfter = deployedVault.total_supply();
-        require(vaultSupplyBefore > vaultSupplyAfter, "vault total_supply did not update correctly");
-        require(userBalanceAfter - userBalanceBefore == amount, "user balance should increase by amount after withdraw");
+        require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == 0);
+        require(deployedVault.total_supply() == 0, "vault total_supply did not update correctly");
+        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == 0, "Withdraw was not successful");
+        require(ERC20(USDC).balanceOf(users["alice"]) == amount, "user balance should be deposit amount after withdraw");
     }
 }
