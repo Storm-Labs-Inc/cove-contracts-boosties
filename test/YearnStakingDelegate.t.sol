@@ -38,10 +38,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         airdrop(ERC20(ETH_YFI), users["alice"], 1e18);
 
         // Deploy vault
-        testVault = deployVaultV3("USDC Vault", USDC, new address[](0));
-
+        testVault = deployVaultV3("USDC Test Vault", USDC, new address[](0));
         // Deploy gauge
-        testGauge = IGaugeFactory(gaugeFactory).createGauge(testVault, users["admin"]);
+        testGauge = deployGaugeViaFactory(testVault, users["admin"], "USDC Test Vault Gauge");
 
         // Give admin some oYFI
         airdrop(ERC20(oYFI), users["admin"], 1e18);

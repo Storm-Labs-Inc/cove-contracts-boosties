@@ -84,19 +84,21 @@ contract YearnV3BaseTest is BaseTest {
 
     /// VE-YFI related functions ///
     function setUpVotingYfiStack() public {
-        oYFI = deployOYFI(users["admin"]);
-        oYFIRewardPool = deployOYFIRewardPool(oYFI, block.timestamp + 1 days);
-        gaugeImpl = deployGauge(oYFI, oYFIRewardPool);
-        gaugeFactory = deployGaugeFactory(gaugeImpl);
-        gaugeRegistry = deployVeYFIRegistry(users["admin"], gaugeFactory, oYFIRewardPool);
+        oYFI = _deployOYFI(users["admin"]);
+        oYFIRewardPool = _deployOYFIRewardPool(oYFI, block.timestamp + 1 days);
+        gaugeImpl = _deployGaugeImpl(oYFI, oYFIRewardPool);
+        gaugeFactory = _deployGaugeFactory(gaugeImpl);
+        gaugeRegistry = _deployVeYFIRegistry(users["admin"], gaugeFactory, oYFIRewardPool);
     }
 
-    function deployOYFI(address owner) public returns (address) {
+    function _deployOYFI(address owner) internal returns (address) {
         vm.prank(owner);
-        return address(new OYfi());
+        address oYfiAddr = address(new OYfi());
+        vm.label(oYfiAddr, "OYFI");
+        return oYfiAddr;
     }
 
-    function deployOYFIRewardPool(address oYfi, uint256 startTime) public returns (address) {
+    function _deployOYFIRewardPool(address oYfi, uint256 startTime) internal returns (address) {
         return vyperDeployer.deployContract(
             "lib/veYFI/contracts/", "OYFIRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
         );
@@ -116,20 +118,28 @@ contract YearnV3BaseTest is BaseTest {
         );
     }
 
-    function deployGauge(address _oYFI, address _oYFIRewardPool) public returns (address) {
+    function _deployGaugeImpl(address _oYFI, address _oYFIRewardPool) internal returns (address) {
         return address(new Gauge(ETH_VE_YFI, _oYFI, _oYFIRewardPool));
     }
 
-    function deployGaugeFactory(address gaugeImplementation) public returns (address) {
-        return address(new GaugeFactory(gaugeImplementation));
+    function deployGaugeViaFactory(address vault, address owner, string memory label) public returns (address) {
+        address newGauge = GaugeFactory(gaugeFactory).createGauge(vault, owner);
+        vm.label(newGauge, label);
+        return newGauge;
     }
 
-    function deployVeYFIRegistry(
+    function _deployGaugeFactory(address gaugeImplementation) internal returns (address) {
+        address gaugeFactoryAddr = address(new GaugeFactory(gaugeImplementation));
+        vm.label(gaugeFactoryAddr, "GaugeFactory");
+        return gaugeFactoryAddr;
+    }
+
+    function _deployVeYFIRegistry(
         address owner,
         address _gaugeFactory,
         address veYFIRewardPool
     )
-        public
+        internal
         returns (address)
     {
         vm.prank(owner);
