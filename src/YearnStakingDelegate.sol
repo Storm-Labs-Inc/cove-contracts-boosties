@@ -101,12 +101,12 @@ contract YearnStakingDelegate is AccessControl {
             emit LogUpdatePool(vault, vaultRewards.lastRewardBlock, lpSupply, vaultRewards.accRewardsPerShare);
 
             // calcualte pending rewards for the user
-            uint128 accumulatedRewards =
-                uint128(uint256(user.balance) * uint256(vaultRewards.accRewardsPerShare) / 1e18);
+            uint128 accumulatedRewards = uint128(uint256(user.balance) * vaultRewards.accRewardsPerShare / 1e18);
             uint256 _pendingRewards = accumulatedRewards - user.rewardDebt;
 
             user.rewardDebt = accumulatedRewards;
 
+            // transfer pending rewards to the user
             if (_pendingRewards != 0) {
                 IERC20(oYfi).safeTransfer(msg.sender, _pendingRewards);
             }
