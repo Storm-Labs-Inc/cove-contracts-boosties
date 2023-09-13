@@ -190,14 +190,16 @@ contract MasterRegistryTest is BaseTest {
     )
         public
     {
+        // Assume non-zero
         vm.assume(name != bytes32(0));
         vm.assume(name2 != bytes32(0));
         vm.assume(addr != address(0));
         vm.assume(addr2 != address(0));
         vm.assume(addr3 != address(0));
+        // Assume not equal
+        vm.assume(name != name2);
         vm.assume(addr != addr2);
         vm.assume(addr2 != addr3);
-        vm.assume(addr != addr3);
         masterRegistry.addRegistry(name, addr);
         masterRegistry.updateRegistry(name, addr2);
         masterRegistry.addRegistry(name2, addr3);
