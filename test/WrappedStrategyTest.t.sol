@@ -49,29 +49,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
 
-    function test_deposit_wrappedStrategyDepositWithSwap() public {
-        uint256 amount = 1e20;
-        vm.assume(amount != 0);
-        deal({ token: DAI, to: users["alice"], give: amount });
-        // swap to DAI to USDC
-        vm.startPrank(users["alice"]);
-        ERC20(DAI).approve(address(wrappedYearnV3Strategy), amount);
-        wrappedYearnV3Strategy.swapFrom(CRV3POOL, DAI, USDC, amount, 0);
-        // User balance after swap
-        require(ERC20(DAI).balanceOf(users["alice"]) == 0, "Swap was not successful");
-        uint256 balanceAfterSwap = ERC20(USDC).balanceOf(users["alice"]);
-        // deposit into strategy happens
-        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], balanceAfterSwap);
-        // check for expected changes
-        require(
-            deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == balanceAfterSwap,
-            "vault shares not given to delegate"
-        );
-        require(deployedVault.totalSupply() == balanceAfterSwap, "vault total_supply did not update correctly");
-        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == balanceAfterSwap, "Deposit was not successful");
-        // vm.stopPrank(); TODO: [FAIL. Reason: No prank in progress to stop], not sure why,works fine without
-    }
-
     function test_withdraw_throughWrappedStrategy() public {
         uint256 amount = 1e18;
         address stakingDelegate = wrappedYearnV3Strategy.yearnStakingDelegateAddress();

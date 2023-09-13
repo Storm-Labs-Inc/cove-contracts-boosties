@@ -7,6 +7,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "tokenized-strategy-periphery/test/mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
+import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 
 import { Gauge } from "src/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/veYFI/GaugeFactory.sol";
@@ -213,6 +214,35 @@ contract YearnV3BaseTest is BaseTest {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IWrappedYearnV3Strategy _wrappedStrategy =
             IWrappedYearnV3Strategy(address(new WrappedYearnV3Strategy(address(asset))));
+        // set keeper
+        _wrappedStrategy.setKeeper(tpKeeper);
+        // set treasury
+        _wrappedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
+        // set management of the strategy
+        _wrappedStrategy.setPendingManagement(tpManagement);
+        // Accept mangagement.
+        vm.prank(tpManagement);
+        _wrappedStrategy.acceptManagement();
+
+        // Label and store the strategy
+        // *name is "Wrapped Yearn V3 Strategy"
+        deployedStrategies[name] = address(_wrappedStrategy);
+        vm.label(address(_wrappedStrategy), name);
+
+        return _wrappedStrategy;
+    }
+
+    // Deploy a strategy that wraps a vault.
+    function setUpWrappedStrategyCurveSwapper(
+        string memory name,
+        address asset
+    )
+        public
+        returns (IWrappedYearnV3Strategy)
+    {
+        // we save the strategy as a IStrategyInterface to give it the needed interface
+        IWrappedYearnV3Strategy _wrappedStrategy =
+            IWrappedYearnV3Strategy(address(new WrappedYearnV3StrategyCurveSwapper(address(asset), CRV3POOL)));
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);
         // set treasury

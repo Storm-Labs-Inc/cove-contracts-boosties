@@ -16,13 +16,4 @@ interface IWrappedYearnV3Strategy is IBaseTokenizedStrategy, ITokenizedStrategy 
     function vaultAddress() external view returns (address);
 
     function yearnStakingDelegateAddress() external view returns (address);
-
-    function swapFrom(
-        address _curvePool,
-        address _from,
-        address _to,
-        uint256 _amountIn,
-        uint256 _minAmountOut
-    )
-        external;
 }
