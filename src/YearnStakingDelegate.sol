@@ -89,8 +89,9 @@ contract YearnStakingDelegate is AccessControl {
             }
             uint256 lpSupply = IERC20(gauge).balanceOf(address(this));
             // get rewards from the gauge
-            IGauge(gauge).getReward(address(this));
             totalRewardsAmount = IERC20(oYfi).balanceOf(address(this));
+            IGauge(gauge).getReward(address(this));
+            totalRewardsAmount = IERC20(oYfi).balanceOf(address(this)) - totalRewardsAmount;
             // update accRewardsPerShare if there are tokens in the gauge
             if (lpSupply > 0) {
                 vaultRewards.accRewardsPerShare += uint128(totalRewardsAmount * rewardSplit.strategy / lpSupply);
@@ -100,7 +101,7 @@ contract YearnStakingDelegate is AccessControl {
 
             emit LogUpdatePool(vault, vaultRewards.lastRewardBlock, lpSupply, vaultRewards.accRewardsPerShare);
 
-            // calcualte pending rewards for the user
+            // calculate pending rewards for the user
             uint128 accumulatedRewards = uint128(uint256(user.balance) * vaultRewards.accRewardsPerShare / 1e18);
             uint256 _pendingRewards = accumulatedRewards - user.rewardDebt;
 
@@ -130,7 +131,6 @@ contract YearnStakingDelegate is AccessControl {
         user.rewardDebt += uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
         // Interactions
         IERC20(vault).transferFrom(msg.sender, address(this), amount);
-        IERC20(vault).approve(gauge, amount);
         IGauge(gauge).deposit(amount, address(this));
     }
 
@@ -181,10 +181,14 @@ contract YearnStakingDelegate is AccessControl {
     }
 
     function setAssociatedGauge(address vault, address gauge) external onlyRole(MANAGER_ROLE) {
-        if (gauge == address(0)) {
+        // Checks
+        if (gauge == address(0) || vault == address(0)) {
             revert Errors.ZeroAddress();
         }
+        // Effects
         associatedGauge[vault] = gauge;
+        // Interactions
+        IERC20(vault).approve(gauge, type(uint256).max);
     }
 
     function _setRewardSplit(uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) internal {
