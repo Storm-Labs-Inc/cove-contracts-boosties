@@ -34,13 +34,13 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // create an address that will act as a wrapped strategy
         createUser("wrappedStrategy");
 
-        // Give alice some YFI
-        airdrop(ERC20(ETH_YFI), users["alice"], 1e18);
-
         // Deploy vault
         testVault = deployVaultV3("USDC Test Vault", USDC, new address[](0));
         // Deploy gauge
         testGauge = deployGaugeViaFactory(testVault, users["admin"], "USDC Test Vault Gauge");
+
+        // Give alice some YFI
+        airdrop(ERC20(ETH_YFI), users["alice"], 1e18);
 
         // Give admin some oYFI
         airdrop(ERC20(oYFI), users["admin"], 1_000_000e18);
