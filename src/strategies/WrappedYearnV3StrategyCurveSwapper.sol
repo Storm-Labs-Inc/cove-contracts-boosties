@@ -32,9 +32,11 @@ contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveSwapp
         ERC20(asset).approve(address(this), _amount);
         SafeERC20.safeTransferFrom(ERC20(asset), msg.sender, address(this), _amount);
         _swapFrom(curvePoolAddress, asset, IVault(vaultAddress).asset(), _amount, 0);
+        // get exact amount of tokens from the transfer
+        uint256 toTokenBalance = ERC20(IVault(vaultAddress).asset()).balanceOf(address(this));
         // deposit _amount into vault
-        ERC20(IVault(vaultAddress).asset()).approve(vaultAddress, _amount);
-        IVault(vaultAddress).deposit(_amount, yearnStakingDelegateAddress);
+        ERC20(IVault(vaultAddress).asset()).approve(vaultAddress, toTokenBalance);
+        IVault(vaultAddress).deposit(toTokenBalance, yearnStakingDelegateAddress);
     }
 
     function _freeFunds(uint256 _amount) internal override {

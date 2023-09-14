@@ -4,7 +4,6 @@ pragma solidity ^0.8.18;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ICurveBasePool } from "./interfaces/ICurveBasePool.sol";
-import { console2 as console } from "forge-std/Test.sol";
 
 contract CurveSwapper {
     // Optional Variable to be set to not sell dust.
@@ -38,12 +37,11 @@ contract CurveSwapper {
     {
         if (_amountIn > minAmountToSell) {
             _checkAllowance(_curvePool, _from, _amountIn);
+
             (int128 fromIndex, int128 toIndex) = _getTokenIndexes(_curvePool, _from, _to);
             uint256 minAmount = (_getAmountOut(_curvePool, fromIndex, toIndex, _amountIn) * slippageFactor) / 100;
             require(minAmount >= _minAmountOut, "minAmountOut not met");
-            console.log("curve pool allowance of wrappedStrat2: ", ERC20(_from).allowance(address(this), _curvePool));
             ICurveBasePool(_curvePool).exchange(fromIndex, toIndex, _amountIn, minAmount);
-            SafeERC20.safeTransfer(ERC20(_to), msg.sender, ERC20(_to).balanceOf(address(this)));
         }
     }
     /**
