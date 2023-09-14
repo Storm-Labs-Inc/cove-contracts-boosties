@@ -69,6 +69,9 @@ contract YearnV3BaseTest is BaseTest {
         vaultManagement = users["vaultManagement"];
         performanceFeeRecipient = users["performanceFeeRecipient"];
         keeper = users["keeper"];
+
+        vm.label(ETH_VE_YFI, "veYFI");
+        vm.label(ETH_YFI, "YFI");
     }
 
     function _createThirdPartyRelatedAddresses() internal {
@@ -100,9 +103,11 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function _deployOYFIRewardPool(address oYfi, uint256 startTime) internal returns (address) {
-        return vyperDeployer.deployContract(
+        address addr = vyperDeployer.deployContract(
             "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
         );
+        vm.label(addr, "OYfiRewardPool");
+        return addr;
     }
 
     function deployOptions(
