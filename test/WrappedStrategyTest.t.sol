@@ -35,7 +35,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assert(deployedStrategies["Mock USDC Strategy"] != address(0));
     }
 
-    function testFuzz_deposit_throughWrappedStrategyDeposit(uint256 amount) public {
+    function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount != 0);
         deal({ token: USDC, to: users["alice"], give: amount });
         // deposit into strategy happens
@@ -49,7 +49,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
 
-    function test_withdraw_throughWrappedStrategy() public {
+    function test_withdraw() public {
         uint256 amount = 1e18;
         address stakingDelegate = wrappedYearnV3Strategy.yearnStakingDelegateAddress();
         deal({ token: USDC, to: users["alice"], give: amount });

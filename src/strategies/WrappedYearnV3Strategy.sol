@@ -15,7 +15,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
 
     constructor(address _asset) BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Strategy") { }
 
-    function setYieldSource(address v3VaultAddress) external {
+    function setYieldSource(address v3VaultAddress) external virtual {
         vaultAddress = v3VaultAddress;
     }
 
@@ -23,7 +23,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
         yearnStakingDelegateAddress = delegateAddress;
     }
 
-    function _deployFunds(uint256 _amount) internal override {
+    function _deployFunds(uint256 _amount) internal virtual override {
         // deposit _amount into vault
         ERC20(asset).approve(vaultAddress, _amount);
         IVault(vaultAddress).deposit(_amount, yearnStakingDelegateAddress);

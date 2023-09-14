@@ -240,14 +240,15 @@ contract YearnV3BaseTest is BaseTest {
     // Deploy a strategy that wraps a vault.
     function setUpWrappedStrategyCurveSwapper(
         string memory name,
-        address asset
+        address asset,
+        address curvePool
     )
         public
         returns (IWrappedYearnV3Strategy)
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IWrappedYearnV3Strategy _wrappedStrategy =
-            IWrappedYearnV3Strategy(address(new WrappedYearnV3StrategyCurveSwapper(address(asset), CRV3POOL)));
+            IWrappedYearnV3Strategy(address(new WrappedYearnV3StrategyCurveSwapper(address(asset), curvePool)));
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);
         // set treasury
