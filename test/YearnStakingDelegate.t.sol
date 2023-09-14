@@ -64,9 +64,13 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         require(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]), "admin");
     }
 
-    function test_setAssociatedGauge() public {
+    function _setAssociatedGauge() internal {
         vm.prank(users["manager"]);
         yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+    }
+
+    function test_setAssociatedGauge() public {
+        _setAssociatedGauge();
         require(yearnStakingDelegate.associatedGauge(testVault) == testGauge, "setAssociatedGauge failed");
     }
 
@@ -106,40 +110,44 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.earlyUnlock(users["admin"]);
     }
 
+    function _deposit(address addr, uint256 amount) internal {
+        vm.startPrank(addr);
+        IERC20(testVault).approve(address(yearnStakingDelegate), amount);
+        yearnStakingDelegate.depositToGauge(testVault, amount);
+        vm.stopPrank();
+    }
+
     function testFuzz_depositToGauge(uint256 vaultBalance) public {
         vm.assume(vaultBalance > 0);
-        vm.startPrank(users["manager"]);
-        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
-        vm.stopPrank();
+        _setAssociatedGauge();
+
+        airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
+        _deposit(users["wrappedStrategy"], vaultBalance);
+
+        // Check the yearn staking delegate has received the gauge tokens
+        assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), vaultBalance, "depositToGauge failed");
+        // Check the gauge has received the vault tokens
+        assertEq(IERC20(testVault).balanceOf(testGauge), vaultBalance, "depositToGauge failed");
+    }
+
+    function testFuzz_depositToGauge_revertsWhenNoAssociatedGauge(uint256 vaultBalance) public {
+        vm.assume(vaultBalance > 0);
 
         airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
 
         vm.startPrank(users["wrappedStrategy"]);
         IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NoAssociatedGauge.selector));
         yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
         vm.stopPrank();
-
-        // Check the yearn staking delegate has received the gauge tokens
-        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
-        // Check the gauge has received the vault tokens
-        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
     }
 
     function testFuzz_withdrawFromGauge(uint256 vaultBalance) public {
         vm.assume(vaultBalance > 0);
-        vm.startPrank(users["manager"]);
-        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
-        vm.stopPrank();
+        _setAssociatedGauge();
 
         airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
-
-        vm.startPrank(users["wrappedStrategy"]);
-        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
-        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
-        vm.stopPrank();
-
-        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
-        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
+        _deposit(users["wrappedStrategy"], vaultBalance);
 
         // Start withdraw process
         vm.startPrank(users["wrappedStrategy"]);
@@ -147,31 +155,42 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
 
         // Check the yearn staking delegate has released the gauge tokens
-        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == 0, "withdrawFromGauge failed");
+        assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), 0, "withdrawFromGauge failed");
         // Check the gauge has released the vault tokens
-        require(IERC20(testVault).balanceOf(testGauge) == 0, "withdrawFromGauge failed");
+        assertEq(IERC20(testVault).balanceOf(testGauge), 0, "withdrawFromGauge failed");
         // Check that wrappedStrategy has received the vault tokens
-        require(IERC20(testVault).balanceOf(users["wrappedStrategy"]) == vaultBalance, "withdrawFromGauge failed");
+        assertEq(IERC20(testVault).balanceOf(users["wrappedStrategy"]), vaultBalance, "withdrawFromGauge failed");
     }
 
-    function test_harvest() public {
-        vm.startPrank(users["manager"]);
-        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
-        vm.stopPrank();
+    function test_harvest_withNoVeYFI() public {
+        _setAssociatedGauge();
 
-        // Deposit to gauge
         airdrop(ERC20(testVault), users["wrappedStrategy"], 1e18);
-        vm.startPrank(users["wrappedStrategy"]);
-        IERC20(testVault).approve(address(yearnStakingDelegate), 1e18);
-        yearnStakingDelegate.depositToGauge(testVault, 1e18);
+        _deposit(users["wrappedStrategy"], 1e18);
 
         vm.warp(block.timestamp + 7 days);
 
         // Harvest
+        vm.prank(users["wrappedStrategy"]);
         yearnStakingDelegate.harvest(testVault);
-        vm.stopPrank();
 
         // Check that the vault has received the rewards
-        require(IERC20(oYFI).balanceOf(users["wrappedStrategy"]) == 49_999_999_999_999_999_965_120, "harvest failed");
+        assertEq(IERC20(oYFI).balanceOf(users["wrappedStrategy"]), 49_999_999_999_999_999_965_120, "harvest failed");
+    }
+
+    function test_harvest_withSomeYFI() public {
+        _setAssociatedGauge();
+
+        airdrop(ERC20(testVault), users["wrappedStrategy"], 1e18);
+        _deposit(users["wrappedStrategy"], 1e18);
+
+        vm.warp(block.timestamp + 7 days);
+
+        // Harvest
+        vm.prank(users["wrappedStrategy"]);
+        yearnStakingDelegate.harvest(testVault);
+
+        // Check that the vault has received the rewards
+        assertEq(IERC20(oYFI).balanceOf(users["wrappedStrategy"]), 49_999_999_999_999_999_965_120, "harvest failed");
     }
 }
