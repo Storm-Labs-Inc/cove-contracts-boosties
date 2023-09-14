@@ -59,12 +59,26 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
     }
 
-    function test_constructor() public {
+    function test_constructor(address noAdminRole, address noManagerRole) public {
+        vm.assume(noAdminRole != users["admin"]);
+        // manager role is given to admin and manager
+        vm.assume(noManagerRole != users["manager"] && noManagerRole != users["admin"]);
+        // Check for storage variables default values
         assertEq(yearnStakingDelegate.yfi(), ETH_YFI);
         assertEq(yearnStakingDelegate.oYfi(), oYFI);
         assertEq(yearnStakingDelegate.veYfi(), ETH_VE_YFI);
-        assertEq(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), users["manager"]), true);
-        assertEq(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]), true);
+        assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
+        (uint80 treasury, uint80 strategy, uint80 veYfi) = yearnStakingDelegate.rewardSplit();
+        assertEq(treasury, 0);
+        assertEq(strategy, 1e18);
+        assertEq(veYfi, 0);
+        // Check for roles
+        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), users["manager"]));
+        assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), noManagerRole));
+        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]));
+        assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
+        // Check for approvals
+        assertEq(IERC20(ETH_YFI).allowance(address(yearnStakingDelegate), ETH_VE_YFI), type(uint256).max);
     }
 
     function test_setAssociatedGauge() public {
