@@ -81,7 +81,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_lockYFI() public {
-        _lockYFI(users["alice"], 1e16);
+        _lockYFI(users["alice"], 1e18);
 
         assertEq(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
         assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 999_999_999_971_481_600, "lock failed");
