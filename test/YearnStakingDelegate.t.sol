@@ -46,15 +46,15 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         airdrop(ERC20(ETH_YFI), users["alice"], ALICE_YFI);
 
         // Give admin some oYFI
-        airdrop(ERC20(oYFI), users["admin"], 1e18);
+        airdrop(ERC20(oYFI), users["admin"], 1_000_000e18);
 
         // Start new rewards
         vm.startPrank(users["admin"]);
-        IERC20(oYFI).approve(testGauge, 1e18);
-        IGauge(testGauge).queueNewRewards(1e18);
+        IERC20(oYFI).approve(testGauge, 1_000_000e18);
+        IGauge(testGauge).queueNewRewards(1_000_000e18);
         vm.stopPrank();
 
-        require(IERC20(oYFI).balanceOf(testGauge) == 1e18, "queueNewRewards failed");
+        require(IERC20(oYFI).balanceOf(testGauge) == 1_000_000e18, "queueNewRewards failed");
 
         yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
     }
@@ -185,5 +185,26 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         require(IERC20(testVault).balanceOf(testGauge) == 0, "withdrawFromGauge failed");
         // Check that wrappedStrategy has received the vault tokens
         require(IERC20(testVault).balanceOf(users["wrappedStrategy"]) == vaultBalance, "withdrawFromGauge failed");
+    }
+
+    function test_harvest() public {
+        vm.startPrank(users["manager"]);
+        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        vm.stopPrank();
+
+        // Deposit to gauge
+        airdrop(ERC20(testVault), users["wrappedStrategy"], 1e18);
+        vm.startPrank(users["wrappedStrategy"]);
+        IERC20(testVault).approve(address(yearnStakingDelegate), 1e18);
+        yearnStakingDelegate.depositToGauge(testVault, 1e18);
+
+        vm.warp(block.timestamp + 7 days);
+
+        // Harvest
+        yearnStakingDelegate.harvest(testVault);
+        vm.stopPrank();
+
+        // Check that the vault has received the rewards
+        require(IERC20(oYFI).balanceOf(users["wrappedStrategy"]) == 49_999_999_999_999_999_965_120, "harvest failed");
     }
 }
