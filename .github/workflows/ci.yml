@@ -46,6 +46,10 @@ jobs:
   slither:
     name: Slither
     runs-on: buildjet-4vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v3
         with:
@@ -81,10 +85,25 @@ jobs:
         uses: crytic/slither-action@v0.3.0
         id: slither
         with:
+          # TODO: re-enable this before audits
+          fail-on: none
           ignore-compile: true
-          sarif: results.sarif
           node-version: ${{ env.NODE_VERSION }}
+          slither-args:
+            --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
           slither-config: slither.config.json
+
+      - name: Create/update checklist as PR comment
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        env:
+          REPORT: ${{ steps.slither.outputs.stdout }}
+        with:
+          script: |
+            const script = require('.github/scripts/comment')
+            const header = '# Slither report'
+            const body = process.env.REPORT
+            await script({ github, context, header, body })
 
   test:
     name: Test
@@ -111,7 +130,7 @@ jobs:
         run: pnpm install
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: buildjet/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
@@ -161,7 +180,7 @@ jobs:
         run: pnpm install
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: buildjet/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
@@ -232,7 +251,7 @@ jobs:
         run: pnpm install
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: buildjet/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
