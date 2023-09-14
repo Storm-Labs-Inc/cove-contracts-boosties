@@ -59,7 +59,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
     }
 
-    function test_constructor(address noAdminRole, address noManagerRole) public {
+    function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
         vm.assume(noAdminRole != users["admin"]);
         // manager role is given to admin and manager
         vm.assume(noManagerRole != users["manager"] && noManagerRole != users["admin"]);
