@@ -47,6 +47,8 @@ jobs:
     name: Slither
     runs-on: buildjet-4vcpu-ubuntu-2204
     permissions:
+      contents: read
+      packages: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v3
