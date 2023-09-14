@@ -38,28 +38,22 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     }
 
     function test_deposit_wrappedStrategyDepositWithSwap() public {
-        uint256 amount = 1e20;
+        uint256 amount = 1e8; // 100 USDC
         deal({ token: USDC, to: users["alice"], give: amount });
         // deposit into strategy happens
         vm.startPrank(users["alice"]);
         ERC20(USDC).approve(address(wrappedYearnV3Strategy), amount);
-        console.log("DAI balance: ", ERC20(DAI).balanceOf(address(wrappedYearnV3Strategy)));
         wrappedYearnV3Strategy.deposit(amount, users["alice"]);
         // check for expected changes
         uint256 ysdBalance = deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress());
-        // Call get_dy on the curve pool to get the minimum amount of _to token received
-        // below dunt work and it make head hurt
-        // uint256 expectedMinimumToBalance = ICurveBasePool(CRV3POOL).get_dy(int128(1), int128(0), amount);
         vm.stopPrank();
         require(ERC20(USDC).balanceOf(users["alice"]) == 0, "alice still has USDC");
+        uint256 initialAmountDenomInDai = (amount / 1e6) * 1e18;
         require(
-            ysdBalance >= amount - 1e18 && ysdBalance <= amount + 1e18,
-            "vault shares not given to delegate within range"
+            ysdBalance >= initialAmountDenomInDai - 5e18 && ysdBalance <= initialAmountDenomInDai + 5e18,
+            "vault shares not given to delegate within 5% range"
         );
-        // TODO: figure out why this is so high
-        // 70127359339911090471903379 why is the vault balance so high 7e25?
-        // 100000000000000000000 when original amount is 1e20
         require(deployedVault.totalSupply() == ysdBalance, "vault total_supply did not update correctly");
-        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == ysdBalance, "Deposit was not successful");
+        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
 }

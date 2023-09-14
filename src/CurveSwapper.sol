@@ -8,7 +8,6 @@ import { ICurveBasePool } from "./interfaces/ICurveBasePool.sol";
 contract CurveSwapper {
     // Optional Variable to be set to not sell dust.
     uint256 public minAmountToSell = 0;
-    uint256 public slippageFactor = 95;
 
     constructor() { }
 
@@ -39,9 +38,7 @@ contract CurveSwapper {
             _checkAllowance(_curvePool, _from, _amountIn);
 
             (int128 fromIndex, int128 toIndex) = _getTokenIndexes(_curvePool, _from, _to);
-            uint256 minAmount = (_getAmountOut(_curvePool, fromIndex, toIndex, _amountIn) * slippageFactor) / 100;
-            require(minAmount >= _minAmountOut, "minAmountOut not met");
-            ICurveBasePool(_curvePool).exchange(fromIndex, toIndex, _amountIn, minAmount);
+            ICurveBasePool(_curvePool).exchange(fromIndex, toIndex, _amountIn, _minAmountOut);
         }
     }
     /**
