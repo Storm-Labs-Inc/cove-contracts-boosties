@@ -81,6 +81,7 @@ jobs:
         uses: crytic/slither-action@v0.3.0
         id: slither
         with:
+          # TODO: re-enable this before audits
           fail-on: none
           ignore-compile: true
           node-version: ${{ env.NODE_VERSION }}
@@ -123,7 +124,7 @@ jobs:
         run: pnpm install
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: buildjet/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
@@ -173,7 +174,7 @@ jobs:
         run: pnpm install
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: buildjet/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
@@ -244,7 +245,7 @@ jobs:
         run: pnpm install
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: buildjet/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
