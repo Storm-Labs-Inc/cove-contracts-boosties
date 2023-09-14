@@ -8,6 +8,9 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "tokenized-strategy-periphery/test/mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
 
+import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
+import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
+
 import { Gauge } from "src/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/veYFI/GaugeFactory.sol";
 import { OYfi } from "src/veYFI/OYfi.sol";
@@ -42,6 +45,11 @@ contract YearnV3BaseTest is BaseTest {
     address public gaugeFactory;
     address public gaugeRegistry;
 
+    // Yearn registry addresses
+    address public yearnReleaseRegistry;
+    address public yearnRegistryFactory;
+    address public yearnRegistry;
+
     function setUp() public virtual override {
         // Fork ethereum mainnet
         forkNetwork("mainnet");
@@ -56,6 +64,7 @@ contract YearnV3BaseTest is BaseTest {
         createUser("alice");
 
         setUpVotingYfiStack();
+        setUpYfiRegistry();
     }
 
     function _createYearnRelatedAddresses() internal {
@@ -146,9 +155,30 @@ contract YearnV3BaseTest is BaseTest {
         return address(new Registry(ETH_VE_YFI, ETH_YFI, _gaugeFactory, veYFIRewardPool));
     }
 
+    /// YFI registry related functions ///
+    function setUpYfiRegistry() public {
+        yearnReleaseRegistry = _deployYearnReleaseRegistry(management);
+        yearnRegistryFactory = _deployYearnRegistryFactory(management, yearnReleaseRegistry);
+        yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("test", management);
+    }
+
+    function _deployYearnReleaseRegistry(address owner) internal returns (address) {
+        vm.prank(owner);
+        address registryAddr = address(new ReleaseRegistry(users["admin"]));
+        vm.label(registryAddr, "ReleaseRegistry");
+        return registryAddr;
+    }
+
+    function _deployYearnRegistryFactory(address owner, address releaseRegistry) internal returns (address) {
+        vm.prank(owner);
+        address factoryAddr = address(new RegistryFactory(releaseRegistry));
+        vm.label(factoryAddr, "RegistryFactory");
+        return factoryAddr;
+    }
+
     // Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
     // strategies can be dummy ones or real ones
-    // This is intended to spwan a vault that we have control over.
+    // This is intended to spawn a vault that we have control over.
     function deployVaultV3(
         string memory vaultName,
         address asset,
