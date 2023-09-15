@@ -1,5 +1,13 @@
 module.exports = async ({ github, context, header, body }) => {
-  const comment = [header, body].join("\n");
+  let comment = [header, body].join("\n");
+
+  const collapseMarkdown = `
+<details>
+  <summary>Expand Summary</summary>
+`;
+
+  comment = comment.replace('##', `${insertText}\n##`);
+  comment += '\n</details>';
 
   const { data: comments } = await github.rest.issues.listComments({
     owner: context.repo.owner,
