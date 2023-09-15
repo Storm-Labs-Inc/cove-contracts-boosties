@@ -6,7 +6,7 @@ module.exports = async ({ github, context, header, body }) => {
   <summary>Expand Summary</summary>
 `;
 
-  comment = comment.replace('##', `${insertText}\n##`);
+  comment = comment.replace('##', `${collapseMarkdown}\n##`);
   comment += '\n</details>';
 
   const { data: comments } = await github.rest.issues.listComments({
