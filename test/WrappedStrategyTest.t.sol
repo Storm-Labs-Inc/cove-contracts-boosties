@@ -35,18 +35,21 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assert(deployedStrategies["Mock USDC Strategy"] != address(0));
     }
 
-    function testFuzz_deposit_throughWrappedStrategyDeposit(uint256 amount) public {
+    function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount != 0);
         deal({ token: USDC, to: users["alice"], give: amount });
         // deposit into strategy happens
         depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
         // check for expected changes
-        require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == amount);
+        require(
+            deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == amount,
+            "vault shares not given to delegate"
+        );
         require(deployedVault.totalSupply() == amount, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
 
-    function test_withdraw_throughWrappedStrategy() public {
+    function test_withdraw() public {
         uint256 amount = 1e18;
         address stakingDelegate = wrappedYearnV3Strategy.yearnStakingDelegateAddress();
         deal({ token: USDC, to: users["alice"], give: amount });
@@ -57,7 +60,10 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.prank(users["alice"]);
         wrappedYearnV3Strategy.withdraw(amount, users["alice"], users["alice"], 0);
         // check for expected changes
-        require(deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == 0);
+        require(
+            deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress()) == 0,
+            "vault shares not given to delegate"
+        );
         require(deployedVault.totalSupply() == 0, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == 0, "Withdraw was not successful");
         require(ERC20(USDC).balanceOf(users["alice"]) == amount, "user balance should be deposit amount after withdraw");
