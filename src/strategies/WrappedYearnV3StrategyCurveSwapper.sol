@@ -21,23 +21,23 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
     function setYieldSource(address v3VaultAddress) external override {
         vaultAddress = v3VaultAddress;
-        vaultAsset = IVault(v3VaultAddress).asset();
+        address _vaultAsset = IVault(v3VaultAddress).asset();
+        vaultAsset = _vaultAsset;
         (int128 i, int128 j) = _getTokenIndexes(curvePoolAddress, asset, IVault(v3VaultAddress).asset());
         require(i >= -1 && j >= -1, "token not found in curve pool");
         // Approve all future vault deposits
-        ERC20(vaultAsset).approve(v3VaultAddress, type(uint256).max);
+        ERC20(_vaultAsset).approve(v3VaultAddress, type(uint256).max);
     }
 
     function _deployFunds(uint256 _amount) internal override {
         // Declare vaultAsser as memory to save gas
-        address vaultAssetAddress = vaultAsset;
-        uint256 beforeBalance = ERC20(vaultAssetAddress).balanceOf(address(this));
+        address _vaultAsset = vaultAsset;
+        uint256 beforeBalance = ERC20(_vaultAsset).balanceOf(address(this));
         // swap _amount into underlying vault asset
         // TODO: find a reliable way to get a min amount out
-        _swapFrom(curvePoolAddress, asset, vaultAssetAddress, _amount, 0);
-
+        _swapFrom(curvePoolAddress, asset, _vaultAsset, _amount, 0);
         // get exact amount of tokens from the transfer
-        uint256 toTokenBalance = ERC20(vaultAssetAddress).balanceOf(address(this)) - beforeBalance;
+        uint256 toTokenBalance = ERC20(_vaultAsset).balanceOf(address(this)) - beforeBalance;
         // deposit _amount into vault
         IVault(vaultAddress).deposit(toTokenBalance, yearnStakingDelegateAddress);
     }
