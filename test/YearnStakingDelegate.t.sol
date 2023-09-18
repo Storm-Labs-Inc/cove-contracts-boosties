@@ -6,6 +6,7 @@ import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
 import { IVault } from "src/interfaces/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { ISnapshotDelegateRegistry } from "src/interfaces/ISnapshotDelegateRegistry.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
@@ -173,5 +174,26 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         require(IERC20(oYFI).balanceOf(users["wrappedStrategy"]) == 49_999_999_999_999_999_965_120, "harvest failed");
+    }
+
+    function test_setSnapshotDelegate() public {
+        vm.startPrank(users["manager"]);
+        yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", users["manager"]);
+        vm.stopPrank();
+
+        assertEq(
+            ISnapshotDelegateRegistry(yearnStakingDelegate.SNAPSHOT_DELEGATE_REGISTRY()).delegation(
+                address(yearnStakingDelegate), "veyfi.eth"
+            ),
+            users["manager"],
+            "setSnapshotDelegate failed"
+        );
+    }
+
+    function test_setSnapshotDelegate_revertsWithZeroAddress() public {
+        vm.startPrank(users["manager"]);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", address(0));
+        vm.stopPrank();
     }
 }
