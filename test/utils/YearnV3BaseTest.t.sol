@@ -30,6 +30,7 @@ contract YearnV3BaseTest is BaseTest {
     mapping(string => address) public deployedVaults;
     mapping(string => address) public deployedStrategies;
 
+    address public admin;
     address public management;
     address public vaultManagement;
     address public performanceFeeRecipient;
@@ -61,6 +62,7 @@ contract YearnV3BaseTest is BaseTest {
 
         // create admin user that would be the default owner of deployed contracts unless specified
         createUser("admin");
+        admin = users["admin"];
         // create a naive user alice
         createUser("alice");
 
@@ -97,11 +99,11 @@ contract YearnV3BaseTest is BaseTest {
 
     /// VE-YFI related functions ///
     function setUpVotingYfiStack() public {
-        oYFI = _deployOYFI(users["admin"]);
+        oYFI = _deployOYFI(admin);
         oYFIRewardPool = _deployOYFIRewardPool(oYFI, block.timestamp + 1 days);
         gaugeImpl = _deployGaugeImpl(oYFI, oYFIRewardPool);
         gaugeFactory = _deployGaugeFactory(gaugeImpl);
-        gaugeRegistry = _deployVeYFIRegistry(users["admin"], gaugeFactory, oYFIRewardPool);
+        gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, oYFIRewardPool);
     }
 
     function _deployOYFI(address owner) internal returns (address) {
@@ -163,14 +165,14 @@ contract YearnV3BaseTest is BaseTest {
 
     /// YFI registry related functions ///
     function setUpYfiRegistry() public {
-        yearnReleaseRegistry = _deployYearnReleaseRegistry(management);
-        yearnRegistryFactory = _deployYearnRegistryFactory(management, yearnReleaseRegistry);
-        yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("test", management);
+        yearnReleaseRegistry = _deployYearnReleaseRegistry(admin);
+        yearnRegistryFactory = _deployYearnRegistryFactory(admin, yearnReleaseRegistry);
+        yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", management);
     }
 
     function _deployYearnReleaseRegistry(address owner) internal returns (address) {
         vm.prank(owner);
-        address registryAddr = address(new ReleaseRegistry(users["admin"]));
+        address registryAddr = address(new ReleaseRegistry(owner));
         vm.label(registryAddr, "ReleaseRegistry");
         return registryAddr;
     }
