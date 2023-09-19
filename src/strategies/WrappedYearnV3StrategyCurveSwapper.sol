@@ -15,14 +15,12 @@ import { console2 as console } from "forge-std/console2.sol";
 contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwapper {
     address public immutable curvePoolAddress;
     address public vaultAsset;
+    uint256 public slippageTolerance;
+    uint256 public timeTolerance;
 
     using SafeERC20 for ERC20;
 
-    // TODO: mainnet addresses just used for testing, will change to providing oracles on function call
-    address public constant CHAINLINK_DAI_USD_MAINNET = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
-    address public constant CHAINLINK_USDC_USD_MAINNET = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-    uint256 public constant SLIPPAGE_TOLERANCE = 995;
-    uint256 public constant TIME_TOLERANCE = 1 days;
+    mapping(address token => address oracle) public oracles;
 
     error OracleOudated();
     error SlippgeTooHigh();
@@ -34,7 +32,9 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
     function setYieldSource(address v3VaultAddress) external override {
         vaultAddress = v3VaultAddress;
+        // checks address is an ERC4626 vault and exists
         address _vaultAsset = IVault(v3VaultAddress).asset();
+
         vaultAsset = _vaultAsset;
         (int128 i, int128 j) = _getTokenIndexes(curvePoolAddress, asset, IVault(v3VaultAddress).asset());
         require(i >= -1 && j >= -1, "token not found in curve pool");
@@ -42,18 +42,29 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
         ERC20(_vaultAsset).approve(v3VaultAddress, type(uint256).max);
     }
 
+    // TODO: not sure exactly which role to assign here
+    function setOracle(address token, address oracle) external onlyManagement {
+        oracles[token] = oracle;
+    }
+
+    // TODO: not sure exactly which role to assign here
+    function setSwapParameters(uint256 _slippageTolerance, uint256 _timeTolerance) external onlyManagement {
+        slippageTolerance = _slippageTolerance;
+        timeTolerance = _timeTolerance;
+    }
+
     function _deployFunds(uint256 _amount) internal override {
         address _vaultAsset = vaultAsset;
         uint256 beforeBalance = ERC20(_vaultAsset).balanceOf(address(this));
 
         // get the current price of the from and to assets
-        uint256[2] memory prices = _getOraclePrices([CHAINLINK_USDC_USD_MAINNET, CHAINLINK_DAI_USD_MAINNET]);
+        uint256[2] memory prices = _getOraclePrices();
         // prices are always given in the precision as each other, eth pairs have 18 and non-eth pairs have 8
 
         // get the minimum we expect to reciceve adjusted by slippage tolerance
         // TODO: is there a better way to handle these decimals?
         uint256 expectedAmount =
-            ((_amount * prices[0] / prices[1]) * SLIPPAGE_TOLERANCE / 1000) * 10 ** (18 - IERC20(asset).decimals());
+            ((_amount * prices[0] / prices[1]) * slippageTolerance / 1000) * 10 ** (18 - IERC20(asset).decimals());
         // swap _amount into underlying vault asset
         _swapFrom(curvePoolAddress, asset, _vaultAsset, _amount, 0);
 
@@ -74,14 +85,17 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
     /**
      * Returns the latest price from the oracle and the timestamp of the price
-     * @param oracles address of the oracle of the from and to tokens
      * @return prices array of the latest price for each token
      */
-    function _getOraclePrices(address[2] memory oracles) internal view returns (uint256[2] memory prices) {
-        uint256 _timeTolerance = TIME_TOLERANCE;
+    function _getOraclePrices() internal view returns (uint256[2] memory prices) {
+        require(oracles[asset] != address(0), "oracle for asset not set");
+        require(oracles[vaultAsset] != address(0), "oracle for vault asset not set");
+        require(timeTolerance != 0, "time tolerance not set");
+        require(slippageTolerance != 0, "slippage tolerance not set");
+        uint256 _timeTolerance = timeTolerance;
         // get the decimal adjusted price for each token from the oracle,
-        (, int256 quotedFromPrice,, uint256 fromTimeStamp,) = IChainLinkOracle(oracles[0]).latestRoundData();
-        (, int256 quotedToPrice,, uint256 toTimeStamp,) = IChainLinkOracle(oracles[1]).latestRoundData();
+        (, int256 quotedFromPrice,, uint256 fromTimeStamp,) = IChainLinkOracle(oracles[asset]).latestRoundData();
+        (, int256 quotedToPrice,, uint256 toTimeStamp,) = IChainLinkOracle(oracles[vaultAsset]).latestRoundData();
         console.log("quotedFromPrice: ", uint256(quotedFromPrice), "quotedToPrice: ", uint256(quotedToPrice));
 
         // check if oracles are outdated

@@ -13,6 +13,8 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
     IStrategy public mockStrategy;
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     IVault public deployedVault;
+    address public constant CHAINLINK_DAI_USD_MAINNET = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+    address public constant CHAINLINK_USDC_USD_MAINNET = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 
     function setUp() public override {
         super.setUp();
@@ -29,6 +31,13 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         // create new user to be the staking delegate
         createUser("stakingDelegate");
         wrappedYearnV3Strategy.setStakingDelegate(users["stakingDelegate"]);
+        // set the oracle for USDC and DAI
+        vm.startPrank(users["tpManagement"]);
+        wrappedYearnV3Strategy.setOracle(DAI, CHAINLINK_DAI_USD_MAINNET);
+        wrappedYearnV3Strategy.setOracle(USDC, CHAINLINK_USDC_USD_MAINNET);
+        // set the swap parameters
+        wrappedYearnV3Strategy.setSwapParameters(995, 1 days);
+        vm.stopPrank();
     }
 
     function test_deposit() public {
