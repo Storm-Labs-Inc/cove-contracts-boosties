@@ -7,6 +7,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "tokenized-strategy-periphery/test/mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
+import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 
 import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
@@ -77,6 +78,9 @@ contract YearnV3BaseTest is BaseTest {
         vaultManagement = users["vaultManagement"];
         performanceFeeRecipient = users["performanceFeeRecipient"];
         keeper = users["keeper"];
+
+        vm.label(ETH_VE_YFI, "veYFI");
+        vm.label(ETH_YFI, "YFI");
     }
 
     function _createThirdPartyRelatedAddresses() internal {
@@ -108,9 +112,11 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function _deployOYFIRewardPool(address oYfi, uint256 startTime) internal returns (address) {
-        return vyperDeployer.deployContract(
+        address addr = vyperDeployer.deployContract(
             "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
         );
+        vm.label(addr, "OYfiRewardPool");
+        return addr;
     }
 
     function deployOptions(
@@ -243,6 +249,36 @@ contract YearnV3BaseTest is BaseTest {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IWrappedYearnV3Strategy _wrappedStrategy =
             IWrappedYearnV3Strategy(address(new WrappedYearnV3Strategy(address(asset))));
+        // set keeper
+        _wrappedStrategy.setKeeper(tpKeeper);
+        // set treasury
+        _wrappedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
+        // set management of the strategy
+        _wrappedStrategy.setPendingManagement(tpManagement);
+        // Accept mangagement.
+        vm.prank(tpManagement);
+        _wrappedStrategy.acceptManagement();
+
+        // Label and store the strategy
+        // *name is "Wrapped Yearn V3 Strategy"
+        deployedStrategies[name] = address(_wrappedStrategy);
+        vm.label(address(_wrappedStrategy), name);
+
+        return _wrappedStrategy;
+    }
+
+    // Deploy a strategy that wraps a vault.
+    function setUpWrappedStrategyCurveSwapper(
+        string memory name,
+        address asset,
+        address curvePool
+    )
+        public
+        returns (IWrappedYearnV3Strategy)
+    {
+        // we save the strategy as a IStrategyInterface to give it the needed interface
+        IWrappedYearnV3Strategy _wrappedStrategy =
+            IWrappedYearnV3Strategy(address(new WrappedYearnV3StrategyCurveSwapper(address(asset), curvePool)));
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);
         // set treasury
