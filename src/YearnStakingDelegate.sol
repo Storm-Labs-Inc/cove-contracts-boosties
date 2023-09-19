@@ -3,6 +3,7 @@ pragma solidity ^0.8.18;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
+import { ISnapshotDelegateRegistry } from "src/interfaces/ISnapshotDelegateRegistry.sol";
 import { IGauge } from "src/interfaces/IGauge.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Errors } from "src/libraries/Errors.sol";
@@ -43,6 +44,7 @@ contract YearnStakingDelegate is AccessControl {
 
     using SafeERC20 for IERC20;
 
+    address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address public immutable veYfi;
     address public immutable yfi;
     address public immutable oYfi;
@@ -189,6 +191,18 @@ contract YearnStakingDelegate is AccessControl {
         associatedGauge[vault] = gauge;
         // Interactions
         IERC20(vault).approve(gauge, type(uint256).max);
+    }
+
+    /// Delegates voting power to a given address
+    /// @param id name of the space in snapshot to apply delegation. For yearn it is "veyfi.eth"
+    /// @param delegate address to delegate voting power to
+    function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(MANAGER_ROLE) {
+        // Checks
+        if (delegate == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        // Interactions
+        ISnapshotDelegateRegistry(SNAPSHOT_DELEGATE_REGISTRY).setDelegate(id, delegate);
     }
 
     function _setRewardSplit(uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) internal {
