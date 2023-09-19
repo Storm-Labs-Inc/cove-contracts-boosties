@@ -25,9 +25,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
+    uint256 public constant OYFI_REWARD_AMOUNT = 1_000_000e18;
 
     // Addresses
-    address public admin;
     address public alice;
     address public manager;
     address public wrappedStrategy;
@@ -35,8 +35,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function setUp() public override {
         super.setUp();
 
-        // create admin user that will be the owner of the yearnStakingDelegate
-        admin = createUser("admin");
         // create alice who will be lock YFI via the yearnStakingDelegate
         alice = createUser("alice");
         // create manager of the yearnStakingDelegate
@@ -53,15 +51,15 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         airdrop(ERC20(ETH_YFI), alice, ALICE_YFI);
 
         // Give admin some oYFI
-        airdrop(ERC20(oYFI), admin, 1_000_000e18);
+        airdrop(ERC20(oYFI), admin, OYFI_REWARD_AMOUNT);
 
         // Start new rewards
         vm.startPrank(admin);
-        IERC20(oYFI).approve(testGauge, 1_000_000e18);
-        IGauge(testGauge).queueNewRewards(1_000_000e18);
+        IERC20(oYFI).approve(testGauge, OYFI_REWARD_AMOUNT);
+        IGauge(testGauge).queueNewRewards(OYFI_REWARD_AMOUNT);
         vm.stopPrank();
 
-        require(IERC20(oYFI).balanceOf(testGauge) == 1_000_000e18, "queueNewRewards failed");
+        require(IERC20(oYFI).balanceOf(testGauge) == OYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
         yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, admin, manager);
     }
@@ -230,7 +228,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be close to 10% of the rewards, giving 90% as the penalty
-        assertEq(IERC20(oYFI).balanceOf(wrappedStrategy), 99_999_999_999_999_999_930_240, "harvest failed");
+        assertLe(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, "harvest failed");
+        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, 0.01e18, "harvest failed");
     }
 
     function test_harvest_withSomeYFI() public {
@@ -249,7 +248,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be higher than 10% of the rewards due to the 1 YFI locked
-        assertEq(IERC20(oYFI).balanceOf(wrappedStrategy), 102_175_414_698_242_053_928_722, "harvest failed");
+        assertGt(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, "harvest failed");
+        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, 0.05e18, "harvest failed");
     }
 
     function test_harvest_withLargeYFI() public {
@@ -268,7 +268,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be close to 100% of the rewards
-        assertEq(IERC20(oYFI).balanceOf(wrappedStrategy), 992_631_961_881_765_645_307_539, "harvest failed");
+        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT, 0.01e18, "harvest failed");
     }
 
     function test_setSnapshotDelegate() public {

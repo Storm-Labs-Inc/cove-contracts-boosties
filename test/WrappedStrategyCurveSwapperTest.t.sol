@@ -14,8 +14,12 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     IVault public deployedVault;
 
+    address public alice;
+
     function setUp() public override {
         super.setUp();
+
+        alice = createUser("alice");
 
         // The underlying vault accepts DAI, while the wrapped strategy accepts USDC
         mockStrategy = setUpStrategy("Mock DAI Strategy", DAI);
