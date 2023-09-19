@@ -14,6 +14,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     IVault public deployedVault;
 
+    // Addresses
     address public alice;
 
     function setUp() public override {

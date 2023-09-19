@@ -40,6 +40,10 @@ abstract contract BaseTest is Test, Constants {
      */
     function createUser(string memory name) public returns (address payable) {
         address payable user = payable(makeAddr(name));
+        if (users[name] != address(0)) {
+            console2.log("User ", name, " already exists");
+            return user;
+        }
         vm.deal({ account: user, newBalance: 100 ether });
         users[name] = user;
         return user;

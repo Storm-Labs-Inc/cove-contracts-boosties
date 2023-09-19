@@ -13,7 +13,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     IVault public deployedVault;
 
-    // addresses
+    // Addresses
     address public alice;
 
     function setUp() public override {
