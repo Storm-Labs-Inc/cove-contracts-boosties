@@ -4,26 +4,23 @@ pragma solidity ^0.8.18;
 
 import { WrappedYearnV3Strategy } from "./WrappedYearnV3Strategy.sol";
 import { CurveSwapper } from "../CurveSwapper.sol";
+import { Errors } from "../libraries/Errors.sol";
 import { IVault } from "src/interfaces/IVault.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-// TODO: check with weeb how to handle this below interface
-import { IERC20 } from "src/interfaces/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
 contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwapper {
     address public immutable curvePoolAddress;
     address public vaultAsset;
-    uint256 public slippageTolerance;
-    uint256 public timeTolerance;
+    uint256 public slippageTolerance = 995;
+    uint256 public constant SLIPPAGE_TOLERANCE_PRECISION = 1e4;
+    uint256 public timeTolerance = 2 hours;
 
-    using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20Metadata;
 
     mapping(address token => address oracle) public oracles;
-
-    error OracleOudated();
-    error SlippageTooHigh();
 
     constructor(address _asset, address curvePool) WrappedYearnV3Strategy(_asset) {
         require(curvePool != address(0), "curve pool address cannot be 0");
@@ -39,23 +36,29 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
         (int128 i, int128 j) = _getTokenIndexes(curvePoolAddress, asset, IVault(v3VaultAddress).asset());
         require(i >= -1 && j >= -1, "token not found in curve pool");
         // Approve all future vault deposits
-        ERC20(_vaultAsset).approve(v3VaultAddress, type(uint256).max);
+        IERC20Metadata(_vaultAsset).approve(v3VaultAddress, type(uint256).max);
     }
 
     // TODO: not sure exactly which role to assign here
     function setOracle(address token, address oracle) external onlyManagement {
+        require(token != address(0), "token address cannot be 0");
+        require(oracle != address(0), "oracle address cannot be 0");
         oracles[token] = oracle;
     }
 
     // TODO: not sure exactly which role to assign here
     function setSwapParameters(uint256 _slippageTolerance, uint256 _timeTolerance) external onlyManagement {
+        require(_slippageTolerance <= SLIPPAGE_TOLERANCE_PRECISION, "slippage tolerance cannot be greater than 100%");
+        require(_slippageTolerance >= 500, "slippage tolerance cannot be less than 50%");
+        require(_timeTolerance != 0, "time tolerance cannot be 0");
+        require(_timeTolerance <= 1 days, "time tolerance cannot be greater than 1 day");
         slippageTolerance = _slippageTolerance;
         timeTolerance = _timeTolerance;
     }
 
     function _deployFunds(uint256 _amount) internal override {
         address _vaultAsset = vaultAsset;
-        uint256 beforeBalance = ERC20(_vaultAsset).balanceOf(address(this));
+        uint256 beforeBalance = IERC20Metadata(_vaultAsset).balanceOf(address(this));
 
         // get the current price of the from and to assets
         uint256[2] memory prices = _getOraclePrices();
@@ -63,20 +66,20 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
         // get the minimum we expect to reciceve adjusted by slippage tolerance
         // TODO: is there a better way to handle these decimals?
-        uint256 expectedAmount =
-            ((_amount * prices[0] / prices[1]) * slippageTolerance / 1000) * 10 ** (18 - IERC20(asset).decimals());
+        uint256 expectedAmount = ((_amount * prices[0] / prices[1]) * slippageTolerance / SLIPPAGE_TOLERANCE_PRECISION)
+            * 10 ** (18 - IERC20Metadata(asset).decimals());
         // swap _amount into underlying vault asset
         _swapFrom(curvePoolAddress, asset, _vaultAsset, _amount, 0);
 
         // get exact amount of tokens from the transfer denominated in 1e18
-        uint256 afterTokenBalance =
-            (ERC20(_vaultAsset).balanceOf(address(this)) - beforeBalance) * 10 ** (18 - IERC20(_vaultAsset).decimals());
+        uint256 afterTokenBalance = (IERC20Metadata(_vaultAsset).balanceOf(address(this)) - beforeBalance)
+            * 10 ** (18 - IERC20Metadata(_vaultAsset).decimals());
 
         // check if we got less than the expected amount
         console.log("after swap token Balance: ", afterTokenBalance);
         console.log("expected swap amount    : ", expectedAmount);
         if (afterTokenBalance < expectedAmount) {
-            revert SlippageTooHigh();
+            revert Errors.SlippageTooHigh();
         }
 
         // deposit _amount into vault if the swap was successful
@@ -100,7 +103,7 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
         // check if oracles are outdated
         if (block.timestamp - fromTimeStamp > _timeTolerance || block.timestamp - toTimeStamp > _timeTolerance) {
-            revert OracleOudated();
+            revert Errors.OracleOudated();
         }
         return ([uint256(quotedFromPrice), uint256(quotedToPrice)]);
     }
