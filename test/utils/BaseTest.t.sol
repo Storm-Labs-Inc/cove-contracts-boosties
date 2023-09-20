@@ -40,6 +40,10 @@ abstract contract BaseTest is Test, Constants {
      */
     function createUser(string memory name) public returns (address payable) {
         address payable user = payable(makeAddr(name));
+        if (users[name] != address(0)) {
+            console2.log("User ", name, " already exists");
+            return user;
+        }
         vm.deal({ account: user, newBalance: 100 ether });
         users[name] = user;
         return user;
@@ -96,6 +100,10 @@ abstract contract BaseTest is Test, Constants {
         vm.selectFork(forks[network].forkId);
     }
 
+    /// Airdrop an asset to an address with a given amount
+    /// @param _asset address of the asset to airdrop
+    /// @param _to address to airdrop to
+    /// @param _amount amount to airdrop
     function airdrop(ERC20 _asset, address _to, uint256 _amount) public {
         uint256 balanceBefore = _asset.balanceOf(_to);
         deal(address(_asset), _to, balanceBefore + _amount);

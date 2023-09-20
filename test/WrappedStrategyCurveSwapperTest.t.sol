@@ -19,8 +19,13 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
     address public constant CHAINLINK_DAI_USD_MAINNET = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
     address public constant CHAINLINK_USDC_USD_MAINNET = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 
+    // Addresses
+    address public alice;
+
     function setUp() public override {
         super.setUp();
+
+        alice = createUser("alice");
 
         // The underlying vault accepts DAI, while the wrapped strategy accepts USDC
         mockStrategy = setUpStrategy("Mock DAI Strategy", DAI);

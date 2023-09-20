@@ -34,7 +34,7 @@ contract YearnStakingDelegate is AccessControl {
 
     /// @notice Mapping of vault to gauge
     // slither-disable-next-line uninitialized-state
-    mapping(address vault => address gauge) public associatedGauge;
+    mapping(address vault => address) public associatedGauge;
     // slither-disable-next-line uninitialized-state
     mapping(address user => mapping(address vault => UserInfo)) public userInfo;
     mapping(address vault => VaultRewards) public vaultRewardsInfo;
