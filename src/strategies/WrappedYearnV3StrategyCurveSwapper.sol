@@ -30,16 +30,17 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
     }
 
     function setYieldSource(address v3VaultAddress) external override onlyManagement {
-        vaultAddress = v3VaultAddress;
-        // checks address is an ERC4626 vault and exists
+        // Checks
         address _vaultAsset = IVault(v3VaultAddress).asset();
-
-        vaultAsset = _vaultAsset;
         (int128 i, int128 j) = _getTokenIndexes(curvePoolAddress, asset, IVault(v3VaultAddress).asset());
         if (i <= -1 || j <= -1) {
             revert Errors.TokenNotFoundInPool(_vaultAsset);
         }
-        // Approve all future vault deposits
+        // Effects
+        vaultAsset = _vaultAsset;
+        vaultAddress = v3VaultAddress;
+
+        // Interactions
         IERC20Metadata(_vaultAsset).approve(v3VaultAddress, type(uint256).max);
     }
 
