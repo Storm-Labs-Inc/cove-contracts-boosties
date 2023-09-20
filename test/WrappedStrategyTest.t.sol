@@ -13,8 +13,13 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     IVault public deployedVault;
 
+    // Addresses
+    address public alice;
+
     function setUp() public override {
         super.setUp();
+
+        alice = createUser("alice");
 
         mockStrategy = setUpStrategy("Mock USDC Strategy", USDC);
         wrappedYearnV3Strategy = setUpWrappedStrategy("Wrapped YearnV3 Strategy", USDC);

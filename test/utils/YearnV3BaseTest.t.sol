@@ -61,10 +61,7 @@ contract YearnV3BaseTest is BaseTest {
         _createThirdPartyRelatedAddresses();
 
         // create admin user that would be the default owner of deployed contracts unless specified
-        createUser("admin");
-        admin = users["admin"];
-        // create a naive user alice
-        createUser("alice");
+        admin = createUser("admin");
 
         setUpVotingYfiStack();
         setUpYfiRegistry();
