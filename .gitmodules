@@ -14,3 +14,6 @@
 [submodule "lib/yearn-vaults-v3"]
 	path = lib/yearn-vaults-v3
 	url = https://github.com/yearn/yearn-vaults-v3
+[submodule "lib/vault-periphery"]
+	path = lib/vault-periphery
+	url = https://github.com/yearn/vault-periphery

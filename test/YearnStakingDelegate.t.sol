@@ -6,6 +6,7 @@ import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
 import { IVault } from "src/interfaces/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { ISnapshotDelegateRegistry } from "src/interfaces/ISnapshotDelegateRegistry.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
@@ -21,6 +22,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     IStrategy public mockStrategy;
     address public testVault;
     address public testGauge;
+
+    // Airdrop amounts
+    uint256 public constant ALICE_YFI = 5000e18;
 
     function setUp() public override {
         super.setUp();
@@ -40,7 +44,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         testGauge = deployGaugeViaFactory(testVault, users["admin"], "USDC Test Vault Gauge");
 
         // Give alice some YFI
-        airdrop(ERC20(ETH_YFI), users["alice"], 1e18);
+        airdrop(ERC20(ETH_YFI), users["alice"], ALICE_YFI);
 
         // Give admin some oYFI
         airdrop(ERC20(oYFI), users["admin"], 1_000_000e18);
@@ -56,12 +60,26 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
     }
 
-    function test_constructor() public {
-        require(yearnStakingDelegate.yfi() == ETH_YFI, "yfi");
-        require(yearnStakingDelegate.oYfi() == oYFI, "oYfi");
-        require(yearnStakingDelegate.veYfi() == ETH_VE_YFI, "veYfi");
-        require(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), users["manager"]), "manager");
-        require(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]), "admin");
+    function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
+        vm.assume(noAdminRole != users["admin"]);
+        // manager role is given to admin and manager
+        vm.assume(noManagerRole != users["manager"] && noManagerRole != users["admin"]);
+        // Check for storage variables default values
+        assertEq(yearnStakingDelegate.yfi(), ETH_YFI);
+        assertEq(yearnStakingDelegate.oYfi(), oYFI);
+        assertEq(yearnStakingDelegate.veYfi(), ETH_VE_YFI);
+        assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
+        (uint80 treasury, uint80 strategy, uint80 veYfi) = yearnStakingDelegate.rewardSplit();
+        assertEq(treasury, 0);
+        assertEq(strategy, 1e18);
+        assertEq(veYfi, 0);
+        // Check for roles
+        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), users["manager"]));
+        assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), noManagerRole));
+        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]));
+        assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
+        // Check for approvals
+        assertEq(IERC20(ETH_YFI).allowance(address(yearnStakingDelegate), ETH_VE_YFI), type(uint256).max);
     }
 
     function test_setAssociatedGauge() public {
@@ -70,36 +88,66 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         require(yearnStakingDelegate.associatedGauge(testVault) == testGauge, "setAssociatedGauge failed");
     }
 
-    function test_lockYFI() public {
-        vm.startPrank(users["alice"]);
-        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
-        yearnStakingDelegate.lockYfi(1e18);
+    function _lockYFI(address user, uint256 amount) internal {
+        vm.startPrank(user);
+        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), amount);
+        yearnStakingDelegate.lockYfi(amount);
         vm.stopPrank();
+    }
 
-        require(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)) == 0, "lock failed");
-        // Slightly less than 1e18 due to rounding
-        require(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)) == 999_999_999_971_481_600, "lock failed");
+    function test_lockYFI() public {
+        _lockYFI(users["alice"], 1e18);
+
+        assertEq(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
+        assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 999_999_999_971_481_600, "lock failed");
+    }
+
+    function testFuzz_lockYFI_revertsWhenCreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
+        vm.assume(lockAmount > 0);
+        vm.assume(lockAmount < 1e18);
+        vm.startPrank(users["alice"]);
+        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), lockAmount);
+        vm.expectRevert();
+        yearnStakingDelegate.lockYfi(lockAmount);
+        vm.stopPrank();
+    }
+
+    function testFuzz_lockYFI(uint256 lockAmount) public {
+        vm.assume(lockAmount >= 1e18);
+        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(users["alice"]));
+        _lockYFI(users["alice"], lockAmount);
+
+        assertEq(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
+        assertGt(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount - 1e9, "lock failed");
+        assertLe(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount, "lock failed");
     }
 
     function test_earlyUnlock() public {
-        vm.startPrank(users["alice"]);
-        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
-        yearnStakingDelegate.lockYfi(1e18);
-        vm.stopPrank();
+        _lockYFI(users["alice"], 1e18);
 
         vm.startPrank(users["admin"]);
         yearnStakingDelegate.setPerpetualLock(false);
         yearnStakingDelegate.earlyUnlock(users["admin"]);
         vm.stopPrank();
 
-        require(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)) == 0, "early unlock failed");
+        assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
+    }
+
+    function testFuzz_earlyUnlock(uint256 lockAmount) public {
+        vm.assume(lockAmount >= 1e18);
+        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(users["alice"]));
+        _lockYFI(users["alice"], lockAmount);
+
+        vm.startPrank(users["admin"]);
+        yearnStakingDelegate.setPerpetualLock(false);
+        yearnStakingDelegate.earlyUnlock(users["admin"]);
+        vm.stopPrank();
+
+        assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
     }
 
     function test_earlyUnlock_revertsPerpeutalLockEnabled() public {
-        vm.startPrank(users["alice"]);
-        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), 1e18);
-        yearnStakingDelegate.lockYfi(1e18);
-        vm.stopPrank();
+        _lockYFI(users["alice"], 1e18);
 
         vm.startPrank(users["admin"]);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
@@ -173,5 +221,26 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         require(IERC20(oYFI).balanceOf(users["wrappedStrategy"]) == 49_999_999_999_999_999_965_120, "harvest failed");
+    }
+
+    function test_setSnapshotDelegate() public {
+        vm.startPrank(users["manager"]);
+        yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", users["manager"]);
+        vm.stopPrank();
+
+        assertEq(
+            ISnapshotDelegateRegistry(yearnStakingDelegate.SNAPSHOT_DELEGATE_REGISTRY()).delegation(
+                address(yearnStakingDelegate), "veyfi.eth"
+            ),
+            users["manager"],
+            "setSnapshotDelegate failed"
+        );
+    }
+
+    function test_setSnapshotDelegate_revertsWithZeroAddress() public {
+        vm.startPrank(users["manager"]);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", address(0));
+        vm.stopPrank();
     }
 }

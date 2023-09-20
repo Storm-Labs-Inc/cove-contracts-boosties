@@ -1,4 +1,5 @@
 @openzeppelin/=node_modules/@openzeppelin/
+@periphery/=lib/tokenized-strategy-periphery/src/
 @tokenized-strategy/=lib/tokenized-strategy-periphery/lib/tokenized-strategy/src/
 @yearn-vaults/=lib/tokenized-strategy-periphery/lib/yearn-vaults-v3/contracts/
 create-util/=lib/create-util/contracts/
@@ -12,5 +13,6 @@ src/=src/
 test/=test/
 tokenized-strategy-periphery/=lib/tokenized-strategy-periphery/src/
 tokenized-strategy/=lib/tokenized-strategy/src/
+vault-periphery/=lib/vault-periphery/contracts
 veYFI/=lib/veYFI/contracts/
 yearn-vaults-v3/=lib/yearn-vaults-v3/contracts/

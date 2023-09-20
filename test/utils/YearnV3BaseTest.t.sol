@@ -9,6 +9,9 @@ import { MockStrategy } from "tokenized-strategy-periphery/test/mocks/MockStrate
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
 import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 
+import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
+import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
+
 import { Gauge } from "src/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/veYFI/GaugeFactory.sol";
 import { OYfi } from "src/veYFI/OYfi.sol";
@@ -27,6 +30,7 @@ contract YearnV3BaseTest is BaseTest {
     mapping(string => address) public deployedVaults;
     mapping(string => address) public deployedStrategies;
 
+    address public admin;
     address public management;
     address public vaultManagement;
     address public performanceFeeRecipient;
@@ -43,6 +47,11 @@ contract YearnV3BaseTest is BaseTest {
     address public gaugeFactory;
     address public gaugeRegistry;
 
+    // Yearn registry addresses
+    address public yearnReleaseRegistry;
+    address public yearnRegistryFactory;
+    address public yearnRegistry;
+
     function setUp() public virtual override {
         // Fork ethereum mainnet
         forkNetwork("mainnet");
@@ -53,10 +62,12 @@ contract YearnV3BaseTest is BaseTest {
 
         // create admin user that would be the default owner of deployed contracts unless specified
         createUser("admin");
+        admin = users["admin"];
         // create a naive user alice
         createUser("alice");
 
         setUpVotingYfiStack();
+        setUpYfiRegistry();
     }
 
     function _createYearnRelatedAddresses() internal {
@@ -88,11 +99,11 @@ contract YearnV3BaseTest is BaseTest {
 
     /// VE-YFI related functions ///
     function setUpVotingYfiStack() public {
-        oYFI = _deployOYFI(users["admin"]);
+        oYFI = _deployOYFI(admin);
         oYFIRewardPool = _deployOYFIRewardPool(oYFI, block.timestamp + 1 days);
         gaugeImpl = _deployGaugeImpl(oYFI, oYFIRewardPool);
         gaugeFactory = _deployGaugeFactory(gaugeImpl);
-        gaugeRegistry = _deployVeYFIRegistry(users["admin"], gaugeFactory, oYFIRewardPool);
+        gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, oYFIRewardPool);
     }
 
     function _deployOYFI(address owner) internal returns (address) {
@@ -152,9 +163,30 @@ contract YearnV3BaseTest is BaseTest {
         return address(new Registry(ETH_VE_YFI, ETH_YFI, _gaugeFactory, veYFIRewardPool));
     }
 
+    /// YFI registry related functions ///
+    function setUpYfiRegistry() public {
+        yearnReleaseRegistry = _deployYearnReleaseRegistry(admin);
+        yearnRegistryFactory = _deployYearnRegistryFactory(admin, yearnReleaseRegistry);
+        yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", management);
+    }
+
+    function _deployYearnReleaseRegistry(address owner) internal returns (address) {
+        vm.prank(owner);
+        address registryAddr = address(new ReleaseRegistry(owner));
+        vm.label(registryAddr, "ReleaseRegistry");
+        return registryAddr;
+    }
+
+    function _deployYearnRegistryFactory(address owner, address releaseRegistry) internal returns (address) {
+        vm.prank(owner);
+        address factoryAddr = address(new RegistryFactory(releaseRegistry));
+        vm.label(factoryAddr, "RegistryFactory");
+        return factoryAddr;
+    }
+
     // Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
     // strategies can be dummy ones or real ones
-    // This is intended to spwan a vault that we have control over.
+    // This is intended to spawn a vault that we have control over.
     function deployVaultV3(
         string memory vaultName,
         address asset,
