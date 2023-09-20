@@ -42,4 +42,12 @@ library Errors {
     error OracleOudated();
 
     error SlippageTooHigh();
+
+    error OracleNotSet(address asset);
+
+    error SlippageToleranceNotInRange(uint256 slippageTolerance);
+
+    error TimeToleranceNotInRange(uint256 timeTolerance);
+
+    error TokenNotFoundInPool(address token);
 }

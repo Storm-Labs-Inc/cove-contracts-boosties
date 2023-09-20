@@ -23,7 +23,9 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
     mapping(address token => address oracle) public oracles;
 
     constructor(address _asset, address curvePool) WrappedYearnV3Strategy(_asset) {
-        require(curvePool != address(0), "curve pool address cannot be 0");
+        if (curvePool == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         curvePoolAddress = curvePool;
     }
 
@@ -34,24 +36,29 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
         vaultAsset = _vaultAsset;
         (int128 i, int128 j) = _getTokenIndexes(curvePoolAddress, asset, IVault(v3VaultAddress).asset());
-        require(i >= -1 && j >= -1, "token not found in curve pool");
+        if (i <= -1 || j <= -1) {
+            revert Errors.TokenNotFoundInPool(_vaultAsset);
+        }
         // Approve all future vault deposits
         IERC20Metadata(_vaultAsset).approve(v3VaultAddress, type(uint256).max);
     }
 
     // TODO: not sure exactly which role to assign here
     function setOracle(address token, address oracle) external onlyManagement {
-        require(token != address(0), "token address cannot be 0");
-        require(oracle != address(0), "oracle address cannot be 0");
+        if (token == address(0) || oracle == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         oracles[token] = oracle;
     }
 
     // TODO: not sure exactly which role to assign here
     function setSwapParameters(uint256 _slippageTolerance, uint256 _timeTolerance) external onlyManagement {
-        require(_slippageTolerance <= SLIPPAGE_TOLERANCE_PRECISION, "slippage tolerance cannot be greater than 100%");
-        require(_slippageTolerance >= 500, "slippage tolerance cannot be less than 50%");
-        require(_timeTolerance != 0, "time tolerance cannot be 0");
-        require(_timeTolerance <= 1 days, "time tolerance cannot be greater than 1 day");
+        if (_slippageTolerance >= SLIPPAGE_TOLERANCE_PRECISION || _slippageTolerance <= 500) {
+            revert Errors.SlippageToleranceNotInRange(_slippageTolerance);
+        }
+        if (_timeTolerance == 0 || _timeTolerance > 1 days) {
+            revert Errors.TimeToleranceNotInRange(_timeTolerance);
+        }
         slippageTolerance = _slippageTolerance;
         timeTolerance = _timeTolerance;
     }
@@ -59,16 +66,11 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
     function _deployFunds(uint256 _amount) internal override {
         address _vaultAsset = vaultAsset;
         uint256 beforeBalance = IERC20Metadata(_vaultAsset).balanceOf(address(this));
+        (uint256 fromPrice, uint256 toPrice) = _getOraclePrices();
+        // Expected amount of tokens to receive from the swap
+        uint256 expectedAmount = ((_amount * fromPrice / toPrice) * 10 ** (18 - IERC20Metadata(asset).decimals()))
+            * slippageTolerance / SLIPPAGE_TOLERANCE_PRECISION;
 
-        // get the current price of the from and to assets
-        uint256[2] memory prices = _getOraclePrices();
-        // prices are always given in the precision as each other, eth pairs have 18 and non-eth pairs have 8
-
-        // get the minimum we expect to reciceve adjusted by slippage tolerance
-        // TODO: is there a better way to handle these decimals?
-        uint256 expectedAmount = ((_amount * prices[0] / prices[1]) * slippageTolerance / SLIPPAGE_TOLERANCE_PRECISION)
-            * 10 ** (18 - IERC20Metadata(asset).decimals());
-        // swap _amount into underlying vault asset
         _swapFrom(curvePoolAddress, asset, _vaultAsset, _amount, 0);
 
         // get exact amount of tokens from the transfer denominated in 1e18
@@ -88,23 +90,28 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
     /**
      * Returns the latest price from the oracle and the timestamp of the price
-     * @return prices array of the latest price for each token
+     * @return toPrice the price of the to asset
+     * @return fromPrice the price of the from asset
      */
-    function _getOraclePrices() internal view returns (uint256[2] memory prices) {
-        require(oracles[asset] != address(0), "oracle for asset not set");
-        require(oracles[vaultAsset] != address(0), "oracle for vault asset not set");
-        require(timeTolerance != 0, "time tolerance not set");
-        require(slippageTolerance != 0, "slippage tolerance not set");
+    function _getOraclePrices() internal view returns (uint256 toPrice, uint256 fromPrice) {
+        address _assetOracle = oracles[asset];
+        address _vaultAssetOracle = oracles[vaultAsset];
+        if (_assetOracle == address(0)) {
+            revert Errors.OracleNotSet(asset);
+        }
+        if (_vaultAssetOracle == address(0)) {
+            revert Errors.OracleNotSet(vaultAsset);
+        }
         uint256 _timeTolerance = timeTolerance;
         // get the decimal adjusted price for each token from the oracle,
-        (, int256 quotedFromPrice,, uint256 fromTimeStamp,) = IChainLinkOracle(oracles[asset]).latestRoundData();
-        (, int256 quotedToPrice,, uint256 toTimeStamp,) = IChainLinkOracle(oracles[vaultAsset]).latestRoundData();
+        (, int256 quotedFromPrice,, uint256 fromTimeStamp,) = IChainLinkOracle(_assetOracle).latestRoundData();
+        (, int256 quotedToPrice,, uint256 toTimeStamp,) = IChainLinkOracle(_vaultAssetOracle).latestRoundData();
         console.log("quotedFromPrice: ", uint256(quotedFromPrice), "quotedToPrice: ", uint256(quotedToPrice));
 
         // check if oracles are outdated
         if (block.timestamp - fromTimeStamp > _timeTolerance || block.timestamp - toTimeStamp > _timeTolerance) {
             revert Errors.OracleOudated();
         }
-        return ([uint256(quotedFromPrice), uint256(quotedToPrice)]);
+        return ((uint256(quotedFromPrice), uint256(quotedToPrice)));
     }
 }
