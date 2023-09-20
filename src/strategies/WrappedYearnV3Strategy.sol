@@ -15,11 +15,11 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
 
     constructor(address _asset) BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Strategy") { }
 
-    function setYieldSource(address v3VaultAddress) external virtual {
+    function setYieldSource(address v3VaultAddress) external virtual onlyManagement {
         vaultAddress = v3VaultAddress;
     }
 
-    function setStakingDelegate(address delegateAddress) external {
+    function setStakingDelegate(address delegateAddress) external onlyManagement {
         yearnStakingDelegateAddress = delegateAddress;
     }
 

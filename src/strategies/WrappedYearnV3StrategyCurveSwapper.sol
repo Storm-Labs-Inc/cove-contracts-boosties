@@ -23,14 +23,14 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
     mapping(address token => address oracle) public oracles;
 
     error OracleOudated();
-    error SlippgeTooHigh();
+    error SlippageTooHigh();
 
     constructor(address _asset, address curvePool) WrappedYearnV3Strategy(_asset) {
         require(curvePool != address(0), "curve pool address cannot be 0");
         curvePoolAddress = curvePool;
     }
 
-    function setYieldSource(address v3VaultAddress) external override {
+    function setYieldSource(address v3VaultAddress) external override onlyManagement {
         vaultAddress = v3VaultAddress;
         // checks address is an ERC4626 vault and exists
         address _vaultAsset = IVault(v3VaultAddress).asset();
@@ -73,10 +73,10 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
             (ERC20(_vaultAsset).balanceOf(address(this)) - beforeBalance) * 10 ** (18 - IERC20(_vaultAsset).decimals());
 
         // check if we got less than the expected amount
-        console.log("afterTokenBalance: ", afterTokenBalance);
-        console.log("expectedAmount   : ", expectedAmount);
+        console.log("after swap token Balance: ", afterTokenBalance);
+        console.log("expected swap amount    : ", expectedAmount);
         if (afterTokenBalance < expectedAmount) {
-            revert SlippgeTooHigh();
+            revert SlippageTooHigh();
         }
 
         // deposit _amount into vault if the swap was successful

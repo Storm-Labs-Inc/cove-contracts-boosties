@@ -23,10 +23,12 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         strategies[0] = address(mockStrategy);
         deployVaultV3("USDC Vault", USDC, strategies);
         deployedVault = IVault(deployedVaults["USDC Vault"]);
+        vm.startPrank(users["tpManagement"]);
         wrappedYearnV3Strategy.setYieldSource(deployedVaults["USDC Vault"]);
         // create new user to be the staking delegate
         createUser("stakingDelegate");
         wrappedYearnV3Strategy.setStakingDelegate(users["stakingDelegate"]);
+        vm.stopPrank();
     }
 
     function testWrappedStrategyDeployment() public view {

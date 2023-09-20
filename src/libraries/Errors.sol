@@ -36,4 +36,10 @@ library Errors {
     error PerpetualLockEnabled();
 
     error NoAssociatedGauge();
+
+    //// WRAPPED STRATEGY CURVE SWAPPER ////
+
+    error OracleOudated();
+
+    error SlippageTooHigh();
 }
