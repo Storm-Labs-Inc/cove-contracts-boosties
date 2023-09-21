@@ -8,7 +8,7 @@ import { IVault } from "src/interfaces/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ICurveBasePool } from "../src/interfaces/ICurveBasePool.sol";
-import { MockChainLinkOracle } from "./utils/MockChainLinkOracle.sol";
+import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
 contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
