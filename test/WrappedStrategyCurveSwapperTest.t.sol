@@ -44,7 +44,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.setOracle(DAI, CHAINLINK_DAI_USD_MAINNET);
         wrappedYearnV3Strategy.setOracle(USDC, CHAINLINK_USDC_USD_MAINNET);
         // set the swap parameters
-        wrappedYearnV3Strategy.setSwapParameters(995, 1 days);
+        wrappedYearnV3Strategy.setSwapParameters(99_500, 1 days);
         vm.stopPrank();
     }
 
