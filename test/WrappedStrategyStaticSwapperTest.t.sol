@@ -45,7 +45,9 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_deposit() public {
+    function testFuzz_deposit(uint256 amount) public {
+        vm.assume(amount > 1e6);
+        vm.assume(amount < 1e13);
         uint256 amount = 1e8; // 100 USDC
         deal({ token: USDC, to: users["alice"], give: amount });
         vm.startPrank(users["alice"]);

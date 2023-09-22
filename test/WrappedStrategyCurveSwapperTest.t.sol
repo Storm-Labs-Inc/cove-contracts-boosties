@@ -48,8 +48,9 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_deposit() public {
-        uint256 amount = 1e8; // 100 USDC
+    function testFuzz_deposit(uint256 amount) public {
+        vm.assume(amount > 1e6);
+        vm.assume(amount < 1e15);
         deal({ token: USDC, to: users["alice"], give: amount });
         vm.startPrank(users["alice"]);
         ERC20(USDC).approve(address(wrappedYearnV3Strategy), amount);
