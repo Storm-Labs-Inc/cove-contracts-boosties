@@ -9,7 +9,6 @@ import { WrappedYearnV3StrategyStaticSwapper } from "../src/strategies/WrappedYe
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ICurveBasePool } from "../src/interfaces/ICurveBasePool.sol";
-import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
 contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
@@ -17,8 +16,6 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
     WrappedYearnV3StrategyStaticSwapper public wrappedYearnV3StrategyStaticSwapper;
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     IVault public deployedVault;
-    address public constant CHAINLINK_DAI_USD_MAINNET = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
-    address public constant CHAINLINK_USDC_USD_MAINNET = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 
     // Addresses
     address public alice;
