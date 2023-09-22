@@ -72,7 +72,6 @@ abstract contract BaseTest is Test, Constants {
      * @param blockNumber The block number to fork from.
      * @return The fork id.
      */
-    // TODO: Why does this break when the fork functions are overloaded
     function forkNetworkAt(string memory network, uint256 blockNumber) public returns (uint256) {
         string memory rpcURL = vm.rpcUrl(network);
         uint256 forkId = vm.createSelectFork(rpcURL, blockNumber);
