@@ -69,14 +69,10 @@ contract YearnV3BaseTest is BaseTest {
 
     function _createYearnRelatedAddresses() internal {
         // Create yearn related user addresses
-        createUser("management");
-        createUser("vaultManagement");
-        createUser("performanceFeeRecipient");
-        createUser("keeper");
-        management = users["management"];
-        vaultManagement = users["vaultManagement"];
-        performanceFeeRecipient = users["performanceFeeRecipient"];
-        keeper = users["keeper"];
+        management = createUser("management");
+        vaultManagement = createUser("vaultManagement");
+        performanceFeeRecipient = createUser("performanceFeeRecipient");
+        keeper = createUser("keeper");
 
         vm.label(ETH_VE_YFI, "veYFI");
         vm.label(ETH_YFI, "YFI");
@@ -84,14 +80,10 @@ contract YearnV3BaseTest is BaseTest {
 
     function _createThirdPartyRelatedAddresses() internal {
         // Create third party related user addresses
-        createUser("tpManagement");
-        createUser("tpVaultManagement");
-        createUser("tpPerformanceFeeRecipient");
-        createUser("tpKeeper");
-        tpManagement = users["tpManagement"];
-        tpVaultManagement = users["tpVaultManagement"];
-        tpPerformanceFeeRecipient = users["tpPerformanceFeeRecipient"];
-        tpKeeper = users["tpKeeper"];
+        tpManagement = createUser("tpManagement");
+        tpVaultManagement = createUser("tpVaultManagement");
+        tpPerformanceFeeRecipient = createUser("tpPerformanceFeeRecipient");
+        tpKeeper = createUser("tpKeeper");
     }
 
     /// VE-YFI related functions ///
