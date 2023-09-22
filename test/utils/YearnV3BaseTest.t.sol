@@ -11,6 +11,8 @@ import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV
 
 import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
+import { Registry as PeripheryRegistry } from "vault-periphery/registry/Registry.sol";
+import { MockFactory } from "vault-periphery/Mocks/MockFactory.sol";
 
 import { Gauge } from "src/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/veYFI/GaugeFactory.sol";
@@ -157,7 +159,11 @@ contract YearnV3BaseTest is BaseTest {
     function setUpYfiRegistry() public {
         yearnReleaseRegistry = _deployYearnReleaseRegistry(admin);
         yearnRegistryFactory = _deployYearnRegistryFactory(admin, yearnReleaseRegistry);
-        yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", management);
+        yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", admin);
+
+        address factory = address(new MockFactory("3.0.0"));
+        vm.prank(admin);
+        ReleaseRegistry(yearnReleaseRegistry).newRelease(factory);
     }
 
     function _deployYearnReleaseRegistry(address owner) internal returns (address) {
@@ -204,6 +210,10 @@ contract YearnV3BaseTest is BaseTest {
         // Label the vault
         deployedVaults[vaultName] = address(_vault);
         vm.label(address(_vault), vaultName);
+
+        // Endorse the vault in the registry
+        vm.prank(admin);
+        PeripheryRegistry(yearnRegistry).endorseVault(address(_vault));
 
         return address(_vault);
     }
