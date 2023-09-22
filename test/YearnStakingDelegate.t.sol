@@ -24,46 +24,50 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     address public testGauge;
 
     // Airdrop amounts
-    uint256 public constant ALICE_YFI = 5000e18;
+    uint256 public constant ALICE_YFI = 50_000e18;
+    uint256 public constant OYFI_REWARD_AMOUNT = 1_000_000e18;
+
+    // Addresses
+    address public alice;
+    address public manager;
+    address public wrappedStrategy;
 
     function setUp() public override {
         super.setUp();
 
-        // create admin user that will be the owner of the yearnStakingDelegate
-        createUser("admin");
         // create alice who will be lock YFI via the yearnStakingDelegate
-        createUser("alice");
+        alice = createUser("alice");
         // create manager of the yearnStakingDelegate
-        createUser("manager");
+        manager = createUser("manager");
         // create an address that will act as a wrapped strategy
-        createUser("wrappedStrategy");
+        wrappedStrategy = createUser("wrappedStrategy");
 
         // Deploy vault
         testVault = deployVaultV3("USDC Test Vault", USDC, new address[](0));
         // Deploy gauge
-        testGauge = deployGaugeViaFactory(testVault, users["admin"], "USDC Test Vault Gauge");
+        testGauge = deployGaugeViaFactory(testVault, admin, "USDC Test Vault Gauge");
 
         // Give alice some YFI
-        airdrop(ERC20(ETH_YFI), users["alice"], ALICE_YFI);
+        airdrop(ERC20(ETH_YFI), alice, ALICE_YFI);
 
         // Give admin some oYFI
-        airdrop(ERC20(oYFI), users["admin"], 1_000_000e18);
+        airdrop(ERC20(oYFI), admin, OYFI_REWARD_AMOUNT);
 
         // Start new rewards
-        vm.startPrank(users["admin"]);
-        IERC20(oYFI).approve(testGauge, 1_000_000e18);
-        IGauge(testGauge).queueNewRewards(1_000_000e18);
+        vm.startPrank(admin);
+        IERC20(oYFI).approve(testGauge, OYFI_REWARD_AMOUNT);
+        IGauge(testGauge).queueNewRewards(OYFI_REWARD_AMOUNT);
         vm.stopPrank();
 
-        require(IERC20(oYFI).balanceOf(testGauge) == 1_000_000e18, "queueNewRewards failed");
+        require(IERC20(oYFI).balanceOf(testGauge) == OYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, users["admin"], users["manager"]);
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, admin, manager);
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
-        vm.assume(noAdminRole != users["admin"]);
+        vm.assume(noAdminRole != admin);
         // manager role is given to admin and manager
-        vm.assume(noManagerRole != users["manager"] && noManagerRole != users["admin"]);
+        vm.assume(noManagerRole != manager && noManagerRole != admin);
         // Check for storage variables default values
         assertEq(yearnStakingDelegate.yfi(), ETH_YFI);
         assertEq(yearnStakingDelegate.oYfi(), oYFI);
@@ -74,17 +78,21 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(strategy, 1e18);
         assertEq(veYfi, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), users["manager"]));
+        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), manager));
         assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), noManagerRole));
-        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), users["admin"]));
+        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
         // Check for approvals
         assertEq(IERC20(ETH_YFI).allowance(address(yearnStakingDelegate), ETH_VE_YFI), type(uint256).max);
     }
 
-    function test_setAssociatedGauge() public {
-        vm.prank(users["manager"]);
+    function _setAssociatedGauge() internal {
+        vm.prank(manager);
         yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+    }
+
+    function test_setAssociatedGauge() public {
+        _setAssociatedGauge();
         require(yearnStakingDelegate.associatedGauge(testVault) == testGauge, "setAssociatedGauge failed");
     }
 
@@ -96,7 +104,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_lockYFI() public {
-        _lockYFI(users["alice"], 1e18);
+        _lockYFI(alice, 1e18);
 
         assertEq(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
         assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 999_999_999_971_481_600, "lock failed");
@@ -105,7 +113,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function testFuzz_lockYFI_revertsWhenCreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
         vm.assume(lockAmount > 0);
         vm.assume(lockAmount < 1e18);
-        vm.startPrank(users["alice"]);
+        vm.startPrank(alice);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), lockAmount);
         vm.expectRevert();
         yearnStakingDelegate.lockYfi(lockAmount);
@@ -114,8 +122,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function testFuzz_lockYFI(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(users["alice"]));
-        _lockYFI(users["alice"], lockAmount);
+        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(alice));
+        _lockYFI(alice, lockAmount);
 
         assertEq(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
         assertGt(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount - 1e9, "lock failed");
@@ -123,11 +131,11 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_earlyUnlock() public {
-        _lockYFI(users["alice"], 1e18);
+        _lockYFI(alice, 1e18);
 
-        vm.startPrank(users["admin"]);
+        vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
-        yearnStakingDelegate.earlyUnlock(users["admin"]);
+        yearnStakingDelegate.earlyUnlock(admin);
         vm.stopPrank();
 
         assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
@@ -135,110 +143,150 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function testFuzz_earlyUnlock(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(users["alice"]));
-        _lockYFI(users["alice"], lockAmount);
+        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(alice));
+        _lockYFI(alice, lockAmount);
 
-        vm.startPrank(users["admin"]);
+        vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
-        yearnStakingDelegate.earlyUnlock(users["admin"]);
+        yearnStakingDelegate.earlyUnlock(admin);
         vm.stopPrank();
 
         assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
     }
 
     function test_earlyUnlock_revertsPerpeutalLockEnabled() public {
-        _lockYFI(users["alice"], 1e18);
+        _lockYFI(alice, 1e18);
 
-        vm.startPrank(users["admin"]);
+        vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
-        yearnStakingDelegate.earlyUnlock(users["admin"]);
+        yearnStakingDelegate.earlyUnlock(admin);
+    }
+
+    function _deposit(address addr, uint256 amount) internal {
+        vm.startPrank(addr);
+        IERC20(testVault).approve(address(yearnStakingDelegate), amount);
+        yearnStakingDelegate.depositToGauge(testVault, amount);
+        vm.stopPrank();
     }
 
     function testFuzz_depositToGauge(uint256 vaultBalance) public {
         vm.assume(vaultBalance > 0);
-        vm.startPrank(users["manager"]);
-        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
-        vm.stopPrank();
+        _setAssociatedGauge();
 
-        airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
-
-        vm.startPrank(users["wrappedStrategy"]);
-        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
-        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
-        vm.stopPrank();
+        airdrop(ERC20(testVault), wrappedStrategy, vaultBalance);
+        _deposit(wrappedStrategy, vaultBalance);
 
         // Check the yearn staking delegate has received the gauge tokens
-        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
+        assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), vaultBalance, "depositToGauge failed");
         // Check the gauge has received the vault tokens
-        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
+        assertEq(IERC20(testVault).balanceOf(testGauge), vaultBalance, "depositToGauge failed");
+    }
+
+    function testFuzz_depositToGauge_revertsWhenNoAssociatedGauge(uint256 vaultBalance) public {
+        vm.assume(vaultBalance > 0);
+
+        airdrop(ERC20(testVault), wrappedStrategy, vaultBalance);
+
+        vm.startPrank(wrappedStrategy);
+        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NoAssociatedGauge.selector));
+        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
+        vm.stopPrank();
     }
 
     function testFuzz_withdrawFromGauge(uint256 vaultBalance) public {
         vm.assume(vaultBalance > 0);
-        vm.startPrank(users["manager"]);
-        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
-        vm.stopPrank();
+        _setAssociatedGauge();
 
-        airdrop(ERC20(testVault), users["wrappedStrategy"], vaultBalance);
-
-        vm.startPrank(users["wrappedStrategy"]);
-        IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
-        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
-        vm.stopPrank();
-
-        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == vaultBalance, "depositToGauge failed");
-        require(IERC20(testVault).balanceOf(testGauge) == vaultBalance, "depositToGauge failed");
+        airdrop(ERC20(testVault), wrappedStrategy, vaultBalance);
+        _deposit(wrappedStrategy, vaultBalance);
 
         // Start withdraw process
-        vm.startPrank(users["wrappedStrategy"]);
+        vm.startPrank(wrappedStrategy);
         yearnStakingDelegate.withdrawFromGauge(testVault, vaultBalance);
         vm.stopPrank();
 
         // Check the yearn staking delegate has released the gauge tokens
-        require(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)) == 0, "withdrawFromGauge failed");
+        assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), 0, "withdrawFromGauge failed");
         // Check the gauge has released the vault tokens
-        require(IERC20(testVault).balanceOf(testGauge) == 0, "withdrawFromGauge failed");
+        assertEq(IERC20(testVault).balanceOf(testGauge), 0, "withdrawFromGauge failed");
         // Check that wrappedStrategy has received the vault tokens
-        require(IERC20(testVault).balanceOf(users["wrappedStrategy"]) == vaultBalance, "withdrawFromGauge failed");
+        assertEq(IERC20(testVault).balanceOf(wrappedStrategy), vaultBalance, "withdrawFromGauge failed");
     }
 
-    function test_harvest() public {
-        vm.startPrank(users["manager"]);
-        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
-        vm.stopPrank();
+    function test_harvest_withNoVeYFI() public {
+        _setAssociatedGauge();
 
-        // Deposit to gauge
-        airdrop(ERC20(testVault), users["wrappedStrategy"], 1e18);
-        vm.startPrank(users["wrappedStrategy"]);
-        IERC20(testVault).approve(address(yearnStakingDelegate), 1e18);
-        yearnStakingDelegate.depositToGauge(testVault, 1e18);
+        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
+        _deposit(wrappedStrategy, 1e18);
 
-        vm.warp(block.timestamp + 7 days);
+        vm.warp(block.timestamp + 14 days);
 
         // Harvest
+        vm.prank(wrappedStrategy);
         yearnStakingDelegate.harvest(testVault);
-        vm.stopPrank();
 
         // Check that the vault has received the rewards
-        require(IERC20(oYFI).balanceOf(users["wrappedStrategy"]) == 49_999_999_999_999_999_965_120, "harvest failed");
+        // expect to be close to 10% of the rewards, giving 90% as the penalty
+        assertLe(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, "harvest failed");
+        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, 0.01e18, "harvest failed");
+    }
+
+    function test_harvest_withSomeYFI() public {
+        _setAssociatedGauge();
+
+        _lockYFI(alice, 1e18);
+
+        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
+        _deposit(wrappedStrategy, 1e18);
+
+        vm.warp(block.timestamp + 14 days);
+
+        // Harvest
+        vm.prank(wrappedStrategy);
+        yearnStakingDelegate.harvest(testVault);
+
+        // Check that the vault has received the rewards
+        // expect to be higher than 10% of the rewards due to the 1 YFI locked
+        assertGt(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, "harvest failed");
+        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, 0.05e18, "harvest failed");
+    }
+
+    function test_harvest_withLargeYFI() public {
+        _setAssociatedGauge();
+
+        _lockYFI(alice, ALICE_YFI);
+
+        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
+        _deposit(wrappedStrategy, 1e18);
+
+        vm.warp(block.timestamp + 14 days);
+
+        // Harvest
+        vm.prank(wrappedStrategy);
+        yearnStakingDelegate.harvest(testVault);
+
+        // Check that the vault has received the rewards
+        // expect to be close to 100% of the rewards
+        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT, 0.01e18, "harvest failed");
     }
 
     function test_setSnapshotDelegate() public {
-        vm.startPrank(users["manager"]);
-        yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", users["manager"]);
+        vm.startPrank(manager);
+        yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", manager);
         vm.stopPrank();
 
         assertEq(
             ISnapshotDelegateRegistry(yearnStakingDelegate.SNAPSHOT_DELEGATE_REGISTRY()).delegation(
                 address(yearnStakingDelegate), "veyfi.eth"
             ),
-            users["manager"],
+            manager,
             "setSnapshotDelegate failed"
         );
     }
 
     function test_setSnapshotDelegate_revertsWithZeroAddress() public {
-        vm.startPrank(users["manager"]);
+        vm.startPrank(manager);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", address(0));
         vm.stopPrank();

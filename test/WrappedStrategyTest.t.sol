@@ -13,8 +13,13 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     IVault public deployedVault;
 
+    // Addresses
+    address public alice;
+
     function setUp() public override {
         super.setUp();
+
+        alice = createUser("alice");
 
         mockStrategy = setUpStrategy("Mock USDC Strategy", USDC);
         wrappedYearnV3Strategy = setUpWrappedStrategy("Wrapped YearnV3 Strategy", USDC);
@@ -23,10 +28,12 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         strategies[0] = address(mockStrategy);
         deployVaultV3("USDC Vault", USDC, strategies);
         deployedVault = IVault(deployedVaults["USDC Vault"]);
+        vm.startPrank(users["tpManagement"]);
         wrappedYearnV3Strategy.setYieldSource(deployedVaults["USDC Vault"]);
         // create new user to be the staking delegate
         createUser("stakingDelegate");
         wrappedYearnV3Strategy.setStakingDelegate(users["stakingDelegate"]);
+        vm.stopPrank();
     }
 
     function testWrappedStrategyDeployment() public view {
