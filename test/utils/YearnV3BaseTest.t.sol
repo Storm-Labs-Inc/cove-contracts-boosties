@@ -12,7 +12,7 @@ import { WrappedYearnV3StrategyStaticSwapper } from "src/strategies/WrappedYearn
 
 import { ReleaseRegistry } from "src/yearn/vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "src/yearn/vault-periphery/registry/RegistryFactory.sol";
-import { Registry as PeripheryRegistry } from "src/yearn/vault-periphery/registry/Registry.sol";
+import { Registry } from "src/yearn/vault-periphery/registry/Registry.sol";
 
 import { Gauge } from "src/yearn/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/yearn/veYFI/GaugeFactory.sol";
@@ -195,8 +195,7 @@ contract YearnV3BaseTest is BaseTest {
         returns (address)
     {
         vm.prank(admin);
-        address vault =
-            PeripheryRegistry(yearnRegistry).newEndorsedVault(asset, vaultName, "tsVault", management, 10 days, 0);
+        address vault = Registry(yearnRegistry).newEndorsedVault(asset, vaultName, "tsVault", management, 10 days, 0);
         IVault _vault = IVault(vault);
 
         vm.prank(management);
@@ -244,6 +243,8 @@ contract YearnV3BaseTest is BaseTest {
         deployedStrategies[name] = address(_strategy);
         vm.label(address(_strategy), name);
 
+        endorseStrategy(address(_strategy));
+
         return _strategy;
     }
 
@@ -266,6 +267,8 @@ contract YearnV3BaseTest is BaseTest {
         // *name is "Wrapped Yearn V3 Strategy"
         deployedStrategies[name] = address(_wrappedStrategy);
         vm.label(address(_wrappedStrategy), name);
+
+        endorseStrategy(address(_wrappedStrategy));
 
         return _wrappedStrategy;
     }
@@ -298,6 +301,8 @@ contract YearnV3BaseTest is BaseTest {
         deployedStrategies[name] = address(_wrappedStrategy);
         vm.label(address(_wrappedStrategy), name);
 
+        endorseStrategy(address(_wrappedStrategy));
+
         return _wrappedStrategy;
     }
 
@@ -328,7 +333,14 @@ contract YearnV3BaseTest is BaseTest {
         deployedStrategies[name] = address(_wrappedStrategy);
         vm.label(address(_wrappedStrategy), name);
 
+        endorseStrategy(address(_wrappedStrategy));
+
         return _wrappedStrategy;
+    }
+
+    function endorseStrategy(address strategy) public {
+        vm.prank(admin);
+        Registry(yearnRegistry).endorseStrategy(strategy);
     }
 
     function logStratInfo(address strategy) public view {
