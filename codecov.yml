@@ -3,3 +3,5 @@ ignore:
   - "script"
   - "generated"
   - "src/helper/*"
+  - "src/yearn/*"
+  - "src/interfaces/yearn/*"

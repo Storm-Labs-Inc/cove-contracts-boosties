@@ -1,8 +1,10 @@
-@openzeppelin/=node_modules/@openzeppelin/
+@openzeppelin/=lib/tokenized-strategy-periphery/lib/openzeppelin-contracts/
+@openzeppelin/contracts/=lib/tokenized-strategy-periphery/lib/openzeppelin-contracts/contracts/
+@openzeppelin-5.0/=lib/openzeppelin-contracts/
+@openzeppelin-upgradeable-5.0/=lib/openzeppelin-contracts-upgradeable/
 @periphery/=lib/tokenized-strategy-periphery/src/
 @tokenized-strategy/=lib/tokenized-strategy-periphery/lib/tokenized-strategy/src/
 @yearn-vaults/=lib/tokenized-strategy-periphery/lib/yearn-vaults-v3/contracts/
-create-util/=lib/create-util/contracts/
 ds-test/=lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/tokenized-strategy/lib/erc4626-tests/
 forge-deploy/=node_modules/forge-deploy/contracts/
