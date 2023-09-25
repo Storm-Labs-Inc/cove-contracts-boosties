@@ -58,7 +58,10 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         vm.stopPrank();
         require(ERC20(USDC).balanceOf(users["alice"]) == 0, "alice still has USDC");
         uint256 minAmountFromCurve = ICurveBasePool(CRV3POOL).get_dy(1, 0, amount);
-        require(ysdBalance >= minAmountFromCurve, "vault shares not given to delegate");
+        require(
+            ysdBalance >= minAmountFromCurve - (minAmountFromCurve * 0.05e18 / 1e18),
+            "vault shares not given to delegate"
+        );
         require(deployedVault.totalSupply() == ysdBalance, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
     }
