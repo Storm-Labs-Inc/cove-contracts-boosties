@@ -2,11 +2,11 @@
 pragma solidity ^0.8.18;
 
 import "src/interfaces/IExtraReward.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin-5.0/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin-upgradeable-5.0/contracts/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-5.0/contracts/utils/math/Math.sol";
 import "src/interfaces/IGauge.sol";
 import "./BaseGauge.sol";
 import "src/interfaces/IVotingYFI.sol";
@@ -171,16 +171,14 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         }
     }
 
-    function _beforeTokenTransfer(address _from, address _to, uint256) internal override {
+    function _update(address _from, address _to, uint256 amount) internal override {
         if (_from != address(0)) {
             _updateReward(_from);
         }
         if (_to != address(0)) {
             _updateReward(_to);
         }
-    }
-
-    function _afterTokenTransfer(address _from, address _to, uint256) internal override {
+        super._update(_from, _to, amount);
         if (_from != address(0)) {
             _boostedBalances[_from] = _boostedBalanceOf(_from);
             emit BoostedBalanceUpdated(_from, _boostedBalances[_from]);

@@ -5,7 +5,7 @@ import { BaseTest } from "./utils/BaseTest.t.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 import { Deployments } from "script/Deployments.s.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { Strings } from "@openzeppelin-5.0/contracts/utils/Strings.sol";
 
 contract MasterRegistryTest is BaseTest {
     MasterRegistry public masterRegistry;

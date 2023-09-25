@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.18;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
+import { AccessControl } from "@openzeppelin-5.0/contracts/access/AccessControl.sol";
+import { Multicall } from "@openzeppelin-5.0/contracts/utils/Multicall.sol";
 import { IMasterRegistry } from "./interfaces/IMasterRegistry.sol";
 import { Errors } from "./libraries/Errors.sol";
 
@@ -36,8 +36,8 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     event UpdateRegistry(bytes32 indexed name, address registryAddress, uint256 version);
 
     constructor(address admin) {
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
-        _setupRole(PROTOCOL_MANAGER_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(PROTOCOL_MANAGER_ROLE, msg.sender);
     }
 
     /// @inheritdoc IMasterRegistry

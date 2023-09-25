@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/ISnapshotDelegateRegistry.sol";
 import { IGauge } from "src/interfaces/IGauge.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControl } from "@openzeppelin-5.0/contracts/access/AccessControl.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { Math } from "@openzeppelin-5.0/contracts/utils/math/Math.sol";
 
 contract YearnStakingDelegate is AccessControl {
     using SafeERC20 for IERC20;
@@ -69,9 +69,9 @@ contract YearnStakingDelegate is AccessControl {
         veYfi = _veYfi;
         shouldPerpetuallyLock = true;
         _setRewardSplit(0, 1e18, 0); // 0% to treasury, 100% to compound, 0% to veYFI
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
-        _setupRole(MANAGER_ROLE, admin);
-        _setupRole(MANAGER_ROLE, manager);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(MANAGER_ROLE, admin);
+        _grantRole(MANAGER_ROLE, manager);
 
         // Interactions
         // max approve YFI to veYFI so we can lock it later
