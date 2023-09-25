@@ -90,4 +90,50 @@ contract VyperDeployer {
         ///@notice return the address that the contract was deployed to
         return deployedAddress;
     }
+
+    /// @notice Forked and modified from here:
+    /// https://github.com/0xKitsune/Foundry-Vyper/blob/main/lib/utils/VyperDeployer.sol
+    /// @param fileName - The file name of the Blueprint Contract
+    /// @return deployedAddress The address that the contract was deployed to.
+    function deployBlueprint(string memory path, string memory fileName) public returns (address) {
+        ///@notice create a list of strings with the commands necessary to compile Vyper contracts
+        string[] memory cmds = new string[](2);
+        cmds[0] = "vyper";
+        cmds[1] = string.concat(path, fileName, ".vy");
+
+        ///@notice compile the Vyper contract and return the bytecode
+        bytes memory bytecode = _cheatCodes.ffi(cmds);
+
+        require(bytecode.length > 0, "Initcodes length must be greater than 0");
+
+        /// @notice prepend needed items for Blueprint ERC
+        /// See https://eips.ethereum.org/EIPS/eip-5202 for more details
+        bytes memory eip5202Bytecode = bytes.concat(
+            hex"fe", // EIP_5202_EXECUTION_HALT_BYTE
+            hex"71", // EIP_5202_BLUEPRINT_IDENTIFIER_BYTE
+            hex"00", // EIP_5202_VERSION_BYTE
+            bytecode
+        );
+
+        bytes2 len = bytes2(uint16(eip5202Bytecode.length));
+
+        /// @notice prepend the deploy preamble
+        bytes memory deployBytecode = bytes.concat(
+            hex"61", // DEPLOY_PREAMBLE_INITIAL_BYTE
+            len, // DEPLOY_PREAMBLE_BYTE_LENGTH
+            hex"3d81600a3d39f3", // DEPLOY_PREABLE_POST_LENGTH_BYTES
+            eip5202Bytecode
+        );
+
+        ///@notice check that the deployment was successful
+        address deployedAddress;
+        assembly {
+            deployedAddress := create(0, add(deployBytecode, 0x20), mload(deployBytecode))
+        }
+
+        require(deployedAddress != address(0), "VyperDeployer could not deploy contract");
+
+        ///@notice return the address that the contract was deployed to
+        return deployedAddress;
+    }
 }
