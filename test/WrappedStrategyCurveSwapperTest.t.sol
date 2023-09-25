@@ -50,7 +50,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
 
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount > 1e6);
-        vm.assume(amount < 1e15);
+        vm.assume(amount < 1e13);
         deal({ token: USDC, to: users["alice"], give: amount });
         vm.startPrank(users["alice"]);
         ERC20(USDC).approve(address(wrappedYearnV3Strategy), amount);
@@ -64,6 +64,15 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         require(ysdBalance >= minAmountFromCurve, "vault shares not given to delegate");
         require(deployedVault.totalSupply() == ysdBalance, "vault total_supply did not update correctly");
         require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
+    }
+
+    function testFuzz_deposit_revertsSlippageTooHigh_tooLargeDeposit(uint256 amount) public {
+        vm.assume(amount > 1e14);
+        deal({ token: USDC, to: users["alice"], give: amount });
+        vm.startPrank(users["alice"]);
+        ERC20(USDC).approve(address(wrappedYearnV3Strategy), amount);
+        vm.expectRevert();
+        wrappedYearnV3Strategy.deposit(amount, users["alice"]);
     }
 
     function test_deposit_revertsSlippageTooHigh() public {
