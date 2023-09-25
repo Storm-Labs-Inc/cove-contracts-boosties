@@ -12,7 +12,6 @@ import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV
 import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
 import { Registry as PeripheryRegistry } from "vault-periphery/registry/Registry.sol";
-import { MockFactory } from "vault-periphery/Mocks/MockFactory.sol";
 
 import { Gauge } from "src/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/veYFI/GaugeFactory.sol";
@@ -161,7 +160,10 @@ contract YearnV3BaseTest is BaseTest {
         yearnRegistryFactory = _deployYearnRegistryFactory(admin, yearnReleaseRegistry);
         yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", admin);
 
-        address factory = address(new MockFactory("3.0.0"));
+        address blueprint = vyperDeployer.deployBlueprint("lib/yearn-vaults-v3/contracts/", "VaultV3");
+        bytes memory args = abi.encode("Vault V3 Factory 3.0.0", blueprint, admin);
+        address factory = vyperDeployer.deployContract("lib/yearn-vaults-v3/contracts/", "VaultFactory", args);
+
         vm.prank(admin);
         ReleaseRegistry(yearnReleaseRegistry).newRelease(factory);
     }
@@ -191,8 +193,10 @@ contract YearnV3BaseTest is BaseTest {
         public
         returns (address)
     {
-        bytes memory args = abi.encode(asset, vaultName, "tsVault", users["management"], 10 days);
-        IVault _vault = IVault(vyperDeployer.deployContract("lib/yearn-vaults-v3/contracts/", "VaultV3", args));
+        vm.prank(admin);
+        address vault =
+            PeripheryRegistry(yearnRegistry).newEndorsedVault(asset, vaultName, "tsVault", management, 10 days, 0);
+        IVault _vault = IVault(vault);
 
         vm.prank(management);
         // Give the vault manager all the roles
@@ -208,14 +212,10 @@ contract YearnV3BaseTest is BaseTest {
         }
 
         // Label the vault
-        deployedVaults[vaultName] = address(_vault);
-        vm.label(address(_vault), vaultName);
+        deployedVaults[vaultName] = vault;
+        vm.label(vault, vaultName);
 
-        // Endorse the vault in the registry
-        vm.prank(admin);
-        PeripheryRegistry(yearnRegistry).endorseVault(address(_vault));
-
-        return address(_vault);
+        return vault;
     }
 
     function addStrategyToVault(IVault _vault, IStrategy _strategy) public {
