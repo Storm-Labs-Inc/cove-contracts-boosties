@@ -49,7 +49,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
     }
 
     function testFuzz_deposit(uint256 amount) public {
-        vm.assume(amount > 1e6);
+        vm.assume(amount > 0);
         vm.assume(amount < 1e13);
         deal({ token: USDC, to: users["alice"], give: amount });
         vm.startPrank(users["alice"]);
