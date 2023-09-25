@@ -48,16 +48,16 @@ contract YearnStakingDelegate is AccessControl {
     address public immutable veYfi;
     address public immutable yfi;
     address public immutable oYfi;
-    address public treasury = 0x0000000000000000000000000000000000000001;
+    address public treasury;
 
     event LogUpdatePool(address indexed vault, uint128 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
 
-    constructor(address _yfi, address _oYfi, address _veYfi, address admin, address manager) {
+    constructor(address _yfi, address _oYfi, address _veYfi, address _treasury, address admin, address manager) {
         // Checks
         // check for zero addresses
         if (
             _yfi == address(0) || _oYfi == address(0) || _veYfi == address(0) || admin == address(0)
-                || manager == address(0)
+                || manager == address(0) || _treasury == address(0)
         ) {
             revert Errors.ZeroAddress();
         }
@@ -67,8 +67,9 @@ contract YearnStakingDelegate is AccessControl {
         yfi = _yfi;
         oYfi = _oYfi;
         veYfi = _veYfi;
+        treasury = _treasury;
         shouldPerpetuallyLock = true;
-        _setRewardSplit(0, 1e18, 0); // 0% to treasury, 100% to compound, 0% to veYFI
+        _setRewardSplit(0, 1e18, 0); // 0% to treasury, 100% to compound, 0% to veYFI for relocking
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MANAGER_ROLE, admin);
         _grantRole(MANAGER_ROLE, manager);
@@ -180,6 +181,17 @@ contract YearnStakingDelegate is AccessControl {
     /// @param _shouldPerpetuallyLock if true, lock YFI for 4 years after each harvest
     function setPerpetualLock(bool _shouldPerpetuallyLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
         shouldPerpetuallyLock = _shouldPerpetuallyLock;
+    }
+
+    /// @notice Set treasury address. This address will receive a portion of the rewards
+    /// @param _treasury address to receive rewards
+    function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Checks
+        if (_treasury == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        // Effects
+        treasury = _treasury;
     }
 
     function setAssociatedGauge(address vault, address gauge) external onlyRole(MANAGER_ROLE) {
