@@ -31,6 +31,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     address public alice;
     address public manager;
     address public wrappedStrategy;
+    address public treasury;
 
     function setUp() public override {
         super.setUp();
@@ -41,6 +42,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         manager = createUser("manager");
         // create an address that will act as a wrapped strategy
         wrappedStrategy = createUser("wrappedStrategy");
+        // create an address that will act as a treasury
+        treasury = createUser("treasury");
 
         // Deploy vault
         testVault = deployVaultV3("USDC Test Vault", USDC, new address[](0));
@@ -61,7 +64,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         require(IERC20(oYFI).balanceOf(testGauge) == OYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, admin, manager);
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, treasury, admin, manager);
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
@@ -73,10 +76,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(yearnStakingDelegate.oYfi(), oYFI);
         assertEq(yearnStakingDelegate.veYfi(), ETH_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
-        (uint80 treasury, uint80 strategy, uint80 veYfi) = yearnStakingDelegate.rewardSplit();
-        assertEq(treasury, 0);
-        assertEq(strategy, 1e18);
-        assertEq(veYfi, 0);
+        (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) = yearnStakingDelegate.rewardSplit();
+        assertEq(treasurySplit, 0);
+        assertEq(strategySplit, 1e18);
+        assertEq(veYfiSplit, 0);
         // Check for roles
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), manager));
         assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), noManagerRole));
@@ -289,6 +292,22 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.startPrank(manager);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", address(0));
+        vm.stopPrank();
+    }
+
+    function test_setTreasury(address newTreasury) public {
+        vm.assume(newTreasury != address(0));
+        vm.startPrank(manager);
+        yearnStakingDelegate.setTreasury(newTreasury);
+        vm.stopPrank();
+
+        assertEq(yearnStakingDelegate.treasury(), newTreasury, "setTreasury failed");
+    }
+
+    function test_setTreasury_revertsWhenZeroAddress() public {
+        vm.startPrank(manager);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        yearnStakingDelegate.setTreasury(address(0));
         vm.stopPrank();
     }
 }
