@@ -295,9 +295,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_setTreasury(address newTreasury) public {
+    function testFuzz_setTreasury(address newTreasury) public {
         vm.assume(newTreasury != address(0));
-        vm.startPrank(manager);
+        vm.startPrank(admin);
         yearnStakingDelegate.setTreasury(newTreasury);
         vm.stopPrank();
 
@@ -305,7 +305,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_setTreasury_revertsWhenZeroAddress() public {
-        vm.startPrank(manager);
+        vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         yearnStakingDelegate.setTreasury(address(0));
         vm.stopPrank();
