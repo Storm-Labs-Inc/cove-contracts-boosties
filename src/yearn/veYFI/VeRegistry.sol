@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
-import "src/interfaces/IVotingYFI.sol";
-import "src/interfaces/IGaugeFactory.sol";
+import "src/interfaces/yearn/veYFI/IVotingYFI.sol";
+import "src/interfaces/yearn/veYFI/IGaugeFactory.sol";
 import "@openzeppelin-5.0/contracts/access/Ownable.sol";
 import "@openzeppelin-5.0/contracts/utils/structs/EnumerableSet.sol";
 
@@ -11,7 +11,7 @@ import "@openzeppelin-5.0/contracts/utils/structs/EnumerableSet.sol";
  *     @notice veYFI holders will vote for gauge allocation to vault tokens.
  */
 
-contract Registry is Ownable {
+contract VeRegistry is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     address public veToken; // the ve token that governs these contracts

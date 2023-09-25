@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
-import "src/interfaces/IExtraReward.sol";
+import "src/interfaces/yearn/veYFI/IExtraReward.sol";
 import "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin-5.0/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-upgradeable-5.0/contracts/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-5.0/contracts/utils/math/Math.sol";
-import "src/interfaces/IGauge.sol";
+import "src/interfaces/yearn/veYFI/IGauge.sol";
 import "./BaseGauge.sol";
-import "src/interfaces/IVotingYFI.sol";
-import "src/interfaces/IOYfiRewardPool.sol";
+import "src/interfaces/yearn/veYFI/IVotingYFI.sol";
+import "src/interfaces/yearn/veYFI/IOYfiRewardPool.sol";
 
 /**
  * @title  Gauge stake vault token get YFI rewards

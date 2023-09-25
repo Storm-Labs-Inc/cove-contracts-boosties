@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
-import { IBaseTokenizedStrategy } from "tokenized-strategy/interfaces/IBaseTokenizedStrategy.sol";
-import { ITokenizedStrategy, IERC4626 } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
+import { IBaseTokenizedStrategy } from "src/interfaces/yearn/tokenized-strategy/IBaseTokenizedStrategy.sol";
+import { ITokenizedStrategy, IERC4626 } from "src/interfaces/yearn/tokenized-strategy/ITokenizedStrategy.sol";
 
 interface IWrappedYearnV3Strategy is IBaseTokenizedStrategy, ITokenizedStrategy {
     // Need to override the `asset` function since

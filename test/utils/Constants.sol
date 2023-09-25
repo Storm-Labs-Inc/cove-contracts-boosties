@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
 contract Constants {
     uint40 internal constant _JAN_1_2023 = 1_672_531_200;

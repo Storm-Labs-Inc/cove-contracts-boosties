@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
 import { BaseTest, console2 as console } from "test/utils/BaseTest.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
-import { MockStrategy } from "tokenized-strategy-periphery/test/mocks/MockStrategy.sol";
+import { MockStrategy } from "../mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
 import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 
-import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
-import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
+import { ReleaseRegistry } from "src/yearn/vault-periphery/registry/ReleaseRegistry.sol";
+import { RegistryFactory } from "src/yearn/vault-periphery/registry/RegistryFactory.sol";
 
-import { Gauge } from "src/veYFI/Gauge.sol";
-import { GaugeFactory } from "src/veYFI/GaugeFactory.sol";
-import { OYfi } from "src/veYFI/OYfi.sol";
-import { Registry } from "src/veYFI/Registry.sol";
+import { Gauge } from "src/yearn/veYFI/Gauge.sol";
+import { GaugeFactory } from "src/yearn/veYFI/GaugeFactory.sol";
+import { OYfi } from "src/yearn/veYFI/OYfi.sol";
+import { VeRegistry } from "src/yearn/veYFI/VeRegistry.sol";
 
 // Interfaces
-import { IVotingYFI } from "src/interfaces/IVotingYFI.sol";
-import { IVault } from "src/interfaces/IVault.sol";
-import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
+import { IVotingYFI } from "src/interfaces/yearn/veYFI/IVotingYFI.sol";
+import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
+import { IStrategy } from "src/interfaces/yearn/tokenized-strategy/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 
 contract YearnV3BaseTest is BaseTest {
@@ -150,7 +150,7 @@ contract YearnV3BaseTest is BaseTest {
         returns (address)
     {
         vm.prank(owner);
-        return address(new Registry(ETH_VE_YFI, ETH_YFI, _gaugeFactory, veYFIRewardPool));
+        return address(new VeRegistry(ETH_VE_YFI, ETH_YFI, _gaugeFactory, veYFIRewardPool));
     }
 
     /// YFI registry related functions ///

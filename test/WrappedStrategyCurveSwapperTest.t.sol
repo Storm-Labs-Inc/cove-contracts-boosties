@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { console2 as console } from "test/utils/BaseTest.t.sol";
-import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
-import { IVault } from "src/interfaces/IVault.sol";
+import { IStrategy } from "src/interfaces/yearn/tokenized-strategy/IStrategy.sol";
+import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { ICurveBasePool } from "../src/interfaces/ICurveBasePool.sol";

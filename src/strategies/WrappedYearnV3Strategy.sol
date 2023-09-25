@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
-import { BaseTokenizedStrategy } from "tokenized-strategy/BaseTokenizedStrategy.sol";
-import { IVault } from "src/interfaces/IVault.sol";
+import { BaseTokenizedStrategy } from "../yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
+import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 
