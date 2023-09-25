@@ -33,6 +33,8 @@ library Errors {
     //// YEARN STAKING DELEGATE ////
     error ZeroAddress();
 
+    error ZeroAmount();
+
     error PerpetualLockEnabled();
 
     error NoAssociatedGauge();

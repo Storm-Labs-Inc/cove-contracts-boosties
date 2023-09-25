@@ -161,18 +161,18 @@ contract YearnStakingDelegate is AccessControl {
     }
 
     function _lockYfi(uint256 amount) internal {
-        if (shouldPerpetuallyLock && amount > 0) {
+        if (shouldPerpetuallyLock) {
             IVotingYFI(veYfi).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
         }
     }
 
-    // Lock all YFI and increase lock time
-    function lockYfi() external onlyRole(MANAGER_ROLE) {
-        _lockYfi(IERC20(yfi).balanceOf(address(this)));
-    }
-
     // Transfer amount of YFI from msg.sender and locks
     function lockYfi(uint256 amount) public {
+        // Checks
+        if (amount == 0) {
+            revert Errors.ZeroAmount();
+        }
+        // Interactions
         IERC20(yfi).safeTransferFrom(msg.sender, address(this), amount);
         _lockYfi(amount);
     }
@@ -238,8 +238,8 @@ contract YearnStakingDelegate is AccessControl {
             revert Errors.PerpetualLockEnabled();
         }
         // Interactions
-        IVotingYFI(veYfi).withdraw();
-        IERC20(yfi).transfer(to, IERC20(yfi).balanceOf(address(this)));
+        IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(veYfi).withdraw();
+        IERC20(yfi).transfer(to, withdrawn.amount);
     }
 
     /// @notice Rescue any ERC20 tokens that are stuck in this contract
