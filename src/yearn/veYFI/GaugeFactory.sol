@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
-import { IGauge } from "src/interfaces/IGauge.sol";
-import { IExtraReward } from "src/interfaces/IExtraReward.sol";
-import { IGaugeFactory } from "src/interfaces/IGaugeFactory.sol";
+import { IGauge } from "src/interfaces/yearn/veYFI/IGauge.sol";
+import { IExtraReward } from "src/interfaces/yearn/veYFI/IExtraReward.sol";
+import { IGaugeFactory } from "src/interfaces/yearn/veYFI/IGaugeFactory.sol";
 
 /**
  * @title  GaugeFactory

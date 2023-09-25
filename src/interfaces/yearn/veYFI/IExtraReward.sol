@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.20;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/IERC20.sol";
 import { IBaseGauge } from "./IBaseGauge.sol";
 
 interface IExtraReward is IBaseGauge {
