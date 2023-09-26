@@ -117,7 +117,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         uint256 lockAmount = 0;
         vm.startPrank(alice);
         IERC20(ETH_YFI).approve(address(yearnStakingDelegate), lockAmount);
-        abi.encodeWithSelector(Errors.ZeroAmount.selector);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
         yearnStakingDelegate.lockYfi(lockAmount);
         vm.stopPrank();
     }
