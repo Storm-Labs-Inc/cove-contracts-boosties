@@ -19,7 +19,9 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
 
     function setYieldSource(address v3VaultAddress) external virtual onlyManagement {
         // checks
-        IVault(v3VaultAddress).asset(); // check that v3VaultAddress is a valid vault
+        if (asset != IVault(v3VaultAddress).asset()) {
+            revert Errors.VaultAssetDiffers();
+        }
         // effects
         vaultAddress = v3VaultAddress;
         // interactions

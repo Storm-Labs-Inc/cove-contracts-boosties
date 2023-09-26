@@ -111,10 +111,14 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assertEq(ERC20(USDC).balanceOf(users["alice"]), amount, "user balance should be deposit amount after withdraw");
     }
 
-    function test_setYeildSource_revertsOnNonVaultAddress() public {
+    function test_setYeildSource_revertsVaultAssetDiffers() public {
+        mockStrategy = setUpStrategy("Mock USDC Strategy", DAI);
+        address[] memory strategies = new address[](1);
+        strategies[0] = address(mockStrategy);
+        deployVaultV3("DAI Vault", DAI, strategies);
         vm.startPrank(tpManagement);
-        vm.expectRevert();
-        wrappedYearnV3Strategy.setYieldSource(address(this));
+        vm.expectRevert(abi.encodeWithSelector(Errors.VaultAssetDiffers.selector));
+        wrappedYearnV3Strategy.setYieldSource(deployedVaults["DAI Vault"]);
         vm.stopPrank();
     }
 
