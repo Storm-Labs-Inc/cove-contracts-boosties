@@ -20,46 +20,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: false
-
-      - name: Generate combined hash of direct submodule versions
-        run: |
-          modules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-          for module in $modules
-          do
-            if [[ $module == lib/* ]]
-            then
-              echo "generating hash for $module"
-              git --no-pager diff -- $module
-            fi
-          done > ./lib/commit-hash
-
-      - name: Cache Submodules
-        uses: actions/cache@v3
-        with:
-          path: ./lib
-          key: ${{ runner.os }}-submodules-${{ hashFiles('./lib/commit-hash') }}
-
-      - name: Checkout submodules
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: git submodule update --init --recursive
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Lint all source files
         run: pnpm run lint
 
@@ -75,56 +40,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: false
-
-      - name: Generate combined hash of direct submodule versions
-        run: |
-          modules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-          for module in $modules
-          do
-            if [[ $module == lib/* ]]
-            then
-              echo "generating hash for $module"
-              git --no-pager diff -- $module
-            fi
-          done > ./lib/commit-hash
-
-      - name: Cache Submodules
-        uses: actions/cache@v3
-        with:
-          path: ./lib
-          key: ${{ runner.os }}-submodules-${{ hashFiles('./lib/commit-hash') }}
-
-      - name: Checkout submodules
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: git submodule update --init --recursive
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install Python
-        uses: buildjet/setup-python@v4
-        with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-
-      - name: Install Python dependencies
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
-
       - name: Remove script and test files for faster analysis
         run: rm -rf script/* test/*
 
@@ -163,55 +83,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: false
-
-      - name: Generate combined hash of direct submodule versions
-        run: |
-          modules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-          for module in $modules
-          do
-            if [[ $module == lib/* ]]
-            then
-              echo "generating hash for $module"
-              git --no-pager diff -- $module
-            fi
-          done > ./lib/commit-hash
-
-      - name: Cache Submodules
-        uses: actions/cache@v3
-        with:
-          path: ./lib
-          key: ${{ runner.os }}-submodules-${{ hashFiles('./lib/commit-hash') }}
-
-      - name: Checkout submodules
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: git submodule update --init --recursive
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install Python
-        uses: buildjet/setup-python@v4
-        with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-
-      - name: Install Python dependencies
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
       - name: Run Forge build and tests
         run: |
           forge --version
@@ -232,54 +108,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: false
-      - name: Generate combined hash of direct submodule versions
-        run: |
-          modules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-          for module in $modules
-          do
-            if [[ $module == lib/* ]]
-            then
-              echo "generating hash for $module"
-              git --no-pager diff -- $module
-            fi
-          done > ./lib/commit-hash
-
-      - name: Cache Submodules
-        uses: actions/cache@v3
-        with:
-          path: ./lib
-          key: ${{ runner.os }}-submodules-${{ hashFiles('./lib/commit-hash') }}
-
-      - name: Checkout submodules
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: git submodule update --init --recursive
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install Python
-        uses: buildjet/setup-python@v4
-        with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-
-      - name: Install Python dependencies
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
       - name: Run Forge build and tests
         run: |
           forge --version
@@ -322,56 +155,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: false
-
-      - name: Generate combined hash of direct submodule versions
-        run: |
-          modules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-          for module in $modules
-          do
-            if [[ $module == lib/* ]]
-            then
-              echo "generating hash for $module"
-              git --no-pager diff -- $module
-            fi
-          done > ./lib/commit-hash
-
-      - name: Cache Submodules
-        uses: actions/cache@v3
-        with:
-          path: ./lib
-          key: ${{ runner.os }}-submodules-${{ hashFiles('./lib/commit-hash') }}
-
-      - name: Checkout submodules
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: git submodule update --init --recursive
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install Python
-        uses: buildjet/setup-python@v4
-        with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-
-      - name: Install Python dependencies
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
-
       - name: Run Forge Coverage
         run: |
           pnpm build
