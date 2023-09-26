@@ -22,6 +22,7 @@ runs:
             git --no-pager diff -- $module
           fi
         done > ./lib/commit-hash
+      shell: bash
 
     - name: Cache Submodules
       uses: actions/cache@v3
@@ -32,6 +33,7 @@ runs:
     - name: Checkout submodules
       if: steps.cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive
+      shell: bash
 
     - uses: pnpm/action-setup@v2
       with:
@@ -51,6 +53,7 @@ runs:
 
     - name: Install Python dependencies
       run: pip install -r requirements-ci.txt
+      shell: bash
 
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
@@ -59,3 +62,4 @@ runs:
 
     - name: Install dependencies
       run: pnpm install
+      shell: bash
