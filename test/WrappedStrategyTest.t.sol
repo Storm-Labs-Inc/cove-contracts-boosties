@@ -12,6 +12,7 @@ import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IGaugeFactory } from "src/interfaces/yearn/veYFI/IGaugeFactory.sol";
 import { IGauge } from "src/interfaces/yearn/veYFI/IGauge.sol";
+import { Errors } from "../src/libraries/Errors.sol";
 
 contract WrappedStrategyTest is YearnV3BaseTest {
     IStrategy public mockStrategy;
@@ -108,5 +109,19 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
         assertEq(wrappedYearnV3Strategy.balanceOf(users["alice"]), 0, "Withdraw was not successful");
         assertEq(ERC20(USDC).balanceOf(users["alice"]), amount, "user balance should be deposit amount after withdraw");
+    }
+
+    function test_setYeildSource_revertsOnNonVaultAddress() public {
+        vm.startPrank(tpManagement);
+        vm.expectRevert();
+        wrappedYearnV3Strategy.setYieldSource(address(this));
+        vm.stopPrank();
+    }
+
+    function test_setStakingDelegate_revertsOnZeroAddress() public {
+        vm.startPrank(tpManagement);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        wrappedYearnV3Strategy.setStakingDelegate(address(0));
+        vm.stopPrank();
     }
 }
