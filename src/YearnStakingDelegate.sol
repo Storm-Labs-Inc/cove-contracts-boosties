@@ -118,7 +118,9 @@ contract YearnStakingDelegate is AccessControl {
             // Do other actions based on configured parameters
             IERC20(oYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
             uint256 yfiAmount = _swapOYfiToYfi(totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18);
-            _lockYfi(yfiAmount);
+            if (yfiAmount > 0) {
+                _lockYfi(yfiAmount);
+            }
         }
     }
 
