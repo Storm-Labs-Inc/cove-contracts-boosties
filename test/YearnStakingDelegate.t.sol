@@ -113,6 +113,15 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 999_999_999_971_481_600, "lock failed");
     }
 
+    function test_lockYFI_revertsWithZeroAmount() public {
+        uint256 lockAmount = 0;
+        vm.startPrank(alice);
+        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), lockAmount);
+        abi.encodeWithSelector(Errors.ZeroAmount.selector);
+        yearnStakingDelegate.lockYfi(lockAmount);
+        vm.stopPrank();
+    }
+
     function testFuzz_lockYFI_revertsWhenCreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
         vm.assume(lockAmount > 0);
         vm.assume(lockAmount < 1e18);
@@ -215,6 +224,13 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(IERC20(testVault).balanceOf(testGauge), 0, "withdrawFromGauge failed");
         // Check that wrappedStrategy has received the vault tokens
         assertEq(IERC20(testVault).balanceOf(wrappedStrategy), vaultBalance, "withdrawFromGauge failed");
+    }
+
+    function test_harvest_revertsWithNoAssociatedGauge() public {
+        vm.startPrank(wrappedStrategy);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NoAssociatedGauge.selector));
+        yearnStakingDelegate.harvest(testVault);
+        vm.stopPrank();
     }
 
     function test_harvest_withNoVeYFI() public {
