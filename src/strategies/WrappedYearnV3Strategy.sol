@@ -17,12 +17,16 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
     constructor(address _asset) BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Strategy") { }
 
     function setYieldSource(address v3VaultAddress) external virtual onlyManagement {
+        // effects
         vaultAddress = v3VaultAddress;
+        // interactions
         ERC20(asset).approve(vaultAddress, type(uint256).max);
     }
 
     function setStakingDelegate(address delegateAddress) external onlyManagement {
+        // effects
         yearnStakingDelegateAddress = delegateAddress;
+        // interactions
         ERC20(vaultAddress).approve(yearnStakingDelegateAddress, type(uint256).max);
     }
 
@@ -36,7 +40,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
         // withdraw _amount from gauge through yearn staking delegate
         IYearnStakingDelegate(yearnStakingDelegateAddress).withdrawFromGauge(vaultAddress, _amount);
         // withdraw _amount from vault, with msg.sender as recipient
-        IVault(vaultAddress).withdraw(_amount, msg.sender, address(this), 0, new address[](0));
+        IVault(vaultAddress).withdraw(_amount, msg.sender, address(this));
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
