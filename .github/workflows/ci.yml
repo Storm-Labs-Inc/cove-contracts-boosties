@@ -13,10 +13,11 @@ env:
 
 jobs:
   base:
+    name: Base setup
     runs-on: buildjet-2vcpu-ubuntu-2204
     steps:
       - name: Checkout repository without submodules
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
         with:
           submodules: false
 
