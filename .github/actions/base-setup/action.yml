@@ -26,12 +26,13 @@ runs:
 
     - name: Cache Submodules
       uses: actions/cache@v3
+      id: cache-submodules
       with:
         path: ./lib
         key: ${{ runner.os }}-submodules-${{ hashFiles('./lib/commit-hash') }}
 
     - name: Checkout submodules
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache-submodules.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive
       shell: bash
 
