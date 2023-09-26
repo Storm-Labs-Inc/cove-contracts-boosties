@@ -48,13 +48,13 @@ runs:
 
     - name: Install Python
       uses: buildjet/setup-python@v4
-      if: inputs.python-version != 'null'
+      if: ${{ inputs.python-version != "" }}
       with:
         python-version: ${{ inputs.python-version }}
         cache: pip
 
     - name: Install Python dependencies
-      if: inputs.python-version != 'null'
+      if: ${{ inputs.python-version != "" }}
       run: pip install -r requirements-ci.txt
       shell: bash
 
