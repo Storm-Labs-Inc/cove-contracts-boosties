@@ -24,7 +24,7 @@ jobs:
         uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: null
       - name: Lint all source files
         run: pnpm run lint
 
@@ -44,7 +44,7 @@ jobs:
         uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: null
       - name: Remove script and test files for faster analysis
         run: rm -rf script/* test/*
 
