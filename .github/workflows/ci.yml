@@ -16,30 +16,14 @@ jobs:
     name: Lint
     runs-on: buildjet-2vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
         with:
           submodules: false
-
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
-
       - name: Lint all source files
         run: pnpm run lint
 
@@ -51,30 +35,14 @@ jobs:
       packages: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
         with:
-          submodules: recursive
-
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install dependencies
-        run: pnpm install
-
       - name: Remove script and test files for faster analysis
         run: rm -rf script/* test/*
 
@@ -109,40 +77,15 @@ jobs:
     name: Test
     runs-on: buildjet-2vcpu-ubuntu-2204
     steps:
-      - name: Checkout repository
+      - name: Checkout repository without submodules
         uses: actions/checkout@v3
         with:
-          submodules: recursive
-
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install Python
-        uses: buildjet/setup-python@v4
-        with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-
-      - name: Install Python dependencies
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly # only nightly builds available for now
-
       - name: Run Forge build and tests
         run: |
           forge --version
@@ -159,40 +102,15 @@ jobs:
     runs-on: buildjet-2vcpu-ubuntu-2204
     permissions: write-all
     steps:
-      - name: Checkout repository
+      - name: Checkout repository without submodules
         uses: actions/checkout@v3
         with:
-          submodules: recursive
-
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install Python
-        uses: buildjet/setup-python@v4
-        with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-
-      - name: Install Python dependencies
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly # only nightly builds available for now
-
       - name: Run Forge build and tests
         run: |
           forge --version
@@ -231,39 +149,15 @@ jobs:
       =='push' && github.ref == 'refs/heads/master')
     runs-on: buildjet-2vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
         with:
-          submodules: recursive
-
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
-
-      - name: Install Node.js
-        uses: buildjet/setup-node@v3
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install Python
-        uses: buildjet/setup-python@v4
-        with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-
-      - name: Install Python dependencies
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly # only nightly builds available for now
-
       - name: Run Forge Coverage
         run: |
           pnpm build
