@@ -6,6 +6,7 @@ import { BaseTokenizedStrategy } from "../yearn/tokenized-strategy/BaseTokenized
 import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
+import { Errors } from "../libraries/Errors.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
@@ -17,6 +18,10 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
     constructor(address _asset) BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Strategy") { }
 
     function setYieldSource(address v3VaultAddress) external virtual onlyManagement {
+        // checks
+        if (asset != IVault(v3VaultAddress).asset()) {
+            revert Errors.VaultAssetDiffers();
+        }
         // effects
         vaultAddress = v3VaultAddress;
         // interactions
@@ -24,6 +29,10 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
     }
 
     function setStakingDelegate(address delegateAddress) external onlyManagement {
+        // checks
+        if (delegateAddress == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         // effects
         yearnStakingDelegateAddress = delegateAddress;
         // interactions
