@@ -45,8 +45,8 @@ contract YearnV3BaseTest is BaseTest {
     address public tpPerformanceFeeRecipient;
     address public tpKeeper;
 
-    address public oYFI;
-    address public oYFIRewardPool;
+    address public dYFI;
+    address public dYFIRewardPool;
     address public gaugeImpl;
     address public gaugeFactory;
     address public gaugeRegistry;
@@ -59,7 +59,7 @@ contract YearnV3BaseTest is BaseTest {
     // Curve addresses
     address public curveFactory = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
     address public yfiEthCurvePool = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
-    address public oYfiEthCurvePool;
+    address public dYfiEthCurvePool;
 
     function setUp() public virtual override {
         // Fork ethereum mainnet at block 18172262 for consistent testing and to cache RPC calls
@@ -98,25 +98,25 @@ contract YearnV3BaseTest is BaseTest {
 
     /// VE-YFI related functions ///
     function setUpVotingYfiStack() public {
-        oYFI = _deployOYFI(admin);
-        oYFIRewardPool = _deployOYFIRewardPool(oYFI, block.timestamp + 1 days);
-        gaugeImpl = _deployGaugeImpl(oYFI, oYFIRewardPool);
+        dYFI = _deployDYFI(admin);
+        dYFIRewardPool = _deployDYFIRewardPool(dYFI, block.timestamp + 1 days);
+        gaugeImpl = _deployGaugeImpl(dYFI, dYFIRewardPool);
         gaugeFactory = _deployGaugeFactory(gaugeImpl);
-        gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, oYFIRewardPool);
-        oYfiEthCurvePool = _deployOYfiEthPool();
+        gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, dYFIRewardPool);
+        dYfiEthCurvePool = _deployDYfiEthPool();
     }
 
-    function _deployOYfiEthPool() internal returns (address) {
+    function _deployDYfiEthPool() internal returns (address) {
         vm.startPrank(admin);
         // Initial price of ETH: 1600.00 USD
-        // Initial price of oYFI: 520.00 USD (estimated as 10% of YFI value)
-        // Initial price of ETH/oYFI:
-        uint256 initialPriceEthPerOYfi = 325_000_000_000_000_000;
-        // Create WETH/oYFI curve pool
+        // Initial price of dYFI: 520.00 USD (estimated as 10% of YFI value)
+        // Initial price of ETH/dYFI:
+        uint256 initialPriceEthPerDYfi = 325_000_000_000_000_000;
+        // Create WETH/dYFI curve pool
         address newPool = ICurveFactory(curveFactory).deploy_pool({
-            name: "ETH/oYFI",
-            symbol: "ETHOYFI",
-            coins: [WETH, oYFI],
+            name: "ETH/dYFI",
+            symbol: "ETHDYFI",
+            coins: [WETH, dYFI],
             a: 400_000,
             gamma: 145_000_000_000_000,
             midFee: 26_000_000,
@@ -126,39 +126,39 @@ contract YearnV3BaseTest is BaseTest {
             adjustmentStep: 146_000_000_000_000,
             adminFee: 5_000_000_000,
             maHalfTime: 600,
-            initialPrice: initialPriceEthPerOYfi
+            initialPrice: initialPriceEthPerDYfi
         });
-        vm.label(newPool, "ETH/oYFI Curve Pool");
+        vm.label(newPool, "ETH/dYFI Curve Pool");
         // Seed the pool with some liquidity
-        // 10 ETH, 30.769230 oYFI
+        // 10 ETH, 30.769230 dYFI
         uint256 initialEth = 10e18;
-        uint256 initialOYfi = initialEth * 1e18 / initialPriceEthPerOYfi;
+        uint256 initialDYfi = initialEth * 1e18 / initialPriceEthPerDYfi;
         airdrop(ERC20(WETH), admin, initialEth);
-        airdrop(ERC20(oYFI), admin, initialOYfi);
+        airdrop(ERC20(dYFI), admin, initialDYfi);
         IERC20(WETH).approve(newPool, initialEth);
-        IERC20(oYFI).approve(newPool, initialOYfi);
-        ICurveTwoAssetPool(newPool).add_liquidity([initialEth, initialOYfi], 0);
+        IERC20(dYFI).approve(newPool, initialDYfi);
+        ICurveTwoAssetPool(newPool).add_liquidity([initialEth, initialDYfi], 0);
         vm.stopPrank();
         return newPool;
     }
 
-    function _deployOYFI(address owner) internal returns (address) {
+    function _deployDYFI(address owner) internal returns (address) {
         vm.prank(owner);
-        address oYfiAddr = address(new OYfi());
-        vm.label(oYfiAddr, "OYFI");
-        return oYfiAddr;
+        address dYfiAddr = address(new OYfi());
+        vm.label(dYfiAddr, "DYFI");
+        return dYfiAddr;
     }
 
-    function _deployOYFIRewardPool(address oYfi, uint256 startTime) internal returns (address) {
+    function _deployDYFIRewardPool(address dYfi, uint256 startTime) internal returns (address) {
         address addr = vyperDeployer.deployContract(
-            "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(ETH_VE_YFI, oYfi, startTime)
+            "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(ETH_VE_YFI, dYfi, startTime)
         );
-        vm.label(addr, "OYfiRewardPool");
+        vm.label(addr, "DYfiRewardPool");
         return addr;
     }
 
     function deployOptions(
-        address oYfi,
+        address dYfi,
         address owner,
         address priceFeed,
         address curvePool
@@ -167,12 +167,12 @@ contract YearnV3BaseTest is BaseTest {
         returns (address)
     {
         return vyperDeployer.deployContract(
-            "lib/veYFI/contracts/", "Options", abi.encode(ETH_YFI, oYfi, ETH_VE_YFI, owner, priceFeed, curvePool)
+            "lib/veYFI/contracts/", "Options", abi.encode(ETH_YFI, dYfi, ETH_VE_YFI, owner, priceFeed, curvePool)
         );
     }
 
-    function _deployGaugeImpl(address _oYFI, address _oYFIRewardPool) internal returns (address) {
-        return address(new Gauge(ETH_VE_YFI, _oYFI, _oYFIRewardPool));
+    function _deployGaugeImpl(address _dYFI, address _dYFIRewardPool) internal returns (address) {
+        return address(new Gauge(ETH_VE_YFI, _dYFI, _dYFIRewardPool));
     }
 
     function deployGaugeViaFactory(address vault, address owner, string memory label) public returns (address) {

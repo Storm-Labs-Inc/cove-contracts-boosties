@@ -47,16 +47,16 @@ contract YearnStakingDelegate is AccessControl {
     address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
     address public immutable veYfi;
     address public immutable yfi;
-    address public immutable oYfi;
+    address public immutable dYfi;
     address public treasury;
 
     event LogUpdatePool(address indexed vault, uint128 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
 
-    constructor(address _yfi, address _oYfi, address _veYfi, address _treasury, address admin, address manager) {
+    constructor(address _yfi, address _dYfi, address _veYfi, address _treasury, address admin, address manager) {
         // Checks
         // check for zero addresses
         if (
-            _yfi == address(0) || _oYfi == address(0) || _veYfi == address(0) || admin == address(0)
+            _yfi == address(0) || _dYfi == address(0) || _veYfi == address(0) || admin == address(0)
                 || manager == address(0) || _treasury == address(0)
         ) {
             revert Errors.ZeroAddress();
@@ -65,7 +65,7 @@ contract YearnStakingDelegate is AccessControl {
         // Effects
         // set storage variables
         yfi = _yfi;
-        oYfi = _oYfi;
+        dYfi = _dYfi;
         veYfi = _veYfi;
         treasury = _treasury;
         shouldPerpetuallyLock = true;
@@ -92,9 +92,9 @@ contract YearnStakingDelegate is AccessControl {
             }
             uint256 lpSupply = IERC20(gauge).balanceOf(address(this));
             // get rewards from the gauge
-            totalRewardsAmount = IERC20(oYfi).balanceOf(address(this));
+            totalRewardsAmount = IERC20(dYfi).balanceOf(address(this));
             IGauge(gauge).getReward(address(this));
-            totalRewardsAmount = IERC20(oYfi).balanceOf(address(this)) - totalRewardsAmount;
+            totalRewardsAmount = IERC20(dYfi).balanceOf(address(this)) - totalRewardsAmount;
             // update accRewardsPerShare if there are tokens in the gauge
             if (lpSupply > 0) {
                 vaultRewards.accRewardsPerShare += uint128(totalRewardsAmount * rewardSplit.strategy / lpSupply);
@@ -112,12 +112,12 @@ contract YearnStakingDelegate is AccessControl {
 
             // transfer pending rewards to the user
             if (_pendingRewards != 0) {
-                IERC20(oYfi).safeTransfer(msg.sender, _pendingRewards);
+                IERC20(dYfi).safeTransfer(msg.sender, _pendingRewards);
             }
 
             // Do other actions based on configured parameters
-            IERC20(oYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
-            uint256 yfiAmount = _swapOYfiToYfi(totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18);
+            IERC20(dYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
+            uint256 yfiAmount = _swapDYfiToYfi(totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18);
             if (yfiAmount > 0) {
                 _lockYfi(yfiAmount);
             }
@@ -153,12 +153,12 @@ contract YearnStakingDelegate is AccessControl {
         IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
-    // Swaps any held oYFI to YFI using oYFI/YFI path on Curve
-    function swapOYFIToYFI() external onlyRole(MANAGER_ROLE) {
-        _swapOYfiToYfi(0);
+    // Swaps any held dYFI to YFI using dYFI/YFI path on Curve
+    function swapDYfiToYfi() external onlyRole(MANAGER_ROLE) {
+        _swapDYfiToYfi(0);
     }
 
-    function _swapOYfiToYfi(uint256 oYfiAmount) internal returns (uint256) {
+    function _swapDYfiToYfi(uint256 dYfiAmount) internal returns (uint256) {
         return 0;
     }
 

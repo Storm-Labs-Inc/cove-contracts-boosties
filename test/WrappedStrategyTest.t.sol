@@ -22,7 +22,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
-    uint256 public constant OYFI_REWARD_AMOUNT = 1_000_000e18;
+    uint256 public constant DYFI_REWARD_AMOUNT = 1_000_000e18;
 
     // Addresses
     address public alice;
@@ -47,15 +47,15 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         testGauge = deployGaugeViaFactory(deployedVaults["USDC Vault"], admin, "USDC Test Vault Gauge");
         // Give alice some YFI
         airdrop(ERC20(ETH_YFI), alice, ALICE_YFI);
-        // Give admin some oYFI
-        airdrop(ERC20(oYFI), admin, OYFI_REWARD_AMOUNT);
+        // Give admin some dYFI
+        airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
         // Start new rewards
         vm.startPrank(admin);
-        IERC20(oYFI).approve(testGauge, OYFI_REWARD_AMOUNT);
-        IGauge(testGauge).queueNewRewards(OYFI_REWARD_AMOUNT);
+        IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
+        IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
         vm.stopPrank();
-        require(IERC20(oYFI).balanceOf(testGauge) == OYFI_REWARD_AMOUNT, "queueNewRewards failed");
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, treasury, admin, manager);
+        require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, dYFI, ETH_VE_YFI, treasury, admin, manager);
         vm.prank(manager);
         yearnStakingDelegate.setAssociatedGauge(deployedVaults["USDC Vault"], testGauge);
 
