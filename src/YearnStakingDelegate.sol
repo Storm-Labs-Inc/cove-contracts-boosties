@@ -8,8 +8,9 @@ import { IGauge } from "src/interfaces/yearn/veYFI/IGauge.sol";
 import { AccessControl } from "@openzeppelin-5.0/contracts/access/AccessControl.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { Math } from "@openzeppelin-5.0/contracts/utils/math/Math.sol";
+import { CurveSwapper2Pool } from "src/CurveSwapper2Pool.sol";
 
-contract YearnStakingDelegate is AccessControl {
+contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -29,6 +30,12 @@ contract YearnStakingDelegate is AccessControl {
         uint128 rewardDebt;
     }
 
+    struct SwapPath {
+        address pool;
+        address fromToken;
+        address toToken;
+    }
+
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant STRATEGY_ROLE = keccak256("STRATEGY_ROLE");
 
@@ -40,6 +47,7 @@ contract YearnStakingDelegate is AccessControl {
     mapping(address vault => VaultRewards) public vaultRewardsInfo;
 
     RewardSplit public rewardSplit;
+    SwapPath[] public swapPaths;
     bool public shouldPerpetuallyLock;
 
     using SafeERC20 for IERC20;
@@ -117,8 +125,9 @@ contract YearnStakingDelegate is AccessControl {
 
             // Do other actions based on configured parameters
             IERC20(dYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
-            uint256 yfiAmount = _swapDYfiToYfi(totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18);
-            if (yfiAmount > 0) {
+            uint256 dYfiToSwapAndLock = totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18;
+            if (dYfiToSwapAndLock > 0) {
+                uint256 yfiAmount = _swapDYfiToYfi(dYfiToSwapAndLock);
                 _lockYfi(yfiAmount);
             }
         }
@@ -153,13 +162,18 @@ contract YearnStakingDelegate is AccessControl {
         IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
-    // Swaps any held dYFI to YFI using dYFI/YFI path on Curve
-    function swapDYfiToYfi() external onlyRole(MANAGER_ROLE) {
-        _swapDYfiToYfi(0);
-    }
-
     function _swapDYfiToYfi(uint256 dYfiAmount) internal returns (uint256) {
-        return 0;
+        // Interactions
+        SwapPath[] memory _swapPaths = swapPaths;
+        uint256 swapAmount = dYfiAmount;
+        if (_swapPaths.length == 0) {
+            revert Errors.EmptySwapPaths();
+        }
+        for (uint256 i = 0; i < _swapPaths.length; i++) {
+            _swapFrom(_swapPaths[i].pool, _swapPaths[i].fromToken, _swapPaths[i].toToken, swapAmount, 0);
+            swapAmount = IERC20(_swapPaths[i].toToken).balanceOf(address(this));
+        }
+        return swapAmount;
     }
 
     function _lockYfi(uint256 amount) internal {
@@ -169,7 +183,7 @@ contract YearnStakingDelegate is AccessControl {
     }
 
     // Transfer amount of YFI from msg.sender and locks
-    function lockYfi(uint256 amount) public {
+    function lockYfi(uint256 amount) external {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();
@@ -177,6 +191,21 @@ contract YearnStakingDelegate is AccessControl {
         // Interactions
         IERC20(yfi).safeTransferFrom(msg.sender, address(this), amount);
         _lockYfi(amount);
+    }
+
+    function setSwapPaths(SwapPath[] calldata paths) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Checks
+        if (paths.length == 0) {
+            revert Errors.EmptySwapPaths();
+        }
+        if (paths[0].fromToken != dYfi || paths[paths.length - 1].toToken != yfi) {
+            revert Errors.InvalidSwapPath();
+        }
+        // Effects
+        delete swapPaths;
+        for (uint256 i = 0; i < paths.length; i++) {
+            swapPaths.push(paths[i]);
+        }
     }
 
     /// @notice Set perpetual lock status
@@ -220,7 +249,9 @@ contract YearnStakingDelegate is AccessControl {
     }
 
     function _setRewardSplit(uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) internal {
-        require(treasuryPct + compoundPct + veYfiPct == 1e18, "Split must add up to 100%");
+        if (uint256(treasuryPct) + compoundPct + veYfiPct != 1e18) {
+            revert Errors.InvalidRewardSplit();
+        }
         rewardSplit = RewardSplit(treasuryPct, compoundPct, veYfiPct);
     }
 

@@ -24,8 +24,8 @@ import { IVotingYFI } from "src/interfaces/yearn/veYFI/IVotingYFI.sol";
 import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
 import { IStrategy } from "src/interfaces/yearn/tokenized-strategy/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
-import { ICurveFactory } from "src/interfaces/ICurveFactory.sol";
-import { ICurveTwoAssetPool } from "src/interfaces/ICurveTwoAssetPool.sol";
+import { ICurveFactory } from "src/interfaces/curve/ICurveFactory.sol";
+import { ICurveTwoAssetPool } from "src/interfaces/curve/ICurveTwoAssetPool.sol";
 
 contract YearnV3BaseTest is BaseTest {
     using SafeERC20 for IERC20;
@@ -69,12 +69,20 @@ contract YearnV3BaseTest is BaseTest {
 
         _createYearnRelatedAddresses();
         _createThirdPartyRelatedAddresses();
+        _labelPreExistingAddresses();
 
         // create admin user that would be the default owner of deployed contracts unless specified
         admin = createUser("admin");
 
         setUpVotingYfiStack();
         setUpYfiRegistry();
+    }
+
+    function _labelPreExistingAddresses() internal {
+        vm.label(USDC, "USDC");
+        vm.label(WETH, "WETH");
+        vm.label(curveFactory, "CurveFactory");
+        vm.label(yfiEthCurvePool, "YFI/ETH Curve Pool");
     }
 
     function _createYearnRelatedAddresses() internal {

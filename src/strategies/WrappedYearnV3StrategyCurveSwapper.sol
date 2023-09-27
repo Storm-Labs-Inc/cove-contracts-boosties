@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 import { WrappedYearnV3Strategy } from "./WrappedYearnV3Strategy.sol";
-import { CurveSwapper } from "../CurveSwapper.sol";
+import { CurveSwapperOldPool } from "../CurveSwapperOldPool.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
@@ -11,7 +11,7 @@ import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensio
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
-contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwapper {
+contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwapperOldPool {
     address public immutable curvePoolAddress;
     address public vaultAsset;
     uint256 public slippageTolerance = 99_500;

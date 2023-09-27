@@ -8,7 +8,7 @@ import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
 import { WrappedYearnV3StrategyStaticSwapper } from "../src/strategies/WrappedYearnV3StrategyStaticSwapper.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
-import { ICurveBasePool } from "../src/interfaces/ICurveBasePool.sol";
+import { ICurveBasePool } from "../src/interfaces/curve/ICurveBasePool.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
 contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
