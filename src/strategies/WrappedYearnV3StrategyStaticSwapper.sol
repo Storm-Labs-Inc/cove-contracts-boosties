@@ -58,12 +58,13 @@ contract WrappedYearnV3StrategyStaticSwapper is WrappedYearnV3Strategy, CurveSwa
 
     function _deployFunds(uint256 _amount) internal override {
         address _vaultAsset = vaultAsset;
+        address strategyAsset = asset;
         uint256 beforeBalance = IERC20Metadata(_vaultAsset).balanceOf(address(this));
         // Expected amount of tokens to receive from the swap, assuming closely pegged assets
-        uint256 expectedAmount =
-            _amount * 10 ** (18 - IERC20Metadata(asset).decimals()) * slippageTolerance / SLIPPAGE_TOLERANCE_PRECISION;
+        uint256 expectedAmount = _amount * 10 ** (18 - IERC20Metadata(strategyAsset).decimals()) * slippageTolerance
+            / SLIPPAGE_TOLERANCE_PRECISION;
 
-        _swapFrom(curvePoolAddress, asset, _vaultAsset, _amount, 0);
+        _swapFrom(curvePoolAddress, strategyAsset, _vaultAsset, _amount, 0);
 
         // get exact amount of tokens from the transfer denominated in 1e18
         uint256 afterTokenBalance = (IERC20Metadata(_vaultAsset).balanceOf(address(this)) - beforeBalance)
