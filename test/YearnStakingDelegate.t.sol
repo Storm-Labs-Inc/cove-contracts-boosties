@@ -25,7 +25,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
-    uint256 public constant OYFI_REWARD_AMOUNT = 1_000_000e18;
+    uint256 public constant DYFI_REWARD_AMOUNT = 1_000_000e18;
 
     // Addresses
     address public alice;
@@ -53,18 +53,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // Give alice some YFI
         airdrop(ERC20(ETH_YFI), alice, ALICE_YFI);
 
-        // Give admin some oYFI
-        airdrop(ERC20(oYFI), admin, OYFI_REWARD_AMOUNT);
+        // Give admin some dYFI
+        airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
 
         // Start new rewards
         vm.startPrank(admin);
-        IERC20(oYFI).approve(testGauge, OYFI_REWARD_AMOUNT);
-        IGauge(testGauge).queueNewRewards(OYFI_REWARD_AMOUNT);
+        IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
+        IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
         vm.stopPrank();
 
-        require(IERC20(oYFI).balanceOf(testGauge) == OYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, oYFI, ETH_VE_YFI, treasury, admin, manager);
+        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, dYFI, ETH_VE_YFI, treasury, admin, manager);
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
@@ -73,7 +73,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.assume(noManagerRole != manager && noManagerRole != admin);
         // Check for storage variables default values
         assertEq(yearnStakingDelegate.yfi(), ETH_YFI);
-        assertEq(yearnStakingDelegate.oYfi(), oYFI);
+        assertEq(yearnStakingDelegate.dYfi(), dYFI);
         assertEq(yearnStakingDelegate.veYfi(), ETH_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
         (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) = yearnStakingDelegate.rewardSplit();
@@ -247,8 +247,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be close to 10% of the rewards, giving 90% as the penalty
-        assertLe(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, "harvest failed");
-        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, 0.01e18, "harvest failed");
+        assertLe(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvest failed");
+        assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, 0.01e18, "harvest failed");
     }
 
     function test_harvest_withSomeYFI() public {
@@ -267,8 +267,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be higher than 10% of the rewards due to the 1 YFI locked
-        assertGt(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, "harvest failed");
-        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT / 10, 0.05e18, "harvest failed");
+        assertGt(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvest failed");
+        assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, 0.05e18, "harvest failed");
     }
 
     function test_harvest_withLargeYFI() public {
@@ -287,7 +287,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be close to 100% of the rewards
-        assertApproxEqRel(IERC20(oYFI).balanceOf(wrappedStrategy), OYFI_REWARD_AMOUNT, 0.01e18, "harvest failed");
+        assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT, 0.01e18, "harvest failed");
     }
 
     function test_setSnapshotDelegate() public {
