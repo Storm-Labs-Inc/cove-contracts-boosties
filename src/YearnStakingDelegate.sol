@@ -117,7 +117,7 @@ contract YearnStakingDelegate is AccessControl {
 
             // Do other actions based on configured parameters
             IERC20(dYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
-            uint256 yfiAmount = _swapYfiToDYfi(totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18);
+            uint256 yfiAmount = _swapDYfiToYfi(totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18);
             if (yfiAmount > 0) {
                 _lockYfi(yfiAmount);
             }
@@ -154,11 +154,11 @@ contract YearnStakingDelegate is AccessControl {
     }
 
     // Swaps any held dYFI to YFI using dYFI/YFI path on Curve
-    function swapYfiToDYfi() external onlyRole(MANAGER_ROLE) {
-        _swapYfiToDYfi(0);
+    function swapDYfiToYfi() external onlyRole(MANAGER_ROLE) {
+        _swapDYfiToYfi(0);
     }
 
-    function _swapYfiToDYfi(uint256 dYfiAmount) internal returns (uint256) {
+    function _swapDYfiToYfi(uint256 dYfiAmount) internal returns (uint256) {
         return 0;
     }
 
