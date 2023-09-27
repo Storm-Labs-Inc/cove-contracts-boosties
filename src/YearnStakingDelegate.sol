@@ -162,13 +162,14 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
         IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
-    function _swapDYfiToYfi(uint256 dYfiAmount) internal returns (uint256) {
-        // Interactions
+    function _swapDYfiToYfi(uint256 swapAmount) internal returns (uint256) {
         SwapPath[] memory _swapPaths = swapPaths;
-        uint256 swapAmount = dYfiAmount;
+        // Checks
+        // Assume swap path is valid since it is checked during setting
         if (_swapPaths.length == 0) {
-            revert Errors.EmptySwapPaths();
+            revert Errors.InvalidSwapPath();
         }
+        // Interactions
         for (uint256 i = 0; i < _swapPaths.length; i++) {
             _swapFrom(_swapPaths[i].pool, _swapPaths[i].fromToken, _swapPaths[i].toToken, swapAmount, 0);
             swapAmount = IERC20(_swapPaths[i].toToken).balanceOf(address(this));
@@ -195,15 +196,18 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
 
     function setSwapPaths(SwapPath[] calldata paths) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
-        if (paths.length == 0) {
-            revert Errors.EmptySwapPaths();
-        }
-        if (paths[0].fromToken != dYfi || paths[paths.length - 1].toToken != yfi) {
+        if (paths.length == 0 || paths[paths.length - 1].toToken != yfi) {
             revert Errors.InvalidSwapPath();
         }
         // Effects
         delete swapPaths;
+        address startToken = dYfi;
         for (uint256 i = 0; i < paths.length; i++) {
+            // Check the tokens are in the path sequentially
+            if (paths[i].fromToken != startToken) {
+                revert Errors.InvalidSwapPath();
+            }
+            startToken = paths[i].toToken;
             swapPaths.push(paths[i]);
         }
     }

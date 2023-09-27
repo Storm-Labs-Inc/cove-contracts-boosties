@@ -33,8 +33,6 @@ library Errors {
     //// YEARN STAKING DELEGATE ////
     error ZeroAddress();
 
-    error EmptySwapPaths();
-
     error ZeroAmount();
 
     error InvalidSwapPath();
