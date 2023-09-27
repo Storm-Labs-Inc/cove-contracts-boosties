@@ -2,15 +2,13 @@
 pragma solidity ^0.8.20;
 
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ICurveTwoAssetPool } from "./interfaces/curve/ICurveTwoAssetPool.sol";
 
 contract CurveSwapper2Pool {
     // Optional Variable to be set to not sell dust.
     uint256 public minAmountToSell = 0;
     uint256 private constant _MAX_POOL_INDEX = 100;
-
-    constructor() { }
 
     /**
      * @dev Used to swap a specific amount of `_from` to `_to`.
