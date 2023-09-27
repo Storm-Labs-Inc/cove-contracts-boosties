@@ -24,6 +24,8 @@ import { IVotingYFI } from "src/interfaces/yearn/veYFI/IVotingYFI.sol";
 import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
 import { IStrategy } from "src/interfaces/yearn/tokenized-strategy/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { ICurveFactory } from "src/interfaces/ICurveFactory.sol";
+import { ICurveTwoAssetPool } from "src/interfaces/ICurveTwoAssetPool.sol";
 
 contract YearnV3BaseTest is BaseTest {
     using SafeERC20 for IERC20;
@@ -53,6 +55,11 @@ contract YearnV3BaseTest is BaseTest {
     address public yearnReleaseRegistry;
     address public yearnRegistryFactory;
     address public yearnRegistry;
+
+    // Curve addresses
+    address public curveFactory = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
+    address public yfiEthCurvePool = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
+    address public oYfiEthCurvePool;
 
     function setUp() public virtual override {
         // Fork ethereum mainnet at block 18172262 for consistent testing and to cache RPC calls
@@ -96,6 +103,43 @@ contract YearnV3BaseTest is BaseTest {
         gaugeImpl = _deployGaugeImpl(oYFI, oYFIRewardPool);
         gaugeFactory = _deployGaugeFactory(gaugeImpl);
         gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, oYFIRewardPool);
+        oYfiEthCurvePool = _deployOYfiEthPool();
+    }
+
+    function _deployOYfiEthPool() internal returns (address) {
+        vm.startPrank(admin);
+        // Initial price of ETH: 1600.00 USD
+        // Initial price of oYFI: 520.00 USD (estimated as 10% of YFI value)
+        // Initial price of ETH/oYFI:
+        uint256 initialPriceEthPerOYfi = 325_000_000_000_000_000;
+        // Create WETH/oYFI curve pool
+        address newPool = ICurveFactory(curveFactory).deploy_pool({
+            name: "ETH/oYFI",
+            symbol: "ETHOYFI",
+            coins: [WETH, oYFI],
+            a: 400_000,
+            gamma: 145_000_000_000_000,
+            midFee: 26_000_000,
+            outFee: 45_000_000,
+            allowedExtraProfit: 2_000_000_000_000,
+            feeGamma: 230_000_000_000_000,
+            adjustmentStep: 146_000_000_000_000,
+            adminFee: 5_000_000_000,
+            maHalfTime: 600,
+            initialPrice: initialPriceEthPerOYfi
+        });
+        vm.label(newPool, "ETH/oYFI Curve Pool");
+        // Seed the pool with some liquidity
+        // 10 ETH, 30.769230 oYFI
+        uint256 initialEth = 10e18;
+        uint256 initialOYfi = initialEth * 1e18 / initialPriceEthPerOYfi;
+        airdrop(ERC20(WETH), admin, initialEth);
+        airdrop(ERC20(oYFI), admin, initialOYfi);
+        IERC20(WETH).approve(newPool, initialEth);
+        IERC20(oYFI).approve(newPool, initialOYfi);
+        ICurveTwoAssetPool(newPool).add_liquidity([initialEth, initialOYfi], 0);
+        vm.stopPrank();
+        return newPool;
     }
 
     function _deployOYFI(address owner) internal returns (address) {
