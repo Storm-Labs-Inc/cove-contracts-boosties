@@ -78,13 +78,14 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
     function _deployFunds(uint256 _amount) internal override {
         address _vaultAsset = vaultAsset;
+        address strategyAsset = asset;
         uint256 beforeBalance = IERC20Metadata(_vaultAsset).balanceOf(address(this));
         (uint256 fromPrice, uint256 toPrice) = _getOraclePrices();
         // Expected amount of tokens to receive from the swap
-        uint256 expectedAmount = ((_amount * fromPrice) * 10 ** (18 - IERC20Metadata(asset).decimals()))
+        uint256 expectedAmount = ((_amount * fromPrice) * 10 ** (18 - IERC20Metadata(strategyAsset).decimals()))
             * slippageTolerance / toPrice / SLIPPAGE_TOLERANCE_PRECISION;
 
-        _swapFrom(curvePoolAddress, asset, _vaultAsset, _amount, 0);
+        _swapFrom(curvePoolAddress, strategyAsset, _vaultAsset, _amount, 0);
 
         // get exact amount of tokens from the transfer denominated in 1e18
         uint256 afterTokenBalance = (IERC20Metadata(_vaultAsset).balanceOf(address(this)) - beforeBalance)

@@ -19,13 +19,14 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
 
     function setYieldSource(address v3VaultAddress) external virtual onlyManagement {
         // checks
-        if (asset != IVault(v3VaultAddress).asset()) {
+        address strategyAsset = asset;
+        if (strategyAsset != IVault(v3VaultAddress).asset()) {
             revert Errors.VaultAssetDiffers();
         }
         // effects
         vaultAddress = v3VaultAddress;
         // interactions
-        ERC20(asset).approve(vaultAddress, type(uint256).max);
+        ERC20(strategyAsset).approve(v3VaultAddress, type(uint256).max);
     }
 
     function setStakingDelegate(address delegateAddress) external onlyManagement {
@@ -36,20 +37,22 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy {
         // effects
         yearnStakingDelegateAddress = delegateAddress;
         // interactions
-        ERC20(vaultAddress).approve(yearnStakingDelegateAddress, type(uint256).max);
+        ERC20(vaultAddress).approve(delegateAddress, type(uint256).max);
     }
 
     function _deployFunds(uint256 _amount) internal virtual override {
         // deposit _amount into vault
-        uint256 shares = IVault(vaultAddress).deposit(_amount, address(this));
-        IYearnStakingDelegate(yearnStakingDelegateAddress).depositToGauge(vaultAddress, shares);
+        address _vault = vaultAddress;
+        uint256 shares = IVault(_vault).deposit(_amount, address(this));
+        IYearnStakingDelegate(yearnStakingDelegateAddress).depositToGauge(_vault, shares);
     }
 
     function _freeFunds(uint256 _amount) internal override {
         // withdraw _amount from gauge through yearn staking delegate
-        IYearnStakingDelegate(yearnStakingDelegateAddress).withdrawFromGauge(vaultAddress, _amount);
+        address _vault = vaultAddress;
+        IYearnStakingDelegate(yearnStakingDelegateAddress).withdrawFromGauge(_vault, _amount);
         // withdraw _amount from vault, with msg.sender as recipient
-        IVault(vaultAddress).withdraw(_amount, msg.sender, address(this));
+        IVault(_vault).withdraw(_amount, msg.sender, address(this));
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
