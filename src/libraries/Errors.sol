@@ -43,6 +43,8 @@ library Errors {
 
     error OracleOudated();
 
+    error VaultAssetDiffers();
+
     error SlippageTooHigh();
 
     error OracleNotSet(address asset);
