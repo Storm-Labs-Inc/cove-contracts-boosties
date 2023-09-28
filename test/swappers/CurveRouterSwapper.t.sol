@@ -46,7 +46,7 @@ contract CurveRouterSwapperTest is BaseTest {
         uint256[5][5] memory swapParams;
 
         // i, j, swap_type, pool_type, n_coins
-        swapParams[0] = [uint256(0), 1, 1, 1, 3];
+        swapParams[0] = [uint256(0), 1, 1, 1, 3]; // DAI -> USDC
         uint256 amount = 1000 * 10 ** ERC20(MAINNET_DAI).decimals();
         uint256 expected = 999 * 10 ** ERC20(MAINNET_USDT).decimals();
         address[5] memory pools;
@@ -109,7 +109,7 @@ contract CurveRouterSwapperTest is BaseTest {
         route[2] = MAINNET_USDC;
 
         // i, j, swap_type, pool_type, n_coins
-        swapParams[0] = [uint256(2), 1, 1, 1, 3];
+        swapParams[0] = [uint256(2), 1, 1, 1, 3]; // USDT -> USDC
         uint256 amount = 1000 * 10 ** ERC20(MAINNET_USDT).decimals();
         uint256 expected = 999 * 10 ** ERC20(MAINNET_USDC).decimals();
 
@@ -201,7 +201,7 @@ contract CurveRouterSwapperTest is BaseTest {
         assertApproxEqRel(returnVal, expected, 0.01e18);
         // Assert balances match the return value
         assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), returnVal);
-        // Assert DAI is all used up
+        // Assert USDT is all used up
         assertEq(ERC20(MAINNET_USDT).balanceOf(address(swapper)), 0);
     }
 }
