@@ -57,8 +57,6 @@ contract YearnV3BaseTest is BaseTest {
     address public yearnRegistry;
 
     // Curve addresses
-    address public curveFactory = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
-    address public yfiEthCurvePool = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
     address public dYfiEthCurvePool;
 
     function setUp() public virtual override {
@@ -69,7 +67,7 @@ contract YearnV3BaseTest is BaseTest {
 
         _createYearnRelatedAddresses();
         _createThirdPartyRelatedAddresses();
-        _labelPreExistingAddresses();
+        _labelEthereumAddresses();
 
         // create admin user that would be the default owner of deployed contracts unless specified
         admin = createUser("admin");
@@ -78,22 +76,12 @@ contract YearnV3BaseTest is BaseTest {
         setUpYfiRegistry();
     }
 
-    function _labelPreExistingAddresses() internal {
-        vm.label(MAINNET_USDC, "USDC");
-        vm.label(MAINNET_WETH, "WETH");
-        vm.label(curveFactory, "CurveFactory");
-        vm.label(yfiEthCurvePool, "YFI/ETH Curve Pool");
-    }
-
     function _createYearnRelatedAddresses() internal {
         // Create yearn related user addresses
         management = createUser("management");
         vaultManagement = createUser("vaultManagement");
         performanceFeeRecipient = createUser("performanceFeeRecipient");
         keeper = createUser("keeper");
-
-        vm.label(MAINNET_VE_YFI, "veYFI");
-        vm.label(MAINNET_YFI, "YFI");
     }
 
     function _createThirdPartyRelatedAddresses() internal {
@@ -121,7 +109,7 @@ contract YearnV3BaseTest is BaseTest {
         // Initial price of ETH/dYFI:
         uint256 initialPriceEthPerDYfi = 325_000_000_000_000_000;
         // Create WETH/dYFI curve pool
-        address newPool = ICurveFactory(curveFactory).deploy_pool({
+        address newPool = ICurveFactory(MAINNET_CURVE_CRYPTO_FACTORY).deploy_pool({
             name: "ETH/dYFI",
             symbol: "ETHDYFI",
             coins: [MAINNET_WETH, dYFI],
