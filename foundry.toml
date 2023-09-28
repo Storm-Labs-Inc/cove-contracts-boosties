@@ -8,6 +8,7 @@ fs_permissions = [
 ]
 solc = '0.8.20'
 ffi = true
+evm_version = "shanghai"
 
 [fmt]
 bracket_spacing = true

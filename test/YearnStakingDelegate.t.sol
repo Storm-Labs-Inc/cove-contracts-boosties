@@ -103,7 +103,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function _setSwapPaths() internal {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
         swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_YFI);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
         vm.prank(admin);
         yearnStakingDelegate.setSwapPaths(swapPaths);
     }
@@ -322,7 +322,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // Calculate expected yfi amount after swapping through curve pools
         // dYFI -> WETH then WETH -> YFI
         uint256 wethAmount = ICurveTwoAssetPool(dYfiEthCurvePool).get_dy(1, 0, estimatedVeYfiSplit);
-        uint256 yfiAmount = ICurveTwoAssetPool(yfiEthCurvePool).get_dy(0, 1, wethAmount);
+        uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_YFI_ETH_POOL).get_dy(0, 1, wethAmount);
 
         // Harvest
         vm.prank(wrappedStrategy);
@@ -405,7 +405,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function test_setSwapPaths_revertsWhenStartTokenIsNotDYfi() public {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
         swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, MAINNET_USDC, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_YFI);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
         yearnStakingDelegate.setSwapPaths(swapPaths);
@@ -414,7 +414,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function test_setSwapPaths_revertsWhenEndTokenIsNotYfi() public {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
         swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_USDC);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_USDC);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
         yearnStakingDelegate.setSwapPaths(swapPaths);
@@ -423,7 +423,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function test_setSwapPaths_revertsWhenTokenPathIsNotSequential() public {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
         swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_USDC);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_YFI);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
         yearnStakingDelegate.setSwapPaths(swapPaths);
