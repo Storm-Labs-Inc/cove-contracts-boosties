@@ -23,3 +23,6 @@ wrap_comments = true
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"
+
+[etherscan]
+mainnet = { key = "${API_KEY_ETHERSCAN}" }
