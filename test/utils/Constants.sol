@@ -15,6 +15,8 @@ contract Constants {
     address public constant VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
     address public constant CRV3POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 
+    address public constant CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
+
     struct Users {
         // Default admin for all contracts.
         address payable admin;
