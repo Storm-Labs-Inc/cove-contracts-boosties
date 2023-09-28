@@ -5,7 +5,7 @@ import "@openzeppelin-5.0/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-5.0/contracts/utils/math/Math.sol";
 import "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-upgradeable-5.0/contracts/access/OwnableUpgradeable.sol";
-import "src/interfaces/yearn/veYFI/IBaseGauge.sol";
+import "src/interfaces/deps/yearn/veYFI/IBaseGauge.sol";
 
 abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
     // solhint-disable-next-line var-name-mixedcase

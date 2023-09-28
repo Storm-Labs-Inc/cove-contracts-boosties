@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "src/interfaces/yearn/veYFI/IVotingYFI.sol";
-import "src/interfaces/yearn/veYFI/IGaugeFactory.sol";
+import "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
+import "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 import "@openzeppelin-5.0/contracts/access/Ownable.sol";
 import "@openzeppelin-5.0/contracts/utils/structs/EnumerableSet.sol";
 

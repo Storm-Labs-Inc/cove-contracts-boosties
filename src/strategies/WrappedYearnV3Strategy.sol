@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.20;
 
-import { BaseTokenizedStrategy } from "../yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
-import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
+import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
+import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { Errors } from "../libraries/Errors.sol";

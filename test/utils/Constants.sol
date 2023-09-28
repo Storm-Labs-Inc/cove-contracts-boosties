@@ -2,20 +2,20 @@
 pragma solidity ^0.8.20;
 
 contract Constants {
+    // Constant uint256 values
     uint40 internal constant _JAN_1_2023 = 1_672_531_200;
     uint256 internal constant _MAX_UINT256 = type(uint256).max;
 
-    // Ethereum mainnet addresses.
-    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant ETH_YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
-    address public constant ETH_VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
-    address public constant YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
-    address public constant VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
-    address public constant CRV3POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
-
-    address public constant CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
+    // Ethereum mainnet addresses
+    address public constant MAINNET_CRV3POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+    address public constant MAINNET_CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
+    address public constant MAINNET_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant MAINNET_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant MAINNET_VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
+    address public constant MAINNET_VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
+    address public constant MAINNET_WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant MAINNET_YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    address public constant MAINNET_YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
 
     struct Users {
         // Default admin for all contracts.

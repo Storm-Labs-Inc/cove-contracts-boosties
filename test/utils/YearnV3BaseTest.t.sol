@@ -10,27 +10,27 @@ import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.so
 import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 import { WrappedYearnV3StrategyStaticSwapper } from "src/strategies/WrappedYearnV3StrategyStaticSwapper.sol";
 
-import { ReleaseRegistry } from "src/yearn/vault-periphery/registry/ReleaseRegistry.sol";
-import { RegistryFactory } from "src/yearn/vault-periphery/registry/RegistryFactory.sol";
-import { Registry } from "src/yearn/vault-periphery/registry/Registry.sol";
+import { ReleaseRegistry } from "src/deps/yearn/vault-periphery/registry/ReleaseRegistry.sol";
+import { RegistryFactory } from "src/deps/yearn/vault-periphery/registry/RegistryFactory.sol";
+import { Registry } from "src/deps/yearn/vault-periphery/registry/Registry.sol";
 
-import { Gauge } from "src/yearn/veYFI/Gauge.sol";
-import { GaugeFactory } from "src/yearn/veYFI/GaugeFactory.sol";
-import { OYfi } from "src/yearn/veYFI/OYfi.sol";
-import { VeRegistry } from "src/yearn/veYFI/VeRegistry.sol";
+import { Gauge } from "src/deps/yearn/veYFI/Gauge.sol";
+import { GaugeFactory } from "src/deps/yearn/veYFI/GaugeFactory.sol";
+import { OYfi } from "src/deps/yearn/veYFI/OYfi.sol";
+import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 
 // Interfaces
-import { IVotingYFI } from "src/interfaces/yearn/veYFI/IVotingYFI.sol";
-import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
-import { IStrategy } from "src/interfaces/yearn/tokenized-strategy/IStrategy.sol";
+import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
+import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
+import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
-import { ICurveFactory } from "src/interfaces/curve/ICurveFactory.sol";
-import { ICurveTwoAssetPool } from "src/interfaces/curve/ICurveTwoAssetPool.sol";
+import { ICurveFactory } from "src/interfaces/deps/curve/ICurveFactory.sol";
+import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 
 contract YearnV3BaseTest is BaseTest {
     using SafeERC20 for IERC20;
 
-    ERC20 public baseAsset = ERC20(USDC);
+    ERC20 public baseAsset = ERC20(MAINNET_USDC);
     mapping(string => address) public deployedVaults;
     mapping(string => address) public deployedStrategies;
 
@@ -79,8 +79,8 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function _labelPreExistingAddresses() internal {
-        vm.label(USDC, "USDC");
-        vm.label(WETH, "WETH");
+        vm.label(MAINNET_USDC, "USDC");
+        vm.label(MAINNET_WETH, "WETH");
         vm.label(curveFactory, "CurveFactory");
         vm.label(yfiEthCurvePool, "YFI/ETH Curve Pool");
     }
@@ -92,8 +92,8 @@ contract YearnV3BaseTest is BaseTest {
         performanceFeeRecipient = createUser("performanceFeeRecipient");
         keeper = createUser("keeper");
 
-        vm.label(ETH_VE_YFI, "veYFI");
-        vm.label(ETH_YFI, "YFI");
+        vm.label(MAINNET_VE_YFI, "veYFI");
+        vm.label(MAINNET_YFI, "YFI");
     }
 
     function _createThirdPartyRelatedAddresses() internal {
@@ -124,7 +124,7 @@ contract YearnV3BaseTest is BaseTest {
         address newPool = ICurveFactory(curveFactory).deploy_pool({
             name: "ETH/dYFI",
             symbol: "ETHDYFI",
-            coins: [WETH, dYFI],
+            coins: [MAINNET_WETH, dYFI],
             a: 400_000,
             gamma: 145_000_000_000_000,
             midFee: 26_000_000,
@@ -141,9 +141,9 @@ contract YearnV3BaseTest is BaseTest {
         // 10 ETH, 30.769230 dYFI
         uint256 initialEth = 10e18;
         uint256 initialDYfi = initialEth * 1e18 / initialPriceEthPerDYfi;
-        airdrop(ERC20(WETH), admin, initialEth);
+        airdrop(ERC20(MAINNET_WETH), admin, initialEth);
         airdrop(ERC20(dYFI), admin, initialDYfi);
-        IERC20(WETH).approve(newPool, initialEth);
+        IERC20(MAINNET_WETH).approve(newPool, initialEth);
         IERC20(dYFI).approve(newPool, initialDYfi);
         ICurveTwoAssetPool(newPool).add_liquidity([initialEth, initialDYfi], 0);
         vm.stopPrank();
@@ -159,7 +159,7 @@ contract YearnV3BaseTest is BaseTest {
 
     function _deployDYFIRewardPool(address dYfi, uint256 startTime) internal returns (address) {
         address addr = vyperDeployer.deployContract(
-            "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(ETH_VE_YFI, dYfi, startTime)
+            "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(MAINNET_VE_YFI, dYfi, startTime)
         );
         vm.label(addr, "DYfiRewardPool");
         return addr;
@@ -175,12 +175,14 @@ contract YearnV3BaseTest is BaseTest {
         returns (address)
     {
         return vyperDeployer.deployContract(
-            "lib/veYFI/contracts/", "Options", abi.encode(ETH_YFI, dYfi, ETH_VE_YFI, owner, priceFeed, curvePool)
+            "lib/veYFI/contracts/",
+            "Options",
+            abi.encode(MAINNET_YFI, dYfi, MAINNET_VE_YFI, owner, priceFeed, curvePool)
         );
     }
 
     function _deployGaugeImpl(address _dYFI, address _dYFIRewardPool) internal returns (address) {
-        return address(new Gauge(ETH_VE_YFI, _dYFI, _dYFIRewardPool));
+        return address(new Gauge(MAINNET_VE_YFI, _dYFI, _dYFIRewardPool));
     }
 
     function deployGaugeViaFactory(address vault, address owner, string memory label) public returns (address) {
@@ -204,7 +206,7 @@ contract YearnV3BaseTest is BaseTest {
         returns (address)
     {
         vm.prank(owner);
-        return address(new VeRegistry(ETH_VE_YFI, ETH_YFI, _gaugeFactory, veYFIRewardPool));
+        return address(new VeRegistry(MAINNET_VE_YFI, MAINNET_YFI, _gaugeFactory, veYFIRewardPool));
     }
 
     /// YFI registry related functions ///
@@ -403,7 +405,7 @@ contract YearnV3BaseTest is BaseTest {
         console.log("total supply: ", wrappedYearnV3Strategy.totalSupply());
         console.log("total debt: ", wrappedYearnV3Strategy.totalDebt());
         console.log("balance of test executor: ", wrappedYearnV3Strategy.balanceOf(address(this)));
-        console.log("strat USDC balance: ", ERC20(USDC).balanceOf(address(wrappedYearnV3Strategy)));
+        console.log("strat USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(wrappedYearnV3Strategy)));
     }
 
     function logVaultInfo(string memory name) public view {
@@ -413,7 +415,7 @@ contract YearnV3BaseTest is BaseTest {
             "current debt in strat: ",
             deployedVault.strategies(deployedStrategies["Wrapped YearnV3 Strategy"]).currentDebt
         );
-        console.log("vault USDC balance: ", ERC20(USDC).balanceOf(address(deployedVault)));
+        console.log("vault USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(deployedVault)));
         console.log("vault total debt: ", deployedVault.totalDebt());
         console.log("vault total idle assets: ", deployedVault.totalIdle());
     }

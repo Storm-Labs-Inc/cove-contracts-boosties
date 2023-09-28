@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import { Governance } from "src/yearn/tokenized-strategy-periphery/utils/Governance.sol";
+import { Governance } from "../../tokenized-strategy-periphery/utils/Governance.sol";
 
 interface IFactory {
     function api_version() external view returns (string memory);
