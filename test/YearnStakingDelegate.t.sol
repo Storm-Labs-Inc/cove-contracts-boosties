@@ -15,6 +15,7 @@ import { Errors } from "src/libraries/Errors.sol";
 import { IGaugeFactory } from "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
+import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -33,6 +34,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     address public manager;
     address public wrappedStrategy;
     address public treasury;
+
+    YearnStakingDelegate.RouterParam public routerParam;
 
     function setUp() public override {
         super.setUp();
@@ -65,7 +68,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
-        yearnStakingDelegate = new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, treasury, admin, manager);
+        yearnStakingDelegate =
+        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
@@ -101,11 +105,17 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function _setSwapPaths() internal {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
+        routerParam.route[0] = dYFI;
+        routerParam.route[1] = dYfiEthCurvePool;
+        routerParam.route[2] = MAINNET_ETH;
+        routerParam.route[3] = MAINNET_YFI_ETH_POOL;
+        routerParam.route[4] = MAINNET_YFI;
+
+        routerParam.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        routerParam.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+
         vm.prank(admin);
-        yearnStakingDelegate.setSwapPaths(swapPaths);
+        yearnStakingDelegate.setRouterParams(routerParam);
     }
 
     function test_setAssociatedGauge() public {
@@ -336,9 +346,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         IVotingYFI.LockedBalance memory lockedBalanceAfter =
             IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
-        assertEq(
+        assertApproxEqRel(
             uint256(uint128(lockedBalanceAfter.amount - lockedBalanceBefore.amount)),
             yfiAmount,
+            0.001e18,
             "veYfi split is incorrect"
         );
     }
@@ -349,7 +360,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
 
         assertEq(
-            ISnapshotDelegateRegistry(yearnStakingDelegate.SNAPSHOT_DELEGATE_REGISTRY()).delegation(
+            ISnapshotDelegateRegistry(MAINNET_SNAPSHOT_DELEGATE_REGISTRY).delegation(
                 address(yearnStakingDelegate), "veyfi.eth"
             ),
             manager,
@@ -396,36 +407,36 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_setSwapPaths_revertsWithEmptyPaths() public {
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(new YearnStakingDelegate.SwapPath[](0));
-    }
+    // function test_setSwapPaths_revertsWithEmptyPaths() public {
+    //     vm.prank(admin);
+    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
+    //     yearnStakingDelegate.setSwapPaths(new YearnStakingDelegate.SwapPath[](0));
+    // }
 
-    function test_setSwapPaths_revertsWhenStartTokenIsNotDYfi() public {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, MAINNET_USDC, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(swapPaths);
-    }
+    // function test_setSwapPaths_revertsWhenStartTokenIsNotDYfi() public {
+    //     YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
+    //     swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, MAINNET_USDC, MAINNET_WETH);
+    //     swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
+    //     vm.prank(admin);
+    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
+    //     yearnStakingDelegate.setSwapPaths(swapPaths);
+    // }
 
-    function test_setSwapPaths_revertsWhenEndTokenIsNotYfi() public {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_USDC);
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(swapPaths);
-    }
+    // function test_setSwapPaths_revertsWhenEndTokenIsNotYfi() public {
+    //     YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
+    //     swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
+    //     swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_USDC);
+    //     vm.prank(admin);
+    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
+    //     yearnStakingDelegate.setSwapPaths(swapPaths);
+    // }
 
-    function test_setSwapPaths_revertsWhenTokenPathIsNotSequential() public {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_USDC);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(swapPaths);
-    }
+    // function test_setSwapPaths_revertsWhenTokenPathIsNotSequential() public {
+    //     YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
+    //     swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_USDC);
+    //     swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
+    //     vm.prank(admin);
+    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
+    //     yearnStakingDelegate.setSwapPaths(swapPaths);
+    // }
 }

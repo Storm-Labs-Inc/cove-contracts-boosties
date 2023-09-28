@@ -55,7 +55,8 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
         vm.stopPrank();
         require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
-        yearnStakingDelegate = new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, treasury, admin, manager);
+        yearnStakingDelegate =
+        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
         vm.prank(manager);
         yearnStakingDelegate.setAssociatedGauge(deployedVaults["USDC Vault"], testGauge);
 
