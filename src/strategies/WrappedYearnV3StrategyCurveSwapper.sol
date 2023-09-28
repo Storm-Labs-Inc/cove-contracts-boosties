@@ -3,9 +3,9 @@
 pragma solidity ^0.8.20;
 
 import { WrappedYearnV3Strategy } from "./WrappedYearnV3Strategy.sol";
-import { CurveSwapperOldPool } from "../CurveSwapperOldPool.sol";
+import { CurveSwapperOldPool } from "src/swappers/CurveSwapperOldPool.sol";
 import { Errors } from "../libraries/Errors.sol";
-import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
+import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
 import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";

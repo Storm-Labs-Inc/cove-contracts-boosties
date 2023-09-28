@@ -1,3 +1,2 @@
-src/yearn/
-src/interfaces/yearn/
-src/interfaces/curve/
+src/deps/
+src/interfaces/deps/

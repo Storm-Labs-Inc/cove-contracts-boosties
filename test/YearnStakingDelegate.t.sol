@@ -3,18 +3,18 @@ pragma solidity ^0.8.20;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { console2 as console } from "test/utils/BaseTest.t.sol";
-import { IStrategy } from "src/interfaces/yearn/tokenized-strategy/IStrategy.sol";
-import { IVault } from "src/interfaces/yearn/yearn-vaults-v3/IVault.sol";
+import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
+import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
-import { ISnapshotDelegateRegistry } from "src/interfaces/ISnapshotDelegateRegistry.sol";
+import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IVotingYFI } from "src/interfaces/yearn/veYFI/IVotingYFI.sol";
+import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { IGaugeFactory } from "src/interfaces/yearn/veYFI/IGaugeFactory.sol";
-import { IGauge } from "src/interfaces/yearn/veYFI/IGauge.sol";
-import { ICurveTwoAssetPool } from "src/interfaces/curve/ICurveTwoAssetPool.sol";
+import { IGaugeFactory } from "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
+import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -47,12 +47,12 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         treasury = createUser("treasury");
 
         // Deploy vault
-        testVault = deployVaultV3("USDC Test Vault", USDC, new address[](0));
+        testVault = deployVaultV3("USDC Test Vault", MAINNET_USDC, new address[](0));
         // Deploy gauge
         testGauge = deployGaugeViaFactory(testVault, admin, "USDC Test Vault Gauge");
 
         // Give alice some YFI
-        airdrop(ERC20(ETH_YFI), alice, ALICE_YFI);
+        airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
 
         // Give admin some dYFI
         airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
@@ -65,7 +65,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
-        yearnStakingDelegate = new YearnStakingDelegate(ETH_YFI, dYFI, ETH_VE_YFI, treasury, admin, manager);
+        yearnStakingDelegate = new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, treasury, admin, manager);
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
@@ -73,9 +73,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // manager role is given to admin and manager
         vm.assume(noManagerRole != manager && noManagerRole != admin);
         // Check for storage variables default values
-        assertEq(yearnStakingDelegate.yfi(), ETH_YFI);
+        assertEq(yearnStakingDelegate.yfi(), MAINNET_YFI);
         assertEq(yearnStakingDelegate.dYfi(), dYFI);
-        assertEq(yearnStakingDelegate.veYfi(), ETH_VE_YFI);
+        assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
         (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) = yearnStakingDelegate.rewardSplit();
         assertEq(treasurySplit, 0);
@@ -87,7 +87,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
         // Check for approvals
-        assertEq(IERC20(ETH_YFI).allowance(address(yearnStakingDelegate), ETH_VE_YFI), type(uint256).max);
+        assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }
 
     function _setAssociatedGauge() internal {
@@ -102,8 +102,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function _setSwapPaths() internal {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, WETH, ETH_YFI);
+        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_YFI);
         vm.prank(admin);
         yearnStakingDelegate.setSwapPaths(swapPaths);
     }
@@ -115,7 +115,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function _lockYFI(address user, uint256 amount) internal {
         vm.startPrank(user);
-        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), amount);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), amount);
         yearnStakingDelegate.lockYfi(amount);
         vm.stopPrank();
     }
@@ -123,14 +123,16 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function test_lockYFI() public {
         _lockYFI(alice, 1e18);
 
-        assertEq(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
-        assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 999_999_999_971_481_600, "lock failed");
+        assertEq(IERC20(MAINNET_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
+        assertEq(
+            IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 999_999_999_971_481_600, "lock failed"
+        );
     }
 
     function test_lockYFI_revertsWithZeroAmount() public {
         uint256 lockAmount = 0;
         vm.startPrank(alice);
-        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), lockAmount);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), lockAmount);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
         yearnStakingDelegate.lockYfi(lockAmount);
         vm.stopPrank();
@@ -140,7 +142,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.assume(lockAmount > 0);
         vm.assume(lockAmount < 1e18);
         vm.startPrank(alice);
-        IERC20(ETH_YFI).approve(address(yearnStakingDelegate), lockAmount);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), lockAmount);
         vm.expectRevert();
         yearnStakingDelegate.lockYfi(lockAmount);
         vm.stopPrank();
@@ -148,12 +150,12 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function testFuzz_lockYFI(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(alice));
+        vm.assume(lockAmount < IERC20(MAINNET_YFI).balanceOf(alice));
         _lockYFI(alice, lockAmount);
 
-        assertEq(IERC20(ETH_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
-        assertGt(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount - 1e9, "lock failed");
-        assertLe(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount, "lock failed");
+        assertEq(IERC20(MAINNET_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
+        assertGt(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount - 1e9, "lock failed");
+        assertLe(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount, "lock failed");
     }
 
     function test_earlyUnlock() public {
@@ -164,12 +166,12 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.earlyUnlock(admin);
         vm.stopPrank();
 
-        assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
+        assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
     }
 
     function testFuzz_earlyUnlock(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount < IERC20(ETH_YFI).balanceOf(alice));
+        vm.assume(lockAmount < IERC20(MAINNET_YFI).balanceOf(alice));
         _lockYFI(alice, lockAmount);
 
         vm.startPrank(admin);
@@ -177,7 +179,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.earlyUnlock(admin);
         vm.stopPrank();
 
-        assertEq(IERC20(ETH_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
+        assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
     }
 
     function test_earlyUnlock_revertsPerpeutalLockEnabled() public {
@@ -307,7 +309,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Measure veYfi balance before harvest
         IVotingYFI.LockedBalance memory lockedBalanceBefore =
-            IVotingYFI(ETH_VE_YFI).locked(address(yearnStakingDelegate));
+            IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
 
         // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
         uint256 actualRewardAmount = 1_021_755_338_445_599_531;
@@ -333,7 +335,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");
 
         IVotingYFI.LockedBalance memory lockedBalanceAfter =
-            IVotingYFI(ETH_VE_YFI).locked(address(yearnStakingDelegate));
+            IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
         assertEq(
             uint256(uint128(lockedBalanceAfter.amount - lockedBalanceBefore.amount)),
             yfiAmount,
@@ -402,8 +404,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_setSwapPaths_revertsWhenStartTokenIsNotDYfi() public {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, USDC, WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, WETH, ETH_YFI);
+        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, MAINNET_USDC, MAINNET_WETH);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_YFI);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
         yearnStakingDelegate.setSwapPaths(swapPaths);
@@ -411,8 +413,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_setSwapPaths_revertsWhenEndTokenIsNotYfi() public {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, WETH, USDC);
+        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_USDC);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
         yearnStakingDelegate.setSwapPaths(swapPaths);
@@ -420,8 +422,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_setSwapPaths_revertsWhenTokenPathIsNotSequential() public {
         YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, USDC);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, WETH, ETH_YFI);
+        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_USDC);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(yfiEthCurvePool, MAINNET_WETH, MAINNET_YFI);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
         yearnStakingDelegate.setSwapPaths(swapPaths);

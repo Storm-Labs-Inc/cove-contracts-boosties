@@ -2,13 +2,13 @@
 pragma solidity ^0.8.20;
 
 import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IVotingYFI } from "src/interfaces/yearn/veYFI/IVotingYFI.sol";
-import { ISnapshotDelegateRegistry } from "src/interfaces/ISnapshotDelegateRegistry.sol";
-import { IGauge } from "src/interfaces/yearn/veYFI/IGauge.sol";
+import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
+import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
+import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { AccessControl } from "@openzeppelin-5.0/contracts/access/AccessControl.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { Math } from "@openzeppelin-5.0/contracts/utils/math/Math.sol";
-import { CurveSwapper2Pool } from "src/CurveSwapper2Pool.sol";
+import { CurveSwapper2Pool } from "src/swappers/CurveSwapper2Pool.sol";
 
 contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
     using SafeERC20 for IERC20;

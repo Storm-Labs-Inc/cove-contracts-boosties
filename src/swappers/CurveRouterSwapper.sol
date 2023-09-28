@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { ICurveRouter } from "./interfaces/curve/ICurveRouter.sol";
+import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
 
 /// @title Curve Router Library
 /// @notice Contains helper methods for interacting with Curve Router.

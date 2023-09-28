@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 
-import { BaseTokenizedStrategy } from "src/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
+import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
 
 contract MockStrategy is BaseTokenizedStrategy {
     bool public tendStatus;

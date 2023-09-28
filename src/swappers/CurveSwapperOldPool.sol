@@ -2,13 +2,14 @@
 pragma solidity ^0.8.20;
 
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ICurveTwoAssetPool } from "./interfaces/curve/ICurveTwoAssetPool.sol";
+import "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ICurveBasePool } from "src/interfaces/deps/curve/ICurveBasePool.sol";
 
-contract CurveSwapper2Pool {
+contract CurveSwapperOldPool {
     // Optional Variable to be set to not sell dust.
     uint256 public minAmountToSell = 0;
-    uint256 private constant _MAX_POOL_INDEX = 100;
+
+    constructor() { }
 
     /**
      * @dev Used to swap a specific amount of `_from` to `_to`.
@@ -33,8 +34,8 @@ contract CurveSwapper2Pool {
         if (_amountIn > minAmountToSell) {
             _checkAllowance(_curvePool, _from, _amountIn);
 
-            (uint256 fromIndex, uint256 toIndex) = _getTokenIndexes(_curvePool, _from, _to);
-            ICurveTwoAssetPool(_curvePool).exchange(fromIndex, toIndex, _amountIn, _minAmountOut);
+            (int128 fromIndex, int128 toIndex) = _getTokenIndexes(_curvePool, _from, _to);
+            ICurveBasePool(_curvePool).exchange(fromIndex, toIndex, _amountIn, _minAmountOut);
         }
     }
     /**
@@ -52,15 +53,15 @@ contract CurveSwapper2Pool {
 
     function _getAmountOut(
         address _curvePool,
-        uint256 _from,
-        uint256 _to,
+        int128 _from,
+        int128 _to,
         uint256 _amountIn
     )
         internal
         view
         returns (uint256)
     {
-        return ICurveTwoAssetPool(_curvePool).get_dy(_from, _to, _amountIn);
+        return ICurveBasePool(_curvePool).get_dy(_from, _to, _amountIn);
     }
 
     /**
@@ -70,26 +71,18 @@ contract CurveSwapper2Pool {
      * @param _to The token to buy.
      * @return . The indexes of '_from' and '_to' respectively.
      */
-    function _getTokenIndexes(
-        address _curvePool,
-        address _from,
-        address _to
-    )
-        internal
-        view
-        returns (uint256, uint256)
-    {
-        uint256 fromIndex = _MAX_POOL_INDEX;
-        uint256 toIndex = _MAX_POOL_INDEX;
+    function _getTokenIndexes(address _curvePool, address _from, address _to) internal view returns (int128, int128) {
+        int128 fromIndex = -1;
+        int128 toIndex = -1;
 
-        for (uint256 i = 0; i < _MAX_POOL_INDEX; i++) {
-            address coinAtIndex = ICurveTwoAssetPool(_curvePool).coins(i);
-            if (fromIndex == _MAX_POOL_INDEX && coinAtIndex == _from) {
-                fromIndex = i;
-            } else if (toIndex == _MAX_POOL_INDEX && coinAtIndex == _to) {
-                toIndex = i;
+        for (uint256 i = 0; i < 100; i++) {
+            address coinAtIndex = ICurveBasePool(_curvePool).coins(i);
+            if (fromIndex == -1 && coinAtIndex == _from) {
+                fromIndex = int128(int256(i));
+            } else if (toIndex == -1 && coinAtIndex == _to) {
+                toIndex = int128(int256(i));
             }
-            if (fromIndex != _MAX_POOL_INDEX && toIndex != _MAX_POOL_INDEX) {
+            if (fromIndex != -1 && toIndex != -1) {
                 break;
             }
         }

@@ -19,7 +19,7 @@
     "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
   },
   "lint-staged": {
-    "!(src/yearn/**/*|src/interfaces/yearn/**/*|src/interfaces/curve/**/*)*.sol": [
+    "!(src/deps/**/*|src/interfaces/deps/**/*)*.sol": [
       "forge fmt",
       "npx solhint --fix"
     ],

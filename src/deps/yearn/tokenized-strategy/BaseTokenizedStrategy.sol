@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 // TokenizedStrategy interface used for internal view delegateCalls.
-import { ITokenizedStrategy } from "../../interfaces/yearn/tokenized-strategy/ITokenizedStrategy.sol";
+import { ITokenizedStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/ITokenizedStrategy.sol";
 
 /**
  * @title YearnV3 Base Tokenized Strategy
