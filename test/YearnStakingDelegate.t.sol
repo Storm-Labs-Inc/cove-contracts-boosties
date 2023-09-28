@@ -35,7 +35,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     address public wrappedStrategy;
     address public treasury;
 
-    YearnStakingDelegate.RouterParam public routerParam;
+    YearnStakingDelegate.RouterParam internal _routerParam;
 
     function setUp() public override {
         super.setUp();
@@ -105,17 +105,17 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function _setSwapPaths() internal {
-        routerParam.route[0] = dYFI;
-        routerParam.route[1] = dYfiEthCurvePool;
-        routerParam.route[2] = MAINNET_ETH;
-        routerParam.route[3] = MAINNET_YFI_ETH_POOL;
-        routerParam.route[4] = MAINNET_YFI;
+        _routerParam.route[0] = dYFI;
+        _routerParam.route[1] = dYfiEthCurvePool;
+        _routerParam.route[2] = MAINNET_ETH;
+        _routerParam.route[3] = MAINNET_YFI_ETH_POOL;
+        _routerParam.route[4] = MAINNET_YFI;
 
-        routerParam.swapParams[0] = [uint256(1), 0, 1, 2, 2];
-        routerParam.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        _routerParam.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        _routerParam.swapParams[1] = [uint256(0), 1, 1, 2, 2];
 
         vm.prank(admin);
-        yearnStakingDelegate.setRouterParams(routerParam);
+        yearnStakingDelegate.setRouterParams(_routerParam);
     }
 
     function test_setAssociatedGauge() public {
