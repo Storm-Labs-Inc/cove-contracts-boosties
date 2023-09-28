@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ICurveBasePool } from "./interfaces/ICurveBasePool.sol";
+import { ICurveBasePool } from "./interfaces/curve/ICurveBasePool.sol";
 
-contract CurveSwapper {
+contract CurveSwapperOldPool {
     // Optional Variable to be set to not sell dust.
     uint256 public minAmountToSell = 0;
 
@@ -15,9 +15,6 @@ contract CurveSwapper {
      * @dev Used to swap a specific amount of `_from` to `_to`.
      * This will check and handle all allownaces as well as not swapping
      * unless `_amountIn` is greater than the set `_minAmountToSell`
-     *
-     * If one of the tokens matches with the `base` token it will do only
-     * one jump, otherwise will do two jumps.
      *
      * @param _curvePool The address of the target curve pool.
      * @param _from The token we are swapping from.
@@ -42,7 +39,6 @@ contract CurveSwapper {
         }
     }
     /**
-     * \
      * @dev Internal function to get a quoted amount out of token sale.
      *
      * NOTE: This can be easily manipulated and should not be relied on
@@ -69,7 +65,6 @@ contract CurveSwapper {
     }
 
     /**
-     * \
      * @dev Internal function to get indexes used by curve.
      *
      * @param _from The token to sell.
@@ -81,10 +76,10 @@ contract CurveSwapper {
         int128 toIndex = -1;
 
         for (uint256 i = 0; i < 100; i++) {
-            if (fromIndex == -1 && ICurveBasePool(_curvePool).coins(i) == _from) {
+            address coinAtIndex = ICurveBasePool(_curvePool).coins(i);
+            if (fromIndex == -1 && coinAtIndex == _from) {
                 fromIndex = int128(int256(i));
-            }
-            if (toIndex == -1 && ICurveBasePool(_curvePool).coins(i) == _to) {
+            } else if (toIndex == -1 && coinAtIndex == _to) {
                 toIndex = int128(int256(i));
             }
             if (fromIndex != -1 && toIndex != -1) {

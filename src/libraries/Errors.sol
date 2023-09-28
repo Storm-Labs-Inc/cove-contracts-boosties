@@ -35,6 +35,10 @@ library Errors {
 
     error ZeroAmount();
 
+    error InvalidSwapPath();
+
+    error InvalidRewardSplit();
+
     error PerpetualLockEnabled();
 
     error NoAssociatedGauge();
