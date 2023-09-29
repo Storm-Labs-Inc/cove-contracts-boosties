@@ -87,10 +87,11 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
         IERC20(yfi).approve(veYfi, type(uint256).max);
     }
 
-    function harvest(address vault) external {
+    function harvest(address vault) external returns (uint256) {
         VaultRewards memory vaultRewards = vaultRewardsInfo[vault];
         UserInfo storage user = userInfo[msg.sender][vault];
         uint256 totalRewardsAmount = 0;
+        uint256 userRewardsAmount = 0;
 
         // if this is after lastRewardBlock, harvest and update vaultRewards
         if (block.number > vaultRewards.lastRewardBlock) {
@@ -114,23 +115,23 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
 
             // calculate pending rewards for the user
             uint128 accumulatedRewards = uint128(uint256(user.balance) * vaultRewards.accRewardsPerShare / 1e18);
-            uint256 _pendingRewards = accumulatedRewards - user.rewardDebt;
-
+            userRewardsAmount = accumulatedRewards - user.rewardDebt;
             user.rewardDebt = accumulatedRewards;
 
             // transfer pending rewards to the user
-            if (_pendingRewards != 0) {
-                IERC20(dYfi).safeTransfer(msg.sender, _pendingRewards);
+            if (userRewardsAmount != 0) {
+                IERC20(dYfi).safeTransfer(msg.sender, userRewardsAmount);
             }
 
             // Do other actions based on configured parameters
             IERC20(dYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
             uint256 dYfiToSwapAndLock = totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18;
-            if (dYfiToSwapAndLock > 0) {
+            if (dYfiToSwapAndLock != 0) {
                 uint256 yfiAmount = _swapDYfiToYfi(dYfiToSwapAndLock);
                 _lockYfi(yfiAmount);
             }
         }
+        return userRewardsAmount;
     }
 
     function depositToGauge(address vault, uint256 amount) external {
