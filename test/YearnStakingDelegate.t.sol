@@ -425,37 +425,4 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.setRewardSplit(a, b, c);
         vm.stopPrank();
     }
-
-    // function test_setSwapPaths_revertsWithEmptyPaths() public {
-    //     vm.prank(admin);
-    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-    //     yearnStakingDelegate.setSwapPaths(new YearnStakingDelegate.SwapPath[](0));
-    // }
-
-    // function test_setSwapPaths_revertsWhenStartTokenIsNotDYfi() public {
-    //     YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-    //     swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, MAINNET_USDC, MAINNET_WETH);
-    //     swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
-    //     vm.prank(admin);
-    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-    //     yearnStakingDelegate.setSwapPaths(swapPaths);
-    // }
-
-    // function test_setSwapPaths_revertsWhenEndTokenIsNotYfi() public {
-    //     YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-    //     swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
-    //     swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_USDC);
-    //     vm.prank(admin);
-    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-    //     yearnStakingDelegate.setSwapPaths(swapPaths);
-    // }
-
-    // function test_setSwapPaths_revertsWhenTokenPathIsNotSequential() public {
-    //     YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-    //     swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_USDC);
-    //     swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
-    //     vm.prank(admin);
-    //     vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-    //     yearnStakingDelegate.setSwapPaths(swapPaths);
-    // }
 }

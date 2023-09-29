@@ -82,6 +82,11 @@ contract CurveRouterSwapper {
             address nextToken = curveSwapParams.route[(i + 1) * 2];
             // If this is a regular swap, check if the pool indexes match
             if (curveSwapParams.swapParams[i][2] == 1) {
+                // @dev Skip ETH address check since coins() returns WETH on mainnet ETH. We could add WETH as a
+                // constant here but then would require us to create different CurveRouterSwapper per chain.
+                // Even if this check passes in case where we supply ETH address when the actual coin at index is not
+                // ETH or WETH, this will get reverted at router level. Therefore its not critical if we miss this
+                // check, just prevents us from having to update to the correct swap params in the future.
                 if (fromToken != _ETH_ADDRESS) {
                     if (ICurveBasePool(curvePool).coins(curveSwapParams.swapParams[i][0]) != fromToken) {
                         revert Errors.InvalidCoinIndex();
