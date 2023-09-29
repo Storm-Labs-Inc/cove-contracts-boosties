@@ -36,7 +36,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     address public wrappedStrategy;
     address public treasury;
 
-    CurveRouterSwapper.CurveSwapParams internal _routerParam;
+    CurveRouterSwapper.CurveSwapParams internal _routerParams;
 
     function setUp() public override {
         super.setUp();
@@ -105,18 +105,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.setRewardSplit(treasurySplit, strategySplit, veYfiSplit);
     }
 
-    function _setSwapPaths() internal {
-        _routerParam.route[0] = dYFI;
-        _routerParam.route[1] = dYfiEthCurvePool;
-        _routerParam.route[2] = MAINNET_ETH;
-        _routerParam.route[3] = MAINNET_YFI_ETH_POOL;
-        _routerParam.route[4] = MAINNET_YFI;
+    function _setRouterParams() internal {
+        _routerParams.route[0] = dYFI;
+        _routerParams.route[1] = dYfiEthCurvePool;
+        _routerParams.route[2] = MAINNET_ETH;
+        _routerParams.route[3] = MAINNET_YFI_ETH_POOL;
+        _routerParams.route[4] = MAINNET_YFI;
 
-        _routerParam.swapParams[0] = [uint256(1), 0, 1, 2, 2];
-        _routerParam.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        _routerParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        _routerParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
 
         vm.prank(admin);
-        yearnStakingDelegate.setRouterParams(_routerParam);
+        yearnStakingDelegate.setRouterParams(_routerParams);
     }
 
     function test_setAssociatedGauge() public {
@@ -330,7 +330,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         _setAssociatedGauge();
         _lockYFI(alice, 1e18);
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
-        _setSwapPaths();
+        _setRouterParams();
         airdrop(ERC20(testVault), wrappedStrategy, 1e18);
         _deposit(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
@@ -424,5 +424,57 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
         yearnStakingDelegate.setRewardSplit(a, b, c);
         vm.stopPrank();
+    }
+
+    function test_setRouterParams_revertsWithEmptyPaths() public {
+        vm.prank(admin);
+        CurveRouterSwapper.CurveSwapParams memory params;
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, dYFI, address(0)));
+        yearnStakingDelegate.setRouterParams(params);
+    }
+
+    function test_setRouterParams_revertsWhenStartTokenIsNotDYfi() public {
+        vm.prank(admin);
+        CurveRouterSwapper.CurveSwapParams memory params;
+        params.route[0] = MAINNET_USDC;
+        params.route[1] = MAINNET_TRI_CRYPTO_USDC;
+        params.route[2] = MAINNET_ETH;
+        params.route[3] = MAINNET_YFI_ETH_POOL;
+        params.route[4] = MAINNET_YFI;
+
+        params.swapParams[0] = [uint256(0), 2, 1, 2, 2];
+        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, dYFI, MAINNET_USDC));
+        yearnStakingDelegate.setRouterParams(params);
+    }
+
+    function test_setRouterParams_revertsWhenEndTokenIsNotYfi() public {
+        vm.prank(admin);
+        CurveRouterSwapper.CurveSwapParams memory params;
+        params.route[0] = dYFI;
+        params.route[1] = dYfiEthCurvePool;
+        params.route[2] = MAINNET_ETH;
+        params.route[3] = MAINNET_TRI_CRYPTO_USDC;
+        params.route[4] = MAINNET_USDC;
+
+        params.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        params.swapParams[1] = [uint256(2), 0, 1, 2, 2];
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToToken.selector, MAINNET_YFI, MAINNET_USDC));
+        yearnStakingDelegate.setRouterParams(params);
+    }
+
+    function test_setRouterParams_revertsWhenTokenPathIsNotSequential() public {
+        vm.prank(admin);
+        CurveRouterSwapper.CurveSwapParams memory params;
+        params.route[0] = dYFI;
+        params.route[1] = dYfiEthCurvePool;
+        params.route[2] = MAINNET_USDC;
+        params.route[3] = MAINNET_YFI_ETH_POOL;
+        params.route[4] = MAINNET_YFI;
+
+        params.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
+        yearnStakingDelegate.setRouterParams(params);
     }
 }
