@@ -60,10 +60,16 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
         vm.stopPrank();
         require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        //// yearn staking delegate ////
         yearnStakingDelegate = new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, treasury, admin, manager);
         yearnStakingDelegateAddress = address(yearnStakingDelegate);
-        vm.prank(manager);
+        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
+        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
+        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
+        vm.startPrank(admin);
+        yearnStakingDelegate.setSwapPaths(swapPaths);
         yearnStakingDelegate.setAssociatedGauge(usdcVault, testGauge);
+        vm.stopPrank();
 
         //// wrapped strategy ////
         wrappedYearnV3Strategy = setUpWrappedStrategy(
@@ -195,37 +201,35 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assertGt(afterTotalAssets, beforeTotalAssets, "harvestAndReport did not increase total assets");
     }
 
-    // TODO: uncomment when merged with new YSD
-    // function test_harvestAndReport_passWhenRelocking() public {
-    //     // vm.assume(amount != 0);
-    //     // // limit fuzzing to ysd.userInfo.balance type max
-    //     // vm.assume(amount < type(uint128).max);
-    //     uint256 amount = 1e18;
-    //     // alice locks her YFI
-    //     vm.prank(admin);
-    //     yearnStakingDelegate.setRewardSplit(0, 0.5e18, 0.5e18);
+    function test_harvestAndReport_passWhenRelocking() public {
+        // TODO: integrate fuzzing in future testing
+        // vm.assume(amount > 0);
+        // // limit fuzzing to ysd.userInfo.balance type max
+        // vm.assume(amount < type(uint128).max);
+        uint256 amount = 1e18;
+        // set reward split to 50/50
+        vm.prank(admin);
+        yearnStakingDelegate.setRewardSplit(0, 0.5e18, 0.5e18);
+        // alice locks her YFI
+        vm.startPrank(users["alice"]);
+        IERC20(MAINNET_YFI).approve(yearnStakingDelegateAddress, ALICE_YFI);
+        yearnStakingDelegate.lockYfi(ALICE_YFI);
+        vm.stopPrank();
 
-    //     vm.startPrank(users["alice"]);
-    //     IERC20(MAINNET_YFI).approve(yearnStakingDelegateAddress, ALICE_YFI);
-    //     yearnStakingDelegate.lockYfi(ALICE_YFI);
-    //     vm.stopPrank();
+        // alice deposits into vault
+        deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
+        // deposit into strategy happens
+        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
+        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
 
-    //     // alice deposits into vault
-    //     deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
-    //     // deposit into strategy happens
-    //     depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
-    //     uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
-    //     console.log("beforeTotalAssets: %s", beforeTotalAssets);
+        // warp blocks forward to accrue rewards
+        vm.warp(block.timestamp + 14 days);
 
-    //     // warp blocks forward to accrue rewards
-    //     vm.warp(block.timestamp + 14 days);
+        // manager calls harvestAndReport
+        vm.prank(tpManagement);
+        wrappedYearnV3Strategy.report();
 
-    //     // manager calls harvestAndReport
-    //     vm.prank(tpManagement);
-    //     wrappedYearnV3Strategy.report();
-
-    //     uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-    //     console.log("afterTotalAssets: %s", afterTotalAssets);
-    //     assertGt(afterTotalAssets, beforeTotalAssets, "harvestAndReport did not increase total assets");
-    // }
+        uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        assertGt(afterTotalAssets, beforeTotalAssets, "harvestAndReport did not increase total assets");
+    }
 }

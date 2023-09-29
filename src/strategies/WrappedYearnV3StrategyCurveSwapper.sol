@@ -24,13 +24,12 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
     mapping(address token => address) public oracles;
 
-    // TODO: leaving dummy setup for underlying wrapped strategy for now
-
     constructor(
         address _asset,
         address curvePool
     )
-        WrappedYearnV3Strategy(_asset, address(0), address(0), address(0), address(0))
+        // TODO: leaving dummy setup for underlying wrapped strategy for now
+        WrappedYearnV3Strategy(_asset, address(1), address(1), address(1), address(1))
     {
         // Checks
         if (curvePool == address(0) || _asset == address(0)) {

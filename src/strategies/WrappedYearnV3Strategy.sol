@@ -97,8 +97,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
         IVault yearnVault = IVault(vault);
         IYearnStakingDelegate yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegateAddress);
         // ysd.harvest() <- harvests gauge rewards (dFYI) and transfers them to this contract
-        yearnStakingDelegate.harvest(vault);
-        uint256 dYFIBalance = ERC20(dYFI).balanceOf(address(this));
+        uint256 dYFIBalance = yearnStakingDelegate.harvest(vault);
         // swap dYFI -> ETH -> vaultAsset if rewards were harvested
 
         if (dYFIBalance > 0) {
