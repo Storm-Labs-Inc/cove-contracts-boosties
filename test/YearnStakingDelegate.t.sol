@@ -16,6 +16,7 @@ import { IGaugeFactory } from "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -35,7 +36,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     address public wrappedStrategy;
     address public treasury;
 
-    YearnStakingDelegate.RouterParam internal _routerParam;
+    CurveRouterSwapper.CurveSwapParams internal _routerParam;
 
     function setUp() public override {
         super.setUp();

@@ -21,8 +21,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
     YearnStakingDelegate public yearnStakingDelegate;
     IVault public deployedVault;
-    address public usdcVault;
-    address public yearnStakingDelegateAddress;
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
@@ -45,61 +43,72 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         strategies[0] = address(mockStrategy);
         deployVaultV3("USDC Vault", MAINNET_USDC, strategies);
         deployedVault = IVault(deployedVaults["USDC Vault"]);
-        usdcVault = address(deployedVault);
 
         //// yearn staking delegate ////
-        // Deploy gauge
-        testGauge = deployGaugeViaFactory(usdcVault, admin, "USDC Test Vault Gauge");
-        // Give alice some YFI
-        airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
-        // Give admin some dYFI
-        airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
-        // Start new rewards
-        vm.startPrank(admin);
-        IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
-        IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
-        vm.stopPrank();
-        require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
-        yearnStakingDelegate =
-        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
-        vm.prank(manager);
-        yearnStakingDelegate.setAssociatedGauge(deployedVaults["USDC Vault"], testGauge);
+        {
+            // Deploy gauge
+            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
+            // Give alice some YFI
+            airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
+            // Give admin some dYFI
+            airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
+            // Start new rewards
+            vm.startPrank(admin);
+            IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
+            IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
+            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+            yearnStakingDelegate =
+            new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
+            yearnStakingDelegate.setAssociatedGauge(deployedVaults["USDC Vault"], testGauge);
+
+            CurveRouterSwapper.CurveSwapParams memory ysdSwapParams;
+            // [token_from, pool, token_to, pool, ...]
+            ysdSwapParams.route[0] = dYFI;
+            ysdSwapParams.route[1] = dYfiEthCurvePool;
+            ysdSwapParams.route[2] = MAINNET_ETH;
+            ysdSwapParams.route[3] = MAINNET_YFI_ETH_POOL;
+            ysdSwapParams.route[4] = MAINNET_YFI;
+
+            ysdSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+            ysdSwapParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+            // set params for harvest rewards swapping
+            console.log(ysdSwapParams.route[0]);
+            yearnStakingDelegate.setRouterParams(ysdSwapParams);
+            vm.stopPrank();
+        }
 
         //// wrapped strategy ////
-        wrappedYearnV3Strategy = setUpWrappedStrategy(
-            "Wrapped YearnV3 Strategy", MAINNET_USDC, usdcVault, yearnStakingDelegateAddress, dYFI, MAINNET_CURVE_ROUTER
-        );
-        vm.label(address(wrappedYearnV3Strategy), "Wrapped YearnV3 Strategy");
-        vm.startPrank(tpManagement);
-        wrappedYearnV3Strategy.setYieldSource(usdcVault);
-        // set the created staking delegate
-        wrappedYearnV3Strategy.setStakingDelegate(yearnStakingDelegateAddress);
-        // create dYFI / ETH dummy pool
-        // address dummyPool = deployCurveTwoAssetPool(MAINNET_DAI, MAINNET_USDC);
+        {
+            wrappedYearnV3Strategy = setUpWrappedStrategy(
+                "Wrapped YearnV3 Strategy",
+                MAINNET_USDC,
+                address(deployedVault),
+                address(yearnStakingDelegate),
+                dYFI,
+                MAINNET_CURVE_ROUTER
+            );
+            vm.label(address(wrappedYearnV3Strategy), "Wrapped YearnV3 Strategy");
+            vm.startPrank(tpManagement);
+            wrappedYearnV3Strategy.setYieldSource(address(deployedVault));
+            // set the created staking delegate
+            wrappedYearnV3Strategy.setStakingDelegate(address(yearnStakingDelegate));
+            wrappedYearnV3Strategy.setdYFIAddress(dYFI);
+            // setting CurveRouterSwapper params for harvest rewards swapping
+            CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
+            // [token_from, pool, token_to, pool, ...]
+            curveSwapParams.route[0] = dYFI;
+            curveSwapParams.route[1] = dYfiEthCurvePool;
+            curveSwapParams.route[2] = MAINNET_ETH;
+            curveSwapParams.route[3] = MAINNET_TRI_CRYPTO_USDC;
+            curveSwapParams.route[4] = MAINNET_USDC;
 
-        wrappedYearnV3Strategy.setdYFIAddress(dYFI);
-        // setting CurveRouterSwapper params for harvest rewards swapping
-        address[11] memory route;
-        uint256[5][5] memory swapParams;
-        address[5] memory pools;
-
-        // [token_from, pool, token_to, pool, ...]
-        route[0] = dYFI;
-        route[1] = dYfiEthCurvePool;
-        route[2] = MAINNET_ETH;
-        route[3] = MAINNET_TRI_CRYPTO_USDC;
-        route[4] = MAINNET_USDC;
-
-        // i, j, swap_type, pool_type, n_coins
-        swapParams[0] = [uint256(1), 0, 1, 2, 2]; // dYFI -> ETH
-        swapParams[1] = [uint256(2), 0, 1, 2, 3]; // ETH -> USDC
-        CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
-        curveSwapParams.route = route;
-        curveSwapParams.swapParams = swapParams;
-        curveSwapParams.pools = pools;
-        // set params for harvest rewards swapping
-        wrappedYearnV3Strategy.setCurveSwapPrams(curveSwapParams);
-        vm.stopPrank();
+            // i, j, swap_type, pool_type, n_coins
+            curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2]; // dYFI -> ETH
+            curveSwapParams.swapParams[1] = [uint256(2), 0, 1, 2, 3]; // ETH -> USDC
+            // set params for harvest rewards swapping
+            wrappedYearnV3Strategy.setCurveSwapPrams(curveSwapParams);
+            vm.stopPrank();
+        }
     }
 
     function testFuzz_deposit(uint256 amount) public {
@@ -111,8 +120,8 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
         // check for expected changes
         assertEq(deployedVault.balanceOf(testGauge), amount, "depositToGauge failed");
-        uint128 userBalance = IYearnStakingDelegate(yearnStakingDelegateAddress).userInfo(
-            address(wrappedYearnV3Strategy), usdcVault
+        uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
+            address(wrappedYearnV3Strategy), address(deployedVault)
         ).balance;
         assertEq(userBalance, amount, "userInfo in ysd not updated correctly");
         assertEq(deployedVault.totalSupply(), amount, "vault total_supply did not update correctly");
@@ -130,8 +139,8 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.withdraw(amount, users["alice"], users["alice"], 0);
         // check for expected changes
         assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
-        uint128 userBalance = IYearnStakingDelegate(yearnStakingDelegateAddress).userInfo(
-            address(wrappedYearnV3Strategy), usdcVault
+        uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
+            address(wrappedYearnV3Strategy), address(deployedVault)
         ).balance;
         assertEq(userBalance, 0, "userInfo in ysd not updated correctly");
         assertEq(
@@ -174,7 +183,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         uint256 amount = 1e18;
         // alice locks her YFI
         vm.startPrank(users["alice"]);
-        IERC20(MAINNET_YFI).approve(yearnStakingDelegateAddress, ALICE_YFI);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);
         yearnStakingDelegate.lockYfi(ALICE_YFI);
         vm.stopPrank();
 
@@ -206,7 +215,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         yearnStakingDelegate.setRewardSplit(0, 0.5e18, 0.5e18);
         // alice locks her YFI
         vm.startPrank(users["alice"]);
-        IERC20(MAINNET_YFI).approve(yearnStakingDelegateAddress, ALICE_YFI);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);
         yearnStakingDelegate.lockYfi(ALICE_YFI);
         vm.stopPrank();
 

@@ -30,12 +30,6 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
         uint128 rewardDebt;
     }
 
-    struct RouterParam {
-        address[11] route;
-        uint256[5][5] swapParams;
-        address[5] pools;
-    }
-
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant STRATEGY_ROLE = keccak256("STRATEGY_ROLE");
 
@@ -48,7 +42,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
 
     RewardSplit public rewardSplit;
     // Curve router params for dYFI -> YFI swap
-    RouterParam internal _routerParam;
+    CurveSwapParams internal _routerParam;
     bool public shouldPerpetuallyLock;
 
     using SafeERC20 for IERC20;
@@ -181,7 +175,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
     }
 
     function _swapDYfiToYfi(uint256 swapAmount) internal returns (uint256) {
-        return _swap(_routerParam.route, _routerParam.swapParams, swapAmount, 0, _routerParam.pools, address(this));
+        return _swap(_routerParam, swapAmount, 0, address(this));
     }
 
     function _lockYfi(uint256 amount) internal {
@@ -201,7 +195,9 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
         _lockYfi(amount);
     }
 
-    function setRouterParams(RouterParam calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRouterParams(CurveSwapParams calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Checks
+        _validateSwapParams(routerParam, dYfi, yfi);
         _routerParam = routerParam;
     }
 
