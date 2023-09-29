@@ -12,7 +12,7 @@ import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC
 import { console2 as console } from "forge-std/console2.sol";
 
 contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwapperOldPool {
-    address public immutable curvePoolAddress;
+    address public curvePoolAddress;
     address public vaultAsset;
     uint256 public slippageTolerance = 99_500;
     uint256 public constant SLIPPAGE_TOLERANCE_PRECISION = 1e5;
@@ -24,7 +24,13 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
 
     mapping(address token => address) public oracles;
 
-    constructor(address _asset, address curvePool) WrappedYearnV3Strategy(_asset) {
+    constructor(
+        address _asset,
+        address curvePool
+    )
+        // TODO: leaving dummy setup for underlying wrapped strategy for now
+        WrappedYearnV3Strategy(_asset, address(1), address(1), address(1), address(1))
+    {
         // Checks
         if (curvePool == address(0) || _asset == address(0)) {
             revert Errors.ZeroAddress();
@@ -34,7 +40,7 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
         curvePoolAddress = curvePool;
     }
 
-    function setYieldSource(address v3VaultAddress) external override onlyManagement {
+    function setYieldSource(address v3VaultAddress) public override onlyManagement {
         // Checks
         address _vaultAsset = IVault(v3VaultAddress).asset();
         (int128 i, int128 j) = _getTokenIndexes(curvePoolAddress, asset, IVault(v3VaultAddress).asset());

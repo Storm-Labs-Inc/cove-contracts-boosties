@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { IBaseTokenizedStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IBaseTokenizedStrategy.sol";
 import { ITokenizedStrategy, IERC4626 } from "src/interfaces/deps/yearn/tokenized-strategy/ITokenizedStrategy.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 interface IWrappedYearnV3Strategy is IBaseTokenizedStrategy, ITokenizedStrategy {
     // Need to override the `asset` function since
@@ -20,4 +21,8 @@ interface IWrappedYearnV3Strategy is IBaseTokenizedStrategy, ITokenizedStrategy 
     function vaultAddress() external view returns (address);
 
     function yearnStakingDelegateAddress() external view returns (address);
+
+    function setdYFIAddress(address _dYFI) external;
+
+    function setCurveSwapPrams(CurveRouterSwapper.CurveSwapParams memory _curveSwapParams) external;
 }
