@@ -257,12 +257,20 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Harvest
         vm.prank(wrappedStrategy);
-        yearnStakingDelegate.harvest(testVault);
+        uint256 rewardAmount = yearnStakingDelegate.harvest(testVault);
 
         // Check that the vault has received the rewards
         // expect to be close to 10% of the rewards, giving 90% as the penalty
-        assertLe(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvest failed");
-        assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, 0.01e18, "harvest failed");
+        assertEq(rewardAmount, IERC20(dYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
+        assertLe(
+            IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvested reward amount is incorrect"
+        );
+        assertApproxEqRel(
+            IERC20(dYFI).balanceOf(wrappedStrategy),
+            DYFI_REWARD_AMOUNT / 10,
+            0.01e18,
+            "harvested reward amount is incorrect"
+        );
     }
 
     function test_harvest_withSomeYFI() public {
@@ -274,12 +282,20 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Harvest
         vm.prank(wrappedStrategy);
-        yearnStakingDelegate.harvest(testVault);
+        uint256 rewardAmount = yearnStakingDelegate.harvest(testVault);
 
         // Check that the vault has received the rewards
         // expect to be higher than 10% of the rewards due to the 1 YFI locked
-        assertGt(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvest failed");
-        assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, 0.05e18, "harvest failed");
+        assertEq(rewardAmount, IERC20(dYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
+        assertGt(
+            IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvested reward amount is incorrect"
+        );
+        assertApproxEqRel(
+            IERC20(dYFI).balanceOf(wrappedStrategy),
+            DYFI_REWARD_AMOUNT / 10,
+            0.05e18,
+            "harvested reward amount is incorrect"
+        );
     }
 
     function test_harvest_withLargeYFI() public {
@@ -291,10 +307,11 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Harvest
         vm.prank(wrappedStrategy);
-        yearnStakingDelegate.harvest(testVault);
+        uint256 rewardAmount = yearnStakingDelegate.harvest(testVault);
 
         // Check that the vault has received the rewards
         // expect to be close to 100% of the rewards
+        assertEq(rewardAmount, IERC20(dYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
         assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT, 0.01e18, "harvest failed");
     }
 
@@ -326,9 +343,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Harvest
         vm.prank(wrappedStrategy);
-        yearnStakingDelegate.harvest(testVault);
+        uint256 rewardAmount = yearnStakingDelegate.harvest(testVault);
 
         uint256 strategyDYfiBalance = IERC20(dYFI).balanceOf(wrappedStrategy);
+        assertEq(rewardAmount, strategyDYfiBalance, "harvest did not return correct value");
         assertEq(strategyDYfiBalance, estimatedStrategySplit, "strategy split is incorrect");
 
         uint256 treasuryBalance = IERC20(dYFI).balanceOf(treasury);

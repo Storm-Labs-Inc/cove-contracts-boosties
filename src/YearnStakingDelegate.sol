@@ -87,6 +87,8 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
         IERC20(yfi).approve(veYfi, type(uint256).max);
     }
 
+    /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
+    /// @return userRewardsAmount amount of rewards harvested for the msg.sender
     function harvest(address vault) external returns (uint256) {
         VaultRewards memory vaultRewards = vaultRewardsInfo[vault];
         UserInfo storage user = userInfo[msg.sender][vault];
