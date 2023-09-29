@@ -104,8 +104,8 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         curveSwapParams.swapParams = swapParams;
         curveSwapParams.pools = pools;
         // set params for harvest rewards swapping
-        vm.prank(tpManagement);
         wrappedYearnV3Strategy.setCurveSwapPrams(curveSwapParams);
+        vm.stopPrank();
     }
 
     function testFuzz_deposit(uint256 amount) public {
