@@ -57,6 +57,7 @@ contract YearnV3BaseTest is BaseTest {
     address public yearnRegistry;
 
     // Curve addresses
+    /// @dev pool type 2, [ETH/WETH, dYFI]
     address public dYfiEthCurvePool;
 
     function setUp() public virtual override {
@@ -291,10 +292,23 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     // Deploy a strategy that wraps a vault.
-    function setUpWrappedStrategy(string memory name, address asset) public returns (IWrappedYearnV3Strategy) {
+    function setUpWrappedStrategy(
+        string memory name,
+        address _asset,
+        address _v3VaultAddress,
+        address _yearnStakingDelegateAddress,
+        address _dYFIAddress,
+        address _curveRouterAddress
+    )
+        public
+        returns (IWrappedYearnV3Strategy)
+    {
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        IWrappedYearnV3Strategy _wrappedStrategy =
-            IWrappedYearnV3Strategy(address(new WrappedYearnV3Strategy(address(asset))));
+        IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
+            address(
+                new WrappedYearnV3Strategy(address(_asset), _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
+            )
+        );
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);
         // set treasury
