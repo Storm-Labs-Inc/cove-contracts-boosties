@@ -24,6 +24,12 @@ contract CurveRouterSwapper {
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _CURVE_ROUTER;
 
+    struct CurveSwapParams {
+        address[11] route;
+        uint256[5][5] swapParams;
+        address[5] pools;
+    }
+
     constructor(address _curveRouter) {
         // Checks
         if (_curveRouter == address(0)) {
