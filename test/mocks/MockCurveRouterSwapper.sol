@@ -14,16 +14,25 @@ contract MockCurveRouterSwapper is CurveRouterSwapper {
     }
 
     function swap(
-        address[11] memory route,
-        uint256[5][5] memory swapParams,
+        CurveSwapParams memory curveSwapParams,
         uint256 amount,
         uint256 expected,
-        address[5] memory pools,
         address receiver
     )
         public
         returns (uint256)
     {
-        return super._swap(route, swapParams, amount, expected, pools, receiver);
+        return super._swap(curveSwapParams, amount, expected, receiver);
+    }
+
+    function validateSwapParams(
+        CurveSwapParams memory curveSwapParams,
+        address fromToken,
+        address toToken
+    )
+        public
+        view
+    {
+        super._validateSwapParams(curveSwapParams, fromToken, toToken);
     }
 }

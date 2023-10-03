@@ -18,6 +18,9 @@ contract Constants is CommonBase {
     address public constant MAINNET_WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant MAINNET_YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
 
+    // Snapshot
+    address public constant MAINNET_SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+
     // Yearn
     address public constant MAINNET_VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
     address public constant MAINNET_YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
@@ -58,6 +61,8 @@ contract Constants is CommonBase {
         vm.label(MAINNET_VE_YFI, "VE_YFI");
         vm.label(MAINNET_WETH, "WETH");
         vm.label(MAINNET_YFI, "YFI");
+        // Snapshot
+        vm.label(MAINNET_SNAPSHOT_DELEGATE_REGISTRY, "SNAPSHOT_DELEGATE_REGISTRY");
         // Yearn
         vm.label(MAINNET_VAULT_FACTORY, "VAULT_FACTORY");
         vm.label(MAINNET_YFI_REWARD_POOL, "YFI_REWARD_POOL");

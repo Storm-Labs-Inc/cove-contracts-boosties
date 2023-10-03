@@ -80,4 +80,14 @@ interface ICurveRouter {
     )
         external
         returns (uint256);
+
+    function get_dy(
+        address[11] calldata route,
+        uint256[5][5] calldata swapParams,
+        uint256 amount,
+        address[5] calldata pools
+    )
+        external
+        view
+        returns (uint256);
 }

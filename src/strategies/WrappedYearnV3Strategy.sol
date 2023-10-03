@@ -18,7 +18,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
 
     using SafeERC20 for ERC20;
 
-    CurveRouterSwapper.CurveSwapParams internal _curveSwapParams;
+    CurveSwapParams internal _curveSwapParams;
 
     constructor(
         address _asset,
@@ -72,6 +72,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
 
     function setCurveSwapPrams(CurveSwapParams memory curveSwapParams) external onlyManagement {
         // TODO: check irst and last aare corect tokens, every other corresponds to curvepool.coins[i or j]
+        _validateSwapParams(curveSwapParams, dYFI, asset);
 
         // effects
         _curveSwapParams = curveSwapParams;
@@ -101,14 +102,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
         // swap dYFI -> ETH -> vaultAsset if rewards were harvested
 
         if (dYFIBalance > 0) {
-            uint256 receivedTokens = _swap(
-                _curveSwapParams.route,
-                _curveSwapParams.swapParams,
-                dYFIBalance,
-                0,
-                _curveSwapParams.pools,
-                address(this)
-            );
+            uint256 receivedTokens = _swap(_curveSwapParams, dYFIBalance, 0, address(this));
             // TODO: decide if funds should be deployed if the strategy is shutdown
             // if (!TokenizedStrategy.isShutdown()) {
             //     _deployFunds(ERC20(asset).balanceOf(address(this)));

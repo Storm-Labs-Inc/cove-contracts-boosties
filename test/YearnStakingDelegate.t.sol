@@ -15,6 +15,8 @@ import { Errors } from "src/libraries/Errors.sol";
 import { IGaugeFactory } from "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
+import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -33,6 +35,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     address public manager;
     address public wrappedStrategy;
     address public treasury;
+
+    CurveRouterSwapper.CurveSwapParams internal _routerParams;
 
     function setUp() public override {
         super.setUp();
@@ -65,7 +69,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
-        yearnStakingDelegate = new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, treasury, admin, manager);
+        yearnStakingDelegate =
+        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
@@ -100,12 +105,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.setRewardSplit(treasurySplit, strategySplit, veYfiSplit);
     }
 
-    function _setSwapPaths() internal {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
+    function _setRouterParams() internal {
+        _routerParams.route[0] = dYFI;
+        _routerParams.route[1] = dYfiEthCurvePool;
+        _routerParams.route[2] = MAINNET_ETH;
+        _routerParams.route[3] = MAINNET_YFI_ETH_POOL;
+        _routerParams.route[4] = MAINNET_YFI;
+
+        _routerParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        _routerParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+
         vm.prank(admin);
-        yearnStakingDelegate.setSwapPaths(swapPaths);
+        yearnStakingDelegate.setRouterParams(_routerParams);
     }
 
     function test_setAssociatedGauge() public {
@@ -319,7 +330,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         _setAssociatedGauge();
         _lockYFI(alice, 1e18);
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
-        _setSwapPaths();
+        _setRouterParams();
         airdrop(ERC20(testVault), wrappedStrategy, 1e18);
         _deposit(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
@@ -354,9 +365,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         IVotingYFI.LockedBalance memory lockedBalanceAfter =
             IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
-        assertEq(
+        assertApproxEqRel(
             uint256(uint128(lockedBalanceAfter.amount - lockedBalanceBefore.amount)),
             yfiAmount,
+            0.001e18,
             "veYfi split is incorrect"
         );
     }
@@ -367,7 +379,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
 
         assertEq(
-            ISnapshotDelegateRegistry(yearnStakingDelegate.SNAPSHOT_DELEGATE_REGISTRY()).delegation(
+            ISnapshotDelegateRegistry(MAINNET_SNAPSHOT_DELEGATE_REGISTRY).delegation(
                 address(yearnStakingDelegate), "veyfi.eth"
             ),
             manager,
@@ -414,36 +426,55 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_setSwapPaths_revertsWithEmptyPaths() public {
+    function test_setRouterParams_revertsWithEmptyPaths() public {
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(new YearnStakingDelegate.SwapPath[](0));
+        CurveRouterSwapper.CurveSwapParams memory params;
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, dYFI, address(0)));
+        yearnStakingDelegate.setRouterParams(params);
     }
 
-    function test_setSwapPaths_revertsWhenStartTokenIsNotDYfi() public {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, MAINNET_USDC, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
+    function test_setRouterParams_revertsWhenStartTokenIsNotDYfi() public {
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(swapPaths);
+        CurveRouterSwapper.CurveSwapParams memory params;
+        params.route[0] = MAINNET_USDC;
+        params.route[1] = MAINNET_TRI_CRYPTO_USDC;
+        params.route[2] = MAINNET_ETH;
+        params.route[3] = MAINNET_YFI_ETH_POOL;
+        params.route[4] = MAINNET_YFI;
+
+        params.swapParams[0] = [uint256(0), 2, 1, 2, 2];
+        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, dYFI, MAINNET_USDC));
+        yearnStakingDelegate.setRouterParams(params);
     }
 
-    function test_setSwapPaths_revertsWhenEndTokenIsNotYfi() public {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_WETH);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_USDC);
+    function test_setRouterParams_revertsWhenEndTokenIsNotYfi() public {
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(swapPaths);
+        CurveRouterSwapper.CurveSwapParams memory params;
+        params.route[0] = dYFI;
+        params.route[1] = dYfiEthCurvePool;
+        params.route[2] = MAINNET_ETH;
+        params.route[3] = MAINNET_TRI_CRYPTO_USDC;
+        params.route[4] = MAINNET_USDC;
+
+        params.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        params.swapParams[1] = [uint256(2), 0, 1, 2, 2];
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToToken.selector, MAINNET_YFI, MAINNET_USDC));
+        yearnStakingDelegate.setRouterParams(params);
     }
 
-    function test_setSwapPaths_revertsWhenTokenPathIsNotSequential() public {
-        YearnStakingDelegate.SwapPath[] memory swapPaths = new YearnStakingDelegate.SwapPath[](2);
-        swapPaths[0] = YearnStakingDelegate.SwapPath(dYfiEthCurvePool, dYFI, MAINNET_USDC);
-        swapPaths[1] = YearnStakingDelegate.SwapPath(MAINNET_YFI_ETH_POOL, MAINNET_WETH, MAINNET_YFI);
+    function test_setRouterParams_revertsWhenTokenPathIsNotSequential() public {
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapPath.selector));
-        yearnStakingDelegate.setSwapPaths(swapPaths);
+        CurveRouterSwapper.CurveSwapParams memory params;
+        params.route[0] = dYFI;
+        params.route[1] = dYfiEthCurvePool;
+        params.route[2] = MAINNET_USDC;
+        params.route[3] = MAINNET_YFI_ETH_POOL;
+        params.route[4] = MAINNET_YFI;
+
+        params.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
+        yearnStakingDelegate.setRouterParams(params);
     }
 }

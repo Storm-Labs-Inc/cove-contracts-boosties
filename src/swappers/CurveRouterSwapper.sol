@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
+import { ICurveBasePool } from "src/interfaces/deps/curve/ICurveBasePool.sol";
 
 /// @title Curve Router Library
 /// @notice Contains helper methods for interacting with Curve Router.
@@ -23,6 +24,7 @@ contract CurveRouterSwapper {
 
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _CURVE_ROUTER;
+    address private constant _ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     struct CurveSwapParams {
         address[11] route;
@@ -44,16 +46,65 @@ contract CurveRouterSwapper {
     }
 
     function _swap(
-        address[11] memory route,
-        uint256[5][5] memory swapParams,
+        CurveSwapParams memory curveSwapParams,
         uint256 amount,
         uint256 expected,
-        address[5] memory pools,
         address receiver
     )
         internal
         returns (uint256)
     {
-        return ICurveRouter(_CURVE_ROUTER).exchange(route, swapParams, amount, expected, pools, receiver);
+        return ICurveRouter(_CURVE_ROUTER).exchange(
+            curveSwapParams.route, curveSwapParams.swapParams, amount, expected, curveSwapParams.pools, receiver
+        );
     }
+
+    /* solhint-disable code-complexity */
+    function _validateSwapParams(
+        CurveSwapParams memory curveSwapParams,
+        address fromToken,
+        address toToken
+    )
+        internal
+        view
+    {
+        // Check fromToken address matches the current route token
+        if (curveSwapParams.route[0] != fromToken) {
+            revert Errors.InvalidFromToken(fromToken, curveSwapParams.route[0]);
+        }
+        for (uint256 i = 0; i < curveSwapParams.swapParams.length; i++) {
+            // Break if this is the last swap
+            address curvePool = curveSwapParams.route[i * 2 + 1];
+            if (curvePool == address(0)) {
+                break;
+            }
+            // Read the next token address
+            address nextToken = curveSwapParams.route[(i + 1) * 2];
+            // If this is a regular swap, check if the pool indexes match
+            if (curveSwapParams.swapParams[i][2] == 1) {
+                // @dev Skip ETH address check since coins() returns WETH on mainnet ETH. We could add WETH as a
+                // constant here but then would require us to create different CurveRouterSwapper per chain.
+                // Even if this check passes in case where we supply ETH address when the actual coin at index is not
+                // ETH or WETH, this will get reverted at router level. Therefore its not critical if we miss this
+                // check, just prevents us from having to update to the correct swap params in the future.
+                if (fromToken != _ETH_ADDRESS) {
+                    if (ICurveBasePool(curvePool).coins(curveSwapParams.swapParams[i][0]) != fromToken) {
+                        revert Errors.InvalidCoinIndex();
+                    }
+                }
+                if (nextToken != _ETH_ADDRESS) {
+                    if (ICurveBasePool(curvePool).coins(curveSwapParams.swapParams[i][1]) != nextToken) {
+                        revert Errors.InvalidCoinIndex();
+                    }
+                }
+            }
+            // Update fromToken to the next token
+            fromToken = nextToken;
+        }
+
+        if (fromToken != toToken) {
+            revert Errors.InvalidToToken(toToken, fromToken);
+        }
+    }
+    /* solhint-enable code-complexity */
 }
