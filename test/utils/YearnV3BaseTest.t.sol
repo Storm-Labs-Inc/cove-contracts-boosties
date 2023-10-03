@@ -9,6 +9,8 @@ import { MockStrategy } from "../mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
 import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 import { WrappedYearnV3StrategyStaticSwapper } from "src/strategies/WrappedYearnV3StrategyStaticSwapper.sol";
+import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 import { ReleaseRegistry } from "src/deps/yearn/vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "src/deps/yearn/vault-periphery/registry/RegistryFactory.sol";
@@ -224,6 +226,31 @@ contract YearnV3BaseTest is BaseTest {
         address factoryAddr = address(new RegistryFactory(releaseRegistry));
         vm.label(factoryAddr, "RegistryFactory");
         return factoryAddr;
+    }
+
+    /// @notice Deploy YearnStakingDelegate with known mainnet addresses
+    /// @dev uses ethereum mainnet addresses from Constants.sol
+    /// @param _treasury address of treasury
+    /// @param _admin address of admin
+    /// @param _manager address of manager
+    function setUpYearnStakingDelegate(address _treasury, address _admin, address _manager) public returns (address) {
+        vm.startPrank(admin);
+        YearnStakingDelegate yearnStakingDelegate =
+        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, _treasury, _admin, _manager);
+
+        CurveRouterSwapper.CurveSwapParams memory ysdSwapParams;
+        // [token_from, pool, token_to, pool, ...]
+        ysdSwapParams.route[0] = dYFI;
+        ysdSwapParams.route[1] = dYfiEthCurvePool;
+        ysdSwapParams.route[2] = MAINNET_ETH;
+        ysdSwapParams.route[3] = MAINNET_YFI_ETH_POOL;
+        ysdSwapParams.route[4] = MAINNET_YFI;
+
+        ysdSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        ysdSwapParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        yearnStakingDelegate.setRouterParams(ysdSwapParams);
+        vm.stopPrank();
+        return address(yearnStakingDelegate);
     }
 
     // Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
