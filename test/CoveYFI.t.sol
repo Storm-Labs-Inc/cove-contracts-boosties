@@ -12,22 +12,32 @@ contract CoveYFITest is YearnV3BaseTest {
 
     // Addresses
     address public bob;
+    address public yearnStakingDelegate;
 
     function setUp() public override {
         super.setUp();
 
         bob = createUser("bob");
 
-        address ysd = setUpYearnStakingDelegate(admin, admin, admin);
+        yearnStakingDelegate = setUpYearnStakingDelegate(admin, admin, admin);
 
         vm.prank(admin);
-        coveYFI = new CoveYFI(MAINNET_YFI, ysd);
+        coveYFI = new CoveYFI(MAINNET_YFI, yearnStakingDelegate);
     }
 
-    function test_init() public {
+    function testFuzz_constructor(address noAdminAddress) public {
+        vm.assume(noAdminAddress != admin);
+
+        // Check for storage variables default values
         assertEq(coveYFI.name(), "Cove YFI");
         assertEq(coveYFI.symbol(), "coveYFI");
+        assertEq(coveYFI.yfi(), MAINNET_YFI);
+        assertEq(coveYFI.yearnStakingDelegate(), yearnStakingDelegate);
+        // Check for ownership
         assertEq(coveYFI.owner(), admin);
+        assertNotEq(coveYFI.owner(), noAdminAddress);
+        // Check for approvals
+        assertEq(IERC20(MAINNET_YFI).allowance(address(coveYFI), yearnStakingDelegate), type(uint256).max);
     }
 
     function test_deposit() public {
