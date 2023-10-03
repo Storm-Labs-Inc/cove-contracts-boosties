@@ -8,9 +8,9 @@ import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { AccessControl } from "@openzeppelin-5.0/contracts/access/AccessControl.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { Math } from "@openzeppelin-5.0/contracts/utils/math/Math.sol";
-import { CurveSwapper2Pool } from "src/swappers/CurveSwapper2Pool.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
-contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
+contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -30,12 +30,6 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
         uint128 rewardDebt;
     }
 
-    struct SwapPath {
-        address pool;
-        address fromToken;
-        address toToken;
-    }
-
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant STRATEGY_ROLE = keccak256("STRATEGY_ROLE");
 
@@ -47,12 +41,14 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
     mapping(address vault => VaultRewards) public vaultRewardsInfo;
 
     RewardSplit public rewardSplit;
-    SwapPath[] public swapPaths;
+    // Curve router params for dYFI -> YFI swap
+    CurveSwapParams internal _routerParam;
     bool public shouldPerpetuallyLock;
 
     using SafeERC20 for IERC20;
 
-    address public constant SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+    // solhint-disable-next-line var-name-mixedcase
+    address private immutable _SNAPSHOT_DELEGATE_REGISTRY;
     address public immutable veYfi;
     address public immutable yfi;
     address public immutable dYfi;
@@ -60,12 +56,23 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
 
     event LogUpdatePool(address indexed vault, uint128 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
 
-    constructor(address _yfi, address _dYfi, address _veYfi, address _treasury, address admin, address manager) {
+    constructor(
+        address _yfi,
+        address _dYfi,
+        address _veYfi,
+        address _snapshotDelegateRegistry,
+        address _curveRouter,
+        address _treasury,
+        address admin,
+        address manager
+    )
+        CurveRouterSwapper(_curveRouter)
+    {
         // Checks
         // check for zero addresses
         if (
-            _yfi == address(0) || _dYfi == address(0) || _veYfi == address(0) || admin == address(0)
-                || manager == address(0) || _treasury == address(0)
+            _yfi == address(0) || _dYfi == address(0) || _veYfi == address(0) || _curveRouter == address(0)
+                || admin == address(0) || manager == address(0) || _treasury == address(0)
         ) {
             revert Errors.ZeroAddress();
         }
@@ -76,6 +83,7 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
         dYfi = _dYfi;
         veYfi = _veYfi;
         treasury = _treasury;
+        _SNAPSHOT_DELEGATE_REGISTRY = _snapshotDelegateRegistry;
         shouldPerpetuallyLock = true;
         _setRewardSplit(0, 1e18, 0); // 0% to treasury, 100% to compound, 0% to veYFI for relocking
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -85,6 +93,7 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
         // Interactions
         // max approve YFI to veYFI so we can lock it later
         IERC20(yfi).approve(veYfi, type(uint256).max);
+        _approveTokenForSwap(dYfi);
     }
 
     /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
@@ -166,18 +175,7 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
     }
 
     function _swapDYfiToYfi(uint256 swapAmount) internal returns (uint256) {
-        SwapPath[] memory _swapPaths = swapPaths;
-        // Checks
-        // Assume swap path is valid since it is checked during setting
-        if (_swapPaths.length == 0) {
-            revert Errors.InvalidSwapPath();
-        }
-        // Interactions
-        for (uint256 i = 0; i < _swapPaths.length; i++) {
-            _swapFrom(_swapPaths[i].pool, _swapPaths[i].fromToken, _swapPaths[i].toToken, swapAmount, 0);
-            swapAmount = IERC20(_swapPaths[i].toToken).balanceOf(address(this));
-        }
-        return swapAmount;
+        return _swap(_routerParam, swapAmount, 0, address(this));
     }
 
     function _lockYfi(uint256 amount) internal {
@@ -197,22 +195,10 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
         _lockYfi(amount);
     }
 
-    function setSwapPaths(SwapPath[] calldata paths) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRouterParams(CurveSwapParams calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
-        if (paths.length == 0 || paths[paths.length - 1].toToken != yfi) {
-            revert Errors.InvalidSwapPath();
-        }
-        // Effects
-        delete swapPaths;
-        address startToken = dYfi;
-        for (uint256 i = 0; i < paths.length; i++) {
-            // Check the tokens are in the path sequentially
-            if (paths[i].fromToken != startToken) {
-                revert Errors.InvalidSwapPath();
-            }
-            startToken = paths[i].toToken;
-            swapPaths.push(paths[i]);
-        }
+        _validateSwapParams(routerParam, dYfi, yfi);
+        _routerParam = routerParam;
     }
 
     /// @notice Set perpetual lock status
@@ -252,7 +238,7 @@ contract YearnStakingDelegate is AccessControl, CurveSwapper2Pool {
             revert Errors.ZeroAddress();
         }
         // Interactions
-        ISnapshotDelegateRegistry(SNAPSHOT_DELEGATE_REGISTRY).setDelegate(id, delegate);
+        ISnapshotDelegateRegistry(_SNAPSHOT_DELEGATE_REGISTRY).setDelegate(id, delegate);
     }
 
     function _setRewardSplit(uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) internal {
