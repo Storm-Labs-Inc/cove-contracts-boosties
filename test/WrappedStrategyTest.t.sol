@@ -41,40 +41,25 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         mockStrategy = setUpStrategy("Mock USDC Strategy", MAINNET_USDC);
         address[] memory strategies = new address[](1);
         strategies[0] = address(mockStrategy);
-        deployVaultV3("USDC Vault", MAINNET_USDC, strategies);
-        deployedVault = IVault(deployedVaults["USDC Vault"]);
+        deployedVault = IVault(deployVaultV3("USDC Vault", MAINNET_USDC, strategies));
 
         //// yearn staking delegate ////
         {
             // Deploy gauge
-            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
-            // Give alice some YFI
-            airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
+            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "Test Gauge for USDC Vault");
             // Give admin some dYFI
+            airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
             airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
             // Start new rewards
             vm.startPrank(admin);
             IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
             IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
-            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
-            yearnStakingDelegate =
-            new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
-            yearnStakingDelegate.setAssociatedGauge(deployedVaults["USDC Vault"], testGauge);
-
-            CurveRouterSwapper.CurveSwapParams memory ysdSwapParams;
-            // [token_from, pool, token_to, pool, ...]
-            ysdSwapParams.route[0] = dYFI;
-            ysdSwapParams.route[1] = dYfiEthCurvePool;
-            ysdSwapParams.route[2] = MAINNET_ETH;
-            ysdSwapParams.route[3] = MAINNET_YFI_ETH_POOL;
-            ysdSwapParams.route[4] = MAINNET_YFI;
-
-            ysdSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
-            ysdSwapParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-            // set params for harvest rewards swapping
-            console.log(ysdSwapParams.route[0]);
-            yearnStakingDelegate.setRouterParams(ysdSwapParams);
             vm.stopPrank();
+
+            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+            yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(treasury, admin, manager));
+            vm.prank(admin);
+            yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
         }
 
         //// wrapped strategy ////
