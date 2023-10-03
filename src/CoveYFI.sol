@@ -10,8 +10,10 @@ import { Pausable } from "@openzeppelin-5.0/contracts/utils/Pausable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract CoveYFI is ERC20, Pausable, Ownable {
+    // Libraries
     using SafeERC20 for IERC20;
 
+    // Immutable storage variables
     address public immutable yfi;
     address public immutable yearnStakingDelegate;
 
