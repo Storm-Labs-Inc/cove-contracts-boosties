@@ -7,43 +7,91 @@ import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrateg
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { WrappedYearnV3StrategyStaticSwapper } from "../src/strategies/WrappedYearnV3StrategyStaticSwapper.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
-import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
+import { ERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { ICurveBasePool } from "../src/interfaces/deps/curve/ICurveBasePool.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
-    IStrategy public mockStrategy;
-    WrappedYearnV3StrategyStaticSwapper public wrappedYearnV3StrategyStaticSwapper;
-    IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
-    IVault public deployedVault;
+    // Airdrop amounts
+    uint256 public constant ALICE_YFI = 50_000e18;
+    uint256 public constant DYFI_REWARD_AMOUNT = 1000e18;
 
-    // Addresses
+    // Contract Addresses
+    WrappedYearnV3StrategyStaticSwapper public wrappedYearnV3StrategyStaticSwapper;
+    YearnStakingDelegate public yearnStakingDelegate;
+    IVault public deployedVault;
+    address public testGauge;
+
+    // User Addresses
     address public alice;
+    address public treasury;
+    address public manager;
+
+    // Curve router parameters
+    CurveRouterSwapper.CurveSwapParams internal _assetDeployParams;
+    CurveRouterSwapper.CurveSwapParams internal _assetFreeParams;
 
     function setUp() public override {
         super.setUp();
 
         alice = createUser("alice");
 
+        // Deploy mock vault to be used as underlying yield source for wrapped strategy
+        {
+            deployedVault = IVault(deployVaultV3("DAI Vault", MAINNET_DAI, new address[](0)));
+            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
+        }
+
+        // Deploy YearnStakingDelegate
+        {
+            yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(treasury, admin, manager));
+            // Give alice some YFI
+            airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
+            // Give admin some dYFI
+            airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
+            // Start new rewards
+            vm.startPrank(admin);
+            IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
+            IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
+            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+            yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
+            vm.stopPrank();
+        }
+
         // The underlying vault accepts DAI, while the wrapped strategy accepts USDC
-        mockStrategy = setUpStrategy("Mock DAI Strategy", MAINNET_DAI);
-        wrappedYearnV3Strategy =
-            setUpWrappedStrategyStaticSwapper("Wrapped YearnV3 Strategy", MAINNET_USDC, MAINNET_CRV3POOL);
-        wrappedYearnV3StrategyStaticSwapper =
-            WrappedYearnV3StrategyStaticSwapper(deployedStrategies["Wrapped YearnV3 Strategy"]);
-        vm.label(address(wrappedYearnV3Strategy), "Wrapped YearnV3 Strategy");
-        address[] memory strategies = new address[](1);
-        strategies[0] = address(mockStrategy);
-        deployVaultV3("DAI Vault", MAINNET_DAI, strategies);
-        deployedVault = IVault(deployedVaults["DAI Vault"]);
-        vm.startPrank(users["tpManagement"]);
-        wrappedYearnV3Strategy.setYieldSource(deployedVaults["DAI Vault"]);
-        // create new user to be the staking delegate
-        createUser("stakingDelegate");
-        wrappedYearnV3Strategy.setStakingDelegate(users["stakingDelegate"]);
-        // set the swap parameters
-        wrappedYearnV3StrategyStaticSwapper.setSwapParameters(99_500);
-        vm.stopPrank();
+        wrappedYearnV3StrategyStaticSwapper = WrappedYearnV3StrategyStaticSwapper(
+            address(
+                setUpWrappedStrategyStaticSwapper(
+                    "Wrapped YearnV3 USDC -> DAI Strategy (Asset Swap with Static Slippage)",
+                    MAINNET_USDC,
+                    address(deployedVault),
+                    address(yearnStakingDelegate),
+                    dYFI,
+                    MAINNET_CURVE_ROUTER
+                )
+            )
+        );
+        {
+            // set the swap parameters
+            // [token_from, pool, token_to, pool, ...]
+            _assetDeployParams.route[0] = MAINNET_USDC;
+            _assetDeployParams.route[1] = MAINNET_CRV3POOL;
+            _assetDeployParams.route[2] = MAINNET_DAI;
+            _assetDeployParams.swapParams[0] = [uint256(1), 0, 1, 2, 1];
+
+            // [token_from, pool, token_to, pool, ...]
+            _assetFreeParams.route[0] = MAINNET_DAI;
+            _assetFreeParams.route[1] = MAINNET_CRV3POOL;
+            _assetFreeParams.route[2] = MAINNET_USDC;
+            _assetFreeParams.swapParams[0] = [uint256(0), 1, 1, 2, 1];
+
+            vm.startPrank(users["tpManagement"]);
+            wrappedYearnV3StrategyStaticSwapper.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500);
+            vm.stopPrank();
+        }
     }
 
     function testFuzz_deposit(uint256 amount) public {
@@ -51,11 +99,11 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         vm.assume(amount < 1e13);
         deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
         vm.startPrank(users["alice"]);
-        ERC20(MAINNET_USDC).approve(address(wrappedYearnV3Strategy), amount);
+        ERC20(MAINNET_USDC).approve(address(wrappedYearnV3StrategyStaticSwapper), amount);
         // deposit into strategy happens
-        wrappedYearnV3Strategy.deposit(amount, users["alice"]);
+        IWrappedYearnV3Strategy(address(wrappedYearnV3StrategyStaticSwapper)).deposit(amount, users["alice"]);
         // check for expected changes
-        uint256 ysdBalance = deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegateAddress());
+        uint256 ysdBalance = deployedVault.balanceOf(wrappedYearnV3StrategyStaticSwapper.yearnStakingDelegate());
         vm.stopPrank();
         require(ERC20(MAINNET_USDC).balanceOf(users["alice"]) == 0, "alice still has USDC");
         uint256 minAmountFromCurve = ICurveBasePool(MAINNET_CRV3POOL).get_dy(1, 0, amount);
@@ -64,27 +112,30 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
             "vault shares not given to delegate"
         );
         require(deployedVault.totalSupply() == ysdBalance, "vault total_supply did not update correctly");
-        require(wrappedYearnV3Strategy.balanceOf(users["alice"]) == amount, "Deposit was not successful");
+        require(
+            IWrappedYearnV3Strategy(address(wrappedYearnV3StrategyStaticSwapper)).balanceOf(users["alice"]) == amount,
+            "Deposit was not successful"
+        );
     }
 
     function testFuzz_deposit_revertsSlippageTooHigh_tooLargeDeposit(uint256 amount) public {
         vm.assume(amount > 1e14);
         deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
         vm.startPrank(users["alice"]);
-        ERC20(MAINNET_USDC).approve(address(wrappedYearnV3Strategy), amount);
+        ERC20(MAINNET_USDC).approve(address(wrappedYearnV3StrategyStaticSwapper), amount);
         vm.expectRevert();
-        wrappedYearnV3Strategy.deposit(amount, users["alice"]);
+        IWrappedYearnV3Strategy(address(wrappedYearnV3StrategyStaticSwapper)).deposit(amount, users["alice"]);
     }
 
     function test_deposit_revertsSlippageTooHigh() public {
         uint256 amount = 1e8; // 100 USDC
         deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
         vm.prank(users["tpManagement"]);
-        wrappedYearnV3StrategyStaticSwapper.setSwapParameters(99_999);
+        wrappedYearnV3StrategyStaticSwapper.setSwapParameters(_assetDeployParams, _assetFreeParams, 100_000);
         vm.startPrank(users["alice"]);
-        ERC20(MAINNET_USDC).approve(address(wrappedYearnV3Strategy), amount);
+        ERC20(MAINNET_USDC).approve(address(wrappedYearnV3StrategyStaticSwapper), amount);
         // deposit into strategy happens
-        vm.expectRevert(abi.encodeWithSelector(Errors.SlippageTooHigh.selector));
-        wrappedYearnV3Strategy.deposit(amount, users["alice"]);
+        vm.expectRevert();
+        IWrappedYearnV3Strategy(address(wrappedYearnV3StrategyStaticSwapper)).deposit(amount, users["alice"]);
     }
 }

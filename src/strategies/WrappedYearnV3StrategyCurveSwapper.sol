@@ -2,58 +2,74 @@
 
 pragma solidity ^0.8.20;
 
-import { WrappedYearnV3Strategy } from "./WrappedYearnV3Strategy.sol";
-import { CurveSwapperOldPool } from "src/swappers/CurveSwapperOldPool.sol";
+import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
-contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwapperOldPool {
-    address public curvePoolAddress;
-    address public vaultAsset;
-    uint256 public slippageTolerance = 99_500;
-    uint256 public constant SLIPPAGE_TOLERANCE_PRECISION = 1e5;
-    uint256 public constant MIN_SLIPPAGE_TOLERANCE = 99_000;
-    uint256 public timeTolerance = 6 hours;
-    uint256 public constant MAX_TIME_TOLERANCE = 2 days;
-
+contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRouterSwapper {
+    // Libraries
     using SafeERC20 for IERC20Metadata;
+
+    // Constant storage variables
+    uint256 private constant _SLIPPAGE_TOLERANCE_PRECISION = 1e5;
+    uint256 private constant _MIN_SLIPPAGE_TOLERANCE = 99_000;
+    uint256 private constant _MAX_TIME_TOLERANCE = 2 days;
+
+    // Immutable storage variables
+    address public immutable vault;
+    address public immutable vaultAsset;
+    address public immutable yearnStakingDelegate;
+    address public immutable dYFI;
+
+    // Storage variables
+    uint256 public slippageTolerance = 99_500;
+    uint256 public timeTolerance = 6 hours;
+    CurveSwapParams internal _harvestSwapParams;
+    CurveSwapParams internal _assetDeploySwapParams;
+    CurveSwapParams internal _assetFreeSwapParams;
 
     mapping(address token => address) public oracles;
 
     constructor(
         address _asset,
-        address curvePool
+        address _vault,
+        address _yearnStakingDelegate,
+        address _dYFI,
+        address _curveRouter
     )
-        // TODO: leaving dummy setup for underlying wrapped strategy for now
-        WrappedYearnV3Strategy(_asset, address(1), address(1), address(1), address(1))
+        BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Asset Swap (Oracle) Strategy")
+        CurveRouterSwapper(_curveRouter)
     {
         // Checks
-        if (curvePool == address(0) || _asset == address(0)) {
+        // Check for zero addresses
+        if (_asset == address(0) || _vault == address(0) || _yearnStakingDelegate == address(0) || _dYFI == address(0))
+        {
             revert Errors.ZeroAddress();
         }
-
-        // Effects
-        curvePoolAddress = curvePool;
-    }
-
-    function setYieldSource(address v3VaultAddress) public override onlyManagement {
-        // Checks
-        address _vaultAsset = IVault(v3VaultAddress).asset();
-        (int128 i, int128 j) = _getTokenIndexes(curvePoolAddress, asset, IVault(v3VaultAddress).asset());
-        if (i <= -1 || j <= -1) {
-            revert Errors.TokenNotFoundInPool(_vaultAsset);
+        // Check if the given asset is the same as the given vault's asset
+        address _vaultAsset = IVault(_vault).asset();
+        if (_asset == _vaultAsset) {
+            revert Errors.VaultAssetDoesNotDiffer();
         }
 
         // Effects
+        // Set storage variable values
+        vault = _vault;
         vaultAsset = _vaultAsset;
-        vaultAddress = v3VaultAddress;
+        dYFI = _dYFI;
+        yearnStakingDelegate = _yearnStakingDelegate;
 
         // Interactions
-        IERC20Metadata(_vaultAsset).approve(v3VaultAddress, type(uint256).max);
+        _approveTokenForSwap(_dYFI);
+        _approveTokenForSwap(_asset);
+        IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
+        IERC20Metadata(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
     // TODO: not sure exactly which role to assign here
@@ -68,52 +84,111 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
     }
 
     // TODO: not sure exactly which role to assign here
-    function setSwapParameters(uint256 _slippageTolerance, uint256 _timeTolerance) external onlyManagement {
+    function setSwapParameters(
+        CurveSwapParams memory deploySwapParams,
+        CurveSwapParams memory freeSwapParams,
+        uint256 _slippageTolerance,
+        uint256 _timeTolerance
+    )
+        external
+        onlyManagement
+    {
         // Checks
-        if (_slippageTolerance >= SLIPPAGE_TOLERANCE_PRECISION || _slippageTolerance <= MIN_SLIPPAGE_TOLERANCE) {
+        // Checks (includes external view calls)
+        if (_slippageTolerance > _SLIPPAGE_TOLERANCE_PRECISION || _slippageTolerance < _MIN_SLIPPAGE_TOLERANCE) {
             revert Errors.SlippageToleranceNotInRange(_slippageTolerance);
         }
-        if (_timeTolerance > MAX_TIME_TOLERANCE) {
+        if (_timeTolerance > _MAX_TIME_TOLERANCE) {
             revert Errors.TimeToleranceNotInRange(_timeTolerance);
         }
+        address _asset = asset;
+        address _vaultAsset = vaultAsset;
+        _validateSwapParams(deploySwapParams, _asset, _vaultAsset);
+        _validateSwapParams(freeSwapParams, _vaultAsset, _asset);
 
         // Effects
+        _assetDeploySwapParams = deploySwapParams;
+        _assetFreeSwapParams = freeSwapParams;
         slippageTolerance = _slippageTolerance;
         timeTolerance = _timeTolerance;
     }
 
-    function _deployFunds(uint256 _amount) internal override {
-        address _vaultAsset = vaultAsset;
-        address strategyAsset = asset;
-        uint256 beforeBalance = IERC20Metadata(_vaultAsset).balanceOf(address(this));
-        (uint256 fromPrice, uint256 toPrice) = _getOraclePrices();
+    function setHarvestSwapPrams(CurveSwapParams memory curveSwapParams) external onlyManagement {
+        // Checks (includes external view calls)
+        _validateSwapParams(curveSwapParams, dYFI, asset);
+
+        // effects
+        _harvestSwapParams = curveSwapParams;
+    }
+
+    function _calculateExpectedAmount(
+        uint256 fromPrice,
+        uint256 toPrice,
+        uint256 fromDecimal,
+        uint256 toDecimal,
+        uint256 fromAmount
+    )
+        internal
+        view
+        returns (uint256)
+    {
         // Expected amount of tokens to receive from the swap
-        uint256 expectedAmount = ((_amount * fromPrice) * 10 ** (18 - IERC20Metadata(strategyAsset).decimals()))
-            * slippageTolerance / toPrice / SLIPPAGE_TOLERANCE_PRECISION;
+        return ((fromAmount * fromPrice) * 10 ** (18 - fromDecimal)) * slippageTolerance / toPrice
+            / _SLIPPAGE_TOLERANCE_PRECISION / 10 ** (18 - toDecimal);
+    }
 
-        _swapFrom(curvePoolAddress, strategyAsset, _vaultAsset, _amount, 0);
+    function _deployFunds(uint256 _amount) internal override {
+        address _vault = vault;
+        (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
+        // Expected amount of tokens to receive from the swap
+        uint256 expectedAmount = _calculateExpectedAmount(
+            assetPrice,
+            vaultAssetPrice,
+            IERC20Metadata(asset).decimals(),
+            IERC20Metadata(vaultAsset).decimals(),
+            _amount
+        );
 
-        // get exact amount of tokens from the transfer denominated in 1e18
-        uint256 afterTokenBalance = (IERC20Metadata(_vaultAsset).balanceOf(address(this)) - beforeBalance)
-            * 10 ** (18 - IERC20Metadata(_vaultAsset).decimals());
+        uint256 swapResult = _swap(_assetDeploySwapParams, _amount, expectedAmount, address(this));
 
         // check if we got less than the expected amount
-        console.log("after swap token Balance: ", afterTokenBalance);
+        console.log("after swap token Balance: ", swapResult);
         console.log("expected swap amount    : ", expectedAmount);
-        if (afterTokenBalance < expectedAmount) {
-            revert Errors.SlippageTooHigh();
-        }
 
         // deposit _amount into vault if the swap was successful
-        IVault(vaultAddress).deposit(afterTokenBalance, yearnStakingDelegateAddress);
+        uint256 shares = IVault(_vault).deposit(swapResult, address(this));
+        IYearnStakingDelegate(yearnStakingDelegate).depositToGauge(_vault, shares);
+    }
+
+    function _freeFunds(uint256 _amount) internal override {
+        // Withdraw from gauge via YSD
+        address _vault = vault;
+        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, _amount);
+        // Withdraw from vault using redeem
+        uint256 _vaultAssetAmount = IVault(_vault).redeem(_amount, address(this), address(this));
+        (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
+        // Expected amount of tokens to receive from the swap
+        uint256 expectedAmount = _calculateExpectedAmount(
+            vaultAssetPrice,
+            assetPrice,
+            IERC20Metadata(vaultAsset).decimals(),
+            IERC20Metadata(asset).decimals(),
+            _vaultAssetAmount
+        );
+
+        uint256 swapResult = _swap(_assetFreeSwapParams, _vaultAssetAmount, expectedAmount, address(this));
+
+        // check if we got less than the expected amount
+        console.log("after swap token Balance: ", swapResult);
+        console.log("expected swap amount    : ", expectedAmount);
     }
 
     /**
      * Returns the latest price from the oracle and the timestamp of the price
-     * @return fromPrice the price of the from asset
-     * @return toPrice the price of the to asset
+     * @return assetPrice the price of the asset this strategy accepts
+     * @return vaultAssetPrice the price of the vault asset this strategy will deposit into the vault
      */
-    function _getOraclePrices() internal view returns (uint256 fromPrice, uint256 toPrice) {
+    function _getOraclePrices() internal view returns (uint256 assetPrice, uint256 vaultAssetPrice) {
         address _assetOracle = oracles[asset];
         address _vaultAssetOracle = oracles[vaultAsset];
         // Checks
@@ -125,16 +200,20 @@ contract WrappedYearnV3StrategyCurveSwapper is WrappedYearnV3Strategy, CurveSwap
         }
 
         // Interactions
-        // get the decimal adjusted price for each token from the oracle,
-        (, int256 quotedFromPrice,, uint256 fromTimeStamp,) = IChainLinkOracle(_assetOracle).latestRoundData();
-        (, int256 quotedToPrice,, uint256 toTimeStamp,) = IChainLinkOracle(_vaultAssetOracle).latestRoundData();
-        console.log("quotedFromPrice: ", uint256(quotedFromPrice), "quotedToPrice: ", uint256(quotedToPrice));
+        // get the price for each token from the oracle.
+        (, int256 quotedAssetPrice,, uint256 fromTimeStamp,) = IChainLinkOracle(_assetOracle).latestRoundData();
+        (, int256 quotedVaultAssetPrice,, uint256 toTimeStamp,) = IChainLinkOracle(_vaultAssetOracle).latestRoundData();
 
         // check if oracles are outdated
         uint256 _timeTolerance = timeTolerance;
         if (block.timestamp - fromTimeStamp > _timeTolerance || block.timestamp - toTimeStamp > _timeTolerance) {
             revert Errors.OracleOudated();
         }
-        return (uint256(quotedFromPrice), uint256(quotedToPrice));
+
+        assetPrice = uint256(quotedAssetPrice);
+        vaultAssetPrice = uint256(quotedVaultAssetPrice);
+        console.log("quotedAssetPrice: ", assetPrice, "quotedVaultAssetPrice: ", vaultAssetPrice);
     }
+
+    function _harvestAndReport() internal override returns (uint256 _totalAssets) { }
 }

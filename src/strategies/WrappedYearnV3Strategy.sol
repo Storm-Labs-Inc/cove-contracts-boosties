@@ -5,102 +5,88 @@ pragma solidity ^0.8.20;
 import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/IERC20.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
-    address public vaultAddress;
-    address public yearnStakingDelegateAddress;
-    address public dYFI;
+    // Libraries
+    using SafeERC20 for IERC20;
 
-    using SafeERC20 for ERC20;
+    // Immutable storage variables
+    address public immutable vault;
+    address public immutable yearnStakingDelegate;
+    address public immutable dYFI;
 
-    CurveSwapParams internal _curveSwapParams;
+    // Storage variables
+    CurveSwapParams internal _harvestSwapParams;
 
     constructor(
         address _asset,
-        address _v3VaultAddress,
-        address _yearnStakingDelegateAddress,
-        address _dYFIAddress,
-        address _curveRouterAddress
+        address _vault,
+        address _yearnStakingDelegate,
+        address _dYFI,
+        address _curveRouter
     )
         BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Strategy")
-        CurveRouterSwapper(_curveRouterAddress)
+        CurveRouterSwapper(_curveRouter)
     {
-        vaultAddress = _v3VaultAddress;
-        yearnStakingDelegateAddress = _yearnStakingDelegateAddress;
-        dYFI = _dYFIAddress;
-    }
-
-    function setYieldSource(address v3VaultAddress) public virtual onlyManagement {
-        // checks
-        address strategyAsset = asset;
-        if (strategyAsset != IVault(v3VaultAddress).asset()) {
+        // Checks
+        // Check for zero addresses
+        if (_asset == address(0) || _vault == address(0) || _yearnStakingDelegate == address(0) || _dYFI == address(0))
+        {
+            revert Errors.ZeroAddress();
+        }
+        // Check if the given asset is the same as the given vault's asset
+        if (_asset != IVault(_vault).asset()) {
             revert Errors.VaultAssetDiffers();
         }
-        // effects
-        vaultAddress = v3VaultAddress;
-        // interactions
-        ERC20(strategyAsset).approve(v3VaultAddress, type(uint256).max);
-    }
 
-    function setStakingDelegate(address delegateAddress) public onlyManagement {
-        // checks
-        if (delegateAddress == address(0)) {
-            revert Errors.ZeroAddress();
-        }
-        // effects
-        yearnStakingDelegateAddress = delegateAddress;
-        // interactions
-        ERC20(vaultAddress).approve(delegateAddress, type(uint256).max);
-    }
-
-    function setdYFIAddress(address _dYFI) public onlyManagement {
-        // checks
-        if (_dYFI == address(0)) {
-            revert Errors.ZeroAddress();
-        }
-        // effects
+        // Effects
+        // Set storage variable values
+        vault = _vault;
         dYFI = _dYFI;
-        // interactions
-        _approveTokenForSwap(dYFI);
+        yearnStakingDelegate = _yearnStakingDelegate;
+
+        // Interactions
+        _approveTokenForSwap(_dYFI);
+        IERC20(_asset).approve(_vault, type(uint256).max);
+        IERC20(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
-    function setCurveSwapPrams(CurveSwapParams memory curveSwapParams) external onlyManagement {
-        // TODO: check irst and last aare corect tokens, every other corresponds to curvepool.coins[i or j]
+    function setHarvestSwapPrams(CurveSwapParams memory curveSwapParams) external onlyManagement {
+        // Checks (includes external view calls)
         _validateSwapParams(curveSwapParams, dYFI, asset);
 
         // effects
-        _curveSwapParams = curveSwapParams;
+        _harvestSwapParams = curveSwapParams;
     }
 
     function _deployFunds(uint256 _amount) internal virtual override {
         // deposit _amount into vault
-        address _vault = vaultAddress;
+        address _vault = vault;
         uint256 shares = IVault(_vault).deposit(_amount, address(this));
-        IYearnStakingDelegate(yearnStakingDelegateAddress).depositToGauge(_vault, shares);
+        IYearnStakingDelegate(yearnStakingDelegate).depositToGauge(_vault, shares);
     }
 
     function _freeFunds(uint256 _amount) internal override {
         // withdraw _amount from gauge through yearn staking delegate
-        address _vault = vaultAddress;
-        IYearnStakingDelegate(yearnStakingDelegateAddress).withdrawFromGauge(_vault, _amount);
-        // withdraw _amount from vault, with msg.sender as recipient
-        IVault(_vault).withdraw(_amount, msg.sender, address(this));
+        address _vault = vault;
+        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, _amount);
+        // redeem _amount of shares from the vault, transfer the assets to this contract
+        IVault(_vault).redeem(_amount, address(this), address(this));
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
-        address vault = vaultAddress;
-        IVault yearnVault = IVault(vault);
-        IYearnStakingDelegate yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegateAddress);
+        address _vault = vault;
+        address _ysd = yearnStakingDelegate;
         // ysd.harvest() <- harvests gauge rewards (dFYI) and transfers them to this contract
-        uint256 dYFIBalance = yearnStakingDelegate.harvest(vault);
+        uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vault);
         // swap dYFI -> ETH -> vaultAsset if rewards were harvested
 
         if (dYFIBalance > 0) {
-            uint256 receivedTokens = _swap(_curveSwapParams, dYFIBalance, 0, address(this));
+            uint256 receivedTokens = _swap(_harvestSwapParams, dYFIBalance, 0, address(this));
             // TODO: decide if funds should be deployed if the strategy is shutdown
             // if (!TokenizedStrategy.isShutdown()) {
             //     _deployFunds(ERC20(asset).balanceOf(address(this)));
@@ -113,6 +99,6 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
         // TODO: below may not be accurate accounting as the underlying vault may not have realized gains/losses
         // additionally profits may have been awarded but not fully unlocked yet, these are concerns to be investigated
         // off-chain by management in the timing of calling _harvestAndReportvi
-        return yearnVault.convertToAssets(yearnStakingDelegate.userInfo(address(this), vault).balance);
+        return IVault(_vault).convertToAssets(IYearnStakingDelegate(_ysd).userInfo(address(this), vault).balance);
     }
 }

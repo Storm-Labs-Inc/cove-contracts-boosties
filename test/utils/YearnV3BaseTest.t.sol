@@ -9,6 +9,8 @@ import { MockStrategy } from "../mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
 import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 import { WrappedYearnV3StrategyStaticSwapper } from "src/strategies/WrappedYearnV3StrategyStaticSwapper.sol";
+import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 import { ReleaseRegistry } from "src/deps/yearn/vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "src/deps/yearn/vault-periphery/registry/RegistryFactory.sol";
@@ -333,15 +335,21 @@ contract YearnV3BaseTest is BaseTest {
     // @dev this strategy swaps tokens base on oracle prices
     function setUpWrappedStrategyCurveSwapper(
         string memory name,
-        address asset,
-        address curvePool
+        address _asset,
+        address _v3VaultAddress,
+        address _yearnStakingDelegateAddress,
+        address _dYFIAddress,
+        address _curveRouterAddress
     )
         public
         returns (IWrappedYearnV3Strategy)
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        IWrappedYearnV3Strategy _wrappedStrategy =
-            IWrappedYearnV3Strategy(address(new WrappedYearnV3StrategyCurveSwapper(address(asset), curvePool)));
+        IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
+            address(
+                new WrappedYearnV3StrategyCurveSwapper(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
+            )
+        );
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);
         // set treasury
@@ -365,15 +373,21 @@ contract YearnV3BaseTest is BaseTest {
     // Deploy a strategy that wraps a vault.
     function setUpWrappedStrategyStaticSwapper(
         string memory name,
-        address asset,
-        address curvePool
+        address _asset,
+        address _v3VaultAddress,
+        address _yearnStakingDelegateAddress,
+        address _dYFIAddress,
+        address _curveRouterAddress
     )
         public
         returns (IWrappedYearnV3Strategy)
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        IWrappedYearnV3Strategy _wrappedStrategy =
-            IWrappedYearnV3Strategy(address(new WrappedYearnV3StrategyStaticSwapper(address(asset), curvePool)));
+        IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
+            address(
+                new WrappedYearnV3StrategyStaticSwapper(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
+            )
+        );
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);
         // set treasury
@@ -392,6 +406,25 @@ contract YearnV3BaseTest is BaseTest {
         endorseStrategy(address(_wrappedStrategy));
 
         return _wrappedStrategy;
+    }
+
+    function setUpYearnStakingDelegate(address _treasury, address _admin, address _manager) public returns (address) {
+        YearnStakingDelegate yearnStakingDelegate =
+        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, _treasury, _admin, _manager);
+
+        CurveRouterSwapper.CurveSwapParams memory ysdSwapParams;
+        // [token_from, pool, token_to, pool, ...]
+        ysdSwapParams.route[0] = dYFI;
+        ysdSwapParams.route[1] = dYfiEthCurvePool;
+        ysdSwapParams.route[2] = MAINNET_ETH;
+        ysdSwapParams.route[3] = MAINNET_YFI_ETH_POOL;
+        ysdSwapParams.route[4] = MAINNET_YFI;
+
+        ysdSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        ysdSwapParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        vm.prank(_admin);
+        yearnStakingDelegate.setRouterParams(ysdSwapParams);
+        return address(yearnStakingDelegate);
     }
 
     function endorseStrategy(address strategy) public {
