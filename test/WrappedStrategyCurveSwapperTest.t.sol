@@ -10,7 +10,7 @@ import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
-import { WrappedYearnV3StrategyAssetSwapOracle } from "src/strategies/WrappedYearnV3StrategyAssetSwapOracle.sol";
+import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
 import { ERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { ICurveBasePool } from "../src/interfaces/deps/curve/ICurveBasePool.sol";
 import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
@@ -27,7 +27,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
 
     // Contract Addresses
     YearnStakingDelegate public yearnStakingDelegate;
-    WrappedYearnV3StrategyAssetSwapOracle public strategy;
+    WrappedYearnV3StrategyCurveSwapper public strategy;
     IVault public deployedVault;
     MockChainLinkOracle public mockDAIOracle;
     address public testGauge;
@@ -72,7 +72,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         }
 
         // Deploy wrapped strategy with different asset than the underlying vault
-        strategy = WrappedYearnV3StrategyAssetSwapOracle(
+        strategy = WrappedYearnV3StrategyCurveSwapper(
             address(
                 setUpWrappedStrategyCurveSwapper(
                     "Wrapped YearnV3 USDC -> DAI Strategy (Asset Swap with Oracle)",

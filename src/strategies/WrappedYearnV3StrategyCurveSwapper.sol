@@ -12,7 +12,7 @@ import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensio
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
-contract WrappedYearnV3StrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRouterSwapper {
+contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRouterSwapper {
     // Libraries
     using SafeERC20 for IERC20Metadata;
 
