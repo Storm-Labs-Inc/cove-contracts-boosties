@@ -148,12 +148,13 @@ contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRoute
             IERC20Metadata(vaultAsset).decimals(),
             _amount
         );
+        console.log("fromAmount: ", _amount);
+        console.log("expectedAmount: ", expectedAmount);
 
         uint256 swapResult = _swap(_assetDeploySwapParams, _amount, expectedAmount, address(this));
 
         // check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);
-        console.log("expected swap amount    : ", expectedAmount);
 
         // deposit _amount into vault if the swap was successful
         uint256 shares = IVault(_vault).deposit(swapResult, address(this));
