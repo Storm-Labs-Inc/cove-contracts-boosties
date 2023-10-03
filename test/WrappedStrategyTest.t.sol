@@ -41,17 +41,15 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         mockStrategy = setUpStrategy("Mock USDC Strategy", MAINNET_USDC);
         address[] memory strategies = new address[](1);
         strategies[0] = address(mockStrategy);
-        deployVaultV3("USDC Vault", MAINNET_USDC, strategies);
-        deployedVault = IVault(deployedVaults["USDC Vault"]);
+        deployedVault = IVault(deployVaultV3("USDC Vault", MAINNET_USDC, strategies));
 
         //// yearn staking delegate ////
         {
             yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(treasury, admin, manager));
             // Deploy gauge
-            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
-            // Give alice some YFI
-            airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
+            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "Test Gauge for USDC Vault");
             // Give admin some dYFI
+            airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
             airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
             // Start new rewards
             vm.startPrank(admin);
@@ -59,7 +57,13 @@ contract WrappedStrategyTest is YearnV3BaseTest {
             IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
             require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
             yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
+
             vm.stopPrank();
+
+            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+            yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(treasury, admin, manager));
+            vm.prank(admin);
+            yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
         }
 
         //// wrapped strategy ////
