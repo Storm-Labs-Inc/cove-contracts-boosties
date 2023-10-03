@@ -14,7 +14,6 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
     address public vaultAddress;
     address public yearnStakingDelegateAddress;
     address public dYFI;
-    address public curveRouterAddress;
 
     using SafeERC20 for ERC20;
 
@@ -30,7 +29,6 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
         BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Strategy")
         CurveRouterSwapper(_curveRouterAddress)
     {
-        curveRouterAddress = _curveRouterAddress;
         vaultAddress = _v3VaultAddress;
         yearnStakingDelegateAddress = _yearnStakingDelegateAddress;
         dYFI = _dYFIAddress;
