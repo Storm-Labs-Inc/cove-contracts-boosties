@@ -87,7 +87,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
                 dYFI,
                 MAINNET_CURVE_ROUTER
             );
-            vm.label(address(wrappedYearnV3Strategy), "Wrapped YearnV3 Strategy");
             vm.startPrank(tpManagement);
             wrappedYearnV3Strategy.setYieldSource(address(deployedVault));
             // set the created staking delegate
