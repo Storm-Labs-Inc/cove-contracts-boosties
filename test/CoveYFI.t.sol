@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import { Pausable } from "@openzeppelin-5.0/contracts/utils/Pausable.sol";
-import { BaseTest } from "./utils/BaseTest.t.sol";
 import { CoveYFI } from "src/CoveYFI.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
+import { Errors } from "../src/libraries/Errors.sol";
+import { IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 
-contract CoveYFITest is BaseTest {
+contract CoveYFITest is YearnV3BaseTest {
     CoveYFI public coveYFI;
 
     // Addresses
-    address public admin;
     address public bob;
 
     function setUp() public override {
         super.setUp();
 
-        // create admin user that would be the default owner of deployed contracts unless specified
-        admin = createUser("admin");
         bob = createUser("bob");
 
+        address ysd = setUpYearnStakingDelegate(admin, admin, admin);
+
         vm.prank(admin);
-        coveYFI = new CoveYFI();
+        coveYFI = new CoveYFI(MAINNET_YFI, ysd);
     }
 
     function test_init() public {
@@ -30,13 +30,42 @@ contract CoveYFITest is BaseTest {
         assertEq(coveYFI.owner(), admin);
     }
 
+    function test_deposit() public {
+        airdrop(ERC20(MAINNET_YFI), admin, 1e18);
+
+        vm.startPrank(admin);
+        IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
+        CoveYFI(coveYFI).deposit(1e18);
+        assertEq(IERC20(coveYFI).balanceOf(address(admin)), 1e18);
+        vm.stopPrank();
+    }
+
+    function test_deposit_whenPaused() public {
+        airdrop(ERC20(MAINNET_YFI), admin, 1e18);
+
+        vm.startPrank(admin);
+        CoveYFI(coveYFI).pause();
+
+        IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
+        CoveYFI(coveYFI).deposit(1e18);
+        assertEq(IERC20(coveYFI).balanceOf(address(admin)), 1e18);
+        vm.stopPrank();
+    }
+
+    function test_deposit_revertsOnZero() public {
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
+        CoveYFI(coveYFI).deposit(0);
+        vm.stopPrank();
+    }
+
     function test_pause_revertsOnTransfer() public {
         airdrop(ERC20(coveYFI), admin, 1e18);
 
         vm.startPrank(admin);
         CoveYFI(coveYFI).pause();
 
-        vm.expectRevert(abi.encodeWithSelector(Pausable.EnforcedPause.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.OnlyMintingEnabled.selector));
         ERC20(coveYFI).transfer(bob, 1e18);
         vm.stopPrank();
     }
