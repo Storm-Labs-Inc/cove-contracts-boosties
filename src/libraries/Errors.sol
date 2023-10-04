@@ -62,7 +62,12 @@ library Errors {
     error TokenNotFoundInPool(address token);
 
     /// CURVE ROUTER SWAPPER ///
+
     error InvalidFromToken(address intendedFromToken, address actualFromToken);
     error InvalidToToken(address intendedToToken, address actualToToken);
     error InvalidCoinIndex();
+
+    //// coveYFI ////
+
+    error OnlyMintingEnabled();
 }

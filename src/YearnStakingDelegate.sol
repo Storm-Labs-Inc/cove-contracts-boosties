@@ -45,8 +45,6 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
     CurveSwapParams internal _routerParam;
     bool public shouldPerpetuallyLock;
 
-    using SafeERC20 for IERC20;
-
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _SNAPSHOT_DELEGATE_REGISTRY;
     address public immutable veYfi;
