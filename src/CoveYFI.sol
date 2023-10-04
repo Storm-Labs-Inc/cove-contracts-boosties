@@ -31,7 +31,7 @@ contract CoveYFI is ERC20, Pausable, Ownable {
 
         // Interactions
         // max approve YFI for the yearn staking delegate
-        IERC20(yfi).approve(yearnStakingDelegate, type(uint256).max);
+        IERC20(_yfi).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
