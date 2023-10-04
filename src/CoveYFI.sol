@@ -53,7 +53,7 @@ contract CoveYFI is ERC20, Pausable, Ownable {
         // Effects
 
         // Interactions
-        SafeERC20.safeTransferFrom(IERC20(yfi), sender, address(this), balance);
+        IERC20(yfi).safeTransferFrom(sender, address(this), balance);
         IYearnStakingDelegate(yearnStakingDelegate).lockYfi(balance);
         _mint(sender, balance);
     }
