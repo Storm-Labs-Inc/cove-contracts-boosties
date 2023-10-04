@@ -35,11 +35,11 @@ contract CoveYFI is ERC20, Pausable, Ownable {
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
-        super._update(from, to, value);
         // only allow minting by allowing transfers from the 0x0 address
         if (paused() && from != address(0x0)) {
             revert Errors.OnlyMintingEnabled();
         }
+        super._update(from, to, value);
     }
 
     function deposit(uint256 balance) public {
@@ -51,11 +51,11 @@ contract CoveYFI is ERC20, Pausable, Ownable {
         }
 
         // Effects
+        _mint(sender, balance);
 
         // Interactions
         IERC20(yfi).safeTransferFrom(sender, address(this), balance);
         IYearnStakingDelegate(yearnStakingDelegate).lockYfi(balance);
-        _mint(sender, balance);
     }
 
     function pause() public onlyOwner {
