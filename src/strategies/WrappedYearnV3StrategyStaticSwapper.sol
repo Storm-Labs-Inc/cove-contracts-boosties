@@ -6,6 +6,7 @@ import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTok
 import { WrappedYearnV3Strategy } from "./WrappedYearnV3Strategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -64,6 +65,7 @@ contract WrappedYearnV3StrategyStaticSwapper is BaseTokenizedStrategy, CurveRout
         // Interactions
         _approveTokenForSwap(_dYFI);
         _approveTokenForSwap(_asset);
+        _approveTokenForSwap(_vaultAsset);
         IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
         IERC20Metadata(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
@@ -125,17 +127,24 @@ contract WrappedYearnV3StrategyStaticSwapper is BaseTokenizedStrategy, CurveRout
     }
 
     function _freeFunds(uint256 _amount) internal override {
-        // Withdraw from gauge via YSD
         address _vault = vault;
-        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, _amount);
+        uint256 assetDecimals = IERC20Metadata(asset).decimals();
+        IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
+        // Find percentage of total assets is this amount
+        uint256 allocation = _amount * assetDecimals / IStrategy(address(this)).totalAssets();
+        // Total vault shares that wStrat has deposited into ysd
+        uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
+        // Find withdrawer's allocation of total ysd shares
+        uint256 vaultSharesToWithdraw = totalUnderlyingVaultShares * allocation / assetDecimals;
+        // Withdraw from gauge via YSD
+        _yearnStakingDelegate.withdrawFromGauge(_vault, vaultSharesToWithdraw);
         // Withdraw from vault using redeem
-        uint256 _vaultAssetAmount = IVault(_vault).redeem(_amount, address(this), address(this));
+        uint256 _withdrawnVaultAssetAmount = IVault(_vault).redeem(vaultSharesToWithdraw, address(this), address(this));
         // Expected amount of tokens to receive from the swap
-        uint256 expectedAmount = _calculateExpectedAmount(
-            IERC20Metadata(vaultAsset).decimals(), IERC20Metadata(asset).decimals(), _vaultAssetAmount
-        );
+        uint256 expectedAmount =
+            _calculateExpectedAmount(IERC20Metadata(vaultAsset).decimals(), assetDecimals, _withdrawnVaultAssetAmount);
 
-        uint256 swapResult = _swap(_assetFreeSwapParams, _vaultAssetAmount, expectedAmount, address(this));
+        uint256 swapResult = _swap(_assetFreeSwapParams, _withdrawnVaultAssetAmount, expectedAmount, address(this));
 
         // check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);

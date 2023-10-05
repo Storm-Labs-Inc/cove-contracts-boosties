@@ -8,6 +8,7 @@ import { Errors } from "../libraries/Errors.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
@@ -163,14 +164,20 @@ contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRoute
     }
 
     function _freeFunds(uint256 _amount) internal override {
-        // Withdraw from gauge via YSD
         address _vault = vault;
-        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, _amount);
-        // Find shares for the given amount
-        uint256 shares = IVault(_vault).convertToShares(_amount);
+        uint256 assetDecimals = IERC20Metadata(asset).decimals();
+        IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
+        // Find percentage of total assets is this amount
+        uint256 allocation = _amount * assetDecimals / IStrategy(address(this)).totalAssets();
+        // Total vault shares that wStrat has deposited into ysd
+        uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
+        // Find withdrawer's allocation of total ysd shares
+        uint256 vaultSharesToWithdraw = totalUnderlyingVaultShares * allocation / assetDecimals;
+        // Withdraw that amount of vaul tokens from gauge via YSD
+        _yearnStakingDelegate.withdrawFromGauge(_vault, vaultSharesToWithdraw);
         // Withdraw from vault using redeem
-        uint256 _vaultAssetAmount = IVault(_vault).redeem(shares, address(this), address(this));
-        console.log("redeem amount: ", _vaultAssetAmount);
+        uint256 _withdrawnVaultAssetAmount = IVault(_vault).redeem(vaultSharesToWithdraw, address(this), address(this));
+        console.log("redeem amount: ", _withdrawnVaultAssetAmount);
         (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
         console.log("assetPrice: ", assetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
@@ -178,11 +185,11 @@ contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRoute
             vaultAssetPrice,
             assetPrice,
             IERC20Metadata(vaultAsset).decimals(),
-            IERC20Metadata(asset).decimals(),
-            _vaultAssetAmount
+            assetDecimals,
+            _withdrawnVaultAssetAmount
         );
 
-        uint256 swapResult = _swap(_assetFreeSwapParams, _vaultAssetAmount, expectedAmount, address(this));
+        uint256 swapResult = _swap(_assetFreeSwapParams, _withdrawnVaultAssetAmount, expectedAmount, address(this));
 
         // check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);

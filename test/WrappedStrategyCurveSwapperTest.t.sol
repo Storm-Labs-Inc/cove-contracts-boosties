@@ -292,17 +292,16 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         assertEq(IWrappedYearnV3Strategy(address(strategy)).balanceOf(alice), amount, "Deposit was not successful");
     }
 
-    function test_withdraw_buh(uint256 amount) public {
-        // TODO: fails on too small deposit? strange
-        vm.assume(amount > 1e18);
-        // limit fuzzing to ysd.userInfo.balance type max
-        vm.assume(amount < type(uint128).max);
-        amount = 1e18;
-        // TODO: how to handle this interface, using just contract does not allow withdraw() to be found
+    function test_withdraw(uint256 amount) public {
+        vm.assume(amount > 1e8);
+        // limit fuzzing to 10 million (pool slippage is too great otherwise)
+        vm.assume(amount < 1e13);
+
         IWrappedYearnV3Strategy _strategy = IWrappedYearnV3Strategy(address(strategy));
         airdrop(ERC20(MAINNET_USDC), alice, amount);
         vm.startPrank(alice);
         ERC20(MAINNET_USDC).approve(address(strategy), amount);
+
         // deposit into strategy happens
         uint256 minAmountFromCurve = ICurveRouter(MAINNET_CURVE_ROUTER).get_dy(
             _assetDeployParams.route, _assetDeployParams.swapParams, amount, _assetDeployParams.pools
@@ -311,10 +310,8 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
 
         // withdraw from strategy happens
         vm.prank(alice);
-        // TDOD: fails like below because of large slippage
-        // DAI::transfer(CURVE_ROUTER: [0xF0d4c12A5768D806021F80a262B4d39d26C58b8D], 76409458393082222117824994
-        // [7.64e25])
-        _strategy.redeem(shares, alice, alice, 0);
+        // allow for 4 BPS of loss due to non-changing value of yean vault but loss due to swap
+        _strategy.redeem(shares, alice, alice, 4);
         // check for expected changes
         assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
         uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
@@ -324,6 +321,11 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         assertEq(deployedVault.balanceOf(strategy.yearnStakingDelegate()), 0, "vault shares not taken from delegate");
         assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
         assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
-        assertEq(ERC20(MAINNET_USDC).balanceOf(alice), amount, "user balance should be deposit amount after withdraw");
+        assertApproxEqRel(
+            ERC20(MAINNET_USDC).balanceOf(alice),
+            amount,
+            0.004e18,
+            "user balance should be deposit amount after withdraw"
+        );
     }
 }
