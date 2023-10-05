@@ -55,7 +55,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
         IERC20(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
-    function setHarvestSwapPrams(CurveSwapParams memory curveSwapParams) external onlyManagement {
+    function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external onlyManagement {
         // Checks (includes external view calls)
         _validateSwapParams(curveSwapParams, dYFI, asset);
 

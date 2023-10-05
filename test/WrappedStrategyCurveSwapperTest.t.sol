@@ -155,7 +155,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
-    function testFuzz_deposit_revertwhen_depositTooBig(uint256 amount) public {
+    function testFuzz_deposit_revertWhen_depositTooBig(uint256 amount) public {
         vm.assume(amount > 1e40);
         airdrop(ERC20(MAINNET_USDC), alice, amount);
         vm.startPrank(alice);
@@ -174,7 +174,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         uint256 amount = 1e8; // 100 USDC
         deal({ token: MAINNET_USDC, to: alice, give: amount });
         mockDAIOracle.setTimestamp(block.timestamp);
-        mockDAIOracle.setPrice(1e5); // Oracle reporting 1 USDC = 100 DAI, resultling higher expected return amount
+        mockDAIOracle.setPrice(1e5); // Oracle reporting 1 USDC = 100 DAI, resulting higher expected return amount
         vm.startPrank(alice);
         ERC20(MAINNET_USDC).approve(address(strategy), amount);
         // deposit into strategy happens

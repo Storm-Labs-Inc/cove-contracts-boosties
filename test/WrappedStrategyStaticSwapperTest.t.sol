@@ -146,7 +146,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
-    function testFuzz_deposit_revertwhen_depositTooBig(uint256 amount) public {
+    function testFuzz_deposit_revertWhen_depositTooBig(uint256 amount) public {
         vm.assume(amount > 1e40);
         airdrop(ERC20(MAINNET_USDC), alice, amount);
         vm.startPrank(alice);

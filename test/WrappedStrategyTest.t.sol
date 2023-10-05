@@ -90,7 +90,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
             curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2]; // dYFI -> ETH
             curveSwapParams.swapParams[1] = [uint256(2), 0, 1, 2, 3]; // ETH -> USDC
             // set params for harvest rewards swapping
-            wrappedYearnV3Strategy.setHarvestSwapPrams(curveSwapParams);
+            wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
             vm.stopPrank();
         }
     }

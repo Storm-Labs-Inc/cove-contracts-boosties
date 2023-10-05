@@ -113,7 +113,7 @@ contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRoute
         timeTolerance = _timeTolerance;
     }
 
-    function setHarvestSwapPrams(CurveSwapParams memory curveSwapParams) external onlyManagement {
+    function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external onlyManagement {
         // Checks (includes external view calls)
         _validateSwapParams(curveSwapParams, dYFI, asset);
 

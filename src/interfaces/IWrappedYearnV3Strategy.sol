@@ -11,5 +11,5 @@ interface IWrappedYearnV3Strategy is IBaseTokenizedStrategy, ITokenizedStrategy 
     function asset() external view override(IBaseTokenizedStrategy, IERC4626) returns (address);
     function vault() external view returns (address);
     function yearnStakingDelegate() external view returns (address);
-    function setHarvestSwapPrams(CurveRouterSwapper.CurveSwapParams memory _curveSwapParams) external;
+    function setHarvestSwapParams(CurveRouterSwapper.CurveSwapParams memory _curveSwapParams) external;
 }
