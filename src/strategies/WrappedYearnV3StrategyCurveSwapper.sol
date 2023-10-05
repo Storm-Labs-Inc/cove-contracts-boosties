@@ -68,6 +68,7 @@ contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRoute
         // Interactions
         _approveTokenForSwap(_dYFI);
         _approveTokenForSwap(_asset);
+        _approveTokenForSwap(_vaultAsset);
         IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
         IERC20Metadata(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
@@ -165,9 +166,13 @@ contract WrappedYearnV3StrategyCurveSwapper is BaseTokenizedStrategy, CurveRoute
         // Withdraw from gauge via YSD
         address _vault = vault;
         IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, _amount);
+        // Find shares for the given amount
+        uint256 shares = IVault(_vault).convertToShares(_amount);
         // Withdraw from vault using redeem
-        uint256 _vaultAssetAmount = IVault(_vault).redeem(_amount, address(this), address(this));
+        uint256 _vaultAssetAmount = IVault(_vault).redeem(shares, address(this), address(this));
+        console.log("redeem amount: ", _vaultAssetAmount);
         (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
+        console.log("assetPrice: ", assetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             vaultAssetPrice,

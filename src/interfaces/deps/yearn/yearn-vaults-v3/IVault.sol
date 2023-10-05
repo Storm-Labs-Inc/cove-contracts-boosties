@@ -37,6 +37,7 @@ interface IVault is IERC4626 {
     function balanceOf(address owner) external view returns (uint256);
     function totalDebt() external view returns (uint256);
     function totalIdle() external view returns (uint256);
+    function convertToShares(uint256) external view returns (uint256);
     function withdraw(
         uint256 assets,
         address receiver,

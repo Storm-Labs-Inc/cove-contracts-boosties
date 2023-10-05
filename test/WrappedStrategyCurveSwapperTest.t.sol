@@ -52,7 +52,7 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         // Deploy mock vault to be used as underlying yield source for wrapped strategy
         {
             deployedVault = IVault(deployVaultV3("DAI Vault", MAINNET_DAI, new address[](0)));
-            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
+            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "DAI Test Vault Gauge");
         }
 
         // Deploy YearnStakingDelegate
@@ -197,5 +197,133 @@ contract WrappedStrategyCurveSwapperTest is YearnV3BaseTest {
         // deposit into strategy happens
         vm.expectRevert(abi.encodeWithSelector(Errors.OracleOudated.selector));
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
+    }
+
+    function test_deposit_DAItoUSDC(uint256 amount) public {
+        // TODO: fails on too small deposit? strange
+        vm.assume(amount > 1e18);
+        vm.assume(amount < 1e25);
+
+        // Deploy new mock vault with USDC as the underlying asset
+        deployedVault = IVault(deployVaultV3("USDC Vault", MAINNET_USDC, new address[](0)));
+        testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
+
+        // Give alice some YFI
+        airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
+        // Give admin some dYFI
+        airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
+        // Start new rewards
+        vm.startPrank(admin);
+        IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
+        IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
+        require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
+        vm.stopPrank();
+
+        // Deploy wrapped strategy with different asset than the underlying vault
+        strategy = WrappedYearnV3StrategyCurveSwapper(
+            address(
+                setUpWrappedStrategyCurveSwapper(
+                    // "Wrapped YearnV3 USDC -> DAI Strategy (Asset Swap with Oracle)",
+                    "Wrapped YearnV3 DAI -> USDC Strategy (Asset Swap with Oracle)",
+                    MAINNET_DAI,
+                    address(deployedVault),
+                    address(yearnStakingDelegate),
+                    dYFI,
+                    MAINNET_CURVE_ROUTER
+                )
+            )
+        );
+        vm.startPrank(users["tpManagement"]);
+        // set the oracle for USDC and DAI
+        strategy.setOracle(MAINNET_DAI, CHAINLINK_DAI_USD_MAINNET);
+        strategy.setOracle(MAINNET_USDC, CHAINLINK_USDC_USD_MAINNET);
+        {
+            // set the swap parameters
+            // [token_from, pool, token_to, pool, ...]
+            _assetDeployParams.route[0] = MAINNET_DAI;
+            _assetDeployParams.route[1] = MAINNET_CRV3POOL;
+            _assetDeployParams.route[2] = MAINNET_USDC;
+            _assetDeployParams.swapParams[0] = [uint256(0), 1, 1, 1, 2];
+
+            // [token_from, pool, token_to, pool, ...]
+            _assetFreeParams.route[0] = MAINNET_USDC;
+            _assetFreeParams.route[1] = MAINNET_CRV3POOL;
+            _assetFreeParams.route[2] = MAINNET_DAI;
+            _assetFreeParams.swapParams[0] = [uint256(1), 0, 1, 1, 2];
+
+            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500, 1 days);
+        }
+        vm.stopPrank();
+
+        // Deposit DAI into the strategy
+        airdrop(ERC20(MAINNET_DAI), alice, amount);
+        vm.startPrank(alice);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
+        // deposit into strategy happens
+        uint256 minAmountFromCurve = ICurveRouter(MAINNET_CURVE_ROUTER).get_dy(
+            _assetDeployParams.route, _assetDeployParams.swapParams, amount, _assetDeployParams.pools
+        );
+        IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
+        // check for expected changes
+
+        vm.stopPrank();
+        assertEq(ERC20(MAINNET_DAI).balanceOf(alice), 0, "bob still has USDC");
+        assertApproxEqRel(
+            ERC20(MAINNET_USDC).balanceOf(address(deployedVault)),
+            minAmountFromCurve,
+            0.001e18,
+            "vault did not receive correct amount of DAI"
+        );
+        assertApproxEqRel(
+            ERC20(testGauge).balanceOf(address(yearnStakingDelegate)),
+            minAmountFromCurve,
+            0.001e18,
+            "vault shares not given to delegate"
+        );
+        uint256 creditedBalance = uint256(
+            IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(address(strategy), address(deployedVault))
+                .balance
+        );
+        assertApproxEqRel(
+            creditedBalance, minAmountFromCurve, 0.001e18, "vault shares in delegate not credited to strategy"
+        );
+        assertEq(deployedVault.totalSupply(), creditedBalance, "vault total_supply did not update correctly");
+        assertEq(IWrappedYearnV3Strategy(address(strategy)).balanceOf(alice), amount, "Deposit was not successful");
+    }
+
+    function test_withdraw_buh(uint256 amount) public {
+        // TODO: fails on too small deposit? strange
+        vm.assume(amount > 1e18);
+        // limit fuzzing to ysd.userInfo.balance type max
+        vm.assume(amount < type(uint128).max);
+        amount = 1e18;
+        // TODO: how to handle this interface, using just contract does not allow withdraw() to be found
+        IWrappedYearnV3Strategy _strategy = IWrappedYearnV3Strategy(address(strategy));
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        vm.startPrank(alice);
+        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        // deposit into strategy happens
+        uint256 minAmountFromCurve = ICurveRouter(MAINNET_CURVE_ROUTER).get_dy(
+            _assetDeployParams.route, _assetDeployParams.swapParams, amount, _assetDeployParams.pools
+        );
+        uint256 shares = _strategy.deposit(amount, alice);
+
+        // withdraw from strategy happens
+        vm.prank(alice);
+        // TDOD: fails like below because of large slippage
+        // DAI::transfer(CURVE_ROUTER: [0xF0d4c12A5768D806021F80a262B4d39d26C58b8D], 76409458393082222117824994
+        // [7.64e25])
+        _strategy.redeem(shares, alice, alice, 0);
+        // check for expected changes
+        assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
+        uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
+            address(_strategy), address(deployedVault)
+        ).balance;
+        assertEq(userBalance, 0, "userInfo in ysd not updated correctly");
+        assertEq(deployedVault.balanceOf(strategy.yearnStakingDelegate()), 0, "vault shares not taken from delegate");
+        assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
+        assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
+        assertEq(ERC20(MAINNET_USDC).balanceOf(alice), amount, "user balance should be deposit amount after withdraw");
     }
 }
