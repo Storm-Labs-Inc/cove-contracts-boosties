@@ -5,7 +5,7 @@ import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
-import { WrappedYearnV3StrategyStaticSwapper } from "../src/strategies/WrappedYearnV3StrategyStaticSwapper.sol";
+import { WrappedYearnV3StrategyAssetSwapStatic } from "../src/strategies/WrappedYearnV3StrategyAssetSwapStatic.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
@@ -22,7 +22,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
     uint256 public constant DYFI_REWARD_AMOUNT = 1000e18;
 
     // Contract Addresses
-    WrappedYearnV3StrategyStaticSwapper public strategy;
+    WrappedYearnV3StrategyAssetSwapStatic public strategy;
     YearnStakingDelegate public yearnStakingDelegate;
     IVault public deployedVault;
     address public testGauge;
@@ -66,7 +66,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         }
 
         // The underlying vault accepts DAI, while the wrapped strategy accepts USDC
-        strategy = WrappedYearnV3StrategyStaticSwapper(
+        strategy = WrappedYearnV3StrategyAssetSwapStatic(
             address(
                 setUpWrappedStrategyStaticSwapper(
                     "Wrapped YearnV3 DAI -> USDC Strategy (Asset Swap with Static Slippage)",
