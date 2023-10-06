@@ -184,7 +184,6 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         uint256 shares = _strategy.deposit(amount, alice);
 
         // withdraw from strategy happens
-        vm.prank(alice);
         // allow for 4 BPS of loss due to non-changeing value of yean vault but small decrease in assets due to swap
         _strategy.redeem(shares, alice, alice, 4);
         // check for expected changes
