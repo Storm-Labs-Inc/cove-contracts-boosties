@@ -6,7 +6,6 @@ import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTok
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
@@ -74,10 +73,10 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
     function _freeFunds(uint256 _amount) internal override {
         // withdraw _amount from gauge through yearn staking delegate
         address _vault = vault;
-        uint256 assetDecimals = IERC20Metadata(asset).decimals();
+        uint256 assetDecimals = TokenizedStrategy.decimals();
         IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
         // Find percentage of total assets is this amount
-        uint256 allocation = _amount * assetDecimals / IStrategy(address(this)).totalAssets();
+        uint256 allocation = _amount * assetDecimals / TokenizedStrategy.totalAssets();
         // Total vault shares that wStrat has deposited into ysd
         uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
         // Find withdrawer's allocation of total ysd shares
