@@ -5,14 +5,15 @@ pragma solidity ^0.8.20;
 import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
     // Libraries
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     // Immutable storage variables
     address public immutable vault;
@@ -51,8 +52,8 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
 
         // Interactions
         _approveTokenForSwap(_dYFI);
-        IERC20(_asset).approve(_vault, type(uint256).max);
-        IERC20(_vault).approve(_yearnStakingDelegate, type(uint256).max);
+        IERC20Metadata(_asset).approve(_vault, type(uint256).max);
+        IERC20Metadata(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external onlyManagement {
@@ -73,9 +74,18 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
     function _freeFunds(uint256 _amount) internal override {
         // withdraw _amount from gauge through yearn staking delegate
         address _vault = vault;
-        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, _amount);
-        // redeem _amount of shares from the vault, transfer the assets to this contract
-        IVault(_vault).redeem(_amount, address(this), address(this));
+        uint256 assetDecimals = IERC20Metadata(asset).decimals();
+        IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
+        // Find percentage of total assets is this amount
+        uint256 allocation = _amount * assetDecimals / IStrategy(address(this)).totalAssets();
+        // Total vault shares that wStrat has deposited into ysd
+        uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
+        // Find withdrawer's allocation of total ysd shares
+        uint256 vaultSharesToWithdraw = totalUnderlyingVaultShares * allocation / assetDecimals;
+        // Withdraw from gauge via YSD
+        _yearnStakingDelegate.withdrawFromGauge(_vault, vaultSharesToWithdraw);
+        // Withdraw from vault using redeem
+        uint256 _withdrawnVaultAssetAmount = IVault(_vault).redeem(vaultSharesToWithdraw, address(this), address(this));
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
