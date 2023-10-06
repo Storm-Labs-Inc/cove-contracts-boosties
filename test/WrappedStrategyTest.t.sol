@@ -204,7 +204,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
         assertEq(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
-        assertEq(afterPreviewRedeem, beforePreviewRedeem, "report did not increase price per share");
+        assertEq(afterPreviewRedeem, beforePreviewRedeem, "unexpected profit");
         assertEq(profit, 0, "report did not report 0 profit");
         assertEq(loss, 0, "report did not report 0 loss");
 
@@ -239,7 +239,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
 
-        // Increase underlying vault's price per share
+        // Increase underlying vault's value
         increaseMockStrategyValue(address(deployedVault), address(mockStrategy), underlyingVaultProfit);
         // warp blocks forward to yearn's strategy's profit locking is finished
         vm.warp(block.timestamp + IStrategy(address(mockStrategy)).profitMaxUnlockTime());
@@ -264,7 +264,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.warp(block.timestamp + IStrategy(address(mockStrategy)).profitMaxUnlockTime());
 
         uint256 profitUnlockedPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
-        assertGt(profitUnlockedPreviewRedeem, afterPreviewRedeem, "price per share increased over time");
+        assertGt(profitUnlockedPreviewRedeem, afterPreviewRedeem, "redeemable asset per share increased over time");
     }
 
     function testFuzz_report_passWhen_relocking(uint256 amount) public {
