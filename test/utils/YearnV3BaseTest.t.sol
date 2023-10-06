@@ -326,6 +326,7 @@ contract YearnV3BaseTest is BaseTest {
     /// @param vault address of the vault which has the strategy
     /// @param strategy address of the mock strategy
     /// @param amount amount of asset to airdrop
+    /// @return strategyParams struct of strategy params
     function increaseMockStrategyValue(
         address vault,
         address strategy,
@@ -384,7 +385,7 @@ contract YearnV3BaseTest is BaseTest {
         return _strategy;
     }
 
-    // Deploy a strategy that wraps a vault.
+    /// @notice Deploy a strategy that earns yield from a yearn v3 vault.
     function setUpWrappedStrategy(
         string memory name,
         address _asset,
@@ -422,8 +423,8 @@ contract YearnV3BaseTest is BaseTest {
         return _wrappedStrategy;
     }
 
-    // Deploy a strategy that wraps a vault.
-    // @dev this strategy swaps tokens base on oracle prices
+    /// @notice Deploy a strategy that earns yield from a yearn v3 vault with different asset
+    /// @dev this strategy relies on oracles to prevent slippage
     function setUpWrappedStrategyCurveSwapper(
         string memory name,
         address _asset,
@@ -461,7 +462,8 @@ contract YearnV3BaseTest is BaseTest {
         return _wrappedStrategy;
     }
 
-    // Deploy a strategy that wraps a vault.
+    /// @notice Deploy a strategy that earns yield from a yearn v3 vault with a different asset
+    /// @dev this strategy relies on static slippage setting between similarly pegged assets
     function setUpWrappedStrategyStaticSwapper(
         string memory name,
         address _asset,
