@@ -7,8 +7,8 @@ import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "../mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
-import { WrappedYearnV3StrategyCurveSwapper } from "src/strategies/WrappedYearnV3StrategyCurveSwapper.sol";
-import { WrappedYearnV3StrategyStaticSwapper } from "src/strategies/WrappedYearnV3StrategyStaticSwapper.sol";
+import { WrappedYearnV3StrategyAssetSwapOracle } from "src/strategies/WrappedYearnV3StrategyAssetSwapOracle.sol";
+import { WrappedYearnV3StrategyAssetSwapStatic } from "src/strategies/WrappedYearnV3StrategyAssetSwapStatic.sol";
 
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
@@ -373,7 +373,7 @@ contract YearnV3BaseTest is BaseTest {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
             address(
-                new WrappedYearnV3StrategyCurveSwapper(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
+                new WrappedYearnV3StrategyAssetSwapOracle(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
             )
         );
         // set keeper
@@ -411,7 +411,7 @@ contract YearnV3BaseTest is BaseTest {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
             address(
-                new WrappedYearnV3StrategyStaticSwapper(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
+                new WrappedYearnV3StrategyAssetSwapStatic(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
             )
         );
         // set keeper
