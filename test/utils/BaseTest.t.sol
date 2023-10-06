@@ -99,12 +99,22 @@ abstract contract BaseTest is Test, Constants {
         vm.selectFork(forks[network].forkId);
     }
 
-    /// Airdrop an asset to an address with a given amount
+    /// @notice Airdrop an asset to an address with a given amount
     /// @param _asset address of the asset to airdrop
     /// @param _to address to airdrop to
     /// @param _amount amount to airdrop
     function airdrop(ERC20 _asset, address _to, uint256 _amount) public {
         uint256 balanceBefore = _asset.balanceOf(_to);
         deal(address(_asset), _to, balanceBefore + _amount);
+    }
+
+    /// @notice Take an asset away from an address with a given amount
+    /// @param _asset address of the asset to take away
+    /// @param _from address to take away from
+    /// @param _amount amount to take away
+    function takeAway(ERC20 _asset, address _from, uint256 _amount) public {
+        uint256 balanceBefore = _asset.balanceOf(_from);
+        require(balanceBefore >= _amount, "BaseTest:takeaway(): not enough balance");
+        deal(address(_asset), _from, balanceBefore - _amount);
     }
 }

@@ -297,6 +297,8 @@ contract YearnV3BaseTest is BaseTest {
     /// @notice Deploy a vault with a mock strategy, owned by yearn addresses
     /// @param vaultName name of vault
     /// @param asset address of asset
+    /// @return vault address of vault
+    /// @return strategy address of mock strategy
     function deployVaultV3WithMockStrategy(
         string memory vaultName,
         address asset
@@ -316,7 +318,7 @@ contract YearnV3BaseTest is BaseTest {
         vm.prank(management);
         _strategy.acceptManagement();
 
-        address vault = _deployVaultV3ViaRegistry(vaultName, asset);
+        vault = _deployVaultV3ViaRegistry(vaultName, asset);
         addStrategyToVault(IVault(vault), _strategy);
 
         return (vault, address(_strategy));
@@ -340,11 +342,7 @@ contract YearnV3BaseTest is BaseTest {
         // Airdrop asset amount into strategy
         address asset = IStrategy(strategy).asset();
         airdrop(ERC20(asset), strategy, amount);
-        // Harvest strategy, increasing the value per share of the strategy
-        vm.prank(management);
-        IStrategy(strategy).report();
-        // Process report, updating the recorded value of the strategy in the vault
-        IVault(vault).process_report(strategy);
+        reportAndProcessProfits(vault, strategy);
         // Return the strategy params
         // struct StrategyParams {
         //     uint256 activation;
@@ -353,6 +351,15 @@ contract YearnV3BaseTest is BaseTest {
         //     uint256 maxDebt;
         // }
         return IVault(vault).strategies(strategy);
+    }
+
+    function reportAndProcessProfits(address vault, address strategy) public {
+        // Harvest and report any changes
+        vm.prank(management);
+        IStrategy(strategy).report();
+        // Process report, updating the recorded value of the strategy in the vault
+        vm.prank(vaultManagement);
+        IVault(vault).process_report(strategy);
     }
 
     function addStrategyToVault(IVault _vault, IStrategy _strategy) public {
@@ -529,17 +536,31 @@ contract YearnV3BaseTest is BaseTest {
         console.log("vault total idle assets: ", deployedVault.totalIdle());
     }
 
-    function depositIntoStrategy(IWrappedYearnV3Strategy _strategy, address _user, uint256 _amount) public {
+    function depositIntoStrategy(
+        IWrappedYearnV3Strategy _strategy,
+        address _user,
+        uint256 _amount
+    )
+        public
+        returns (uint256 shares)
+    {
         vm.prank(_user);
         baseAsset.approve(address(_strategy), _amount);
 
         vm.prank(_user);
-        _strategy.deposit(_amount, _user);
+        return _strategy.deposit(_amount, _user);
     }
 
-    function mintAndDepositIntoStrategy(IWrappedYearnV3Strategy _strategy, address _user, uint256 _amount) public {
+    function mintAndDepositIntoStrategy(
+        IWrappedYearnV3Strategy _strategy,
+        address _user,
+        uint256 _amount
+    )
+        public
+        returns (uint256 shares)
+    {
         airdrop(baseAsset, _user, _amount);
-        depositIntoStrategy(_strategy, _user, _amount);
+        return depositIntoStrategy(_strategy, _user, _amount);
     }
 
     function addDebtToStrategy(IVault _vault, IStrategy _strategy, uint256 _amount) public {
