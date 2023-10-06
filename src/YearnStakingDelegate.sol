@@ -9,8 +9,9 @@ import { AccessControl } from "@openzeppelin-5.0/contracts/access/AccessControl.
 import { Errors } from "src/libraries/Errors.sol";
 import { Math } from "@openzeppelin-5.0/contracts/utils/math/Math.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
+import { Rescuable } from "src/Rescuable.sol";
 
-contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
+contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -266,26 +267,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper {
         IERC20(yfi).transfer(to, withdrawn.amount);
     }
 
-    /// @notice Rescue any ERC20 tokens that are stuck in this contract
-    /// @dev Only callable by owner
-    /// @param token address of the ERC20 token to rescue. Use zero address for ETH
-    /// @param to address to send the tokens to
-    /// @param balance amount of tokens to rescue. Use zero to rescue all
     function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (address(token) == address(0)) {
-            // for Ether
-            uint256 totalBalance = address(this).balance;
-            balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
-            require(balance > 0, "trying to send 0 ETH");
-            // slither-disable-next-line arbitrary-send
-            (bool success,) = to.call{ value: balance }("");
-            require(success, "ETH transfer failed");
-        } else {
-            // any other erc20
-            uint256 totalBalance = token.balanceOf(address(this));
-            balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
-            require(balance > 0, "trying to send 0 balance");
-            token.safeTransfer(to, balance);
-        }
+        _rescue(token, to, balance);
     }
 }
