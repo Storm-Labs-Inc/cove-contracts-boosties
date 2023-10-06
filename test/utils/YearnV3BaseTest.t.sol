@@ -269,6 +269,8 @@ contract YearnV3BaseTest is BaseTest {
         // Label the vault
         deployedVaults[vaultName] = vault;
         vm.label(vault, vaultName);
+
+        return vault;
     }
 
     /// @notice Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
