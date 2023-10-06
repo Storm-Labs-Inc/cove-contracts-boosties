@@ -45,7 +45,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
 
         // Deploy mock vault to be used as underlying yield source for wrapped strategy
         {
-            deployedVault = IVault(deployVaultV3("DAI Vault", MAINNET_DAI, new address[](0)));
+            deployedVault = IVault(deployVaultV3("USC Vault", MAINNET_USDC, new address[](0)));
             testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
         }
 
@@ -69,8 +69,8 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         strategy = WrappedYearnV3StrategyStaticSwapper(
             address(
                 setUpWrappedStrategyStaticSwapper(
-                    "Wrapped YearnV3 USDC -> DAI Strategy (Asset Swap with Static Slippage)",
-                    MAINNET_USDC,
+                    "Wrapped YearnV3 DAI -> USDC Strategy (Asset Swap with Static Slippage)",
+                    MAINNET_DAI,
                     address(deployedVault),
                     address(yearnStakingDelegate),
                     dYFI,
@@ -78,32 +78,32 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
                 )
             )
         );
+        vm.startPrank(users["tpManagement"]);
         {
             // set the swap parameters
             // [token_from, pool, token_to, pool, ...]
-            _assetDeployParams.route[0] = MAINNET_USDC;
+            _assetDeployParams.route[0] = MAINNET_DAI;
             _assetDeployParams.route[1] = MAINNET_CRV3POOL;
-            _assetDeployParams.route[2] = MAINNET_DAI;
-            _assetDeployParams.swapParams[0] = [uint256(1), 0, 1, 1, 2];
+            _assetDeployParams.route[2] = MAINNET_USDC;
+            _assetDeployParams.swapParams[0] = [uint256(0), 1, 1, 1, 2];
 
             // [token_from, pool, token_to, pool, ...]
-            _assetFreeParams.route[0] = MAINNET_DAI;
+            _assetFreeParams.route[0] = MAINNET_USDC;
             _assetFreeParams.route[1] = MAINNET_CRV3POOL;
-            _assetFreeParams.route[2] = MAINNET_USDC;
-            _assetFreeParams.swapParams[0] = [uint256(0), 1, 1, 1, 2];
+            _assetFreeParams.route[2] = MAINNET_DAI;
+            _assetFreeParams.swapParams[0] = [uint256(1), 0, 1, 1, 2];
 
-            vm.startPrank(users["tpManagement"]);
             strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500);
-            vm.stopPrank();
         }
+        vm.stopPrank();
     }
 
     function testFuzz_deposit(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount < 1e13);
-        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        vm.assume(amount > 1e18);
+        vm.assume(amount < 1e25);
+        airdrop(ERC20(MAINNET_DAI), alice, amount);
         vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
         // deposit into strategy happens
         uint256 minAmountFromCurve = ICurveRouter(MAINNET_CURVE_ROUTER).get_dy(
             _assetDeployParams.route, _assetDeployParams.swapParams, amount, _assetDeployParams.pools
@@ -112,9 +112,9 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         // check for expected changes
 
         vm.stopPrank();
-        assertEq(ERC20(MAINNET_USDC).balanceOf(alice), 0, "alice still has USDC");
+        assertEq(ERC20(MAINNET_DAI).balanceOf(alice), 0, "alice still has USDC");
         assertApproxEqRel(
-            ERC20(MAINNET_DAI).balanceOf(address(deployedVault)),
+            ERC20(MAINNET_USDC).balanceOf(address(deployedVault)),
             minAmountFromCurve,
             0.001e18,
             "vault did not receive correct amount of DAI"
@@ -137,45 +137,45 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
     }
 
     function testFuzz_deposit_revertWhen_slippageIsHigh(uint256 amount) public {
-        vm.assume(amount > 1e14);
+        vm.assume(amount > 1e26);
         vm.assume(amount < 1e40);
-        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        airdrop(ERC20(MAINNET_DAI), alice, amount);
         vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
         vm.expectRevert("Slippage");
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
     function testFuzz_deposit_revertWhen_depositTooBig(uint256 amount) public {
         vm.assume(amount > 1e40);
-        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        airdrop(ERC20(MAINNET_DAI), alice, amount);
         vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
         vm.expectRevert();
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
     function test_deposit_revertWhen_slippageIsHigh() public {
-        uint256 amount = 1e8; // 100 USDC
-        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        uint256 amount = 1e20; // 100 DAI
+        airdrop(ERC20(MAINNET_DAI), alice, amount);
         vm.prank(users["tpManagement"]);
         strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 100_000);
         vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
         // deposit into strategy happens
         vm.expectRevert("Slippage");
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
     function test_redeem(uint256 amount) public {
-        vm.assume(amount > 1e8);
+        vm.assume(amount > 1e18);
         // limit fuzzing to 10 million (pool slippage is too great otherwise)
-        vm.assume(amount < 1e13);
+        vm.assume(amount < 1e25);
 
         IWrappedYearnV3Strategy _strategy = IWrappedYearnV3Strategy(address(strategy));
-        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        airdrop(ERC20(MAINNET_DAI), alice, amount);
         vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
 
         // deposit into strategy happens
         uint256 shares = _strategy.deposit(amount, alice);
@@ -193,19 +193,19 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
         assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
         assertApproxEqRel(
-            ERC20(MAINNET_USDC).balanceOf(alice), amount, 0.004e18, "user balance should be deposit amount after redeem"
+            ERC20(MAINNET_DAI).balanceOf(alice), amount, 0.004e18, "user balance should be deposit amount after redeem"
         );
     }
 
     function test_withdraw(uint256 amount) public {
-        vm.assume(amount > 1e8);
+        vm.assume(amount > 1e18);
         // limit fuzzing to 10 million (pool slippage is too great otherwise)
-        vm.assume(amount < 1e13);
+        vm.assume(amount < 1e25);
 
         IWrappedYearnV3Strategy _strategy = IWrappedYearnV3Strategy(address(strategy));
-        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        airdrop(ERC20(MAINNET_DAI), alice, amount);
         vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
 
         // deposit into strategy happens
         uint256 shares = _strategy.deposit(amount, alice);
@@ -226,7 +226,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
         assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
         assertApproxEqRel(
-            ERC20(MAINNET_USDC).balanceOf(alice),
+            ERC20(MAINNET_DAI).balanceOf(alice),
             amount,
             0.004e18,
             "user balance should be deposit amount after withdraw"
