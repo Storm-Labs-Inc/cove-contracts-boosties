@@ -5,6 +5,7 @@ import { CoveYFI } from "src/CoveYFI.sol";
 import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
 import { Errors } from "../src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin-5.0/contracts/access/Ownable.sol";
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 
 contract CoveYFITest is YearnV3BaseTest {
@@ -69,6 +70,18 @@ contract CoveYFITest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
+    function test_pause_unpause() public {
+        airdrop(ERC20(coveYFI), admin, 1e18);
+
+        vm.startPrank(admin);
+        CoveYFI(coveYFI).pause();
+        CoveYFI(coveYFI).unpause();
+
+        ERC20(coveYFI).transfer(bob, 1e18);
+        assertEq(IERC20(coveYFI).balanceOf(address(bob)), 1e18);
+        vm.stopPrank();
+    }
+
     function test_pause_revertsOnTransfer() public {
         airdrop(ERC20(coveYFI), admin, 1e18);
 
@@ -78,5 +91,19 @@ contract CoveYFITest is YearnV3BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.OnlyMintingEnabled.selector));
         ERC20(coveYFI).transfer(bob, 1e18);
         vm.stopPrank();
+    }
+
+    function test_rescue() public {
+        deal(address(coveYFI), 1e18);
+        vm.prank(admin);
+        CoveYFI(coveYFI).rescue(IERC20(address(0)), bob, 1e18);
+        // createUser deals new addresses 100 ETH
+        assertEq(address(bob).balance, 100 ether + 1e18, "rescue failed");
+    }
+
+    function test_rescue_revertsOnNonOwner() public {
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, bob));
+        CoveYFI(coveYFI).rescue(IERC20(address(0)), admin, 1e18);
     }
 }
