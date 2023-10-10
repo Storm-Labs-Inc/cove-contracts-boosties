@@ -112,7 +112,7 @@ contract WrappedYearnV3StrategyAssetSwapStatic is BaseTokenizedStrategy, CurveRo
         address _vault = vault;
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount =
-            _calculateExpectedAmount(IERC20Metadata(asset).decimals(), IERC20Metadata(vaultAsset).decimals(), _amount);
+            _calculateExpectedAmount(TokenizedStrategy.decimals(), IERC20Metadata(vaultAsset).decimals(), _amount);
 
         uint256 swapResult = _swap(_assetDeploySwapParams, _amount, expectedAmount, address(this));
 
@@ -127,7 +127,7 @@ contract WrappedYearnV3StrategyAssetSwapStatic is BaseTokenizedStrategy, CurveRo
 
     function _freeFunds(uint256 _amount) internal override {
         address _vault = vault;
-        uint256 assetDecimals = IERC20Metadata(asset).decimals();
+        uint256 assetDecimals = TokenizedStrategy.decimals();
         IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
         // Find percentage of total assets is this amount
         uint256 allocation = _amount * assetDecimals / TokenizedStrategy.totalAssets();
