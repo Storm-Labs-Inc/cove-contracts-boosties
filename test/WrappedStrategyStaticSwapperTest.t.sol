@@ -166,4 +166,69 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         vm.expectRevert("Slippage");
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
+
+    function test_redeem(uint256 amount) public {
+        vm.assume(amount > 1e8);
+        // limit fuzzing to 10 million (pool slippage is too great otherwise)
+        vm.assume(amount < 1e13);
+
+        IWrappedYearnV3Strategy _strategy = IWrappedYearnV3Strategy(address(strategy));
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        vm.startPrank(alice);
+        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+
+        // deposit into strategy happens
+        uint256 shares = _strategy.deposit(amount, alice);
+
+        // withdraw from strategy happens
+        // allow for 4 BPS of loss due to non-changeing value of yearn vault but small decrease in assets due to swap
+        _strategy.redeem(shares, alice, alice, 4);
+        // check for expected changes
+        assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
+        uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
+            address(_strategy), address(deployedVault)
+        ).balance;
+        assertEq(userBalance, 0, "userInfo in ysd not updated correctly");
+        assertEq(deployedVault.balanceOf(strategy.yearnStakingDelegate()), 0, "vault shares not taken from delegate");
+        assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
+        assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
+        assertApproxEqRel(
+            ERC20(MAINNET_USDC).balanceOf(alice), amount, 0.004e18, "user balance should be deposit amount after redeem"
+        );
+    }
+
+    function test_withdraw(uint256 amount) public {
+        vm.assume(amount > 1e8);
+        // limit fuzzing to 10 million (pool slippage is too great otherwise)
+        vm.assume(amount < 1e13);
+
+        IWrappedYearnV3Strategy _strategy = IWrappedYearnV3Strategy(address(strategy));
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
+        vm.startPrank(alice);
+        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+
+        // deposit into strategy happens
+        uint256 shares = _strategy.deposit(amount, alice);
+        // convert shares to expected amount
+        uint256 withdrawAmount = _strategy.convertToAssets(shares);
+
+        // withdraw from strategy happens
+        // allow for 4 BPS of loss due to non-changing value of yearn vault but loss due to swap
+        _strategy.withdraw(withdrawAmount, alice, alice, 4);
+        // check for expected changes
+        assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
+        uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
+            address(_strategy), address(deployedVault)
+        ).balance;
+        assertEq(userBalance, 0, "userInfo in ysd not updated correctly");
+        assertEq(deployedVault.balanceOf(strategy.yearnStakingDelegate()), 0, "vault shares not taken from delegate");
+        assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
+        assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
+        assertApproxEqRel(
+            ERC20(MAINNET_USDC).balanceOf(alice),
+            amount,
+            0.004e18,
+            "user balance should be deposit amount after withdraw"
+        );
+    }
 }
