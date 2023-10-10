@@ -181,7 +181,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         uint256 shares = _strategy.deposit(amount, alice);
 
         // withdraw from strategy happens
-        // allow for 4 BPS of loss due to non-changeing value of yean vault but small decrease in assets due to swap
+        // allow for 4 BPS of loss due to non-changeing value of yearn vault but small decrease in assets due to swap
         _strategy.redeem(shares, alice, alice, 4);
         // check for expected changes
         assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
@@ -213,9 +213,8 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         uint256 withdrawAmount = _strategy.convertToAssets(shares);
 
         // withdraw from strategy happens
-        // allow for 4 BPS of loss due to non-changing value of yean vault but loss due to swap
+        // allow for 4 BPS of loss due to non-changing value of yearn vault but loss due to swap
         _strategy.withdraw(withdrawAmount, alice, alice, 4);
-        // _strategy.redeem(shares, alice, alice, 4);
         // check for expected changes
         assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
         uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(

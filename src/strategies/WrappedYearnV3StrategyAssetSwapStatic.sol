@@ -129,7 +129,7 @@ contract WrappedYearnV3StrategyAssetSwapStatic is BaseTokenizedStrategy, CurveRo
         address _vault = vault;
         uint256 assetDecimals = TokenizedStrategy.decimals();
         IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
-        // Find percentage of total assets is this amount
+        // Find percentage of total assets in this amount
         uint256 allocation = _amount * assetDecimals / TokenizedStrategy.totalAssets();
         // Total vault shares that wStrat has deposited into ysd
         uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
