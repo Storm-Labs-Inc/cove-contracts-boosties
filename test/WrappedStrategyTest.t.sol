@@ -28,7 +28,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
     // Addresses
     address public alice;
-    address public testGauge;
+    address public deployedGauge;
     address public manager;
     address public treasury;
 
@@ -38,32 +38,20 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         alice = createUser("alice");
         manager = createUser("manager");
         treasury = createUser("treasury");
-        mockStrategy = setUpStrategy("Mock USDC Strategy", MAINNET_USDC);
-        address[] memory strategies = new address[](1);
-        strategies[0] = address(mockStrategy);
-        deployedVault = IVault(deployVaultV3("USDC Vault", MAINNET_USDC, strategies));
+        (address _deployedVault, address _mockStrategy) = deployVaultV3WithMockStrategy("USDC Vault", MAINNET_USDC);
+        deployedVault = IVault(_deployedVault);
+        mockStrategy = IStrategy(_mockStrategy);
 
         //// yearn staking delegate ////
         {
             yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(treasury, admin, manager));
             // Deploy gauge
-            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "Test Gauge for USDC Vault");
+            deployedGauge = deployGaugeViaFactory(address(deployedVault), admin, "Test Gauge for USDC Vault");
             // Give admin some dYFI
             airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
             airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
-            // Start new rewards
-            vm.startPrank(admin);
-            IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
-            IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
-            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
-            yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
-
-            vm.stopPrank();
-
-            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
-            yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(treasury, admin, manager));
             vm.prank(admin);
-            yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
+            yearnStakingDelegate.setAssociatedGauge(address(deployedVault), deployedGauge);
         }
 
         //// wrapped strategy ////
@@ -95,34 +83,45 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         }
     }
 
+    function _setUpDYfiRewards() internal {
+        // Start new rewards
+        vm.startPrank(admin);
+        IERC20(dYFI).approve(deployedGauge, DYFI_REWARD_AMOUNT);
+        IGauge(deployedGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
+        require(IERC20(dYFI).balanceOf(deployedGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        vm.stopPrank();
+    }
+
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount != 0);
         // limit fuzzing to ysd.userInfo.balance type max
         vm.assume(amount < type(uint128).max);
-        deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
+        _setUpDYfiRewards();
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
         // deposit into strategy happens
-        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
+        depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         // check for expected changes
-        assertEq(deployedVault.balanceOf(testGauge), amount, "depositToGauge failed");
+        assertEq(deployedVault.balanceOf(deployedGauge), amount, "depositToGauge failed");
         uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
             address(wrappedYearnV3Strategy), address(deployedVault)
         ).balance;
         assertEq(userBalance, amount, "userInfo in ysd not updated correctly");
         assertEq(deployedVault.totalSupply(), amount, "vault total_supply did not update correctly");
-        assertEq(wrappedYearnV3Strategy.balanceOf(users["alice"]), amount, "Deposit was not successful");
+        assertEq(wrappedYearnV3Strategy.balanceOf(alice), amount, "Deposit was not successful");
     }
 
     function testFuzz_withdraw(uint256 amount) public {
         vm.assume(amount != 0);
         // limit fuzzing to ysd.userInfo.balance type max
         vm.assume(amount < type(uint128).max);
-        deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
-        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
+        _setUpDYfiRewards();
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         // withdraw from strategy happens
-        vm.prank(users["alice"]);
-        wrappedYearnV3Strategy.withdraw(amount, users["alice"], users["alice"], 0);
+        vm.prank(alice);
+        wrappedYearnV3Strategy.withdraw(amount, alice, alice, 0);
         // check for expected changes
-        assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
+        assertEq(deployedVault.balanceOf(deployedGauge), 0, "withdrawFromGauge failed");
         uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
             address(wrappedYearnV3Strategy), address(deployedVault)
         ).balance;
@@ -133,72 +132,169 @@ contract WrappedStrategyTest is YearnV3BaseTest {
             "vault shares not taken from delegate"
         );
         assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
-        assertEq(wrappedYearnV3Strategy.balanceOf(users["alice"]), 0, "Withdraw was not successful");
-        assertEq(
-            ERC20(MAINNET_USDC).balanceOf(users["alice"]),
-            amount,
-            "user balance should be deposit amount after withdraw"
-        );
+        assertEq(wrappedYearnV3Strategy.balanceOf(alice), 0, "Withdraw was not successful");
+        assertEq(ERC20(MAINNET_USDC).balanceOf(alice), amount, "user balance should be deposit amount after withdraw");
     }
 
-    function test_harvestAndReport() public {
-        // TODO: integrate fuzzing in future testing
-        // vm.assume(amount > 0);
-        // // limit fuzzing to ysd.userInfo.balance type max
-        // vm.assume(amount < type(uint128).max);
-        uint256 amount = 1e18;
+    function testFuzz_report(uint256 amount) public {
+        vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
+        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        _setUpDYfiRewards();
         // alice locks her YFI
-        vm.startPrank(users["alice"]);
+        vm.startPrank(alice);
         IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);
         yearnStakingDelegate.lockYfi(ALICE_YFI);
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
         // deposit into strategy happens
-        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
+        uint256 ownedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
+        addDebtToStrategy(deployedVault, mockStrategy, amount);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
+        assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // warp blocks forward to accrue rewards
         vm.warp(block.timestamp + 14 days);
 
-        // manager calls harvestAndReport
+        // manager calls report
         vm.prank(tpManagement);
-        wrappedYearnV3Strategy.report();
+        (uint256 profit, uint256 loss) = wrappedYearnV3Strategy.report();
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        assertGt(afterTotalAssets, beforeTotalAssets, "harvestAndReport did not increase total assets");
+        uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
+        assertEq(afterPreviewRedeem, beforePreviewRedeem, "report did not lock profit");
+        assertEq(profit + beforeTotalAssets, afterTotalAssets, "report did not report correct profit");
+        assertEq(loss, 0, "report did not report 0 loss");
+
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
+
+        uint256 profitUnlockedPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertGt(profitUnlockedPreviewRedeem, afterPreviewRedeem, "profit locking did not work correctly");
     }
 
-    function test_harvestAndReport_passWhenRelocking() public {
-        // TODO: integrate fuzzing in future testing
-        // vm.assume(amount > 0);
-        // // limit fuzzing to ysd.userInfo.balance type max
-        // vm.assume(amount < type(uint128).max);
-        uint256 amount = 1e18;
+    function testFuzz_report_passWhen_noProfits(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        // alice locks her YFI
+        vm.startPrank(alice);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);
+        yearnStakingDelegate.lockYfi(ALICE_YFI);
+        vm.stopPrank();
+
+        // alice deposits into vault
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        // deposit into strategy happens
+        uint256 ownedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
+        addDebtToStrategy(deployedVault, mockStrategy, amount);
+
+        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
+        assertEq(beforePreviewRedeem, amount, "redeemable asset should not change");
+
+        // manager calls report
+        vm.prank(tpManagement);
+        (uint256 profit, uint256 loss) = wrappedYearnV3Strategy.report();
+
+        uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertEq(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
+        assertEq(afterPreviewRedeem, beforePreviewRedeem, "unexpected profit");
+        assertEq(profit, 0, "report did not report 0 profit");
+        assertEq(loss, 0, "report did not report 0 loss");
+
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
+
+        uint256 profitUnlockedPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertEq(profitUnlockedPreviewRedeem, afterPreviewRedeem, "unexpected profit");
+    }
+
+    function testFuzz_report_passWhen_onlyUnderlyingVaultProfits(
+        uint256 amount,
+        uint256 underlyingVaultProfit
+    )
+        public
+    {
+        vm.assume(amount > 1e6); // Minimum deposit size is required to farm underlying vault profit
+        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        vm.assume(underlyingVaultProfit > 1e6); // Minimum profit size is required to test
+        vm.assume(underlyingVaultProfit < 1_000_000_000 * 1e6); // limit profit size to 1 Billion USDC
+        // alice locks her YFI
+        vm.startPrank(alice);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);
+        yearnStakingDelegate.lockYfi(ALICE_YFI);
+        vm.stopPrank();
+
+        // alice deposits into vault
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        // deposit into strategy happens
+        uint256 ownedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
+        addDebtToStrategy(deployedVault, mockStrategy, amount);
+        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+
+        // Increase underlying vault's value
+        increaseMockStrategyValue(address(deployedVault), address(mockStrategy), underlyingVaultProfit);
+        // warp blocks forward to yearn's strategy's profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(mockStrategy)).profitMaxUnlockTime());
+        // Yearn vault process report
+        reportAndProcessProfits(address(deployedVault), address(mockStrategy));
+        // warp blocks forward to yearn's vault's profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(mockStrategy)).profitMaxUnlockTime());
+        reportAndProcessProfits(address(deployedVault), address(mockStrategy));
+
+        // manager calls report
+        vm.prank(tpManagement);
+        (uint256 profit, uint256 loss) = wrappedYearnV3Strategy.report();
+
+        uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertGe(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
+        assertEq(afterPreviewRedeem, beforePreviewRedeem, "report did not lock profit");
+        assertEq(profit + beforeTotalAssets, afterTotalAssets, "report did not report correct profit");
+        assertEq(loss, 0, "report did not report 0 loss");
+
+        // warp blocks forward to our strategy's profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(mockStrategy)).profitMaxUnlockTime());
+
+        uint256 profitUnlockedPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        assertGt(profitUnlockedPreviewRedeem, afterPreviewRedeem, "redeemable asset per share increased over time");
+    }
+
+    function testFuzz_report_passWhen_relocking(uint256 amount) public {
+        vm.assume(amount > 1e6); // Minimum required for farming dYFI emission
+        vm.assume(amount < 1_000_000_000 * 1e6); // Maximum deposit size is 1 Billion USDC
+        _setUpDYfiRewards();
+
         // set reward split to 50/50
         vm.prank(admin);
         yearnStakingDelegate.setRewardSplit(0, 0.5e18, 0.5e18);
         // alice locks her YFI
-        vm.startPrank(users["alice"]);
+        vm.startPrank(alice);
         IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);
         yearnStakingDelegate.lockYfi(ALICE_YFI);
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: users["alice"], give: amount });
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
         // deposit into strategy happens
-        depositIntoStrategy(wrappedYearnV3Strategy, users["alice"], amount);
+        depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
 
         // warp blocks forward to accrue rewards
         vm.warp(block.timestamp + 14 days);
 
-        // manager calls harvestAndReport
+        // manager calls report
         vm.prank(tpManagement);
         wrappedYearnV3Strategy.report();
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        assertGt(afterTotalAssets, beforeTotalAssets, "harvestAndReport did not increase total assets");
+        assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
     }
 }
