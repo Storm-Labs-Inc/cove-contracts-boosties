@@ -254,9 +254,28 @@ contract YearnV3BaseTest is BaseTest {
         return address(yearnStakingDelegate);
     }
 
-    // Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
-    // strategies can be dummy ones or real ones
-    // This is intended to spawn a vault that we have control over.
+    function _deployVaultV3ViaRegistry(string memory vaultName, address asset) internal returns (address) {
+        vm.prank(admin);
+        address vault = Registry(yearnRegistry).newEndorsedVault(asset, vaultName, "tsVault", management, 10 days, 0);
+
+        vm.prank(management);
+        // Give the vault manager all the roles
+        IVault(vault).set_role(vaultManagement, 8191);
+
+        // Set deposit limit to max
+        vm.prank(vaultManagement);
+        IVault(vault).set_deposit_limit(type(uint256).max);
+
+        // Label the vault
+        deployedVaults[vaultName] = vault;
+        vm.label(vault, vaultName);
+
+        return vault;
+    }
+
+    /// @notice Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
+    /// strategies can be dummy ones or real ones
+    /// This is intended to spawn a vault that we have control over.
     function deployVaultV3(
         string memory vaultName,
         address asset,
@@ -265,28 +284,82 @@ contract YearnV3BaseTest is BaseTest {
         public
         returns (address)
     {
-        vm.prank(admin);
-        address vault = Registry(yearnRegistry).newEndorsedVault(asset, vaultName, "tsVault", management, 10 days, 0);
-        IVault _vault = IVault(vault);
-
-        vm.prank(management);
-        // Give the vault manager all the roles
-        _vault.set_role(vaultManagement, 8191);
-
-        // Set deposit limit to max
-        vm.prank(vaultManagement);
-        _vault.set_deposit_limit(type(uint256).max);
+        address vault = _deployVaultV3ViaRegistry(vaultName, asset);
 
         // Add strategies to vault
         for (uint256 i = 0; i < strategies.length; i++) {
-            addStrategyToVault(_vault, IStrategy(strategies[i]));
+            addStrategyToVault(IVault(vault), IStrategy(strategies[i]));
         }
 
-        // Label the vault
-        deployedVaults[vaultName] = vault;
-        vm.label(vault, vaultName);
-
         return vault;
+    }
+
+    /// @notice Deploy a vault with a mock strategy, owned by yearn addresses
+    /// @param vaultName name of vault
+    /// @param asset address of asset
+    /// @return vault address of vault
+    /// @return strategy address of mock strategy
+    function deployVaultV3WithMockStrategy(
+        string memory vaultName,
+        address asset
+    )
+        public
+        returns (address vault, address strategy)
+    {
+        // Deploy mock strategy
+        IStrategy _strategy = IStrategy(address(new MockStrategy(asset)));
+        // set keeper
+        _strategy.setKeeper(keeper);
+        // set treasury
+        _strategy.setPerformanceFeeRecipient(performanceFeeRecipient);
+        // set management of the strategy
+        _strategy.setPendingManagement(management);
+        // Accept mangagement.
+        vm.prank(management);
+        _strategy.acceptManagement();
+
+        vault = _deployVaultV3ViaRegistry(vaultName, asset);
+        addStrategyToVault(IVault(vault), _strategy);
+
+        return (vault, address(_strategy));
+    }
+
+    /// @notice Increase strategy value by airdropping asset into strategy and harvesting
+    /// @param vault address of the vault which has the strategy
+    /// @param strategy address of the mock strategy
+    /// @param amount amount of asset to airdrop
+    /// @return strategyParams struct of strategy params
+    function increaseMockStrategyValue(
+        address vault,
+        address strategy,
+        uint256 amount
+    )
+        public
+        returns (IVault.StrategyParams memory)
+    {
+        // Require strategy is added to vault
+        require(IVault(vault).strategies(strategy).activation > 0, "YearnV3BaseTest: Strategy not added to vault");
+        // Airdrop asset amount into strategy
+        address asset = IStrategy(strategy).asset();
+        airdrop(ERC20(asset), strategy, amount);
+        reportAndProcessProfits(vault, strategy);
+        // Return the strategy params
+        // struct StrategyParams {
+        //     uint256 activation;
+        //     uint256 lastReport;
+        //     uint256 currentDebt;
+        //     uint256 maxDebt;
+        // }
+        return IVault(vault).strategies(strategy);
+    }
+
+    function reportAndProcessProfits(address vault, address strategy) public {
+        // Harvest and report any changes
+        vm.prank(management);
+        IStrategy(strategy).report();
+        // Process report, updating the recorded value of the strategy in the vault
+        vm.prank(vaultManagement);
+        IVault(vault).process_report(strategy);
     }
 
     function addStrategyToVault(IVault _vault, IStrategy _strategy) public {
@@ -319,7 +392,7 @@ contract YearnV3BaseTest is BaseTest {
         return _strategy;
     }
 
-    // Deploy a strategy that wraps a vault.
+    /// @notice Deploy a strategy that earns yield from a yearn v3 vault.
     function setUpWrappedStrategy(
         string memory name,
         address _asset,
@@ -357,8 +430,8 @@ contract YearnV3BaseTest is BaseTest {
         return _wrappedStrategy;
     }
 
-    // Deploy a strategy that wraps a vault.
-    // @dev this strategy swaps tokens base on oracle prices
+    /// @notice Deploy a strategy that earns yield from a yearn v3 vault with different asset
+    /// @dev this strategy relies on oracles to prevent slippage
     function setUpWrappedStrategyCurveSwapper(
         string memory name,
         address _asset,
@@ -396,7 +469,8 @@ contract YearnV3BaseTest is BaseTest {
         return _wrappedStrategy;
     }
 
-    // Deploy a strategy that wraps a vault.
+    /// @notice Deploy a strategy that earns yield from a yearn v3 vault with a different asset
+    /// @dev this strategy relies on static slippage setting between similarly pegged assets
     function setUpWrappedStrategyStaticSwapper(
         string memory name,
         address _asset,
@@ -462,17 +536,31 @@ contract YearnV3BaseTest is BaseTest {
         console.log("vault total idle assets: ", deployedVault.totalIdle());
     }
 
-    function depositIntoStrategy(IWrappedYearnV3Strategy _strategy, address _user, uint256 _amount) public {
+    function depositIntoStrategy(
+        IWrappedYearnV3Strategy _strategy,
+        address _user,
+        uint256 _amount
+    )
+        public
+        returns (uint256 shares)
+    {
         vm.prank(_user);
         baseAsset.approve(address(_strategy), _amount);
 
         vm.prank(_user);
-        _strategy.deposit(_amount, _user);
+        return _strategy.deposit(_amount, _user);
     }
 
-    function mintAndDepositIntoStrategy(IWrappedYearnV3Strategy _strategy, address _user, uint256 _amount) public {
+    function mintAndDepositIntoStrategy(
+        IWrappedYearnV3Strategy _strategy,
+        address _user,
+        uint256 _amount
+    )
+        public
+        returns (uint256 shares)
+    {
         airdrop(baseAsset, _user, _amount);
-        depositIntoStrategy(_strategy, _user, _amount);
+        return depositIntoStrategy(_strategy, _user, _amount);
     }
 
     function addDebtToStrategy(IVault _vault, IStrategy _strategy, uint256 _amount) public {
