@@ -108,6 +108,6 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper {
         // TODO: below may not be accurate accounting as the underlying vault may not have realized gains/losses
         // additionally profits may have been awarded but not fully unlocked yet, these are concerns to be investigated
         // off-chain by management in the timing of calling _harvestAndReportvi
-        return IVault(_vault).convertToAssets(IYearnStakingDelegate(_ysd).userInfo(address(this), vault).balance);
+        return IVault(_vault).convertToAssets(IYearnStakingDelegate(_ysd).userInfo(address(this), _vault).balance);
     }
 }

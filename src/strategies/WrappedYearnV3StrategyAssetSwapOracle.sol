@@ -197,14 +197,16 @@ contract WrappedYearnV3StrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRo
      * @return vaultAssetPrice the price of the vault asset this strategy will deposit into the vault
      */
     function _getOraclePrices() internal view returns (uint256 assetPrice, uint256 vaultAssetPrice) {
-        address _assetOracle = oracles[asset];
-        address _vaultAssetOracle = oracles[vaultAsset];
+        address _asset = asset;
+        address _vaultAsset = vaultAsset;
+        address _assetOracle = oracles[_asset];
+        address _vaultAssetOracle = oracles[_vaultAsset];
         // Checks
         if (_assetOracle == address(0)) {
-            revert Errors.OracleNotSet(asset);
+            revert Errors.OracleNotSet(_asset);
         }
         if (_vaultAssetOracle == address(0)) {
-            revert Errors.OracleNotSet(vaultAsset);
+            revert Errors.OracleNotSet(_vaultAsset);
         }
 
         // Interactions
