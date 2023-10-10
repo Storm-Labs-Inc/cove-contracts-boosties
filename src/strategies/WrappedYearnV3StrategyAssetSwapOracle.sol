@@ -68,6 +68,7 @@ contract WrappedYearnV3StrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRo
         // Interactions
         _approveTokenForSwap(_dYFI);
         _approveTokenForSwap(_asset);
+        _approveTokenForSwap(_vaultAsset);
         IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
         IERC20Metadata(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
@@ -142,11 +143,7 @@ contract WrappedYearnV3StrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRo
         (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
-            assetPrice,
-            vaultAssetPrice,
-            IERC20Metadata(asset).decimals(),
-            IERC20Metadata(vaultAsset).decimals(),
-            _amount
+            assetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), IERC20Metadata(vaultAsset).decimals(), _amount
         );
         console.log("fromAmount: ", _amount);
         console.log("expectedAmount: ", expectedAmount);
@@ -162,22 +159,32 @@ contract WrappedYearnV3StrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRo
     }
 
     function _freeFunds(uint256 _amount) internal override {
-        // Withdraw from gauge via YSD
         address _vault = vault;
-        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, _amount);
+        uint256 assetDecimals = TokenizedStrategy.decimals();
+        IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
+        // Find percentage of total assets in this amount
+        uint256 allocation = _amount * assetDecimals / TokenizedStrategy.totalAssets();
+        // Total vault shares that wStrat has deposited into ysd
+        uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
+        // Find withdrawer's allocation of total ysd shares
+        uint256 vaultSharesToWithdraw = totalUnderlyingVaultShares * allocation / assetDecimals;
+        // Withdraw that amount of vaul tokens from gauge via YSD
+        _yearnStakingDelegate.withdrawFromGauge(_vault, vaultSharesToWithdraw);
         // Withdraw from vault using redeem
-        uint256 _vaultAssetAmount = IVault(_vault).redeem(_amount, address(this), address(this));
+        uint256 _withdrawnVaultAssetAmount = IVault(_vault).redeem(vaultSharesToWithdraw, address(this), address(this));
+        console.log("redeem amount: ", _withdrawnVaultAssetAmount);
         (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
+        console.log("assetPrice: ", assetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             vaultAssetPrice,
             assetPrice,
             IERC20Metadata(vaultAsset).decimals(),
-            IERC20Metadata(asset).decimals(),
-            _vaultAssetAmount
+            assetDecimals,
+            _withdrawnVaultAssetAmount
         );
 
-        uint256 swapResult = _swap(_assetFreeSwapParams, _vaultAssetAmount, expectedAmount, address(this));
+        uint256 swapResult = _swap(_assetFreeSwapParams, _withdrawnVaultAssetAmount, expectedAmount, address(this));
 
         // check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);
@@ -190,14 +197,16 @@ contract WrappedYearnV3StrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRo
      * @return vaultAssetPrice the price of the vault asset this strategy will deposit into the vault
      */
     function _getOraclePrices() internal view returns (uint256 assetPrice, uint256 vaultAssetPrice) {
-        address _assetOracle = oracles[asset];
-        address _vaultAssetOracle = oracles[vaultAsset];
+        address _asset = asset;
+        address _vaultAsset = vaultAsset;
+        address _assetOracle = oracles[_asset];
+        address _vaultAssetOracle = oracles[_vaultAsset];
         // Checks
         if (_assetOracle == address(0)) {
-            revert Errors.OracleNotSet(asset);
+            revert Errors.OracleNotSet(_asset);
         }
         if (_vaultAssetOracle == address(0)) {
-            revert Errors.OracleNotSet(vaultAsset);
+            revert Errors.OracleNotSet(_vaultAsset);
         }
 
         // Interactions
