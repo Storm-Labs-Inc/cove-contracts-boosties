@@ -39,7 +39,7 @@ contract WrappedYearnV3StrategyAssetSwapStatic is BaseTokenizedStrategy, CurveRo
         address _dYFI,
         address _curveRouter
     )
-        BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Asset Swap (Oracle) Strategy")
+        BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Asset Swap (Static) Strategy")
         CurveRouterSwapper(_curveRouter)
     {
         // Checks
@@ -78,7 +78,6 @@ contract WrappedYearnV3StrategyAssetSwapStatic is BaseTokenizedStrategy, CurveRo
         external
         onlyManagement
     {
-        // Checks
         // Checks (includes external view calls)
         if (_slippageTolerance > SLIPPAGE_TOLERANCE_PRECISION || _slippageTolerance < MIN_SLIPPAGE_TOLERANCE) {
             revert Errors.SlippageToleranceNotInRange(_slippageTolerance);
