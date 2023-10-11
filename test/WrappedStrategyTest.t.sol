@@ -260,7 +260,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assertGe(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
         assertEq(afterPreviewRedeem, beforePreviewRedeem, "report did not lock profit");
         assertEq(
-            profit / (wrappedYearnV3Strategy.performanceFee() / 1e2), // performance fee like 10_000 == 100%
+            profit * 1e2 / (wrappedYearnV3Strategy.performanceFee()), // performance fee like 10_000 == 100%
             afterPerformanceFeeRecipientOwnedShares - beforePerformanceFeeRecipientOwnedShares,
             "correct profit not given to performance fee recipient"
         );
