@@ -9,6 +9,7 @@ import { MockStrategy } from "../mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
 import { WrappedYearnV3StrategyAssetSwapOracle } from "src/strategies/WrappedYearnV3StrategyAssetSwapOracle.sol";
 import { WrappedYearnV3StrategyAssetSwapStatic } from "src/strategies/WrappedYearnV3StrategyAssetSwapStatic.sol";
+import { TokenizedStrategyAssetSwapOracle } from "src/strategies/TokenizedStrategyAssetSwapOracle.sol";
 
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
@@ -506,6 +507,37 @@ contract YearnV3BaseTest is BaseTest {
         endorseStrategy(address(_wrappedStrategy));
 
         return _wrappedStrategy;
+    }
+
+    /// @notice Deploy a strategy that earns yield from ERC4626 vault with different asset
+    /// @dev this strategy relies on oracles to prevent slippage
+    function setUpTokenizedStrategyCurveSwapper(
+        string memory name,
+        address _asset,
+        address _v3VaultAddress,
+        address _curveRouterAddress
+    )
+        public
+        returns (IStrategy)
+    {
+        // we save the strategy as a IStrategyInterface to give it the needed interface
+        IStrategy _tokenziedStrategy =
+            IStrategy(address(new TokenizedStrategyAssetSwapOracle(_asset, _v3VaultAddress, _curveRouterAddress)));
+        // set keeper
+        _tokenziedStrategy.setKeeper(tpKeeper);
+        // set treasury
+        _tokenziedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
+        // set management of the strategy
+        _tokenziedStrategy.setPendingManagement(tpManagement);
+        // Accept mangagement.
+        vm.prank(tpManagement);
+        _tokenziedStrategy.acceptManagement();
+
+        // Label and store the strategy
+        deployedStrategies[name] = address(_tokenziedStrategy);
+        vm.label(address(_tokenziedStrategy), name);
+        endorseStrategy(address(_tokenziedStrategy));
+        return _tokenziedStrategy;
     }
 
     function endorseStrategy(address strategy) public {
