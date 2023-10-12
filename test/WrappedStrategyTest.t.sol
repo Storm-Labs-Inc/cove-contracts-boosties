@@ -238,6 +238,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         addDebtToStrategy(deployedVault, mockStrategy, amount);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        uint256 beforePerformanceFeeRecipientOwnedShares = wrappedYearnV3Strategy.balanceOf(tpPerformanceFeeRecipient);
 
         // Increase underlying vault's value
         increaseMockStrategyValue(address(deployedVault), address(mockStrategy), underlyingVaultProfit);
@@ -255,8 +256,14 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        uint256 afterPerformanceFeeRecipientOwnedShares = wrappedYearnV3Strategy.balanceOf(tpPerformanceFeeRecipient);
         assertGe(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
         assertEq(afterPreviewRedeem, beforePreviewRedeem, "report did not lock profit");
+        assertEq(
+            profit * 1e2 / (wrappedYearnV3Strategy.performanceFee()), // performance fee like 10_000 == 100%
+            afterPerformanceFeeRecipientOwnedShares - beforePerformanceFeeRecipientOwnedShares,
+            "correct profit not given to performance fee recipient"
+        );
         assertEq(profit + beforeTotalAssets, afterTotalAssets, "report did not report correct profit");
         assertEq(loss, 0, "report did not report 0 loss");
 
