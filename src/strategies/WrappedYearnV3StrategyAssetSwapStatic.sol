@@ -8,8 +8,8 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
-import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
 contract WrappedYearnV3StrategyAssetSwapStatic is BaseTokenizedStrategy, CurveRouterSwapper {

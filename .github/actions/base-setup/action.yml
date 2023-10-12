@@ -11,17 +11,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Generate combined hash of direct submodule versions
+    - name: Generate commit hashes of direct submodule versions
       run: |
-        modules=$(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')
-        for module in $modules
-        do
-          if [[ $module == lib/* ]]
-          then
-            echo "generating hash for $module"
-            git --no-pager diff -- $module
-          fi
-        done > ./lib/commit-hash
+        git submodule status > ./lib/commit-hash
       shell: bash
 
     - name: Cache Submodules
