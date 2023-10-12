@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { BaseTest } from "../utils/BaseTest.t.sol";
-import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { MockCurveRouterSwapper } from "test/mocks/MockCurveRouterSwapper.sol";

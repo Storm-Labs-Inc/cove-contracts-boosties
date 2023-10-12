@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
 import "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
-import "@openzeppelin-5.0/contracts/access/Ownable.sol";
-import "@openzeppelin-5.0/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
  * @title Voter
