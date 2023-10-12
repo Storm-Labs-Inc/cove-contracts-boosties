@@ -4,23 +4,27 @@ pragma solidity ^0.8.20;
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
-import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
-import { WrappedYearnV3StrategyAssetSwapStatic } from "../src/strategies/WrappedYearnV3StrategyAssetSwapStatic.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
+import { TokenizedStrategyAssetSwap } from "src/strategies/TokenizedStrategyAssetSwap.sol";
 import { ERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
+import { IERC4626 } from "@openzeppelin-5.0/contracts/interfaces/IERC4626.sol";
 import { ICurveBasePool } from "../src/interfaces/deps/curve/ICurveBasePool.sol";
+import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
-contract TokenizedStrategyStaticSwapperTest is YearnV3BaseTest {
+contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
+    // Oracle Addresses
+    address public constant CHAINLINK_FRAX_USD_MAINNET = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
+    address public constant CHAINLINK_USDC_USD_MAINNET = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
     uint256 public constant DYFI_REWARD_AMOUNT = 1000e18;
 
     // Contract Addresses
-    WrappedYearnV3StrategyAssetSwapStatic public strategy;
-    IVault public deployedVault;
+    TokenizedStrategyAssetSwap public strategy;
+    IERC4626 public deployedVault;
+    MockChainLinkOracle public mockFraxOracle;
     address public testGauge;
 
     // User Addresses
@@ -35,26 +39,33 @@ contract TokenizedStrategyStaticSwapperTest is YearnV3BaseTest {
     function setUp() public override {
         super.setUp();
 
+        // Create users
         alice = createUser("alice");
         treasury = createUser("treasury");
         manager = createUser("manager");
 
         // Deploy mock vault to be used as underlying yield source for wrapped strategy
         {
-            deployedVault = IVault(deployVaultV3("FRAX Vault", MAINNET_FRAX, new address[](0)));
+            deployedVault = IERC4626(deployVaultV3("sFRAX Vault", MAINNET_FRAX, new address[](0)));
         }
 
-        // The underlying vault accepts FRAX, while the strategy accepts USDC
-        strategy = WrappedYearnV3StrategyAssetSwapStatic(
+        // Deploy wrapped strategy with different asset than the underlying vault
+        strategy = TokenizedStrategyAssetSwap(
             address(
-                setUpTokenizedStrategyStaticSwapper(
+                setUpTokenizedStrategyAssetSwap(
                     "Tokenized Strategy USDC -> FRAX Strategy (Asset Swap with Oracle)",
                     MAINNET_USDC,
                     address(deployedVault),
-                    MAINNET_CURVE_ROUTER
+                    MAINNET_CURVE_ROUTER,
+                    // specifies that we do want to use oracles for price fetching
+                    true
                 )
             )
         );
+        vm.startPrank(users["tpManagement"]);
+        // set the oracle for USDC and FRAX
+        strategy.setOracle(MAINNET_FRAX, CHAINLINK_FRAX_USD_MAINNET);
+        strategy.setOracle(MAINNET_USDC, CHAINLINK_USDC_USD_MAINNET);
         {
             // set the swap parameters
             // [token_from, pool, token_to, pool, ...]
@@ -69,10 +80,9 @@ contract TokenizedStrategyStaticSwapperTest is YearnV3BaseTest {
             _assetFreeParams.route[2] = MAINNET_USDC;
             _assetFreeParams.swapParams[0] = [uint256(0), 1, 1, 1, 2];
 
-            vm.startPrank(users["tpManagement"]);
-            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500);
-            vm.stopPrank();
+            strategy.setSwapParameters(MAINNET_USDC, _assetDeployParams, _assetFreeParams, 99_500, 1 days);
         }
+        vm.stopPrank();
     }
 
     function testFuzz_deposit(uint256 amount) public {
@@ -87,14 +97,13 @@ contract TokenizedStrategyStaticSwapperTest is YearnV3BaseTest {
         );
         IStrategy(address(strategy)).deposit(amount, alice);
         // check for expected changes
-
         vm.stopPrank();
         assertEq(ERC20(MAINNET_USDC).balanceOf(alice), 0, "alice still has USDC");
         assertApproxEqRel(
             ERC20(MAINNET_FRAX).balanceOf(address(deployedVault)),
             minAmountFromCurve,
             0.001e18,
-            "vault did not receive correct amount of DAI"
+            "vault did not receive correct amount of FRAX"
         );
         assertEq(IStrategy(address(strategy)).balanceOf(alice), amount, "Deposit was not successful");
     }
@@ -118,24 +127,46 @@ contract TokenizedStrategyStaticSwapperTest is YearnV3BaseTest {
         IStrategy(address(strategy)).deposit(amount, alice);
     }
 
-    // Frax price is slightly cheap at our test block, so this test will not revert correctly
-    // function test_deposit_revertWhen_slippageIsSetHigh() public {
-    //     uint256 amount = 1e8; // 100 USDC
-    //     airdrop(ERC20(MAINNET_USDC), alice, amount);
-    //     vm.prank(users["tpManagement"]);
-    //     strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 100_000);
-    //     vm.startPrank(alice);
-    //     ERC20(MAINNET_USDC).approve(address(strategy), amount);
-    //     // deposit into strategy happens
-    //     vm.expectRevert("Slippage");
-    //     IStrategy(address(strategy)).deposit(amount, alice);
-    // }
+    function test_deposit_revertWhen_slippageIsHighMockOracle() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockFraxOracle = new MockChainLinkOracle(1e6);
+        // set the oracle for USDC and FRAX
+        strategy.setOracle(MAINNET_FRAX, address(mockFraxOracle));
+        vm.stopPrank();
+        uint256 amount = 1e8; // 100 USDC
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        mockFraxOracle.setTimestamp(block.timestamp);
+        mockFraxOracle.setPrice(1e5); // Oracle reporting 1 USDC = 100 FRAX, resulting higher expected return amount
+        vm.startPrank(alice);
+        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        // deposit into strategy happens
+        vm.expectRevert("Slippage");
+        IStrategy(address(strategy)).deposit(amount, alice);
+    }
+
+    function test_deposit_revertWhen_oracleOutdated() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockFraxOracle = new MockChainLinkOracle(1e18);
+        // set the oracle for USDC and FRAX
+        strategy.setOracle(MAINNET_FRAX, address(mockFraxOracle));
+        vm.stopPrank();
+        uint256 amount = 1e8; // 100 USDC
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        mockFraxOracle.setTimestamp(block.timestamp - 2 days);
+        vm.startPrank(alice);
+        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        // deposit into strategy happens
+        vm.expectRevert(abi.encodeWithSelector(Errors.OracleOudated.selector));
+        IStrategy(address(strategy)).deposit(amount, alice);
+    }
 
     function test_redeem(uint256 amount) public {
         vm.assume(amount > 1e8);
-        // limit fuzzing to 10 million (pool slippage is too great otherwise)
+        // limit fuzzing to 1 million (pool slippage is too great otherwise)
         vm.assume(amount < 1e13);
-
+        amount = 1e8;
         IStrategy _strategy = IStrategy(address(strategy));
         airdrop(ERC20(MAINNET_USDC), alice, amount);
         vm.startPrank(alice);
@@ -143,9 +174,8 @@ contract TokenizedStrategyStaticSwapperTest is YearnV3BaseTest {
 
         // deposit into strategy happens
         uint256 shares = _strategy.deposit(amount, alice);
-
         // withdraw from strategy happens
-        // allow for 4 BPS of loss due to non-changeing value of yearn vault but small decrease in assets due to swap
+        // allow for 4 BPS of loss due to non-changing value of yearn vault but loss due to swap
         _strategy.redeem(shares, alice, alice, 4);
         // check for expected changes
         assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");

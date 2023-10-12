@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
+import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin-5.0/contracts/interfaces/IERC4626.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
@@ -11,42 +11,33 @@ import { IERC20Metadata } from "@openzeppelin-5.0/contracts/token/ERC20/extensio
 import { SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
-contract TokenizedStrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRouterSwapper {
+contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy {
     // Libraries
     using SafeERC20 for IERC20Metadata;
-
-    // Constant storage variables
-    uint256 private constant _SLIPPAGE_TOLERANCE_PRECISION = 1e5;
-    uint256 private constant _MIN_SLIPPAGE_TOLERANCE = 99_000;
-    uint256 private constant _MAX_TIME_TOLERANCE = 2 days;
 
     // Immutable storage variables
     address public immutable vault;
     address public immutable vaultAsset;
 
     // Storage variables
-    uint256 public slippageTolerance = 99_500;
-    uint256 public timeTolerance = 6 hours;
-    CurveSwapParams internal _assetDeploySwapParams;
-    CurveSwapParams internal _assetFreeSwapParams;
-
-    mapping(address token => address) public oracles;
+    bool public usesOracle;
 
     constructor(
         address _asset,
         address _vault,
-        address _curveRouter
+        address _curveRouter,
+        bool _usesOracle
     )
-        BaseTokenizedStrategy(_asset, "Tokenized Asset Swap (Oracle) Strategy")
-        CurveRouterSwapper(_curveRouter)
+        StrategyAssetSwap(_curveRouter)
+        BaseTokenizedStrategy(_asset, "Tokenized Asset Swap Strategy")
     {
         // Checks
         // Check for zero addresses
         if (_asset == address(0) || _vault == address(0)) {
             revert Errors.ZeroAddress();
         }
-        // Check if the given asset is the same as the given vault's asset
         address _vaultAsset = IERC4626(_vault).asset();
+        // Check if the given asset is the same as the given vault's asset
         if (_asset == _vaultAsset) {
             revert Errors.VaultAssetDoesNotDiffer();
         }
@@ -55,26 +46,20 @@ contract TokenizedStrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRouterS
         // Set storage variable values
         vault = _vault;
         vaultAsset = _vaultAsset;
+        usesOracle = _usesOracle;
 
         // Interactions
-        _approveTokenForSwap(_asset);
-        _approveTokenForSwap(_vaultAsset);
         IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
     }
 
     // TODO: not sure exactly which role to assign here
     function setOracle(address token, address oracle) external onlyManagement {
-        // Checks
-        if (token == address(0) || oracle == address(0)) {
-            revert Errors.ZeroAddress();
-        }
-
-        // Effects
-        oracles[token] = oracle;
+        _setOracle(token, oracle);
     }
 
     // TODO: not sure exactly which role to assign here
     function setSwapParameters(
+        address strategyAsset,
         CurveSwapParams memory deploySwapParams,
         CurveSwapParams memory freeSwapParams,
         uint256 _slippageTolerance,
@@ -83,47 +68,40 @@ contract TokenizedStrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRouterS
         external
         onlyManagement
     {
-        // Checks
-        // Checks (includes external view calls)
-        if (_slippageTolerance > _SLIPPAGE_TOLERANCE_PRECISION || _slippageTolerance < _MIN_SLIPPAGE_TOLERANCE) {
-            revert Errors.SlippageToleranceNotInRange(_slippageTolerance);
-        }
-        if (_timeTolerance > _MAX_TIME_TOLERANCE) {
-            revert Errors.TimeToleranceNotInRange(_timeTolerance);
-        }
-        address _asset = asset;
         address _vaultAsset = vaultAsset;
-        _validateSwapParams(deploySwapParams, _asset, _vaultAsset);
-        _validateSwapParams(freeSwapParams, _vaultAsset, _asset);
+        // Checks
+        // Check if the given asset is the same as the given vault's asset
+        if (strategyAsset == _vaultAsset) {
+            revert Errors.VaultAssetDoesNotDiffer();
+        }
+        // Check if the given asset is the same as the underlying strategy asset
+        if (strategyAsset != TokenizedStrategy.asset()) {
+            revert Errors.AssetDoesNotMatchStrategyAsset();
+        }
 
-        // Effects
-        _assetDeploySwapParams = deploySwapParams;
-        _assetFreeSwapParams = freeSwapParams;
-        slippageTolerance = _slippageTolerance;
-        timeTolerance = _timeTolerance;
+        // Innteractions
+        _setSwapParameters(
+            strategyAsset, _vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
+        );
     }
 
-    function _calculateExpectedAmount(
-        uint256 fromPrice,
-        uint256 toPrice,
-        uint256 fromDecimal,
-        uint256 toDecimal,
-        uint256 fromAmount
-    )
-        internal
-        view
-        returns (uint256)
-    {
-        // Expected amount of tokens to receive from the swap
-        return ((fromAmount * fromPrice) * 10 ** (18 - fromDecimal)) * slippageTolerance / toPrice
-            / _SLIPPAGE_TOLERANCE_PRECISION / 10 ** (18 - toDecimal);
+    function _getPrices() internal view returns (uint256, uint256) {
+        if (usesOracle) {
+            return (_getOraclePrices(TokenizedStrategy.asset(), vaultAsset));
+        } else {
+            return (1, 1);
+        }
     }
 
     function _deployFunds(uint256 _amount) internal override {
-        (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices();
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
-            assetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), IERC20Metadata(vaultAsset).decimals(), _amount
+            strategyAssetPrice,
+            vaultAssetPrice,
+            TokenizedStrategy.decimals(),
+            IERC20Metadata(vaultAsset).decimals(),
+            _amount
         );
         console.log("fromAmount: ", _amount);
         console.log("expectedAmount: ", expectedAmount);
@@ -149,12 +127,12 @@ contract TokenizedStrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRouterS
         // Withdraw from vault using redeem
         uint256 _withdrawnVaultAssetAmount = _vault.redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
-        (uint256 assetPrice, uint256 vaultAssetPrice) = _getOraclePrices();
-        console.log("assetPrice: ", assetPrice, "vaultAssetPrice: ", vaultAssetPrice);
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices();
+        console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             vaultAssetPrice,
-            assetPrice,
+            strategyAssetPrice,
             IERC20Metadata(vaultAsset).decimals(),
             assetDecimals,
             _withdrawnVaultAssetAmount
@@ -165,40 +143,6 @@ contract TokenizedStrategyAssetSwapOracle is BaseTokenizedStrategy, CurveRouterS
         // check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);
         console.log("expected swap amount    : ", expectedAmount);
-    }
-
-    /**
-     * Returns the latest price from the oracle and the timestamp of the price
-     * @return assetPrice the price of the asset this strategy accepts
-     * @return vaultAssetPrice the price of the vault asset this strategy will deposit into the vault
-     */
-    function _getOraclePrices() internal view returns (uint256 assetPrice, uint256 vaultAssetPrice) {
-        address _asset = asset;
-        address _vaultAsset = vaultAsset;
-        address _assetOracle = oracles[_asset];
-        address _vaultAssetOracle = oracles[_vaultAsset];
-        // Checks
-        if (_assetOracle == address(0)) {
-            revert Errors.OracleNotSet(_asset);
-        }
-        if (_vaultAssetOracle == address(0)) {
-            revert Errors.OracleNotSet(_vaultAsset);
-        }
-
-        // Interactions
-        // get the price for each token from the oracle.
-        (, int256 quotedAssetPrice,, uint256 fromTimeStamp,) = IChainLinkOracle(_assetOracle).latestRoundData();
-        (, int256 quotedVaultAssetPrice,, uint256 toTimeStamp,) = IChainLinkOracle(_vaultAssetOracle).latestRoundData();
-
-        // check if oracles are outdated
-        uint256 _timeTolerance = timeTolerance;
-        if (block.timestamp - fromTimeStamp > _timeTolerance || block.timestamp - toTimeStamp > _timeTolerance) {
-            revert Errors.OracleOudated();
-        }
-
-        assetPrice = uint256(quotedAssetPrice);
-        vaultAssetPrice = uint256(quotedVaultAssetPrice);
-        console.log("quotedAssetPrice: ", assetPrice, "quotedVaultAssetPrice: ", vaultAssetPrice);
     }
 
     function _harvestAndReport() internal view override returns (uint256 _totalAssets) {
