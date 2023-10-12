@@ -19,14 +19,19 @@ runs:
           if [[ $module == lib/* ]]
           then
             echo "generating hash for $module"
-            git --no-pager diff -- $module
+            git --no-pager diff -- $module 2>&1
           fi
         done > ./lib/commit-hash
       shell: bash
 
-    - name: Log combined hash of direct submodule versions
+    - name: (Debugging) Log combined hash of direct submodule versions
       run: |
         cat ./lib/commit-hash
+      shell: bash
+
+    - name: (Debugging) Log contents of lib/ folder
+      run: |
+        ls -la ./lib
       shell: bash
 
     - name: Cache Submodules
