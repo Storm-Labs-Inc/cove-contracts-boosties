@@ -24,6 +24,11 @@ runs:
         done > ./lib/commit-hash
       shell: bash
 
+    - name: Log combined hash of direct submodule versions
+      run: |
+        cat ./lib/commit-hash
+      shell: bash
+
     - name: Cache Submodules
       uses: buildjet/cache@v3
       id: cache-submodules
