@@ -10,7 +10,7 @@ import { Pausable } from "@openzeppelin-5.0/contracts/utils/Pausable.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract CoveYFI is ERC20, ERC20Permit, Pausable, Ownable, Rescuable {
+contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
 
