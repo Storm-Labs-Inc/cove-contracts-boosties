@@ -13,15 +13,15 @@
     "deployLocal": "DEPLOYMENT_CONTEXT=1-fork forge script script/Deployments.s.sol --rpc-url http://localhost:8545 --broadcast --private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 -vvv && forge-deploy sync;",
     "lint": "pnpm run lint:sol && pnpm run prettier:check",
     "lint:fix": "pnpm lint:sol:fix && pnpm run prettier:write",
-    "lint:sol": "forge fmt --check && npx solhint \"{script,src,test}/**/*.sol\"",
-    "lint:sol:fix": "forge fmt && npx solhint --fix \"{script,src,test}/**/*.sol\"",
+    "lint:sol": "forge fmt --check && npx solhint \"{script,src,test}/**/*.sol\" --ignore-path .solhintignore",
+    "lint:sol:fix": "forge fmt && npx solhint --fix \"{script,src,test}/**/*.sol\" --ignore-path .solhintignore",
     "prettier:check": "npx prettier --check \"**/*.{json,md,yml,yaml}\"",
     "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
   },
   "lint-staged": {
     "!(src/deps/**/*|src/interfaces/deps/**/*)*.sol": [
       "forge fmt",
-      "npx solhint --fix"
+      "npx solhint --fix --ignore-path .solhintignore"
     ],
     "**/*.{json,md,yml,yaml}": [
       "prettier --write"
