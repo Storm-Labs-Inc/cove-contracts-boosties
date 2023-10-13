@@ -158,7 +158,7 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
         vm.startPrank(alice);
         ERC20(MAINNET_USDC).approve(address(strategy), amount);
         // deposit into strategy happens
-        vm.expectRevert(abi.encodeWithSelector(Errors.OracleOudated.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.OracleOutdated.selector));
         IStrategy(address(strategy)).deposit(amount, alice);
     }
 
