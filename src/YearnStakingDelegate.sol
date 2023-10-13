@@ -145,7 +145,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
             // Do other actions based on configured parameters
             IERC20(dYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
-            dYfiToSwapAndLock = totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18;
+            dYfiToSwapAndLock += totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18;
         }
         return userRewardsAmount;
     }
