@@ -43,6 +43,8 @@ library Errors {
 
     error NoAssociatedGauge();
 
+    error NoDYfiToSwap();
+
     //// WRAPPED STRATEGY CURVE SWAPPER ////
 
     error OracleOudated();
