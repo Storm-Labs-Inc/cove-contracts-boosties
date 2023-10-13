@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.20;
 
@@ -79,18 +79,14 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
             revert Errors.AssetDoesNotMatchStrategyAsset();
         }
 
-        // Innteractions
+        // Interactions
         _setSwapParameters(
             strategyAsset, _vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
         );
     }
 
     function _getPrices() internal view returns (uint256, uint256) {
-        if (usesOracle) {
-            return (_getOraclePrices(TokenizedStrategy.asset(), vaultAsset));
-        } else {
-            return (1, 1);
-        }
+        return (usesOracle ? _getOraclePrices(TokenizedStrategy.asset(), vaultAsset) : (1, 1));
     }
 
     function _deployFunds(uint256 _amount) internal override {

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.20;
 
@@ -40,41 +40,41 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
      * Returns the latest price from the oracle for two assets
      */
     function _getOraclePrices(
-        address asset1,
-        address asset2
+        address asset0,
+        address asset1
     )
         internal
         view
         returns (uint256 asset1Price, uint256 asset2Price)
     {
-        address _asset = asset1;
-        address _vaultAsset = asset2;
+        address _asset = asset0;
+        address _vaultAsset = asset1;
         // Checks
         // Will revert if oracle has not been set
-        address _asset1Oracle = oracles[_asset];
-        address _asset2Oracle = oracles[_vaultAsset];
-        if (_asset1Oracle == address(0)) {
+        address _asset0Oracle = oracles[_asset];
+        address _asset1Oracle = oracles[_vaultAsset];
+        if (_asset0Oracle == address(0)) {
             revert Errors.OracleNotSet(_asset);
         }
-        if (_asset2Oracle == address(0)) {
+        if (_asset1Oracle == address(0)) {
             revert Errors.OracleNotSet(_vaultAsset);
         }
 
         // Interactions
         // get the price for each token from the oracle.
-        (, int256 quotedAsset1Price,, uint256 fromTimeStamp,) = IChainLinkOracle(_asset1Oracle).latestRoundData();
-        (, int256 quotedAsset2Price,, uint256 toTimeStamp,) = IChainLinkOracle(_asset2Oracle).latestRoundData();
+        (, int256 quotedAsset0Price,, uint256 fromTimeStamp,) = IChainLinkOracle(_asset0Oracle).latestRoundData();
+        (, int256 quotedAsset1Price,, uint256 toTimeStamp,) = IChainLinkOracle(_asset1Oracle).latestRoundData();
 
         // check if oracles are outdated
         uint256 _timeTolerance = timeTolerance;
         if (block.timestamp - fromTimeStamp > _timeTolerance || block.timestamp - toTimeStamp > _timeTolerance) {
-            revert Errors.OracleOudated();
+            revert Errors.OracleOutdated();
         }
 
         console.log(
-            "quotedAsset1Price: ", uint256(quotedAsset1Price), "quotedAsset2Price: ", uint256(quotedAsset2Price)
+            "quotedAsset1Price: ", uint256(quotedAsset0Price), "quotedAsset2Price: ", uint256(quotedAsset1Price)
         );
-        return (uint256(quotedAsset1Price), uint256(quotedAsset2Price));
+        return (uint256(quotedAsset0Price), uint256(quotedAsset1Price));
     }
 
     /// @notice Calculates the expected amount from a swap

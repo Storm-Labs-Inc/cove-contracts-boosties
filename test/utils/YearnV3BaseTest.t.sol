@@ -471,7 +471,7 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     /// @notice Deploy a strategy that earns yield from ERC4626 vault with different asset
-    /// @dev this strategy allows you to chose to use oracle or not for fetching prices
+    /// @dev this strategy allows you to choose to use oracle or not for fetching prices
     function setUpTokenizedStrategyAssetSwap(
         string memory name,
         address asset,
@@ -483,23 +483,23 @@ contract YearnV3BaseTest is BaseTest {
         returns (IStrategy)
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        IStrategy _tokenziedStrategy =
+        IStrategy _tokenizedStrategy =
             IStrategy(address(new TokenizedStrategyAssetSwap(asset, v3VaultAddress, curveRouterAddress, usesOracle)));
         // set keeper
-        _tokenziedStrategy.setKeeper(tpKeeper);
+        _tokenizedStrategy.setKeeper(tpKeeper);
         // set treasury
-        _tokenziedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
+        _tokenizedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
         // set management of the strategy
-        _tokenziedStrategy.setPendingManagement(tpManagement);
+        _tokenizedStrategy.setPendingManagement(tpManagement);
         // Accept mangagement.
         vm.prank(tpManagement);
-        _tokenziedStrategy.acceptManagement();
+        _tokenizedStrategy.acceptManagement();
 
         // Label and store the strategy
-        deployedStrategies[name] = address(_tokenziedStrategy);
-        vm.label(address(_tokenziedStrategy), name);
-        endorseStrategy(address(_tokenziedStrategy));
-        return _tokenziedStrategy;
+        deployedStrategies[name] = address(_tokenizedStrategy);
+        vm.label(address(_tokenizedStrategy), name);
+        endorseStrategy(address(_tokenizedStrategy));
+        return _tokenizedStrategy;
     }
 
     function endorseStrategy(address strategy) public {

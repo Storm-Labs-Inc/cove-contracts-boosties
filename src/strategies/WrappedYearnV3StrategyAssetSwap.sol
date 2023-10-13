@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.20;
 
@@ -103,11 +103,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     }
 
     function _getPrices() internal view returns (uint256, uint256) {
-        if (usesOracle) {
-            return (_getOraclePrices(TokenizedStrategy.asset(), vaultAsset));
-        } else {
-            return (1, 1);
-        }
+        return (usesOracle ? _getOraclePrices(TokenizedStrategy.asset(), vaultAsset) : (1, 1));
     }
 
     function _deployFunds(uint256 _amount) internal override {
@@ -181,7 +177,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
             //     _deployFunds(ERC20(asset).balanceOf(address(this)));
             // }
 
-            // redploy the harvestest rewards into the strategy
+            // redeploy the harvested rewards into the strategy
             _deployFunds(receivedTokens);
         }
 
