@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.20;
 
-import { AccessControl } from "@openzeppelin-5.0/contracts/access/AccessControl.sol";
-import { Multicall } from "@openzeppelin-5.0/contracts/utils/Multicall.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { IMasterRegistry } from "./interfaces/IMasterRegistry.sol";
 import { Errors } from "./libraries/Errors.sol";
 

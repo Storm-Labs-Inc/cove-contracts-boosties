@@ -2,11 +2,11 @@
 pragma solidity ^0.8.20;
 
 import { BaseTest } from "./utils/BaseTest.t.sol";
-import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MockRescuable } from "./mocks/MockRescuable.sol";
 import { MockNonPayable } from "./mocks/MockNonPayable.sol";
-import { ERC20Mock } from "@openzeppelin-5.0/contracts/mocks/token/ERC20Mock.sol";
+import { ERC20Mock } from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract RescuableTest is BaseTest {
     MockRescuable public mockRescuable;

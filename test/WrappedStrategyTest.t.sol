@@ -10,8 +10,8 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
-import { ERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/ERC20.sol";
-import { IERC20, SafeERC20 } from "@openzeppelin-5.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IGaugeFactory } from "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { Errors } from "../src/libraries/Errors.sol";
@@ -238,6 +238,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         addDebtToStrategy(deployedVault, mockStrategy, amount);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        uint256 beforePerformanceFeeRecipientOwnedShares = wrappedYearnV3Strategy.balanceOf(tpPerformanceFeeRecipient);
 
         // Increase underlying vault's value
         increaseMockStrategyValue(address(deployedVault), address(mockStrategy), underlyingVaultProfit);
@@ -255,8 +256,14 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
+        uint256 afterPerformanceFeeRecipientOwnedShares = wrappedYearnV3Strategy.balanceOf(tpPerformanceFeeRecipient);
         assertGe(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
         assertEq(afterPreviewRedeem, beforePreviewRedeem, "report did not lock profit");
+        assertEq(
+            profit * 1e2 / (wrappedYearnV3Strategy.performanceFee()), // performance fee like 10_000 == 100%
+            afterPerformanceFeeRecipientOwnedShares - beforePerformanceFeeRecipientOwnedShares,
+            "correct profit not given to performance fee recipient"
+        );
         assertEq(profit + beforeTotalAssets, afterTotalAssets, "report did not report correct profit");
         assertEq(loss, 0, "report did not report 0 loss");
 
