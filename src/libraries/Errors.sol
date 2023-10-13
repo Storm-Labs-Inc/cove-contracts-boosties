@@ -41,6 +41,8 @@ library Errors {
 
     error PerpetualLockEnabled();
 
+    error PerpetualLockDisabled();
+
     error NoAssociatedGauge();
 
     error NoDYfiToSwap();

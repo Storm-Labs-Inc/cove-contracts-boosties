@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IVotingYFI is IERC20 {
     struct LockedBalance {
-        int128 amount;
+        uint256 amount;
         uint256 end;
     }
 
@@ -19,7 +19,7 @@ interface IVotingYFI is IERC20 {
     function locked(address _user) external view returns (LockedBalance memory);
 
     // solhint-disable-next-line func-param-name-mixedcase,var-name-mixedcase
-    function modify_lock(uint256 _amount, uint256 _unlock_time, address _user) external;
+    function modify_lock(uint256 _amount, uint256 _unlock_time, address _user) external returns (LockedBalance memory);
 
     function withdraw() external returns (Withdrawn memory);
 }

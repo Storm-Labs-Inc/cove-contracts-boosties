@@ -63,7 +63,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
     // Events
     event LogUpdatePool(address indexed vault, uint128 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
-    event SwapAndLock(uint256 dYfiAmount, uint256 yfiAmount, uint256 newVeYfiBalance);
+    event SwapAndLock(uint256 dYfiAmount, uint256 yfiAmount, uint256 totalLockedYfiBalance);
 
     constructor(
         address _yfi,
@@ -162,7 +162,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         user.rewardDebt += uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
         // Interactions
         IERC20(vault).transferFrom(msg.sender, address(this), amount);
-        gaugeBalances += IGauge(gauge).deposit(amount, address(this));
+        gaugeBalances[gauge] += IGauge(gauge).deposit(amount, address(this));
     }
 
     function withdrawFromGauge(address vault, uint256 amount) external {
@@ -176,36 +176,42 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         user.balance -= uint128(amount);
         user.rewardDebt -= uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
         // Interactions
-        gaugeBalances -= IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
+        gaugeBalances[gauge] -= IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
     function swapDYfiToVeYfi() external onlyRole(MANAGER_ROLE) {
-        if (dYfitoSwapAndLock == 0) {
+        // Checks
+        uint256 dYfiAmount = dYfiToSwapAndLock;
+        if (dYfiAmount == 0) {
             revert Errors.NoDYfiToSwap();
         }
-
-        uint256 yfiAmount = _swap(_routerParam, swapAmount, 0, address(this));
-        _lockYfi(yfiAmount);
+        if (!shouldPerpetuallyLock) {
+            revert Errors.PerpetualLockDisabled();
+        }
+        // Effects
         dYfiToSwapAndLock = 0;
-        uint256 newVeYfiBalance = IERC20(veYfi).balanceOf(address(this));
-        emit SwapAndLock(dYfiToSwapAndLock, yfiAmount, newVeYfiBalance);
+        // Interactions
+        uint256 yfiAmount = _swap(_routerParam, dYfiAmount, 0, address(this));
+        uint256 totalYfiLocked = _lockYfi(yfiAmount).amount;
+        emit SwapAndLock(dYfiAmount, yfiAmount, totalYfiLocked);
     }
 
-    function _lockYfi(uint256 amount) internal {
-        if (shouldPerpetuallyLock) {
-            IVotingYFI(veYfi).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
-        }
+    function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory) {
+        return IVotingYFI(veYfi).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
     }
 
     // Transfer amount of YFI from msg.sender and locks
-    function lockYfi(uint256 amount) external {
+    function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory) {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();
         }
+        if (!shouldPerpetuallyLock) {
+            revert Errors.PerpetualLockDisabled();
+        }
         // Interactions
         IERC20(yfi).safeTransferFrom(msg.sender, address(this), amount);
-        _lockYfi(amount);
+        return _lockYfi(amount);
     }
 
     function setRouterParams(CurveSwapParams calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {
