@@ -140,7 +140,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         );
     }
 
-    function test_lockYFI_revertsWithZeroAmount() public {
+    function test_lockYFI_revertWhen_WithZeroAmount() public {
         uint256 lockAmount = 0;
         vm.startPrank(alice);
         IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), lockAmount);
@@ -149,7 +149,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_lockYFI_revertsWhenCreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
+    function test_lockYFI_revertWhen_PerpetualLockDisabled() public {
+        vm.startPrank(admin);
+        yearnStakingDelegate.setPerpetualLock(false);
+        uint256 lockAmount = 1e18;
+        vm.startPrank(alice);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), lockAmount);
+        vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockDisabled.selector));
+        yearnStakingDelegate.lockYfi(lockAmount);
+        vm.stopPrank();
+    }
+
+    function testFuzz_lockYFI_revertWhen_CreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
         vm.assume(lockAmount > 0);
         vm.assume(lockAmount < 1e18);
         vm.startPrank(alice);
@@ -193,7 +204,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
     }
 
-    function test_earlyUnlock_revertsPerpeutalLockEnabled() public {
+    function test_earlyUnlock_revertWhen_PerpeutalLockEnabled() public {
         _lockYFI(alice, 1e18);
 
         vm.startPrank(admin);
@@ -221,7 +232,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(IERC20(testVault).balanceOf(testGauge), vaultBalance, "depositToGauge failed");
     }
 
-    function testFuzz_depositToGauge_revertsWhenNoAssociatedGauge(uint256 vaultBalance) public {
+    function testFuzz_depositToGauge_revertWhen_NoAssociatedGauge(uint256 vaultBalance) public {
         vm.assume(vaultBalance > 0);
 
         airdrop(ERC20(testVault), wrappedStrategy, vaultBalance);
@@ -253,14 +264,14 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(IERC20(testVault).balanceOf(wrappedStrategy), vaultBalance, "withdrawFromGauge failed");
     }
 
-    function test_harvest_revertsWithNoAssociatedGauge() public {
+    function test_harvest_revertWhen_NoAssociatedGauge() public {
         vm.startPrank(wrappedStrategy);
         vm.expectRevert(abi.encodeWithSelector(Errors.NoAssociatedGauge.selector));
         yearnStakingDelegate.harvest(testVault);
         vm.stopPrank();
     }
 
-    function test_harvest_withNoVeYFI() public {
+    function test_harvest_passWhen_NoVeYFI() public {
         _setAssociatedGauge();
         airdrop(ERC20(testVault), wrappedStrategy, 1e18);
         _deposit(wrappedStrategy, 1e18);
@@ -284,7 +295,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         );
     }
 
-    function test_harvest_withSomeYFI() public {
+    function test_harvest_passWhen_SomeVeYFI() public {
         _setAssociatedGauge();
         _lockYFI(alice, 1e18);
         airdrop(ERC20(testVault), wrappedStrategy, 1e18);
@@ -309,7 +320,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         );
     }
 
-    function test_harvest_withLargeYFI() public {
+    function test_harvest_passWhen_LargeVeYFI() public {
         _setAssociatedGauge();
         _lockYFI(alice, ALICE_YFI);
         airdrop(ERC20(testVault), wrappedStrategy, 1e18);
@@ -326,7 +337,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT, 0.01e18, "harvest failed");
     }
 
-    function test_harvest_swapAndLock_With1veYfi() public {
+    function test_harvest_passWhen_WithVeYfiSplit() public {
         _setAssociatedGauge();
         _lockYFI(alice, 1e18);
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
@@ -335,10 +346,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         _deposit(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
-        // Measure veYfi balance before harvest
-        IVotingYFI.LockedBalance memory lockedBalanceBefore =
-            IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
-
         // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
         uint256 actualRewardAmount = 1_021_755_338_445_599_531;
 
@@ -346,11 +353,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         uint256 estimatedStrategySplit = actualRewardAmount * 0.3e18 / 1e18;
         uint256 estimatedTreasurySplit = actualRewardAmount * 0.3e18 / 1e18;
         uint256 estimatedVeYfiSplit = actualRewardAmount * 0.4e18 / 1e18;
-
-        // Calculate expected yfi amount after swapping through curve pools
-        // dYFI -> WETH then WETH -> YFI
-        uint256 wethAmount = ICurveTwoAssetPool(dYfiEthCurvePool).get_dy(1, 0, estimatedVeYfiSplit);
-        uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_YFI_ETH_POOL).get_dy(0, 1, wethAmount);
 
         // Harvest
         vm.prank(wrappedStrategy);
@@ -363,14 +365,78 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         uint256 treasuryBalance = IERC20(dYFI).balanceOf(treasury);
         assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");
 
-        IVotingYFI.LockedBalance memory lockedBalanceAfter =
-            IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
+        assertEq(yearnStakingDelegate.dYfiToSwapAndLock(), estimatedVeYfiSplit, "dYfiToSwapAndLock is incorrect");
+    }
+
+    function test_swapDYfiToVeYfi() public {
+        _setAssociatedGauge();
+        _lockYFI(alice, 1e18);
+        _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
+        _setRouterParams();
+        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
+        _deposit(wrappedStrategy, 1e18);
+        vm.warp(block.timestamp + 14 days);
+
+        // Harvest
+        vm.prank(wrappedStrategy);
+        yearnStakingDelegate.harvest(testVault);
+
+        // Calculate expected yfi amount after swapping through curve pools
+        // dYFI -> WETH then WETH -> YFI
+        uint256 wethAmount = ICurveTwoAssetPool(dYfiEthCurvePool).get_dy(1, 0, yearnStakingDelegate.dYfiToSwapAndLock());
+        uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_YFI_ETH_POOL).get_dy(0, 1, wethAmount);
+
+        vm.prank(manager);
+        yearnStakingDelegate.swapDYfiToVeYfi();
+
+        // Check for the new veYfi balance
+        IVotingYFI.LockedBalance memory lockedBalance = IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
         assertApproxEqRel(
-            uint256(uint128(lockedBalanceAfter.amount - lockedBalanceBefore.amount)),
-            yfiAmount,
-            0.001e18,
-            "veYfi split is incorrect"
+            lockedBalance.amount, 1e18 + yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amoujnt is incorrect"
         );
+        assertApproxEqRel(
+            lockedBalance.end,
+            block.timestamp + 4 * 365 days + 4 weeks,
+            0.001e18,
+            "swapDYfiToVeYfi failed: locked end timestamp is incorrect"
+        );
+    }
+
+    function test_swapDYfiToVeYfi_revertWhen_NoDYfiToSwap() public {
+        _setAssociatedGauge();
+        _lockYFI(alice, 1e18);
+        _setRouterParams();
+        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
+        _deposit(wrappedStrategy, 1e18);
+        vm.warp(block.timestamp + 14 days);
+
+        // Harvest but no split is set for veYfi portion
+        vm.prank(wrappedStrategy);
+        yearnStakingDelegate.harvest(testVault);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NoDYfiToSwap.selector));
+        vm.prank(manager);
+        yearnStakingDelegate.swapDYfiToVeYfi();
+    }
+
+    function test_swapDYfiToVeYfi_revertWhen_PerpetualLockDisabled() public {
+        _setAssociatedGauge();
+        _lockYFI(alice, 1e18);
+        _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
+        _setRouterParams();
+        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
+        _deposit(wrappedStrategy, 1e18);
+        vm.warp(block.timestamp + 14 days);
+
+        // Harvest
+        vm.prank(wrappedStrategy);
+        yearnStakingDelegate.harvest(testVault);
+
+        vm.startPrank(admin);
+        yearnStakingDelegate.setPerpetualLock(false);
+        vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockDisabled.selector));
+        yearnStakingDelegate.swapDYfiToVeYfi();
+        vm.stopPrank();
     }
 
     function test_setSnapshotDelegate() public {
@@ -387,7 +453,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         );
     }
 
-    function test_setSnapshotDelegate_revertsWithZeroAddress() public {
+    function test_setSnapshotDelegate_revertWhen_ZeroAddress() public {
         vm.startPrank(manager);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         yearnStakingDelegate.setSnapshotDelegate("veyfi.eth", address(0));
@@ -403,7 +469,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(yearnStakingDelegate.treasury(), newTreasury, "setTreasury failed");
     }
 
-    function test_setTreasury_revertsWhenZeroAddress() public {
+    function test_setTreasury_revertWhen_ZeroAddress() public {
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         yearnStakingDelegate.setTreasury(address(0));
@@ -418,7 +484,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.setRewardSplit(a, b, c);
     }
 
-    function testFuzz_setRewardSplit_revertsWhenNotEqualOne(uint80 a, uint80 b, uint80 c) public {
+    function testFuzz_setRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {
         vm.assume(uint256(a) + b + c != 1e18);
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
@@ -426,16 +492,17 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_setRouterParams_revertsWithEmptyPaths() public {
+    function test_setRouterParams_revertWhen_EmptyPaths() public {
         vm.prank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, dYFI, address(0)));
         yearnStakingDelegate.setRouterParams(params);
     }
 
-    function test_setRouterParams_revertsWhenStartTokenIsNotDYfi() public {
+    function test_setRouterParams_revertWhen_InvalidFromToken() public {
         vm.prank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
+        // Set from token to be USDC instead of dYFI
         params.route[0] = MAINNET_USDC;
         params.route[1] = MAINNET_TRI_CRYPTO_USDC;
         params.route[2] = MAINNET_ETH;
@@ -448,9 +515,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.setRouterParams(params);
     }
 
-    function test_setRouterParams_revertsWhenEndTokenIsNotYfi() public {
+    function test_setRouterParams_revertWhen_InvalidToToken() public {
         vm.prank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
+        // Set to token to be USDC instead of YFI
         params.route[0] = dYFI;
         params.route[1] = dYfiEthCurvePool;
         params.route[2] = MAINNET_ETH;
@@ -463,9 +531,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.setRouterParams(params);
     }
 
-    function test_setRouterParams_revertsWhenTokenPathIsNotSequential() public {
+    function test_setRouterParams_revertWhen_InvalidCoinIndex() public {
         vm.prank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
+        // Set route to include a token address that does not exist in the given pools
         params.route[0] = dYFI;
         params.route[1] = dYfiEthCurvePool;
         params.route[2] = MAINNET_USDC;
