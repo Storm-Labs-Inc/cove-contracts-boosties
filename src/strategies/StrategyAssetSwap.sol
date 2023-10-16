@@ -26,7 +26,7 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
     mapping(address token => address) public oracles;
     // TODO: remove this
 
-    constructor(address _curveRouter) CurveRouterSwapper(_curveRouter) { }
+    constructor() { }
 
     function _setOracle(address token, address oracle) internal {
         // Checks

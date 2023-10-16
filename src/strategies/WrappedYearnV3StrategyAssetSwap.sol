@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
-import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";
+import { StrategyAssetSwap, CurveRouterSwapper } from "src/strategies/StrategyAssetSwap.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
@@ -34,7 +34,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         bool _usesOracle
     )
         BaseTokenizedStrategy(_asset, "Tokenized Asset Swap Strategy")
-        StrategyAssetSwap(_curveRouter)
+        CurveRouterSwapper(_curveRouter)
     {
         // Checks
         // Check for zero addresses
