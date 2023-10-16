@@ -149,10 +149,13 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
-        address _vault = vault;
+        address _vaultAddress = vault;
         address _ysd = yearnStakingDelegate;
+        address _vaultAsset = vaultAsset;
+        IERC4626 _vault = IERC4626(_vaultAddress);
+
         // ysd.harvest() <- harvests gauge rewards (dFYI) and transfers them to this contract
-        uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vault);
+        uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vaultAddress);
         // swap dYFI -> ETH -> vaultAsset if rewards were harvested
 
         if (dYFIBalance > 0) {
@@ -171,9 +174,15 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // off-chain by management in the timing of calling _harvestAndReport
 
         // Captures any changes in value in the underlying vault
-        uint256 totalUnderlyingVaultAssets =
-            IERC4626(_vault).convertToAssets(IYearnStakingDelegate(_ysd).userInfo(address(this), _vault).balance);
-        // translate the underlying assetAmount into an asset ammount denominated in the strategy asset
-        return TokenizedStrategy.previewWithdraw(totalUnderlyingVaultAssets);
+        uint256 underlyingVaultAssets = _vault.convertToAssets(_vault.balanceOf(address(this)));
+        // Swap this amount in valut asset to get strategy asset amount
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
+        return _calculateExpectedAmount(
+            vaultAssetPrice,
+            strategyAssetPrice,
+            IERC20Metadata(_vaultAsset).decimals(),
+            TokenizedStrategy.decimals(),
+            underlyingVaultAssets
+        );
     }
 }

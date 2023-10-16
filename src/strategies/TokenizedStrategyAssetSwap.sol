@@ -147,12 +147,20 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
     }
 
     function _harvestAndReport() internal view override returns (uint256 _totalAssets) {
+        address _vaultAsset = vaultAsset;
         IERC4626 _vault = IERC4626(vault);
         // We have no harvesting to do so just report the total assets held in the underlying strategy
 
         // Captures any changes in value in the underlying vault
         uint256 underlyingVaultAssets = _vault.convertToAssets(_vault.balanceOf(address(this)));
-        // translate the underlying assetAmount into an asset ammount denominated in the strategy asset
-        return TokenizedStrategy.previewWithdraw(underlyingVaultAssets);
+        // Swap this amount in valut asset to get strategy asset amount
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
+        return _calculateExpectedAmount(
+            vaultAssetPrice,
+            strategyAssetPrice,
+            IERC20Metadata(_vaultAsset).decimals(),
+            TokenizedStrategy.decimals(),
+            underlyingVaultAssets
+        );
     }
 }
