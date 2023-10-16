@@ -166,30 +166,12 @@ contract WrappedStrategyAssetSwapTest is YearnV3BaseTest {
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
-    // // TODO: why does below not revert correctly
-    // function test_deposit_revertWhen_slippageIsHigh_MockOracleVaultAsset() public {
-    //     vm.startPrank(users["tpManagement"]);
-    //     // Setup oracles with un-pegged price
-    //     mockOracle = new MockChainLinkOracle(1e5); // Oracle reporting 1 USD = 10 DAI
-    //     // set the oracle for DAI
-    //     strategy.setOracle(MAINNET_DAI, address(mockOracle));
-    //     vm.stopPrank();
-    //     uint256 amount = 1e8; // 100 USDC
-    //     deal({ token: MAINNET_USDC, to: alice, give: amount });
-    //     mockOracle.setTimestamp(block.timestamp);
-    //     vm.startPrank(alice);
-    //     ERC20(MAINNET_USDC).approve(address(strategy), amount);
-    //     // deposit into strategy happens
-    //     vm.expectRevert("Slippage");
-    //     IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
-    // }
-
-    function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
+    function test_deposit_revertWhen_slippageIsHigh_MockOracleVaultAsset() public {
         vm.startPrank(users["tpManagement"]);
         // Setup oracles with un-pegged price
-        mockOracle = new MockChainLinkOracle(1e5); // Oracle reporting 1 USD = 10 USDC
+        mockOracle = new MockChainLinkOracle(1e5); // Oracle reporting 1 USD = 10 DAI
         // set the oracle for DAI
-        strategy.setOracle(MAINNET_USDC, address(mockOracle));
+        strategy.setOracle(MAINNET_DAI, address(mockOracle));
         vm.stopPrank();
         uint256 amount = 1e8; // 100 USDC
         deal({ token: MAINNET_USDC, to: alice, give: amount });
@@ -200,6 +182,24 @@ contract WrappedStrategyAssetSwapTest is YearnV3BaseTest {
         vm.expectRevert("Slippage");
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
+
+    // // TODO: why does below not revert correctly
+    // function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
+    //     vm.startPrank(users["tpManagement"]);
+    //     // Setup oracles with un-pegged price
+    //     mockOracle = new MockChainLinkOracle(1e5); // Oracle reporting 1 USD = 10 USDC
+    //     // set the oracle for DAI
+    //     strategy.setOracle(MAINNET_USDC, address(mockOracle));
+    //     vm.stopPrank();
+    //     uint256 amount = 1e8; // 100 USDC
+    //     deal({ token: MAINNET_USDC, to: alice, give: amount });
+    //     mockOracle.setTimestamp(block.timestamp);
+    //     vm.startPrank(alice);
+    //     ERC20(MAINNET_USDC).approve(address(strategy), amount);
+    //     // deposit into strategy happens
+    //     vm.expectRevert("Slippage");
+    //     IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
+    // }
 
     function test_deposit_revertWhen_oracleOutdated() public {
         vm.startPrank(users["tpManagement"]);

@@ -24,6 +24,8 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
     // Storage variables
     CurveSwapParams internal _harvestSwapParams;
+    uint256 public totalOwnedUnderlying4626Shares;
+    uint256 public vaultAssetDecimals;
 
     constructor(
         address _asset,
@@ -33,7 +35,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         address _curveRouter,
         bool _usesOracle
     )
-        BaseTokenizedStrategy(_asset, "Tokenized Asset Swap Strategy")
+        BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Asset Swap Strategy")
         CurveRouterSwapper(_curveRouter)
     {
         // Checks
@@ -51,6 +53,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // Set storage variable values
         vault = _vault;
         vaultAsset = _vaultAsset;
+        vaultAssetDecimals = IERC20Metadata(_vaultAsset).decimals();
         yearnStakingDelegate = _yearnStakingDelegate;
         _setUsesOracle(_usesOracle);
         dYFI = _dYFI;
@@ -78,7 +81,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         external
         onlyManagement
     {
-        // Innteractions
+        // Interactions
         _setSwapParameters(
             TokenizedStrategy.asset(), vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
         );
@@ -94,7 +97,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
     function _deployFunds(uint256 _amount) internal override {
         address _vault = vault;
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             strategyAssetPrice,
@@ -112,6 +115,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         console.log("after swap token Balance: ", swapResult);
         // deposit _amount into vault if the swap was successful
         uint256 shares = IERC4626(_vault).deposit(swapResult, address(this));
+        totalOwnedUnderlying4626Shares += shares;
         IYearnStakingDelegate(yearnStakingDelegate).depositToGauge(_vault, shares);
     }
 
@@ -125,20 +129,18 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
         // Find withdrawer's allocation of total ysd shares
         uint256 vaultSharesToWithdraw = totalUnderlyingVaultShares * allocation / assetDecimals;
+        // Effects
+        totalOwnedUnderlying4626Shares -= vaultSharesToWithdraw;
         // Withdraw that amount of vaul tokens from gauge via YSD
         _yearnStakingDelegate.withdrawFromGauge(_vault, vaultSharesToWithdraw);
         // Withdraw from vault using redeem
         uint256 _withdrawnVaultAssetAmount = IERC4626(vault).redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
-            vaultAssetPrice,
-            strategyAssetPrice,
-            IERC20Metadata(vaultAsset).decimals(),
-            assetDecimals,
-            _withdrawnVaultAssetAmount
+            vaultAssetPrice, strategyAssetPrice, vaultAssetDecimals, assetDecimals, _withdrawnVaultAssetAmount
         );
 
         uint256 swapResult = _swap(_assetFreeSwapParams, _withdrawnVaultAssetAmount, expectedAmount, address(this));
@@ -159,14 +161,10 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // swap dYFI -> ETH -> vaultAsset if rewards were harvested
 
         if (dYFIBalance > 0) {
-            uint256 receivedTokens = _swap(_harvestSwapParams, dYFIBalance, 0, address(this));
-            // TODO: decide if funds should be deployed if the strategy is shutdown
-            // if (!TokenizedStrategy.isShutdown()) {
-            //     _deployFunds(ERC20(asset).balanceOf(address(this)));
-            // }
-
-            // redeploy the harvested rewards into the strategy
-            _deployFunds(receivedTokens);
+            if (!TokenizedStrategy.isShutdown()) {
+                uint256 receivedTokens = _swap(_harvestSwapParams, dYFIBalance, 0, address(this));
+                _deployFunds(receivedTokens);
+            }
         }
 
         // TODO: below may not be accurate accounting as the underlying vault may not have realized gains/losses
@@ -174,15 +172,11 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // off-chain by management in the timing of calling _harvestAndReport
 
         // Captures any changes in value in the underlying vault
-        uint256 underlyingVaultAssets = _vault.convertToAssets(_vault.balanceOf(address(this)));
+        uint256 underlyingVaultAssets = _vault.convertToAssets(totalOwnedUnderlying4626Shares);
         // Swap this amount in valut asset to get strategy asset amount
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
         return _calculateExpectedAmount(
-            vaultAssetPrice,
-            strategyAssetPrice,
-            IERC20Metadata(_vaultAsset).decimals(),
-            TokenizedStrategy.decimals(),
-            underlyingVaultAssets
+            vaultAssetPrice, strategyAssetPrice, vaultAssetDecimals, TokenizedStrategy.decimals(), underlyingVaultAssets
         );
     }
 }

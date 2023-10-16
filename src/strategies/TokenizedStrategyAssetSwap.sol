@@ -21,6 +21,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
 
     // Storage variables
     uint256 public totalOwnedUnderlying4626Shares;
+    uint256 public vaultAssetDecimals;
 
     constructor(
         address _asset,
@@ -47,6 +48,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         // Set storage variable values
         vault = _vault;
         vaultAsset = _vaultAsset;
+        vaultAssetDecimals = IERC20Metadata(_vaultAsset).decimals();
         _setUsesOracle(_usesOracle);
 
         // Interactions
@@ -75,33 +77,16 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         external
         onlyManagement
     {
-        address _vaultAsset = vaultAsset;
-        address strategyAsset = TokenizedStrategy.asset();
-        // Checks
-        // Check if the given asset is the same as the given vault's asset
-        if (strategyAsset == _vaultAsset) {
-            revert Errors.VaultAssetDoesNotDiffer();
-        }
-        // Check if the given asset is the same as the underlying strategy asset
-        if (strategyAsset != TokenizedStrategy.asset()) {
-            revert Errors.AssetDoesNotMatchStrategyAsset();
-        }
-
-        // Interactions
         _setSwapParameters(
-            strategyAsset, _vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
+            TokenizedStrategy.asset(), vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
         );
     }
 
     function _deployFunds(uint256 _amount) internal override {
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
-            strategyAssetPrice,
-            vaultAssetPrice,
-            TokenizedStrategy.decimals(),
-            IERC20Metadata(vaultAsset).decimals(),
-            _amount
+            strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), vaultAssetDecimals, _amount
         );
         console.log("fromAmount: ", _amount);
         console.log("expectedAmount: ", expectedAmount);
@@ -128,15 +113,11 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         // Interactions
         uint256 _withdrawnVaultAssetAmount = _vault.redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
-            vaultAssetPrice,
-            strategyAssetPrice,
-            IERC20Metadata(vaultAsset).decimals(),
-            assetDecimals,
-            _withdrawnVaultAssetAmount
+            vaultAssetPrice, strategyAssetPrice, vaultAssetDecimals, assetDecimals, _withdrawnVaultAssetAmount
         );
 
         uint256 swapResult = _swap(_assetFreeSwapParams, _withdrawnVaultAssetAmount, expectedAmount, address(this));
@@ -152,15 +133,11 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         // We have no harvesting to do so just report the total assets held in the underlying strategy
 
         // Captures any changes in value in the underlying vault
-        uint256 underlyingVaultAssets = _vault.convertToAssets(_vault.balanceOf(address(this)));
+        uint256 underlyingVaultAssets = _vault.convertToAssets(totalOwnedUnderlying4626Shares);
         // Swap this amount in valut asset to get strategy asset amount
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
         return _calculateExpectedAmount(
-            vaultAssetPrice,
-            strategyAssetPrice,
-            IERC20Metadata(_vaultAsset).decimals(),
-            TokenizedStrategy.decimals(),
-            underlyingVaultAssets
+            vaultAssetPrice, strategyAssetPrice, vaultAssetDecimals, TokenizedStrategy.decimals(), underlyingVaultAssets
         );
     }
 }

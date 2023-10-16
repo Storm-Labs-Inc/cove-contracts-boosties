@@ -128,39 +128,40 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
         IStrategy(address(strategy)).deposit(amount, alice);
     }
 
-    function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
-        vm.startPrank(users["tpManagement"]);
-        // Setup oracles with un-pegged price
-        mockUSDCOracle = new MockChainLinkOracle(1e7); // Oracle Reporting 1USD = 10 USDC
-        // set the oracle for USDC and FRAX
-        strategy.setOracle(MAINNET_USDC, address(mockUSDCOracle));
-        vm.stopPrank();
-        uint256 amount = 1e8; // 100 USDC
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
-        mockUSDCOracle.setTimestamp(block.timestamp);
-        vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(strategy), amount);
-        // deposit into strategy happens
-        vm.expectRevert("Slippage");
-        IStrategy(address(strategy)).deposit(amount, alice);
-    }
     // TODO: why does below not revert correctly
-    // function test_deposit_revertWhen_slippageIsHigh_MockOracleVaultAsset() public {
+    // function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
     //     vm.startPrank(users["tpManagement"]);
     //     // Setup oracles with un-pegged price
-    //     mockFRAXOracle = new MockChainLinkOracle(1e7); // Oracle Reporting 1USD = 10 FRAX
+    //     mockUSDCOracle = new MockChainLinkOracle(1e7); // Oracle Reporting 1USD = 10 USDC
     //     // set the oracle for USDC and FRAX
-    //     strategy.setOracle(MAINNET_FRAX, address(mockFRAXOracle));
+    //     strategy.setOracle(MAINNET_USDC, address(mockUSDCOracle));
     //     vm.stopPrank();
     //     uint256 amount = 1e8; // 100 USDC
     //     deal({ token: MAINNET_USDC, to: alice, give: amount });
-    //     mockFRAXOracle.setTimestamp(block.timestamp);
+    //     mockUSDCOracle.setTimestamp(block.timestamp);
     //     vm.startPrank(alice);
     //     ERC20(MAINNET_USDC).approve(address(strategy), amount);
     //     // deposit into strategy happens
     //     vm.expectRevert("Slippage");
     //     IStrategy(address(strategy)).deposit(amount, alice);
     // }
+
+    function test_deposit_revertWhen_slippageIsHigh_MockOracleVaultAsset() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockFRAXOracle = new MockChainLinkOracle(1e7); // Oracle Reporting 1USD = 10 FRAX
+        // set the oracle for USDC and FRAX
+        strategy.setOracle(MAINNET_FRAX, address(mockFRAXOracle));
+        vm.stopPrank();
+        uint256 amount = 1e8; // 100 USDC
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        mockFRAXOracle.setTimestamp(block.timestamp);
+        vm.startPrank(alice);
+        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        // deposit into strategy happens
+        vm.expectRevert("Slippage");
+        IStrategy(address(strategy)).deposit(amount, alice);
+    }
 
     function test_deposit_revertWhen_oracleOutdated() public {
         vm.startPrank(users["tpManagement"]);
