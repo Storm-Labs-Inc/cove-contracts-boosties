@@ -136,7 +136,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assertEq(ERC20(MAINNET_USDC).balanceOf(alice), amount, "user balance should be deposit amount after withdraw");
     }
 
-    function testFuzz_report(uint256 amount) public {
+    function testFuzz_report_buh(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
         _setUpDYfiRewards();

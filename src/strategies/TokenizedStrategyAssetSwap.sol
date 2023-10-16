@@ -20,7 +20,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
     address public immutable vaultAsset;
 
     // Storage variables
-    bool public usesOracle;
+    uint256 public totalOwnedUnderlying4626Shares;
 
     constructor(
         address _asset,
@@ -28,6 +28,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         address _curveRouter,
         bool _usesOracle
     )
+        // TODO: change this to CurveRouterSwapper constructor
         StrategyAssetSwap(_curveRouter)
         BaseTokenizedStrategy(_asset, "Tokenized Asset Swap Strategy")
     {
@@ -46,10 +47,12 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         // Set storage variable values
         vault = _vault;
         vaultAsset = _vaultAsset;
-        usesOracle = _usesOracle;
+        _setUsesOracle(_usesOracle);
 
         // Interactions
         IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
+        _approveTokenForSwap(_asset);
+        _approveTokenForSwap(_vaultAsset);
     }
 
     // TODO: not sure exactly which role to assign here
@@ -58,8 +61,12 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
     }
 
     // TODO: not sure exactly which role to assign here
+    function setUsesOracle(bool _usesOracle) external onlyManagement {
+        _setUsesOracle(_usesOracle);
+    }
+
+    // TODO: not sure exactly which role to assign here
     function setSwapParameters(
-        address strategyAsset,
         CurveSwapParams memory deploySwapParams,
         CurveSwapParams memory freeSwapParams,
         uint256 _slippageTolerance,
@@ -69,6 +76,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         onlyManagement
     {
         address _vaultAsset = vaultAsset;
+        address strategyAsset = TokenizedStrategy.asset();
         // Checks
         // Check if the given asset is the same as the given vault's asset
         if (strategyAsset == _vaultAsset) {
@@ -85,12 +93,8 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         );
     }
 
-    function _getPrices() internal view returns (uint256, uint256) {
-        return (usesOracle ? _getOraclePrices(TokenizedStrategy.asset(), vaultAsset) : (1, 1));
-    }
-
     function _deployFunds(uint256 _amount) internal override {
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices();
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             strategyAssetPrice,
@@ -108,7 +112,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         console.log("after swap token Balance: ", swapResult);
 
         // deposit _amount into vault if the swap was successful
-        IERC4626(vault).deposit(swapResult, address(this));
+        totalOwnedUnderlying4626Shares += IERC4626(vault).deposit(swapResult, address(this));
     }
 
     function _freeFunds(uint256 _amount) internal override {
@@ -116,14 +120,15 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         uint256 assetDecimals = TokenizedStrategy.decimals();
         // Find percentage of total assets in this amount
         uint256 allocation = _amount * assetDecimals / TokenizedStrategy.totalAssets();
-        // Total vault shares that strategy has deposited into the vault
-        uint256 totalUnderlyingVaultShares = _vault.balanceOf(address(this));
         // Find withdrawer's allocation of total ysd shares
-        uint256 vaultSharesToWithdraw = totalUnderlyingVaultShares * allocation / assetDecimals;
-        // Withdraw from vault using redeem
+        uint256 vaultSharesToWithdraw = totalOwnedUnderlying4626Shares * allocation / assetDecimals;
+        // Effects
+        // Total vault shares that strategy has deposited into the vault
+        totalOwnedUnderlying4626Shares -= vaultSharesToWithdraw;
+        // Interactions
         uint256 _withdrawnVaultAssetAmount = _vault.redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices();
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
@@ -142,8 +147,12 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
     }
 
     function _harvestAndReport() internal view override returns (uint256 _totalAssets) {
-        // We have no harvesting to do so just report the total assets held in the underlying strategy
         IERC4626 _vault = IERC4626(vault);
-        return _vault.convertToAssets(_vault.balanceOf(address(this)));
+        // We have no harvesting to do so just report the total assets held in the underlying strategy
+
+        // Captures any changes in value in the underlying vault
+        uint256 underlyingVaultAssets = _vault.convertToAssets(_vault.balanceOf(address(this)));
+        // translate the underlying assetAmount into an asset ammount denominated in the strategy asset
+        return TokenizedStrategy.previewWithdraw(underlyingVaultAssets);
     }
 }

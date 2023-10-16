@@ -104,7 +104,7 @@ contract WrappedStrategyAssetSwapperStaticPricesTest is YearnV3BaseTest {
             _assetFreeParams.route[2] = MAINNET_USDC;
             _assetFreeParams.swapParams[0] = [uint256(0), 1, 1, 1, 2];
 
-            strategy.setSwapParameters(MAINNET_USDC, _assetDeployParams, _assetFreeParams, 99_500, 1 days);
+            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500, 1 days);
         }
         vm.stopPrank();
     }

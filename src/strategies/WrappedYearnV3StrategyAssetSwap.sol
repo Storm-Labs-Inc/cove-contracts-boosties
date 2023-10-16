@@ -23,7 +23,6 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     address public immutable dYFI;
 
     // Storage variables
-    bool public usesOracle;
     CurveSwapParams internal _harvestSwapParams;
 
     constructor(
@@ -34,8 +33,8 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         address _curveRouter,
         bool _usesOracle
     )
-        StrategyAssetSwap(_curveRouter)
         BaseTokenizedStrategy(_asset, "Tokenized Asset Swap Strategy")
+        StrategyAssetSwap(_curveRouter)
     {
         // Checks
         // Check for zero addresses
@@ -52,12 +51,14 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // Set storage variable values
         vault = _vault;
         vaultAsset = _vaultAsset;
-        usesOracle = _usesOracle;
         yearnStakingDelegate = _yearnStakingDelegate;
+        _setUsesOracle(_usesOracle);
         dYFI = _dYFI;
 
         // Interactions
         _approveTokenForSwap(_dYFI);
+        _approveTokenForSwap(_asset);
+        _approveTokenForSwap(_vaultAsset);
         IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
         IERC20Metadata(_vault).approve(_yearnStakingDelegate, type(uint256).max);
     }
@@ -69,7 +70,6 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
     // TODO: not sure exactly which role to assign here
     function setSwapParameters(
-        address strategyAsset,
         CurveSwapParams memory deploySwapParams,
         CurveSwapParams memory freeSwapParams,
         uint256 _slippageTolerance,
@@ -78,19 +78,9 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         external
         onlyManagement
     {
-        // Checks
-        // Check if the given asset is the same as the given vault's asset
-        if (strategyAsset == vaultAsset) {
-            revert Errors.VaultAssetDoesNotDiffer();
-        }
-        // Check if the given asset is the same as the underlying strategy asset
-        if (strategyAsset != TokenizedStrategy.asset()) {
-            revert Errors.AssetDoesNotMatchStrategyAsset();
-        }
-
         // Innteractions
         _setSwapParameters(
-            strategyAsset, vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
+            TokenizedStrategy.asset(), vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
         );
     }
 
@@ -102,13 +92,9 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         _harvestSwapParams = curveSwapParams;
     }
 
-    function _getPrices() internal view returns (uint256, uint256) {
-        return (usesOracle ? _getOraclePrices(TokenizedStrategy.asset(), vaultAsset) : (1, 1));
-    }
-
     function _deployFunds(uint256 _amount) internal override {
         address _vault = vault;
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices();
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             strategyAssetPrice,
@@ -124,7 +110,6 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
         // check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);
-
         // deposit _amount into vault if the swap was successful
         uint256 shares = IERC4626(_vault).deposit(swapResult, address(this));
         IYearnStakingDelegate(yearnStakingDelegate).depositToGauge(_vault, shares);
@@ -145,7 +130,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // Withdraw from vault using redeem
         uint256 _withdrawnVaultAssetAmount = IERC4626(vault).redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices();
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
@@ -184,6 +169,11 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // TODO: below may not be accurate accounting as the underlying vault may not have realized gains/losses
         // additionally profits may have been awarded but not fully unlocked yet, these are concerns to be investigated
         // off-chain by management in the timing of calling _harvestAndReport
-        return IERC4626(_vault).convertToAssets(IYearnStakingDelegate(_ysd).userInfo(address(this), _vault).balance);
+
+        // Captures any changes in value in the underlying vault
+        uint256 totalUnderlyingVaultAssets =
+            IERC4626(_vault).convertToAssets(IYearnStakingDelegate(_ysd).userInfo(address(this), _vault).balance);
+        // translate the underlying assetAmount into an asset ammount denominated in the strategy asset
+        return TokenizedStrategy.previewWithdraw(totalUnderlyingVaultAssets);
     }
 }

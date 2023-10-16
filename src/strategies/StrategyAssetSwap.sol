@@ -18,11 +18,13 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
     // Storage variables
     uint256 public slippageTolerance = 99_500;
     uint256 public timeTolerance = 6 hours;
+    bool public usesOracle;
 
     CurveSwapParams internal _assetDeploySwapParams;
     CurveSwapParams internal _assetFreeSwapParams;
 
     mapping(address token => address) public oracles;
+    // TODO: remove this
 
     constructor(address _curveRouter) CurveRouterSwapper(_curveRouter) { }
 
@@ -36,6 +38,10 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         oracles[token] = oracle;
     }
 
+    function _setUsesOracle(bool _usesOracle) internal {
+        usesOracle = _usesOracle;
+    }
+
     /**
      * Returns the latest price from the oracle for two assets
      */
@@ -45,19 +51,17 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
     )
         internal
         view
-        returns (uint256 asset1Price, uint256 asset2Price)
+        returns (uint256 asset0Price, uint256 asset1Price)
     {
-        address _asset = asset0;
-        address _vaultAsset = asset1;
         // Checks
         // Will revert if oracle has not been set
-        address _asset0Oracle = oracles[_asset];
-        address _asset1Oracle = oracles[_vaultAsset];
+        address _asset0Oracle = oracles[asset0];
+        address _asset1Oracle = oracles[asset1];
         if (_asset0Oracle == address(0)) {
-            revert Errors.OracleNotSet(_asset);
+            revert Errors.OracleNotSet(asset0);
         }
         if (_asset1Oracle == address(0)) {
-            revert Errors.OracleNotSet(_vaultAsset);
+            revert Errors.OracleNotSet(asset1);
         }
 
         // Interactions
@@ -72,9 +76,13 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         }
 
         console.log(
-            "quotedAsset1Price: ", uint256(quotedAsset0Price), "quotedAsset2Price: ", uint256(quotedAsset1Price)
+            "quotedAsset0Price: ", uint256(quotedAsset0Price), "quotedAsset1Price: ", uint256(quotedAsset1Price)
         );
         return (uint256(quotedAsset0Price), uint256(quotedAsset1Price));
+    }
+
+    function _getPrices(address strategyAsset, address vaultAsset) internal view returns (uint256, uint256) {
+        return (usesOracle ? _getOraclePrices(strategyAsset, vaultAsset) : (1, 1));
     }
 
     /// @notice Calculates the expected amount from a swap
@@ -120,19 +128,13 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         if (strategyAsset == address(0) || vaultAsset == address(0)) {
             revert Errors.ZeroAddress();
         }
-        address _asset = strategyAsset;
-        address _vaultAsset = vaultAsset;
-        _validateSwapParams(deploySwapParams, _asset, _vaultAsset);
-        _validateSwapParams(freeSwapParams, _vaultAsset, _asset);
+        _validateSwapParams(deploySwapParams, strategyAsset, vaultAsset);
+        _validateSwapParams(freeSwapParams, vaultAsset, strategyAsset);
 
         // Effects
         _assetDeploySwapParams = deploySwapParams;
         _assetFreeSwapParams = freeSwapParams;
         slippageTolerance = _slippageTolerance;
         timeTolerance = _timeTolerance;
-
-        // Interactions
-        _approveTokenForSwap(_asset);
-        _approveTokenForSwap(_vaultAsset);
     }
 }
