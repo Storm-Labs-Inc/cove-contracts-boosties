@@ -118,15 +118,12 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     function _freeFunds(uint256 _amount) internal override {
         address _vault = vault;
         uint256 assetDecimals = TokenizedStrategy.decimals();
-        IYearnStakingDelegate _yearnStakingDelegate = IYearnStakingDelegate(yearnStakingDelegate);
-        // Total vault shares that strategy has deposited into the vault
-        uint256 totalUnderlyingVaultShares = uint256(_yearnStakingDelegate.userInfo(address(this), _vault).balance);
         // Find withdrawer's allocation of total ysd shares
-        uint256 vaultSharesToWithdraw = totalUnderlyingVaultShares * _amount / TokenizedStrategy.totalAssets();
+        uint256 vaultSharesToWithdraw = totalOwnedUnderlying4626Shares * _amount / TokenizedStrategy.totalAssets();
         // Effects
         totalOwnedUnderlying4626Shares -= vaultSharesToWithdraw;
         // Withdraw that amount of vaul tokens from gauge via YSD
-        _yearnStakingDelegate.withdrawFromGauge(_vault, vaultSharesToWithdraw);
+        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, vaultSharesToWithdraw);
         // Withdraw from vault using redeem
         uint256 _withdrawnVaultAssetAmount = IERC4626(vault).redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
