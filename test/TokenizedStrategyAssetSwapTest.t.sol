@@ -86,7 +86,7 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_deposit(uint256 amount) public {
+    function testFuzz_deposit_buh(uint256 amount) public {
         vm.assume(amount > 0);
         vm.assume(amount < 1e13);
         airdrop(ERC20(MAINNET_USDC), alice, amount);
@@ -129,22 +129,22 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
     }
 
     // TODO: why does below not revert correctly
-    // function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
-    //     vm.startPrank(users["tpManagement"]);
-    //     // Setup oracles with un-pegged price
-    //     mockUSDCOracle = new MockChainLinkOracle(1e7); // Oracle Reporting 1USD = 10 USDC
-    //     // set the oracle for USDC and FRAX
-    //     strategy.setOracle(MAINNET_USDC, address(mockUSDCOracle));
-    //     vm.stopPrank();
-    //     uint256 amount = 1e8; // 100 USDC
-    //     deal({ token: MAINNET_USDC, to: alice, give: amount });
-    //     mockUSDCOracle.setTimestamp(block.timestamp);
-    //     vm.startPrank(alice);
-    //     ERC20(MAINNET_USDC).approve(address(strategy), amount);
-    //     // deposit into strategy happens
-    //     vm.expectRevert("Slippage");
-    //     IStrategy(address(strategy)).deposit(amount, alice);
-    // }
+    function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAssetbuh() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockUSDCOracle = new MockChainLinkOracle(1e9); // Oracle Reporting 10USD = 1 USDC
+        // set the oracle for USDC and FRAX
+        strategy.setOracle(MAINNET_USDC, address(mockUSDCOracle));
+        vm.stopPrank();
+        uint256 amount = 1e8; // 100 USDC
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        mockUSDCOracle.setTimestamp(block.timestamp);
+        vm.startPrank(alice);
+        ERC20(MAINNET_USDC).approve(address(strategy), amount);
+        // deposit into strategy happens
+        vm.expectRevert("Slippage");
+        IStrategy(address(strategy)).deposit(amount, alice);
+    }
 
     function test_deposit_revertWhen_slippageIsHigh_MockOracleVaultAsset() public {
         vm.startPrank(users["tpManagement"]);

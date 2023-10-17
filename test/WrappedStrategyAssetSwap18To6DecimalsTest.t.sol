@@ -170,7 +170,7 @@ contract WrappedStrategyAssetSwap18To6DecimalsTest is YearnV3BaseTest {
     function test_deposit_revertWhen_slippageIsHigh_MockOracleVaultAsset() public {
         vm.startPrank(users["tpManagement"]);
         // Setup oracles with un-pegged price
-        mockUSDCOracle = new MockChainLinkOracle(1e5); // Oracle reporting 1 USD = 10 USDC
+        mockUSDCOracle = new MockChainLinkOracle(1e7); // Oracle reporting 1 USD = 10 USDC
         // set the oracle for USDC and DAI
         strategy.setOracle(MAINNET_USDC, address(mockUSDCOracle));
         vm.stopPrank();
@@ -184,23 +184,22 @@ contract WrappedStrategyAssetSwap18To6DecimalsTest is YearnV3BaseTest {
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
-    // TODO: why does below not revert correctly
-    // function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
-    //     vm.startPrank(users["tpManagement"]);
-    //     // Setup oracles with un-pegged price
-    //     mockDAIOracle = new MockChainLinkOracle(1e5); // Oracle reporting 1 USD = 10 DAI
-    //     // set the oracle for USDC and DAI
-    //     strategy.setOracle(MAINNET_DAI, address(mockDAIOracle));
-    //     vm.stopPrank();
-    //     uint256 amount = 1e20; // 100 DAI
-    //     deal({ token: MAINNET_DAI, to: alice, give: amount });
-    //     mockDAIOracle.setTimestamp(block.timestamp);
-    //     vm.startPrank(alice);
-    //     ERC20(MAINNET_DAI).approve(address(strategy), amount);
-    //     // deposit into strategy happens
-    //     vm.expectRevert("Slippage");
-    //     IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
-    // }
+    function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockDAIOracle = new MockChainLinkOracle(1e9); // Oracle reporting 10 USD = 1 DAI
+        // set the oracle for USDC and DAI
+        strategy.setOracle(MAINNET_DAI, address(mockDAIOracle));
+        vm.stopPrank();
+        uint256 amount = 1e20; // 100 DAI
+        deal({ token: MAINNET_DAI, to: alice, give: amount });
+        mockDAIOracle.setTimestamp(block.timestamp);
+        vm.startPrank(alice);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
+        // deposit into strategy happens
+        vm.expectRevert("Slippage");
+        IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
+    }
 
     function test_deposit_revertWhen_oracleOutdated() public {
         vm.startPrank(users["tpManagement"]);
