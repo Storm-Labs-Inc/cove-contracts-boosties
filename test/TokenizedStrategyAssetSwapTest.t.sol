@@ -86,7 +86,7 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_deposit_buh(uint256 amount) public {
+    function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount > 0);
         vm.assume(amount < 1e13);
         airdrop(ERC20(MAINNET_USDC), alice, amount);
@@ -129,7 +129,7 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
     }
 
     // TODO: why does below not revert correctly
-    function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAssetbuh() public {
+    function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
         vm.startPrank(users["tpManagement"]);
         // Setup oracles with un-pegged price
         mockUSDCOracle = new MockChainLinkOracle(1e9); // Oracle Reporting 10USD = 1 USDC
