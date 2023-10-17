@@ -7,8 +7,8 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "../mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
-import { WrappedYearnV3StrategyAssetSwapOracle } from "src/strategies/WrappedYearnV3StrategyAssetSwapOracle.sol";
-import { WrappedYearnV3StrategyAssetSwapStatic } from "src/strategies/WrappedYearnV3StrategyAssetSwapStatic.sol";
+import { WrappedYearnV3StrategyAssetSwap } from "src/strategies/WrappedYearnV3StrategyAssetSwap.sol";
+import { TokenizedStrategyAssetSwap } from "src/strategies/TokenizedStrategyAssetSwap.sol";
 
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
@@ -432,13 +432,14 @@ contract YearnV3BaseTest is BaseTest {
 
     /// @notice Deploy a strategy that earns yield from a yearn v3 vault with different asset
     /// @dev this strategy relies on oracles to prevent slippage
-    function setUpWrappedStrategyCurveSwapper(
+    function setUpWrappedStrategyAssetSwap(
         string memory name,
-        address _asset,
-        address _v3VaultAddress,
-        address _yearnStakingDelegateAddress,
-        address _dYFIAddress,
-        address _curveRouterAddress
+        address asset,
+        address v3VaultAddress,
+        address yearnStakingDelegateAddress,
+        address dYFIAddress,
+        address curveRouterAddress,
+        bool usesOracle
     )
         public
         returns (IWrappedYearnV3Strategy)
@@ -446,7 +447,7 @@ contract YearnV3BaseTest is BaseTest {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
             address(
-                new WrappedYearnV3StrategyAssetSwapOracle(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
+                new WrappedYearnV3StrategyAssetSwap(asset, v3VaultAddress, yearnStakingDelegateAddress, dYFIAddress, curveRouterAddress, usesOracle)
             )
         );
         // set keeper
@@ -469,43 +470,36 @@ contract YearnV3BaseTest is BaseTest {
         return _wrappedStrategy;
     }
 
-    /// @notice Deploy a strategy that earns yield from a yearn v3 vault with a different asset
-    /// @dev this strategy relies on static slippage setting between similarly pegged assets
-    function setUpWrappedStrategyStaticSwapper(
+    /// @notice Deploy a strategy that earns yield from ERC4626 vault with different asset
+    /// @dev this strategy allows you to choose to use oracle or not for fetching prices
+    function setUpTokenizedStrategyAssetSwap(
         string memory name,
-        address _asset,
-        address _v3VaultAddress,
-        address _yearnStakingDelegateAddress,
-        address _dYFIAddress,
-        address _curveRouterAddress
+        address asset,
+        address v3VaultAddress,
+        address curveRouterAddress,
+        bool usesOracle
     )
         public
-        returns (IWrappedYearnV3Strategy)
+        returns (IStrategy)
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
-            address(
-                new WrappedYearnV3StrategyAssetSwapStatic(_asset, _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
-            )
-        );
+        IStrategy _tokenizedStrategy =
+            IStrategy(address(new TokenizedStrategyAssetSwap(asset, v3VaultAddress, curveRouterAddress, usesOracle)));
         // set keeper
-        _wrappedStrategy.setKeeper(tpKeeper);
+        _tokenizedStrategy.setKeeper(tpKeeper);
         // set treasury
-        _wrappedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
+        _tokenizedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
         // set management of the strategy
-        _wrappedStrategy.setPendingManagement(tpManagement);
+        _tokenizedStrategy.setPendingManagement(tpManagement);
         // Accept mangagement.
         vm.prank(tpManagement);
-        _wrappedStrategy.acceptManagement();
+        _tokenizedStrategy.acceptManagement();
 
         // Label and store the strategy
-        // *name is "Wrapped Yearn V3 Strategy"
-        deployedStrategies[name] = address(_wrappedStrategy);
-        vm.label(address(_wrappedStrategy), name);
-
-        endorseStrategy(address(_wrappedStrategy));
-
-        return _wrappedStrategy;
+        deployedStrategies[name] = address(_tokenizedStrategy);
+        vm.label(address(_tokenizedStrategy), name);
+        endorseStrategy(address(_tokenizedStrategy));
+        return _tokenizedStrategy;
     }
 
     function endorseStrategy(address strategy) public {

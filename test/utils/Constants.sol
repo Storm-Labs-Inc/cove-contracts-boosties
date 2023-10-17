@@ -17,6 +17,7 @@ contract Constants is CommonBase {
     address public constant MAINNET_VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
     address public constant MAINNET_WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant MAINNET_YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    address public constant MAINNET_FRAX = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
 
     // Snapshot
     address public constant MAINNET_SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -38,6 +39,8 @@ contract Constants is CommonBase {
     address public constant MAINNET_TRI_CRYPTO_2 = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
     /// @dev pool type 2, [ETH/WETH, YFI]
     address public constant MAINNET_YFI_ETH_POOL = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
+    /// @dev pool type 1, [FRAX, USDC]
+    address public constant MAINNET_FRAX_USDC_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
 
     struct Users {
         // Default admin for all contracts.
@@ -74,5 +77,7 @@ contract Constants is CommonBase {
         vm.label(MAINNET_TRI_CRYPTO_USDC, "TRI_CRYPTO_USDC");
         vm.label(MAINNET_TRI_CRYPTO_2, "TRI_CRYPTO_2");
         vm.label(MAINNET_YFI_ETH_POOL, "YFI_ETH_POOL");
+        vm.label(MAINNET_FRAX_USDC_POOL, "FRAX_USDC_POOL");
+        vm.label(MAINNET_FRAX, "FRAX");
     }
 }

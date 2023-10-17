@@ -5,26 +5,32 @@ import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
-import { WrappedYearnV3StrategyAssetSwapStatic } from "../src/strategies/WrappedYearnV3StrategyAssetSwapStatic.sol";
-import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
+import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { WrappedYearnV3StrategyAssetSwap } from "src/strategies/WrappedYearnV3StrategyAssetSwap.sol";
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ICurveBasePool } from "../src/interfaces/deps/curve/ICurveBasePool.sol";
+import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
-import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
-contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
+contract WrappedStrategyAssetSwap18To6DecimalsTest is YearnV3BaseTest {
+    // Oracle Addresses
+    address public constant CHAINLINK_DAI_USD_MAINNET = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+    address public constant CHAINLINK_USDC_USD_MAINNET = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
     uint256 public constant DYFI_REWARD_AMOUNT = 1000e18;
 
     // Contract Addresses
-    WrappedYearnV3StrategyAssetSwapStatic public strategy;
     YearnStakingDelegate public yearnStakingDelegate;
+    WrappedYearnV3StrategyAssetSwap public strategy;
     IVault public deployedVault;
+    MockChainLinkOracle public mockUSDCOracle;
+    MockChainLinkOracle public mockDAIOracle;
     address public testGauge;
 
     // User Addresses
@@ -39,14 +45,15 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
     function setUp() public override {
         super.setUp();
 
+        // Create users
         alice = createUser("alice");
         treasury = createUser("treasury");
         manager = createUser("manager");
 
         // Deploy mock vault to be used as underlying yield source for wrapped strategy
         {
-            deployedVault = IVault(deployVaultV3("USC Vault", MAINNET_USDC, new address[](0)));
-            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "USDC Test Vault Gauge");
+            deployedVault = IVault(deployVaultV3("USDC Vault", MAINNET_USDC, new address[](0)));
+            testGauge = deployGaugeViaFactory(address(deployedVault), admin, "DAI Test Vault Gauge");
         }
 
         // Deploy YearnStakingDelegate
@@ -65,20 +72,25 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
             vm.stopPrank();
         }
 
-        // The underlying vault accepts DAI, while the wrapped strategy accepts USDC
-        strategy = WrappedYearnV3StrategyAssetSwapStatic(
+        // Deploy wrapped strategy with different asset than the underlying vault
+        strategy = WrappedYearnV3StrategyAssetSwap(
             address(
-                setUpWrappedStrategyStaticSwapper(
-                    "Wrapped YearnV3 DAI -> USDC Strategy (Asset Swap with Static Slippage)",
+                setUpWrappedStrategyAssetSwap(
+                    "Wrapped YearnV3 DAI -> USDC Strategy (Asset Swap with Oracle)",
                     MAINNET_DAI,
                     address(deployedVault),
                     address(yearnStakingDelegate),
                     dYFI,
-                    MAINNET_CURVE_ROUTER
+                    MAINNET_CURVE_ROUTER,
+                    // specifies that we do want to use oracles for price fetching
+                    true
                 )
             )
         );
         vm.startPrank(users["tpManagement"]);
+        // set the oracle for USDC and DAI
+        strategy.setOracle(MAINNET_DAI, CHAINLINK_DAI_USD_MAINNET);
+        strategy.setOracle(MAINNET_USDC, CHAINLINK_USDC_USD_MAINNET);
         {
             // set the swap parameters
             // [token_from, pool, token_to, pool, ...]
@@ -93,7 +105,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
             _assetFreeParams.route[2] = MAINNET_DAI;
             _assetFreeParams.swapParams[0] = [uint256(1), 0, 1, 1, 2];
 
-            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500);
+            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500, 1 days);
         }
         vm.stopPrank();
     }
@@ -112,12 +124,12 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         // check for expected changes
 
         vm.stopPrank();
-        assertEq(ERC20(MAINNET_DAI).balanceOf(alice), 0, "alice still has USDC");
+        assertEq(ERC20(MAINNET_DAI).balanceOf(alice), 0, "alice still has DAI");
         assertApproxEqRel(
             ERC20(MAINNET_USDC).balanceOf(address(deployedVault)),
             minAmountFromCurve,
             0.001e18,
-            "vault did not receive correct amount of DAI"
+            "vault did not receive correct amount of USDC"
         );
         assertApproxEqRel(
             ERC20(testGauge).balanceOf(address(yearnStakingDelegate)),
@@ -155,15 +167,54 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
-    function test_deposit_revertWhen_slippageIsHigh() public {
+    function test_deposit_revertWhen_slippageIsHigh_MockOracleVaultAsset() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockUSDCOracle = new MockChainLinkOracle(1e7); // Oracle reporting 1 USD = 10 USDC
+        // set the oracle for USDC and DAI
+        strategy.setOracle(MAINNET_USDC, address(mockUSDCOracle));
+        vm.stopPrank();
         uint256 amount = 1e20; // 100 DAI
-        airdrop(ERC20(MAINNET_DAI), alice, amount);
-        vm.prank(users["tpManagement"]);
-        strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 100_000);
+        deal({ token: MAINNET_DAI, to: alice, give: amount });
+        mockUSDCOracle.setTimestamp(block.timestamp);
         vm.startPrank(alice);
         ERC20(MAINNET_DAI).approve(address(strategy), amount);
         // deposit into strategy happens
         vm.expectRevert("Slippage");
+        IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
+    }
+
+    function test_deposit_revertWhen_slippageIsHigh_MockOracleStrategyAsset() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockDAIOracle = new MockChainLinkOracle(1e9); // Oracle reporting 10 USD = 1 DAI
+        // set the oracle for USDC and DAI
+        strategy.setOracle(MAINNET_DAI, address(mockDAIOracle));
+        vm.stopPrank();
+        uint256 amount = 1e20; // 100 DAI
+        deal({ token: MAINNET_DAI, to: alice, give: amount });
+        mockDAIOracle.setTimestamp(block.timestamp);
+        vm.startPrank(alice);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
+        // deposit into strategy happens
+        vm.expectRevert("Slippage");
+        IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
+    }
+
+    function test_deposit_revertWhen_oracleOutdated() public {
+        vm.startPrank(users["tpManagement"]);
+        // Setup oracles with un-pegged price
+        mockUSDCOracle = new MockChainLinkOracle(1e18);
+        // set the oracle for USDC and DAI
+        strategy.setOracle(MAINNET_USDC, address(mockUSDCOracle));
+        vm.stopPrank();
+        uint256 amount = 1e20; // 100 DAI
+        deal({ token: MAINNET_DAI, to: alice, give: amount });
+        mockUSDCOracle.setTimestamp(block.timestamp - 2 days);
+        vm.startPrank(alice);
+        ERC20(MAINNET_DAI).approve(address(strategy), amount);
+        // deposit into strategy happens
+        vm.expectRevert(abi.encodeWithSelector(Errors.OracleOutdated.selector));
         IWrappedYearnV3Strategy(address(strategy)).deposit(amount, alice);
     }
 
@@ -181,7 +232,7 @@ contract WrappedStrategyStaticSwapperTest is YearnV3BaseTest {
         uint256 shares = _strategy.deposit(amount, alice);
 
         // withdraw from strategy happens
-        // allow for 4 BPS of loss due to non-changeing value of yearn vault but small decrease in assets due to swap
+        // allow for 4 BPS of loss due to non-changing value of yearn vault but loss due to swap
         _strategy.redeem(shares, alice, alice, 4);
         // check for expected changes
         assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
