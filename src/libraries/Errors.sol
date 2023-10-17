@@ -49,11 +49,13 @@ library Errors {
 
     //// WRAPPED STRATEGY CURVE SWAPPER ////
 
-    error OracleOudated();
+    error OracleOutdated();
 
     error VaultAssetDiffers();
 
     error VaultAssetDoesNotDiffer();
+
+    error AssetDoesNotMatchStrategyAsset();
 
     error SlippageTooHigh();
 
