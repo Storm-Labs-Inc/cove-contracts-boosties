@@ -102,11 +102,8 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
 
     function _freeFunds(uint256 _amount) internal override {
         IERC4626 _vault = IERC4626(vault);
-        uint256 assetDecimals = TokenizedStrategy.decimals();
-        // Find percentage of total assets in this amount
-        uint256 allocation = _amount * assetDecimals / TokenizedStrategy.totalAssets();
         // Find withdrawer's allocation of total ysd shares
-        uint256 vaultSharesToWithdraw = totalOwnedUnderlying4626Shares * allocation / assetDecimals;
+        uint256 vaultSharesToWithdraw = totalOwnedUnderlying4626Shares * _amount / TokenizedStrategy.totalAssets();
         // Effects
         // Total vault shares that strategy has deposited into the vault
         totalOwnedUnderlying4626Shares -= vaultSharesToWithdraw;
@@ -117,7 +114,11 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
-            vaultAssetPrice, strategyAssetPrice, vaultAssetDecimals, assetDecimals, _withdrawnVaultAssetAmount
+            vaultAssetPrice,
+            strategyAssetPrice,
+            vaultAssetDecimals,
+            TokenizedStrategy.decimals(),
+            _withdrawnVaultAssetAmount
         );
 
         uint256 swapResult = _swap(_assetFreeSwapParams, _withdrawnVaultAssetAmount, expectedAmount, address(this));
@@ -136,6 +137,8 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         uint256 underlyingVaultAssets = _vault.convertToAssets(totalOwnedUnderlying4626Shares);
         // Swap this amount in valut asset to get strategy asset amount
         (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
+        /// @dev this always returns the worst possible exchange as it is used for the minimum amount to
+        /// receive in the swap. TODO may be to change this behavior to have more accurate accounting
         return _calculateExpectedAmount(
             vaultAssetPrice, strategyAssetPrice, vaultAssetDecimals, TokenizedStrategy.decimals(), underlyingVaultAssets
         );
