@@ -57,9 +57,9 @@ library Errors {
 
     error OracleNotSet(address asset);
 
-    error SlippageToleranceNotInRange(uint256 slippageTolerance);
+    error SlippageToleranceNotInRange(uint128 slippageTolerance);
 
-    error TimeToleranceNotInRange(uint256 timeTolerance);
+    error TimeToleranceNotInRange(uint128 timeTolerance);
 
     error TokenNotFoundInPool(address token);
 
