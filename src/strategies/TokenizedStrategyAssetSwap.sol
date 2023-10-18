@@ -7,12 +7,12 @@ import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
 contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy {
     // Libraries
-    using SafeERC20 for IERC20Metadata;
+    using SafeERC20 for IERC20;
 
     // Immutable storage variables
     address public immutable vault;
@@ -51,7 +51,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         _setUsesOracle(_usesOracle);
 
         // Interactions
-        IERC20Metadata(_vaultAsset).forceApprove(_vault, type(uint256).max);
+        IERC20(_vaultAsset).forceApprove(_vault, type(uint256).max);
         _approveTokenForSwap(_asset);
         _approveTokenForSwap(_vaultAsset);
     }
