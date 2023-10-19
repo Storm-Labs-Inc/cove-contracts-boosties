@@ -16,4 +16,5 @@ interface ICurveTwoAssetPool {
     // solhint-disable-next-line func-param-name-mixedcase,var-name-mixedcase
     function exchange(uint256 i, uint256 j, uint256 dx, uint256 min_dy) external;
     function coins(uint256 arg0) external view returns (address);
+    function price_oracle() external view returns (uint256);
 }

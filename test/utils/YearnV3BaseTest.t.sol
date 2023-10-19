@@ -48,8 +48,6 @@ contract YearnV3BaseTest is BaseTest {
     address public tpPerformanceFeeRecipient;
     address public tpKeeper;
 
-    address public dYFI;
-    address public dYFIRewardPool;
     address public gaugeImpl;
     address public gaugeFactory;
     address public gaugeRegistry;
@@ -59,14 +57,10 @@ contract YearnV3BaseTest is BaseTest {
     address public yearnRegistryFactory;
     address public yearnRegistry;
 
-    // Curve addresses
-    /// @dev pool type 2, [ETH/WETH, dYFI]
-    address public dYfiEthCurvePool;
-
     function setUp() public virtual override {
-        // Fork ethereum mainnet at block 18172262 for consistent testing and to cache RPC calls
-        // https://etherscan.io/block/18172262
-        forkNetworkAt("mainnet", 18_172_262);
+        // Fork ethereum mainnet at block 18386375 for consistent testing and to cache RPC calls
+        // https://etherscan.io/block/18386375
+        forkNetworkAt("mainnet", 18_386_375);
         super.setUp();
 
         _createYearnRelatedAddresses();
@@ -98,48 +92,22 @@ contract YearnV3BaseTest is BaseTest {
 
     /// VE-YFI related functions ///
     function setUpVotingYfiStack() public {
-        dYFI = _deployDYFI(admin);
-        dYFIRewardPool = _deployDYFIRewardPool(dYFI, block.timestamp + 1 days);
-        gaugeImpl = _deployGaugeImpl(dYFI, dYFIRewardPool);
+        gaugeImpl = _deployGaugeImpl(MAINNET_DYFI, MAINNET_DYFI_REWARD_POOL);
         gaugeFactory = _deployGaugeFactory(gaugeImpl);
-        gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, dYFIRewardPool);
-        dYfiEthCurvePool = _deployDYfiEthPool();
+        gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, MAINNET_DYFI_REWARD_POOL);
+        _increaseDYfiEthPoolLiquidity(MAINNET_DYFI_ETH_POOL, 10e18);
     }
 
-    function _deployDYfiEthPool() internal returns (address) {
+    function _increaseDYfiEthPoolLiquidity(address pool, uint256 ethAmount) internal {
+        uint256 dYfiPerEth = ICurveTwoAssetPool(pool).price_oracle();
+        uint256 dYfiAmount = ethAmount * 1e18 / dYfiPerEth;
+        airdrop(ERC20(MAINNET_WETH), admin, ethAmount);
+        airdrop(ERC20(MAINNET_DYFI), admin, dYfiAmount);
         vm.startPrank(admin);
-        // Initial price of ETH: 1600.00 USD
-        // Initial price of dYFI: 520.00 USD (estimated as 10% of YFI value)
-        // Initial price of ETH/dYFI:
-        uint256 initialPriceEthPerDYfi = 325_000_000_000_000_000;
-        // Create WETH/dYFI curve pool
-        address newPool = ICurveFactory(MAINNET_CURVE_CRYPTO_FACTORY).deploy_pool({
-            name: "ETH/dYFI",
-            symbol: "ETHDYFI",
-            coins: [MAINNET_WETH, dYFI],
-            a: 400_000,
-            gamma: 145_000_000_000_000,
-            midFee: 26_000_000,
-            outFee: 45_000_000,
-            allowedExtraProfit: 2_000_000_000_000,
-            feeGamma: 230_000_000_000_000,
-            adjustmentStep: 146_000_000_000_000,
-            adminFee: 5_000_000_000,
-            maHalfTime: 600,
-            initialPrice: initialPriceEthPerDYfi
-        });
-        vm.label(newPool, "ETH/dYFI Curve Pool");
-        // Seed the pool with some liquidity
-        // 10 ETH, 30.769230 dYFI
-        uint256 initialEth = 10e18;
-        uint256 initialDYfi = initialEth * 1e18 / initialPriceEthPerDYfi;
-        airdrop(ERC20(MAINNET_WETH), admin, initialEth);
-        airdrop(ERC20(dYFI), admin, initialDYfi);
-        IERC20(MAINNET_WETH).approve(newPool, initialEth);
-        IERC20(dYFI).approve(newPool, initialDYfi);
-        ICurveTwoAssetPool(newPool).add_liquidity([initialEth, initialDYfi], 0);
+        IERC20(MAINNET_WETH).approve(pool, ethAmount);
+        IERC20(MAINNET_DYFI).approve(pool, dYfiAmount);
+        ICurveTwoAssetPool(pool).add_liquidity([dYfiAmount, ethAmount], 0);
         vm.stopPrank();
-        return newPool;
     }
 
     function _deployDYFI(address owner) internal returns (address) {
@@ -237,17 +205,17 @@ contract YearnV3BaseTest is BaseTest {
     function setUpYearnStakingDelegate(address _treasury, address _admin, address _manager) public returns (address) {
         vm.startPrank(admin);
         YearnStakingDelegate yearnStakingDelegate =
-        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, _treasury, _admin, _manager);
+        new YearnStakingDelegate(MAINNET_YFI, MAINNET_DYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, _treasury, _admin, _manager);
 
         CurveRouterSwapper.CurveSwapParams memory ysdSwapParams;
         // [token_from, pool, token_to, pool, ...]
-        ysdSwapParams.route[0] = dYFI;
-        ysdSwapParams.route[1] = dYfiEthCurvePool;
+        ysdSwapParams.route[0] = MAINNET_DYFI;
+        ysdSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
         ysdSwapParams.route[2] = MAINNET_ETH;
         ysdSwapParams.route[3] = MAINNET_YFI_ETH_POOL;
         ysdSwapParams.route[4] = MAINNET_YFI;
 
-        ysdSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        ysdSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];
         ysdSwapParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
         yearnStakingDelegate.setRouterParams(ysdSwapParams);
         vm.stopPrank();
