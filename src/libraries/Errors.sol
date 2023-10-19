@@ -76,4 +76,9 @@ library Errors {
     //// coveYFI ////
 
     error OnlyMintingEnabled();
+
+    /// Rescuable ///
+    error ZeroEthTransfer();
+    error EthTransferFailed();
+    error ZeroTokenTransfer();
 }

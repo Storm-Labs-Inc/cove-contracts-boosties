@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { BaseTest } from "./utils/BaseTest.t.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MockRescuable } from "./mocks/MockRescuable.sol";
 import { MockNonPayable } from "./mocks/MockNonPayable.sol";
@@ -49,13 +50,13 @@ contract RescuableTest is BaseTest {
     }
 
     function test_rescue_eth_revertsOnZeroBalance() public {
-        vm.expectRevert("trying to send 0 ETH");
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroEthTransfer.selector));
         mockRescuable.rescue(IERC20(address(0)), alice, 1e18);
     }
 
     function test_rescue_eth_revertsOnFailedTransfer() public {
         deal(address(mockRescuable), 1e18);
-        vm.expectRevert("ETH transfer failed");
+        vm.expectRevert(abi.encodeWithSelector(Errors.EthTransferFailed.selector));
         mockRescuable.rescue(IERC20(address(0)), nonPayable, 1e18);
     }
 
@@ -79,7 +80,7 @@ contract RescuableTest is BaseTest {
     }
 
     function test_rescue_erc20_revertsOnZeroBalance() public {
-        vm.expectRevert("trying to send 0 balance");
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroTokenTransfer.selector));
         mockRescuable.rescue(IERC20(shitcoin), alice, 1e18);
     }
 }
