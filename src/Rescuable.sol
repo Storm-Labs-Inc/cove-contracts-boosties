@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 contract Rescuable {
     // Libraries
@@ -18,15 +19,15 @@ contract Rescuable {
             // for Ether
             uint256 totalBalance = address(this).balance;
             balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
-            require(balance > 0, "trying to send 0 ETH");
+            if (balance == 0) revert Errors.ZeroEthTransfer();
             // slither-disable-next-line arbitrary-send
             (bool success,) = to.call{ value: balance }("");
-            require(success, "ETH transfer failed");
+            if (!success) revert Errors.EthTransferFailed();
         } else {
             // any other erc20
             uint256 totalBalance = token.balanceOf(address(this));
             balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
-            require(balance > 0, "trying to send 0 balance");
+            if (balance == 0) revert Errors.ZeroTokenTransfer();
             token.safeTransfer(to, balance);
         }
     }
