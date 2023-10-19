@@ -61,12 +61,12 @@ contract WrappedStrategyAssetSwapTest is YearnV3BaseTest {
             // Give alice some YFI
             airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
             // Give admin some dYFI
-            airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
+            airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
             // Start new rewards
             vm.startPrank(admin);
-            IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
+            IERC20(MAINNET_DYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
             IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
-            require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+            require(IERC20(MAINNET_DYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
             yearnStakingDelegate.setAssociatedGauge(address(deployedVault), testGauge);
             vm.stopPrank();
         }
@@ -79,7 +79,7 @@ contract WrappedStrategyAssetSwapTest is YearnV3BaseTest {
                     MAINNET_USDC,
                     address(deployedVault),
                     address(yearnStakingDelegate),
-                    dYFI,
+                    MAINNET_DYFI,
                     MAINNET_CURVE_ROUTER,
                     // specifies that we do want to use oracles for price fetching
                     true

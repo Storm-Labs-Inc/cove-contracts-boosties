@@ -59,18 +59,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
 
         // Give admin some dYFI
-        airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
+        airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
 
         // Start new rewards
         vm.startPrank(admin);
-        IERC20(dYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
+        IERC20(MAINNET_DYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
         IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
         vm.stopPrank();
 
-        require(IERC20(dYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        require(IERC20(MAINNET_DYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
         yearnStakingDelegate =
-        new YearnStakingDelegate(MAINNET_YFI, dYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
+        new YearnStakingDelegate(MAINNET_YFI, MAINNET_DYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
@@ -79,7 +79,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.assume(noManagerRole != manager && noManagerRole != admin);
         // Check for storage variables default values
         assertEq(yearnStakingDelegate.yfi(), MAINNET_YFI);
-        assertEq(yearnStakingDelegate.dYfi(), dYFI);
+        assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
         assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
         (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) = yearnStakingDelegate.rewardSplit();
@@ -106,13 +106,13 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function _setRouterParams() internal {
-        _routerParams.route[0] = dYFI;
-        _routerParams.route[1] = dYfiEthCurvePool;
+        _routerParams.route[0] = MAINNET_DYFI;
+        _routerParams.route[1] = MAINNET_DYFI_ETH_POOL;
         _routerParams.route[2] = MAINNET_ETH;
         _routerParams.route[3] = MAINNET_YFI_ETH_POOL;
         _routerParams.route[4] = MAINNET_YFI;
 
-        _routerParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        _routerParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];
         _routerParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
 
         vm.prank(admin);
@@ -272,12 +272,14 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be close to 10% of the rewards, giving 90% as the penalty
-        assertEq(rewardAmount, IERC20(dYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
+        assertEq(rewardAmount, IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
         assertLe(
-            IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvested reward amount is incorrect"
+            IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy),
+            DYFI_REWARD_AMOUNT / 10,
+            "harvested reward amount is incorrect"
         );
         assertApproxEqRel(
-            IERC20(dYFI).balanceOf(wrappedStrategy),
+            IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy),
             DYFI_REWARD_AMOUNT / 10,
             0.01e18,
             "harvested reward amount is incorrect"
@@ -297,12 +299,14 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be higher than 10% of the rewards due to the 1 YFI locked
-        assertEq(rewardAmount, IERC20(dYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
+        assertEq(rewardAmount, IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
         assertGt(
-            IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT / 10, "harvested reward amount is incorrect"
+            IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy),
+            DYFI_REWARD_AMOUNT / 10,
+            "harvested reward amount is incorrect"
         );
         assertApproxEqRel(
-            IERC20(dYFI).balanceOf(wrappedStrategy),
+            IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy),
             DYFI_REWARD_AMOUNT / 10,
             0.05e18,
             "harvested reward amount is incorrect"
@@ -322,8 +326,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check that the vault has received the rewards
         // expect to be close to 100% of the rewards
-        assertEq(rewardAmount, IERC20(dYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
-        assertApproxEqRel(IERC20(dYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT, 0.01e18, "harvest failed");
+        assertEq(rewardAmount, IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy), "harvest did not return correct value");
+        assertApproxEqRel(
+            IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy), DYFI_REWARD_AMOUNT, 0.01e18, "harvest failed"
+        );
     }
 
     function test_harvest_swapAndLock_With1veYfi() public {
@@ -340,7 +346,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
             IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
 
         // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
-        uint256 actualRewardAmount = 1_021_755_338_445_599_531;
+        uint256 actualRewardAmount = 1_017_639_902_175_617_933;
 
         // Calculate split amounts strategy split amount
         uint256 estimatedStrategySplit = actualRewardAmount * 0.3e18 / 1e18;
@@ -349,18 +355,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Calculate expected yfi amount after swapping through curve pools
         // dYFI -> WETH then WETH -> YFI
-        uint256 wethAmount = ICurveTwoAssetPool(dYfiEthCurvePool).get_dy(1, 0, estimatedVeYfiSplit);
+        uint256 wethAmount = ICurveTwoAssetPool(MAINNET_DYFI_ETH_POOL).get_dy(0, 1, estimatedVeYfiSplit);
         uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_YFI_ETH_POOL).get_dy(0, 1, wethAmount);
 
         // Harvest
         vm.prank(wrappedStrategy);
         uint256 rewardAmount = yearnStakingDelegate.harvest(testVault);
 
-        uint256 strategyDYfiBalance = IERC20(dYFI).balanceOf(wrappedStrategy);
+        uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(wrappedStrategy);
         assertEq(rewardAmount, strategyDYfiBalance, "harvest did not return correct value");
         assertEq(strategyDYfiBalance, estimatedStrategySplit, "strategy split is incorrect");
 
-        uint256 treasuryBalance = IERC20(dYFI).balanceOf(treasury);
+        uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
         assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");
 
         IVotingYFI.LockedBalance memory lockedBalanceAfter =
@@ -429,7 +435,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function test_setRouterParams_revertsWithEmptyPaths() public {
         vm.prank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, dYFI, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, MAINNET_DYFI, address(0)));
         yearnStakingDelegate.setRouterParams(params);
     }
 
@@ -444,20 +450,20 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         params.swapParams[0] = [uint256(0), 2, 1, 2, 2];
         params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, dYFI, MAINNET_USDC));
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, MAINNET_DYFI, MAINNET_USDC));
         yearnStakingDelegate.setRouterParams(params);
     }
 
     function test_setRouterParams_revertsWhenEndTokenIsNotYfi() public {
         vm.prank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
-        params.route[0] = dYFI;
-        params.route[1] = dYfiEthCurvePool;
+        params.route[0] = MAINNET_DYFI;
+        params.route[1] = MAINNET_DYFI_ETH_POOL;
         params.route[2] = MAINNET_ETH;
         params.route[3] = MAINNET_TRI_CRYPTO_USDC;
         params.route[4] = MAINNET_USDC;
 
-        params.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        params.swapParams[0] = [uint256(0), 1, 1, 2, 2];
         params.swapParams[1] = [uint256(2), 0, 1, 2, 2];
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToToken.selector, MAINNET_YFI, MAINNET_USDC));
         yearnStakingDelegate.setRouterParams(params);
@@ -466,13 +472,13 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function test_setRouterParams_revertsWhenTokenPathIsNotSequential() public {
         vm.prank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
-        params.route[0] = dYFI;
-        params.route[1] = dYfiEthCurvePool;
+        params.route[0] = MAINNET_DYFI;
+        params.route[1] = MAINNET_DYFI_ETH_POOL;
         params.route[2] = MAINNET_USDC;
         params.route[3] = MAINNET_YFI_ETH_POOL;
         params.route[4] = MAINNET_YFI;
 
-        params.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        params.swapParams[0] = [uint256(0), 1, 1, 2, 2];
         params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
         yearnStakingDelegate.setRouterParams(params);
