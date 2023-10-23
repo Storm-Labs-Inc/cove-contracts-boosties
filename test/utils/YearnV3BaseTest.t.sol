@@ -26,6 +26,8 @@ import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { IWrappedYearnV3AssetSwapStrategy } from "src/interfaces/IWrappedYearnV3AssetSwapStrategy.sol";
+import { ICurveFactory } from "src/interfaces/deps/curve/ICurveFactory.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 
 contract YearnV3BaseTest is BaseTest {
@@ -408,10 +410,10 @@ contract YearnV3BaseTest is BaseTest {
         bool usesOracle
     )
         public
-        returns (IWrappedYearnV3Strategy)
+        returns (IWrappedYearnV3AssetSwapStrategy)
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
+        IWrappedYearnV3AssetSwapStrategy _wrappedStrategy = IWrappedYearnV3AssetSwapStrategy(
             address(
                 new WrappedYearnV3StrategyAssetSwap(asset, v3VaultAddress, yearnStakingDelegateAddress, dYFIAddress, curveRouterAddress, usesOracle)
             )

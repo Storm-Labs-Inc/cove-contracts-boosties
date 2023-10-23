@@ -93,7 +93,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         // limit fuzzing to ysd.userInfo.balance type max
         vm.assume(amount < type(uint128).max);
         _setUpDYfiRewards();
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         // deposit into strategy happens
         depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         // check for expected changes
@@ -111,7 +111,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         // limit fuzzing to ysd.userInfo.balance type max
         vm.assume(amount < type(uint128).max);
         _setUpDYfiRewards();
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         // withdraw from strategy happens
         vm.prank(alice);
@@ -143,7 +143,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         // deposit into strategy happens
         uint256 ownedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         addDebtToStrategy(deployedVault, mockStrategy, amount);
@@ -183,7 +183,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         // deposit into strategy happens
         uint256 ownedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         addDebtToStrategy(deployedVault, mockStrategy, amount);
@@ -228,7 +228,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         // deposit into strategy happens
         uint256 ownedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         addDebtToStrategy(deployedVault, mockStrategy, amount);
@@ -287,7 +287,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         // deposit into strategy happens
         uint256 ownedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         addDebtToStrategy(deployedVault, mockStrategy, amount);
@@ -360,7 +360,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         // deposit into strategy happens
         depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
@@ -391,7 +391,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.stopPrank();
 
         // alice deposits into vault
-        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        airdrop(ERC20(MAINNET_USDC), alice, amount);
         // deposit into strategy happens
         uint256 aliceOwnedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
