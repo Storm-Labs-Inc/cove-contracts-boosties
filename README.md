@@ -16,7 +16,7 @@ pnpm install
 forge install
 ```
 
-# Compiliation
+# Compilation
 
 ```sh
 # Build contracts
