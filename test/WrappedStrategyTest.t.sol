@@ -24,7 +24,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
-    uint256 public constant DYFI_REWARD_AMOUNT = 1000e18;
+    uint256 public constant DYFI_REWARD_AMOUNT = 10e18;
 
     // Addresses
     address public alice;
@@ -49,7 +49,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
             deployedGauge = deployGaugeViaFactory(address(deployedVault), admin, "Test Gauge for USDC Vault");
             // Give admin some dYFI
             airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
-            airdrop(ERC20(dYFI), admin, DYFI_REWARD_AMOUNT);
+            airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
             vm.prank(admin);
             yearnStakingDelegate.setAssociatedGauge(address(deployedVault), deployedGauge);
         }
@@ -61,21 +61,21 @@ contract WrappedStrategyTest is YearnV3BaseTest {
                 MAINNET_USDC,
                 address(deployedVault),
                 address(yearnStakingDelegate),
-                dYFI,
+                MAINNET_DYFI,
                 MAINNET_CURVE_ROUTER
             );
             vm.startPrank(tpManagement);
             // setting CurveRouterSwapper params for harvest rewards swapping
             CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
             // [token_from, pool, token_to, pool, ...]
-            curveSwapParams.route[0] = dYFI;
-            curveSwapParams.route[1] = dYfiEthCurvePool;
+            curveSwapParams.route[0] = MAINNET_DYFI;
+            curveSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
             curveSwapParams.route[2] = MAINNET_ETH;
             curveSwapParams.route[3] = MAINNET_TRI_CRYPTO_USDC;
             curveSwapParams.route[4] = MAINNET_USDC;
 
             // i, j, swap_type, pool_type, n_coins
-            curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2]; // dYFI -> ETH
+            curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2]; // dYFI -> ETH
             curveSwapParams.swapParams[1] = [uint256(2), 0, 1, 2, 3]; // ETH -> USDC
             // set params for harvest rewards swapping
             wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
@@ -86,9 +86,9 @@ contract WrappedStrategyTest is YearnV3BaseTest {
     function _setUpDYfiRewards() internal {
         // Start new rewards
         vm.startPrank(admin);
-        IERC20(dYFI).approve(deployedGauge, DYFI_REWARD_AMOUNT);
+        IERC20(MAINNET_DYFI).approve(deployedGauge, DYFI_REWARD_AMOUNT);
         IGauge(deployedGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
-        require(IERC20(dYFI).balanceOf(deployedGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        require(IERC20(MAINNET_DYFI).balanceOf(deployedGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
         vm.stopPrank();
     }
 

@@ -11,6 +11,7 @@ contract Constants is CommonBase {
     // Ethereum mainnet addresses
     // Tokens
     address public constant MAINNET_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant MAINNET_DYFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     address public constant MAINNET_ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant MAINNET_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant MAINNET_USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -25,6 +26,7 @@ contract Constants is CommonBase {
     // Yearn
     address public constant MAINNET_VAULT_FACTORY = 0x85E2861b3b1a70c90D28DfEc30CE6E07550d83e9;
     address public constant MAINNET_YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
+    address public constant MAINNET_DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
 
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
@@ -33,6 +35,8 @@ contract Constants is CommonBase {
     // Curve Pools
     /// @dev pool type 1, [DAI, USDC, USDT]
     address public constant MAINNET_CRV3POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+    /// @dev pool type 2, [DYFI, ETH/WETH]
+    address public constant MAINNET_DYFI_ETH_POOL = 0x8aC64Ba8E440cE5c2d08688f4020698b1826152E;
     /// @dev pool type 2, [USDC, WBTC, ETH/WETH]
     address public constant MAINNET_TRI_CRYPTO_USDC = 0x7F86Bf177Dd4F3494b841a37e810A34dD56c829B;
     /// @dev pool type 3, [USDT, WBTC, WETH]
@@ -58,26 +62,29 @@ contract Constants is CommonBase {
     function _labelEthereumAddresses() internal {
         // Tokens
         vm.label(MAINNET_DAI, "DAI");
+        vm.label(MAINNET_DYFI, "DYFI");
         vm.label(MAINNET_ETH, "ETH");
         vm.label(MAINNET_USDC, "USDC");
         vm.label(MAINNET_USDT, "USDT");
         vm.label(MAINNET_VE_YFI, "VE_YFI");
         vm.label(MAINNET_WETH, "WETH");
         vm.label(MAINNET_YFI, "YFI");
+        vm.label(MAINNET_FRAX, "FRAX");
         // Snapshot
         vm.label(MAINNET_SNAPSHOT_DELEGATE_REGISTRY, "SNAPSHOT_DELEGATE_REGISTRY");
         // Yearn
         vm.label(MAINNET_VAULT_FACTORY, "VAULT_FACTORY");
         vm.label(MAINNET_YFI_REWARD_POOL, "YFI_REWARD_POOL");
+        vm.label(MAINNET_DYFI_REWARD_POOL, "DYFI_REWARD_POOL");
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");
         // Curve Pools
         vm.label(MAINNET_CRV3POOL, "CRV3POOL");
+        vm.label(MAINNET_DYFI_ETH_POOL, "DYFI_ETH_POOL");
         vm.label(MAINNET_TRI_CRYPTO_USDC, "TRI_CRYPTO_USDC");
         vm.label(MAINNET_TRI_CRYPTO_2, "TRI_CRYPTO_2");
         vm.label(MAINNET_YFI_ETH_POOL, "YFI_ETH_POOL");
         vm.label(MAINNET_FRAX_USDC_POOL, "FRAX_USDC_POOL");
-        vm.label(MAINNET_FRAX, "FRAX");
     }
 }

@@ -1,0 +1,2 @@
+[codespell]
+skip = ./out,./lib,./src/deps,./src/interfaces/deps,*.yaml
