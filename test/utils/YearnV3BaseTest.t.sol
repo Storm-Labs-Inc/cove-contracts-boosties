@@ -282,7 +282,7 @@ contract YearnV3BaseTest is BaseTest {
         _strategy.setPerformanceFeeRecipient(performanceFeeRecipient);
         // set management of the strategy
         _strategy.setPendingManagement(management);
-        // Accept mangagement.
+        // Accept management.
         vm.prank(management);
         _strategy.acceptManagement();
 
@@ -347,7 +347,7 @@ contract YearnV3BaseTest is BaseTest {
         _strategy.setPerformanceFeeRecipient(performanceFeeRecipient);
         // set management of the strategy
         _strategy.setPendingManagement(management);
-        // Accept mangagement.
+        // Accept management.
         vm.prank(management);
         _strategy.acceptManagement();
 
@@ -384,7 +384,7 @@ contract YearnV3BaseTest is BaseTest {
         _wrappedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
         // set management of the strategy
         _wrappedStrategy.setPendingManagement(tpManagement);
-        // Accept mangagement.
+        // Accept management.
         vm.prank(tpManagement);
         _wrappedStrategy.acceptManagement();
 
@@ -424,7 +424,7 @@ contract YearnV3BaseTest is BaseTest {
         _wrappedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
         // set management of the strategy
         _wrappedStrategy.setPendingManagement(tpManagement);
-        // Accept mangagement.
+        // Accept management.
         vm.prank(tpManagement);
         _wrappedStrategy.acceptManagement();
 
@@ -459,7 +459,7 @@ contract YearnV3BaseTest is BaseTest {
         _tokenizedStrategy.setPerformanceFeeRecipient(tpPerformanceFeeRecipient);
         // set management of the strategy
         _tokenizedStrategy.setPendingManagement(tpManagement);
-        // Accept mangagement.
+        // Accept management.
         vm.prank(tpManagement);
         _tokenizedStrategy.acceptManagement();
 
@@ -483,14 +483,14 @@ contract YearnV3BaseTest is BaseTest {
         console.log("total supply: ", wrappedYearnV3Strategy.totalSupply());
         console.log("total debt: ", wrappedYearnV3Strategy.totalDebt());
         console.log("balance of test executor: ", wrappedYearnV3Strategy.balanceOf(address(this)));
-        console.log("strat USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(wrappedYearnV3Strategy)));
+        console.log("strategy USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(wrappedYearnV3Strategy)));
     }
 
     function logVaultInfo(string memory name) public view {
         IVault deployedVault = IVault(deployedVaults[name]);
         console.log("****************************************");
         console.log(
-            "current debt in strat: ",
+            "current debt in strategy: ",
             deployedVault.strategies(deployedStrategies["Wrapped YearnV3 Strategy"]).currentDebt
         );
         console.log("vault USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(deployedVault)));
