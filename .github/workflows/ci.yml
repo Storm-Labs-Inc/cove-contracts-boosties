@@ -172,3 +172,14 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  spelling:
+    name: Spelling
+    runs-on: buildjet-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+      - name: Run codespell
+        uses: codespell-project/actions-codespell@v2
