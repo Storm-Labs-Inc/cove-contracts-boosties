@@ -24,6 +24,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
     // Addresses
     address public alice;
+    address public nonYFIUser;
     address public deployedGauge;
     address public manager;
     address public treasury;
@@ -32,6 +33,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         super.setUp();
         //// generic ////
         alice = createUser("alice");
+        nonYFIUser = createUser("nonYFIUser");
         manager = createUser("manager");
         treasury = createUser("treasury");
         (address _deployedVault, address _mockStrategy) = deployVaultV3WithMockStrategy("USDC Vault", MAINNET_USDC);
@@ -264,7 +266,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assertEq(loss, 0, "report did not report 0 loss");
 
         // warp blocks forward to our strategy's profit locking is finished
-        vm.warp(block.timestamp + IStrategy(address(mockStrategy)).profitMaxUnlockTime());
+        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
 
         uint256 profitUnlockedPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(ownedShares);
         assertGt(profitUnlockedPreviewRedeem, afterPreviewRedeem, "redeemable asset per share increased over time");
@@ -299,5 +301,50 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
         assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
+    }
+
+    function testFuzz_report_passWhen_withdrawBeforeProfitUnlocks(uint256 amount) public {
+        vm.assume(amount > 1e6); // Minimum required for farming dYFI emission
+        vm.assume(amount < 1_000_000_000 * 1e6); // Maximum deposit size is 1 Billion USDC
+        _setUpDYfiRewards();
+
+        // set reward split to 50/50
+        vm.prank(admin);
+        yearnStakingDelegate.setRewardSplit(0, 0.5e18, 0.5e18);
+        // alice locks her YFI
+        vm.startPrank(alice);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);
+        yearnStakingDelegate.lockYfi(ALICE_YFI);
+        vm.stopPrank();
+
+        // alice deposits into vault
+        deal({ token: MAINNET_USDC, to: alice, give: amount });
+        // deposit into strategy happens
+        uint256 aliceOwnedShares = depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
+        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
+
+        // another user deposits into the vault without locked YFI
+        deal({ token: MAINNET_USDC, to: nonYFIUser, give: amount });
+        uint256 nonYFIUserOwnedShares = depositIntoStrategy(wrappedYearnV3Strategy, nonYFIUser, amount);
+        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(nonYFIUserOwnedShares);
+
+        // warp blocks forward to accrue rewards
+        vm.warp(block.timestamp + 14 days);
+
+        // manager call reports profit for unlock over the period of wrappedStrategy's profitMaxUnlockTime
+        vm.prank(tpManagement);
+        wrappedYearnV3Strategy.report();
+        // alice redeems before this profit unlocks
+        vm.prank(alice);
+        wrappedYearnV3Strategy.redeem(aliceOwnedShares, alice, alice, 0);
+
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
+        uint256 afterUnlockPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(nonYFIUserOwnedShares);
+        assertGt(
+            afterUnlockPreviewRedeem,
+            beforePreviewRedeem,
+            "redeemable asset per share didnt increase over time for nonYFI user"
+        );
     }
 }
