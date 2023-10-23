@@ -78,9 +78,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // manager role is given to admin and manager
         vm.assume(noManagerRole != manager && noManagerRole != admin);
         // Check for storage variables default values
-        assertEq(yearnStakingDelegate.yfi(), MAINNET_YFI);
-        assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
-        assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
+        assertEq(yearnStakingDelegate.YFI(), MAINNET_YFI);
+        assertEq(yearnStakingDelegate.D_YFI(), MAINNET_DYFI);
+        assertEq(yearnStakingDelegate.VE_YFI(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
         (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) = yearnStakingDelegate.rewardSplit();
         assertEq(treasurySplit, 0);
@@ -404,7 +404,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // Check for the new veYfi balance
         IVotingYFI.LockedBalance memory lockedBalance = IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
         assertApproxEqRel(
-            lockedBalance.amount, 1e18 + yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amoujnt is incorrect"
+            lockedBalance.amount, 1e18 + yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amount is incorrect"
         );
         assertApproxEqRel(
             lockedBalance.end,
@@ -494,6 +494,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         uint80 c = 1e18 - a - b;
         vm.prank(admin);
         yearnStakingDelegate.setRewardSplit(a, b, c);
+        (uint80 treasurySplit, uint80 strategySplit, uint80 lockSplit) = yearnStakingDelegate.rewardSplit();
+        assertEq(treasurySplit, a, "setRewardSplit failed, treasury split is incorrect");
+        assertEq(strategySplit, b, "setRewardSplit failed, strategy split is incorrect");
+        assertEq(lockSplit, c, "setRewardSplit failed, lock split is incorrect");
     }
 
     function testFuzz_setRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {

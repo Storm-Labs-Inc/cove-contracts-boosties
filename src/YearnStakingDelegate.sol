@@ -20,7 +20,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
     struct RewardSplit {
         uint80 treasury;
         uint80 strategy;
-        uint80 veYfi;
+        uint80 lock;
     }
 
     struct VaultRewards {
@@ -40,9 +40,9 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
     // Immutables
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _SNAPSHOT_DELEGATE_REGISTRY;
-    address public immutable dYfi;
-    address public immutable veYfi;
-    address public immutable yfi;
+    address public immutable D_YFI;
+    address public immutable VE_YFI;
+    address public immutable YFI;
 
     // Mappings
     /// @notice Mapping of vault to gauge
@@ -88,9 +88,9 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
         // Effects
         // set storage variables
-        yfi = _yfi;
-        dYfi = _dYfi;
-        veYfi = _veYfi;
+        YFI = _yfi;
+        D_YFI = _dYfi;
+        VE_YFI = _veYfi;
         treasury = _treasury;
         _SNAPSHOT_DELEGATE_REGISTRY = _snapshotDelegateRegistry;
         shouldPerpetuallyLock = true;
@@ -101,8 +101,8 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
         // Interactions
         // max approve YFI to veYFI so we can lock it later
-        IERC20(yfi).approve(veYfi, type(uint256).max);
-        _approveTokenForSwap(dYfi);
+        IERC20(_yfi).approve(_veYfi, type(uint256).max);
+        _approveTokenForSwap(_dYfi);
     }
 
     /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
@@ -121,9 +121,9 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
             }
             uint256 lpSupply = gaugeBalances[gauge];
             // get rewards from the gauge
-            totalRewardsAmount = IERC20(dYfi).balanceOf(address(this));
+            totalRewardsAmount = IERC20(D_YFI).balanceOf(address(this));
             IGauge(gauge).getReward(address(this));
-            totalRewardsAmount = IERC20(dYfi).balanceOf(address(this)) - totalRewardsAmount;
+            totalRewardsAmount = IERC20(D_YFI).balanceOf(address(this)) - totalRewardsAmount;
             // update accRewardsPerShare if there are tokens in the gauge
             if (lpSupply > 0) {
                 vaultRewards.accRewardsPerShare += uint128(totalRewardsAmount * rewardSplit.strategy / lpSupply);
@@ -140,12 +140,12 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
             // transfer pending rewards to the user
             if (userRewardsAmount != 0) {
-                IERC20(dYfi).safeTransfer(msg.sender, userRewardsAmount);
+                IERC20(D_YFI).safeTransfer(msg.sender, userRewardsAmount);
             }
 
             // Do other actions based on configured parameters
-            IERC20(dYfi).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
-            dYfiToSwapAndLock += totalRewardsAmount * uint256(rewardSplit.veYfi) / 1e18;
+            IERC20(D_YFI).safeTransfer(treasury, totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18);
+            dYfiToSwapAndLock += totalRewardsAmount * uint256(rewardSplit.lock) / 1e18;
         }
         return userRewardsAmount;
     }
@@ -197,7 +197,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
     }
 
     function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory) {
-        return IVotingYFI(veYfi).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
+        return IVotingYFI(VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
     }
 
     // Transfer amount of YFI from msg.sender and locks
@@ -210,13 +210,13 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
             revert Errors.PerpetualLockDisabled();
         }
         // Interactions
-        IERC20(yfi).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(YFI).safeTransferFrom(msg.sender, address(this), amount);
         return _lockYfi(amount);
     }
 
     function setRouterParams(CurveSwapParams calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
-        _validateSwapParams(routerParam, dYfi, yfi);
+        _validateSwapParams(routerParam, D_YFI, YFI);
         _routerParam = routerParam;
     }
 
@@ -283,8 +283,8 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
             revert Errors.PerpetualLockEnabled();
         }
         // Interactions
-        IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(veYfi).withdraw();
-        IERC20(yfi).transfer(to, withdrawn.amount);
+        IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(VE_YFI).withdraw();
+        IERC20(YFI).transfer(to, withdrawn.amount);
     }
 
     function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
