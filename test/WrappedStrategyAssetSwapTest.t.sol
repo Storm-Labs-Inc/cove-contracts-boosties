@@ -9,8 +9,8 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
 import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";
 import { IWrappedYearnV3AssetSwapStrategy } from "src/interfaces/IWrappedYearnV3AssetSwapStrategy.sol";
-import { WrappedYearnV3StrategyAssetSwap } from "src/strategies/WrappedYearnV3StrategyAssetSwap.sol";
-import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
@@ -236,16 +236,15 @@ contract WrappedStrategyAssetSwapTest is YearnV3BaseTest {
         vm.assume(amount < 1e13);
 
         airdrop(ERC20(MAINNET_USDC), alice, amount);
-        vm.startPrank(alice);
-        ERC20(MAINNET_USDC).approve(address(wrappedYearnV3AssetSwapStrategy), amount);
 
         // deposit into strategy happens
-        uint256 shares = wrappedYearnV3AssetSwapStrategy.deposit(amount, alice);
+        uint256 shares = depositIntoStrategy(wrappedYearnV3AssetSwapStrategy, alice, amount);
         // convert shares to expected amount
         uint256 withdrawAmount = wrappedYearnV3AssetSwapStrategy.convertToAssets(shares);
 
         // withdraw from strategy happens
         // allow for 4 BPS of loss due to non-changing value of yearn vault but loss due to swap
+        vm.startPrank(alice);
         wrappedYearnV3AssetSwapStrategy.withdraw(withdrawAmount, alice, alice, 4);
         // check for expected changes
         assertEq(deployedVault.balanceOf(deployedGauge), 0, "withdrawFromGauge failed");

@@ -25,12 +25,12 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
     IERC4626 public deployedVault;
     MockChainLinkOracle public mockFRAXOracle;
     MockChainLinkOracle public mockUSDCOracle;
-    address public testGauge;
 
     // User Addresses
     address public alice;
     address public treasury;
     address public manager;
+    address public deployedGauge;
 
     // Curve router parameters
     CurveRouterSwapper.CurveSwapParams internal _assetDeployParams;
@@ -199,7 +199,7 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
         // allow for 4 BPS of loss due to non-changing value of yearn vault but loss due to swap
         _strategy.redeem(shares, alice, alice, 4);
         // check for expected changes
-        assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
+        assertEq(deployedVault.balanceOf(deployedGauge), 0, "withdrawFromGauge failed");
         assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
         assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
         assertApproxEqRel(
@@ -226,7 +226,7 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
         // allow for 4 BPS of loss due to non-changing value of yearn vault but loss due to swap
         _strategy.withdraw(withdrawAmount, alice, alice, 4);
         // check for expected changes
-        assertEq(deployedVault.balanceOf(testGauge), 0, "withdrawFromGauge failed");
+        assertEq(deployedVault.balanceOf(deployedGauge), 0, "withdrawFromGauge failed");
         assertEq(deployedVault.totalSupply(), 0, "vault total_supply did not update correctly");
         assertEq(_strategy.balanceOf(alice), 0, "Withdraw was not successful");
         assertApproxEqRel(
