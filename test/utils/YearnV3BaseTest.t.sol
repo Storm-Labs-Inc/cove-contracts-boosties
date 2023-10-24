@@ -27,7 +27,6 @@ import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { IWrappedYearnV3AssetSwapStrategy } from "src/interfaces/IWrappedYearnV3AssetSwapStrategy.sol";
-import { ICurveFactory } from "src/interfaces/deps/curve/ICurveFactory.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 
 contract YearnV3BaseTest is BaseTest {

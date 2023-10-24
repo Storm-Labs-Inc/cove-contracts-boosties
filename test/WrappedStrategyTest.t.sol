@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
-import { console2 as console } from "forge-std/console2.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";

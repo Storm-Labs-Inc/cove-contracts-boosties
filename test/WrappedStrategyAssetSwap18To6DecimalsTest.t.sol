@@ -9,7 +9,6 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
 import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
 import { IWrappedYearnV3AssetSwapStrategy } from "src/interfaces/IWrappedYearnV3AssetSwapStrategy.sol";
-import { WrappedYearnV3StrategyAssetSwap } from "src/strategies/WrappedYearnV3StrategyAssetSwap.sol";
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
 import { Errors } from "src/libraries/Errors.sol";
