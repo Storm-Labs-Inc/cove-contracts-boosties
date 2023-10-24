@@ -27,23 +27,23 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         Ownable(msg.sender)
     {
         // Checks
-        // check for zero addresses
+        // Check for zero addresses
         if (_yfi == address(0) || _yearnStakingDelegate == address(0)) {
             revert Errors.ZeroAddress();
         }
 
         // Effects
-        // set storage variables
+        // Set storage variables
         _YFI = _yfi;
         _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
 
         // Interactions
-        // max approve _YFI for the yearn staking delegate
+        // Max approve YFI for the yearn staking delegate
         IERC20(_yfi).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
-        // only allow minting by allowing transfers from the 0x0 address
+        // Only allow minting by allowing transfers from the 0x0 address
         if (paused() && from != address(0x0)) {
             revert Errors.OnlyMintingEnabled();
         }

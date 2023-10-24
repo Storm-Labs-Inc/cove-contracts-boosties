@@ -88,10 +88,10 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
 
         uint256 swapResult = _swap(_assetDeploySwapParams, _amount, expectedAmount, address(this));
 
-        // check if we got less than the expected amount
+        // Check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);
 
-        // deposit _amount into vault if the swap was successful
+        // Deposit _amount into vault if the swap was successful
         totalOwnedUnderlying4626Shares += IERC4626(_VAULT).deposit(swapResult, address(this));
     }
 
@@ -118,7 +118,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
 
         uint256 swapResult = _swap(_assetFreeSwapParams, _withdrawnVaultAssetAmount, expectedAmount, address(this));
 
-        // check if we got less than the expected amount
+        // Check if we got less than the expected amount
         console.log("after swap token Balance: ", swapResult);
         console.log("expected swap amount    : ", expectedAmount);
     }
