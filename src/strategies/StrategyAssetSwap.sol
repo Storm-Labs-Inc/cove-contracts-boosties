@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity ^0.8.20;
 
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
@@ -9,24 +8,25 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { console2 as console } from "forge-std/console2.sol";
 
 abstract contract StrategyAssetSwap is CurveRouterSwapper {
-    // TODO add oracle functions here
+    // Struct definitions
+    struct SwapTolerance {
+        uint128 slippageTolerance;
+        uint128 timeTolerance;
+    }
+
     // Constant storage variables
     uint256 internal constant _SLIPPAGE_TOLERANCE_PRECISION = 1e5;
     uint256 internal constant _MIN_SLIPPAGE_TOLERANCE = 99_000;
     uint256 internal constant _MAX_TIME_TOLERANCE = 2 days;
 
     // Storage variables
-    uint256 public slippageTolerance = 99_500;
-    uint256 public timeTolerance = 6 hours;
+    SwapTolerance public swapTolerance;
     bool public usesOracle;
 
     CurveSwapParams internal _assetDeploySwapParams;
     CurveSwapParams internal _assetFreeSwapParams;
 
     mapping(address token => address) public oracles;
-    // TODO: remove this
-
-    constructor() { }
 
     function _setOracle(address token, address oracle) internal {
         // Checks
@@ -54,9 +54,10 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         returns (uint256 asset0Price, uint256 asset1Price)
     {
         // Checks
-        // Will revert if oracle has not been set
+        // Cache variables
         address _asset0Oracle = oracles[asset0];
         address _asset1Oracle = oracles[asset1];
+        // Will revert if oracle has not been set
         if (_asset0Oracle == address(0)) {
             revert Errors.OracleNotSet(asset0);
         }
@@ -70,7 +71,7 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         (, int256 quotedAsset1Price,, uint256 toTimeStamp,) = IChainLinkOracle(_asset1Oracle).latestRoundData();
 
         // check if oracles are outdated
-        uint256 _timeTolerance = timeTolerance;
+        uint256 _timeTolerance = swapTolerance.timeTolerance;
         if (block.timestamp - fromTimeStamp > _timeTolerance || block.timestamp - toTimeStamp > _timeTolerance) {
             revert Errors.OracleOutdated();
         }
@@ -103,7 +104,7 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         view
         returns (uint256)
     {
-        return ((fromAmount * fromPrice) * 10 ** (18 - fromDecimal)) * slippageTolerance / toPrice
+        return ((fromAmount * fromPrice) * 10 ** (18 - fromDecimal)) * swapTolerance.slippageTolerance / toPrice
             / _SLIPPAGE_TOLERANCE_PRECISION / 10 ** (18 - toDecimal);
     }
 
@@ -112,21 +113,19 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         address vaultAsset,
         CurveSwapParams memory deploySwapParams,
         CurveSwapParams memory freeSwapParams,
-        uint256 _slippageTolerance,
-        uint256 _timeTolerance
+        SwapTolerance memory _swapTolerance
     )
         internal
     {
+        // Cache variables
+        // Convert slippage tolerance to uint256 for calculations
+        uint256 _slippageTolerance = uint256(_swapTolerance.slippageTolerance);
         // Checks (includes external view calls)
         if (_slippageTolerance > _SLIPPAGE_TOLERANCE_PRECISION || _slippageTolerance < _MIN_SLIPPAGE_TOLERANCE) {
-            revert Errors.SlippageToleranceNotInRange(_slippageTolerance);
+            revert Errors.SlippageToleranceNotInRange(_swapTolerance.slippageTolerance);
         }
-        if (_timeTolerance > _MAX_TIME_TOLERANCE) {
-            revert Errors.TimeToleranceNotInRange(_timeTolerance);
-        }
-        // Check for zero addresses
-        if (strategyAsset == address(0) || vaultAsset == address(0)) {
-            revert Errors.ZeroAddress();
+        if (_swapTolerance.timeTolerance > _MAX_TIME_TOLERANCE) {
+            revert Errors.TimeToleranceNotInRange(_swapTolerance.timeTolerance);
         }
         _validateSwapParams(deploySwapParams, strategyAsset, vaultAsset);
         _validateSwapParams(freeSwapParams, vaultAsset, strategyAsset);
@@ -134,7 +133,6 @@ abstract contract StrategyAssetSwap is CurveRouterSwapper {
         // Effects
         _assetDeploySwapParams = deploySwapParams;
         _assetFreeSwapParams = freeSwapParams;
-        slippageTolerance = _slippageTolerance;
-        timeTolerance = _timeTolerance;
+        swapTolerance = _swapTolerance;
     }
 }

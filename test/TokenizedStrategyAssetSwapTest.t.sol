@@ -6,6 +6,7 @@ import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
 import { TokenizedStrategyAssetSwap } from "src/strategies/TokenizedStrategyAssetSwap.sol";
+import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { ICurveBasePool } from "../src/interfaces/deps/curve/ICurveBasePool.sol";
@@ -81,7 +82,11 @@ contract TokenizedStrategyAssetSwapTest is YearnV3BaseTest {
             _assetFreeParams.route[2] = MAINNET_USDC;
             _assetFreeParams.swapParams[0] = [uint256(0), 1, 1, 1, 2];
 
-            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500, 1 days);
+            // set the swap tolerance
+            StrategyAssetSwap.SwapTolerance memory swapTolerance =
+                StrategyAssetSwap.SwapTolerance({ slippageTolerance: 99_500, timeTolerance: 1 days });
+
+            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, swapTolerance);
         }
         vm.stopPrank();
     }

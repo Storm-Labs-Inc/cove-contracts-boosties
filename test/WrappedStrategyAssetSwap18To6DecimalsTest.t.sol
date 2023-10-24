@@ -8,6 +8,7 @@ import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { WrappedYearnV3StrategyAssetSwap } from "src/strategies/WrappedYearnV3StrategyAssetSwap.sol";
@@ -105,7 +106,11 @@ contract WrappedStrategyAssetSwap18To6DecimalsTest is YearnV3BaseTest {
             _assetFreeParams.route[2] = MAINNET_DAI;
             _assetFreeParams.swapParams[0] = [uint256(1), 0, 1, 1, 2];
 
-            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, 99_500, 1 days);
+            // set the swap tolerance
+            StrategyAssetSwap.SwapTolerance memory swapTolerance =
+                StrategyAssetSwap.SwapTolerance({ slippageTolerance: 99_500, timeTolerance: 1 days });
+
+            strategy.setSwapParameters(_assetDeployParams, _assetFreeParams, swapTolerance);
         }
         vm.stopPrank();
     }

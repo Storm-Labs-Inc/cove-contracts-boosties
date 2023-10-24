@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity ^0.8.20;
 
 import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
@@ -8,12 +7,12 @@ import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
 contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy {
     // Libraries
-    using SafeERC20 for IERC20Metadata;
+    using SafeERC20 for IERC20;
 
     // Immutable storage variables
     address public immutable vault;
@@ -52,7 +51,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         _setUsesOracle(_usesOracle);
 
         // Interactions
-        IERC20Metadata(_vaultAsset).approve(_vault, type(uint256).max);
+        IERC20(_vaultAsset).forceApprove(_vault, type(uint256).max);
         _approveTokenForSwap(_asset);
         _approveTokenForSwap(_vaultAsset);
     }
@@ -71,19 +70,16 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
     function setSwapParameters(
         CurveSwapParams memory deploySwapParams,
         CurveSwapParams memory freeSwapParams,
-        uint256 _slippageTolerance,
-        uint256 _timeTolerance
+        StrategyAssetSwap.SwapTolerance memory _swapTolerance
     )
         external
         onlyManagement
     {
-        _setSwapParameters(
-            TokenizedStrategy.asset(), vaultAsset, deploySwapParams, freeSwapParams, _slippageTolerance, _timeTolerance
-        );
+        _setSwapParameters(asset, vaultAsset, deploySwapParams, freeSwapParams, _swapTolerance);
     }
 
     function _deployFunds(uint256 _amount) internal override {
-        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, asset);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), vaultAssetDecimals, _amount
@@ -101,16 +97,15 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
     }
 
     function _freeFunds(uint256 _amount) internal override {
-        IERC4626 _vault = IERC4626(vault);
         // Find withdrawer's allocation of total ysd shares
         uint256 vaultSharesToWithdraw = totalOwnedUnderlying4626Shares * _amount / TokenizedStrategy.totalAssets();
         // Effects
         // Total vault shares that strategy has deposited into the vault
         totalOwnedUnderlying4626Shares -= vaultSharesToWithdraw;
         // Interactions
-        uint256 _withdrawnVaultAssetAmount = _vault.redeem(vaultSharesToWithdraw, address(this), address(this));
+        uint256 _withdrawnVaultAssetAmount = IERC4626(vault).redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
-        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, asset);
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
@@ -129,14 +124,11 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
     }
 
     function _harvestAndReport() internal view override returns (uint256 _totalAssets) {
-        address _vaultAsset = vaultAsset;
-        IERC4626 _vault = IERC4626(vault);
         // We have no harvesting to do so just report the total assets held in the underlying strategy
-
         // Captures any changes in value in the underlying vault
-        uint256 underlyingVaultAssets = _vault.convertToAssets(totalOwnedUnderlying4626Shares);
+        uint256 underlyingVaultAssets = IERC4626(vault).convertToAssets(totalOwnedUnderlying4626Shares);
         // Swap this amount in valut asset to get strategy asset amount
-        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(vaultAsset, asset);
         /// @dev this always returns the worst possible exchange as it is used for the minimum amount to
         /// receive in the swap. TODO may be to change this behavior to have more accurate accounting
         return _calculateExpectedAmount(
