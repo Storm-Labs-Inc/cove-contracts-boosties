@@ -73,9 +73,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // manager role is given to admin and manager
         vm.assume(noManagerRole != manager && noManagerRole != admin);
         // Check for storage variables default values
-        assertEq(yearnStakingDelegate.YFI(), MAINNET_YFI);
-        assertEq(yearnStakingDelegate.D_YFI(), MAINNET_DYFI);
-        assertEq(yearnStakingDelegate.VE_YFI(), MAINNET_VE_YFI);
+        assertEq(yearnStakingDelegate.yfi(), MAINNET_YFI);
+        assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
+        assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
         (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) = yearnStakingDelegate.rewardSplit();
         assertEq(treasurySplit, 0);

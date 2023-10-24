@@ -15,8 +15,8 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     using SafeERC20 for IERC20;
 
     // Immutable storage variables
-    address public immutable YFI;
-    address public immutable YEARN_STAKING_DELEGATE;
+    address internal immutable _YFI;
+    address internal immutable _YEARN_STAKING_DELEGATE;
 
     constructor(
         address _yfi,
@@ -34,11 +34,11 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
 
         // Effects
         // set storage variables
-        YFI = _yfi;
-        YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
+        _YFI = _yfi;
+        _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
 
         // Interactions
-        // max approve YFI for the yearn staking delegate
+        // max approve _YFI for the yearn staking delegate
         IERC20(_yfi).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
@@ -62,8 +62,8 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         _mint(sender, balance);
 
         // Interactions
-        IERC20(YFI).safeTransferFrom(sender, address(this), balance);
-        IYearnStakingDelegate(YEARN_STAKING_DELEGATE).lockYfi(balance);
+        IERC20(_YFI).safeTransferFrom(sender, address(this), balance);
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
     }
 
     function pause() public onlyOwner {
@@ -76,5 +76,13 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
 
     function rescue(IERC20 token, address to, uint256 balance) external onlyOwner {
         _rescue(token, to, balance);
+    }
+
+    function yfi() external view returns (address) {
+        return _YFI;
+    }
+
+    function yearnStakingDelegate() external view returns (address) {
+        return _YEARN_STAKING_DELEGATE;
     }
 }

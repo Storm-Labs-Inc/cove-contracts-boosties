@@ -55,8 +55,8 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper, Wr
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Cache variables
-        address _vault = vault;
-        address _ysd = yearnStakingDelegate;
+        address _vault = _VAULT;
+        address _ysd = _YEARN_STAKING_DELEGATE;
         // Harvest any dYFI rewards
         uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vault);
         uint256 newIdleBalance = 0;

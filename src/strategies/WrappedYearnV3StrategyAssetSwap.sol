@@ -17,8 +17,8 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     using SafeERC20 for IERC20;
 
     // Immutable storage variables
-    address public immutable VAULT_ASSET;
-    uint256 public immutable VAULT_ASSET_DECIMALS;
+    address internal immutable _VAULT_ASSET;
+    uint256 internal immutable _VAULT_ASSET_DECIMALS;
 
     constructor(
         address _asset,
@@ -42,8 +42,8 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
         // Effects
         // Set storage variable values
-        VAULT_ASSET = _vaultAsset;
-        VAULT_ASSET_DECIMALS = IERC20Metadata(_vaultAsset).decimals();
+        _VAULT_ASSET = _vaultAsset;
+        _VAULT_ASSET_DECIMALS = IERC20Metadata(_vaultAsset).decimals();
         _setUsesOracle(_usesOracle);
 
         // Interactions
@@ -69,21 +69,21 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         onlyManagement
     {
         // Interactions
-        _setSwapParameters(TokenizedStrategy.asset(), VAULT_ASSET, deploySwapParams, freeSwapParams, _swapTolerance);
+        _setSwapParameters(TokenizedStrategy.asset(), _VAULT_ASSET, deploySwapParams, freeSwapParams, _swapTolerance);
     }
 
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external onlyManagement {
         // Set harvest to swap dYFI -> vaultAsset for this strategy
-        _setHarvestSwapParams(VAULT_ASSET, curveSwapParams);
+        _setHarvestSwapParams(_VAULT_ASSET, curveSwapParams);
     }
 
     function _deployFunds(uint256 _amount) internal override {
         // Get prices of strategy asset and vault asset
         // @dev this will be 1,1 if not using an oracle
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, VAULT_ASSET);
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, _VAULT_ASSET);
         // Expected amount of tokens to receive from the swap using oracles or fixed price
         uint256 expectedAmount = _calculateExpectedAmount(
-            strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), VAULT_ASSET_DECIMALS, _amount
+            strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), _VAULT_ASSET_DECIMALS, _amount
         );
         console.log("fromAmount: ", _amount);
         console.log("expectedAmount: ", expectedAmount);
@@ -104,13 +104,13 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         uint256 withdrawnVaultAssetAmount = _redeemVaultSharesFromYSD(vaultSharesToWithdraw);
         console.log("redeem amount: ", withdrawnVaultAssetAmount);
         // Get prices of strategy asset and vault asset
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, VAULT_ASSET);
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, _VAULT_ASSET);
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of asset to receive from the swap using oracles or fixed price
         uint256 expectedAmount = _calculateExpectedAmount(
             vaultAssetPrice,
             strategyAssetPrice,
-            VAULT_ASSET_DECIMALS,
+            _VAULT_ASSET_DECIMALS,
             TokenizedStrategy.decimals(),
             withdrawnVaultAssetAmount
         );
@@ -124,9 +124,9 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Cache variables
-        address _vault = VAULT;
-        address _ysd = YEARN_STAKING_DELEGATE;
-        address _vaultAsset = VAULT_ASSET;
+        address _vault = _VAULT;
+        address _ysd = _YEARN_STAKING_DELEGATE;
+        address _vaultAsset = _VAULT_ASSET;
         // Harvest any dYFI rewards
         uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vault);
         uint256 newIdleBalance = 0;
@@ -162,7 +162,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
             + _calculateExpectedAmount(
                 vaultAssetPrice,
                 strategyAssetPrice,
-                VAULT_ASSET_DECIMALS,
+                _VAULT_ASSET_DECIMALS,
                 TokenizedStrategy.decimals(),
                 underlyingVaultAssets
             );
