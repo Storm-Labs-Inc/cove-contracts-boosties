@@ -54,11 +54,8 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper, Wr
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
-        // Cache variables
-        address _vault = _VAULT;
-        address _ysd = _YEARN_STAKING_DELEGATE;
         // Harvest any dYFI rewards
-        uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vault);
+        uint256 dYFIBalance = IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).harvest(_VAULT);
         uint256 newIdleBalance = 0;
         // If dYFI was harvested, swap it for vault asset
         if (dYFIBalance > 0) {
@@ -74,6 +71,6 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper, Wr
         // TODO: below may not be accurate accounting as the underlying vault may not have realized gains/losses
         // additionally profits may have been awarded but not fully unlocked yet, these are concerns to be investigated
         // off-chain by management in the timing of calling _harvestAndReport
-        return newIdleBalance + IVault(_vault).convertToAssets(totalUnderlyingVaultShares);
+        return newIdleBalance + IVault(_VAULT).convertToAssets(totalUnderlyingVaultShares);
     }
 }

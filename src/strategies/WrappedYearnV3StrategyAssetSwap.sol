@@ -123,12 +123,8 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
-        // Cache variables
-        address _vault = _VAULT;
-        address _ysd = _YEARN_STAKING_DELEGATE;
-        address _vaultAsset = _VAULT_ASSET;
         // Harvest any dYFI rewards
-        uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vault);
+        uint256 dYFIBalance = IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).harvest(_VAULT);
         uint256 newIdleBalance = 0;
         // If dYFI was harvested, swap it for vault asset
         if (dYFIBalance > 0) {
@@ -153,9 +149,9 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         // off-chain by management in the timing of calling _harvestAndReport
 
         // Convert totalUnderlyingVaultShares to underlying vault assets
-        uint256 underlyingVaultAssets = IERC4626(_vault).convertToAssets(totalUnderlyingVaultShares);
+        uint256 underlyingVaultAssets = IERC4626(_VAULT).convertToAssets(totalUnderlyingVaultShares);
         // Convert vault asset to strategy asset using oracles or fixed price
-        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_vaultAsset, TokenizedStrategy.asset());
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_VAULT_ASSET, TokenizedStrategy.asset());
         /// @dev this always returns the worst possible exchange as it is used for the minimum amount to
         /// receive in the swap. TODO may be to change this behavior to have more accurate accounting
         return newIdleBalance

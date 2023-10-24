@@ -39,25 +39,21 @@ abstract contract WrappedYearnV3 is CurveRouterSwapper {
     }
 
     function _depositVaultAssetToYSD(uint256 amount) internal virtual returns (uint256 newShares) {
-        // Cache vault address
-        address _vault = _VAULT;
         // Deposit _amount into vault
-        newShares = IVault(_vault).deposit(amount, address(this));
+        newShares = IVault(_VAULT).deposit(amount, address(this));
         // Update totalUnderlyingVaultShares
         totalUnderlyingVaultShares += newShares;
         // Deposit _shares into gauge via YSD
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).depositToGauge(_vault, newShares);
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).depositToGauge(_VAULT, newShares);
     }
 
     function _redeemVaultSharesFromYSD(uint256 shares) internal virtual returns (uint256 amount) {
-        // Cache vault address
-        address _vault = _VAULT;
         // Update totalUnderlyingVaultShares
         totalUnderlyingVaultShares -= shares;
         // Withdraw _shares from gauge via YSD
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdrawFromGauge(_vault, shares);
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdrawFromGauge(_VAULT, shares);
         // Withdraw _amount from vault
-        amount = IVault(_vault).redeem(shares, address(this), address(this));
+        amount = IVault(_VAULT).redeem(shares, address(this), address(this));
     }
 
     function vault() external view returns (address) {
