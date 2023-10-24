@@ -326,7 +326,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         uint256 afterBobBalance = ERC20(MAINNET_USDC).balanceOf(bob);
         // Even though Bob deposits after the vault has accrued profit, he gains from it
         assertGt(
-            afterBobBalance, beforeBobBalance, "redeemable asset per share didnt increase with harvest reward unlock"
+            afterBobBalance, beforeBobBalance, "redeemable asset per share didn't increase with harvest reward unlock"
         );
     }
 
