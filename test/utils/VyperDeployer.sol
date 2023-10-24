@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import { console2 as console } from "forge-std/console2.sol";
-
 ///@notice This cheat codes interface is named _CheatCodes so you can use the CheatCodes interface in other testing
 /// files without errors
 // solhint-disable-next-line contract-name-camelcase

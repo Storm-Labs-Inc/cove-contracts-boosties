@@ -11,7 +11,7 @@
       }
     ],
     "max-line-length": ["warn", 120],
-    "named-parameters-mapping": "warn",
+    "named-parameters-mapping": "off",
     "no-console": "off",
     "not-rely-on-time": "off",
     "event-name-camelcase": "error",
@@ -22,6 +22,8 @@
     "imports-on-top": "error",
     "const-name-snakecase": "error",
     "contract-name-camelcase": "error",
-    "no-unused-vars": "warn"
+    "no-unused-vars": "error",
+    "no-unused-import": "error",
+    "immutable-vars-naming": "error"
   }
 }

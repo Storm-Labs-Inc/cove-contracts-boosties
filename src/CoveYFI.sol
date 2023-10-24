@@ -15,8 +15,8 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     using SafeERC20 for IERC20;
 
     // Immutable storage variables
-    address public immutable yfi;
-    address public immutable yearnStakingDelegate;
+    address internal immutable _YFI;
+    address internal immutable _YEARN_STAKING_DELEGATE;
 
     constructor(
         address _yfi,
@@ -27,23 +27,23 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         Ownable(msg.sender)
     {
         // Checks
-        // check for zero addresses
+        // Check for zero addresses
         if (_yfi == address(0) || _yearnStakingDelegate == address(0)) {
             revert Errors.ZeroAddress();
         }
 
         // Effects
-        // set storage variables
-        yfi = _yfi;
-        yearnStakingDelegate = _yearnStakingDelegate;
+        // Set storage variables
+        _YFI = _yfi;
+        _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
 
         // Interactions
-        // max approve YFI for the yearn staking delegate
+        // Max approve YFI for the yearn staking delegate
         IERC20(_yfi).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
-        // only allow minting by allowing transfers from the 0x0 address
+        // Only allow minting by allowing transfers from the 0x0 address
         if (paused() && from != address(0x0)) {
             revert Errors.OnlyMintingEnabled();
         }
@@ -62,8 +62,8 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         _mint(sender, balance);
 
         // Interactions
-        IERC20(yfi).safeTransferFrom(sender, address(this), balance);
-        IYearnStakingDelegate(yearnStakingDelegate).lockYfi(balance);
+        IERC20(_YFI).safeTransferFrom(sender, address(this), balance);
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
     }
 
     function pause() public onlyOwner {
@@ -76,5 +76,13 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
 
     function rescue(IERC20 token, address to, uint256 balance) external onlyOwner {
         _rescue(token, to, balance);
+    }
+
+    function yfi() external view returns (address) {
+        return _YFI;
+    }
+
+    function yearnStakingDelegate() external view returns (address) {
+        return _YEARN_STAKING_DELEGATE;
     }
 }
