@@ -403,7 +403,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         assertGt(
             ERC20(MAINNET_USDC).balanceOf(nonYFIUser),
             amount,
-            "redeemable asset per share didnt increase with harvest reward unlock"
+            "redeemable asset per share didn't increase with harvest reward unlock"
         );
     }
 }
