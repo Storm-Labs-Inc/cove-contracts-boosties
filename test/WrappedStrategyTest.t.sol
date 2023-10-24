@@ -2,19 +2,15 @@
 pragma solidity ^0.8.20;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
-import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IGaugeFactory } from "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import { Errors } from "../src/libraries/Errors.sol";
 
 contract WrappedStrategyTest is YearnV3BaseTest {
     IStrategy public mockStrategy;

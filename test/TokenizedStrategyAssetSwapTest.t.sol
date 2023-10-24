@@ -2,14 +2,12 @@
 pragma solidity ^0.8.20;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
-import { console2 as console } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
 import { TokenizedStrategyAssetSwap } from "src/strategies/TokenizedStrategyAssetSwap.sol";
 import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";
-import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { ICurveBasePool } from "../src/interfaces/deps/curve/ICurveBasePool.sol";
 import { MockChainLinkOracle } from "./mocks/MockChainLinkOracle.sol";
 import { Errors } from "src/libraries/Errors.sol";
 

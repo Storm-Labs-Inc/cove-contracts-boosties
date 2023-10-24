@@ -6,7 +6,6 @@ import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTok
 import { StrategyAssetSwap, CurveRouterSwapper } from "src/strategies/StrategyAssetSwap.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IChainLinkOracle } from "src/interfaces/IChainLinkOracle.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -18,8 +17,8 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     using SafeERC20 for IERC20;
 
     // Immutable storage variables
-    address public immutable vaultAsset;
-    uint256 public immutable vaultAssetDecimals;
+    address public immutable VAULT_ASSET;
+    uint256 public immutable VAULT_ASSET_DECIMALS;
 
     constructor(
         address _asset,
@@ -43,8 +42,8 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
         // Effects
         // Set storage variable values
-        vaultAsset = _vaultAsset;
-        vaultAssetDecimals = IERC20Metadata(_vaultAsset).decimals();
+        VAULT_ASSET = _vaultAsset;
+        VAULT_ASSET_DECIMALS = IERC20Metadata(_vaultAsset).decimals();
         _setUsesOracle(_usesOracle);
 
         // Interactions
@@ -70,21 +69,21 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         onlyManagement
     {
         // Interactions
-        _setSwapParameters(TokenizedStrategy.asset(), vaultAsset, deploySwapParams, freeSwapParams, _swapTolerance);
+        _setSwapParameters(TokenizedStrategy.asset(), VAULT_ASSET, deploySwapParams, freeSwapParams, _swapTolerance);
     }
 
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external onlyManagement {
         // Set harvest to swap dYFI -> vaultAsset for this strategy
-        _setHarvestSwapParams(vaultAsset, curveSwapParams);
+        _setHarvestSwapParams(VAULT_ASSET, curveSwapParams);
     }
 
     function _deployFunds(uint256 _amount) internal override {
         // Get prices of strategy asset and vault asset
         // @dev this will be 1,1 if not using an oracle
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, vaultAsset);
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, VAULT_ASSET);
         // Expected amount of tokens to receive from the swap using oracles or fixed price
         uint256 expectedAmount = _calculateExpectedAmount(
-            strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), vaultAssetDecimals, _amount
+            strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), VAULT_ASSET_DECIMALS, _amount
         );
         console.log("fromAmount: ", _amount);
         console.log("expectedAmount: ", expectedAmount);
@@ -105,13 +104,13 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         uint256 withdrawnVaultAssetAmount = _redeemVaultSharesFromYSD(vaultSharesToWithdraw);
         console.log("redeem amount: ", withdrawnVaultAssetAmount);
         // Get prices of strategy asset and vault asset
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, vaultAsset);
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, VAULT_ASSET);
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of asset to receive from the swap using oracles or fixed price
         uint256 expectedAmount = _calculateExpectedAmount(
             vaultAssetPrice,
             strategyAssetPrice,
-            vaultAssetDecimals,
+            VAULT_ASSET_DECIMALS,
             TokenizedStrategy.decimals(),
             withdrawnVaultAssetAmount
         );
@@ -125,9 +124,9 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Cache variables
-        address _vault = vault;
-        address _ysd = yearnStakingDelegate;
-        address _vaultAsset = vaultAsset;
+        address _vault = VAULT;
+        address _ysd = YEARN_STAKING_DELEGATE;
+        address _vaultAsset = VAULT_ASSET;
         // Harvest any dYFI rewards
         uint256 dYFIBalance = IYearnStakingDelegate(_ysd).harvest(_vault);
         uint256 newIdleBalance = 0;
@@ -161,7 +160,11 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         /// receive in the swap. TODO may be to change this behavior to have more accurate accounting
         return newIdleBalance
             + _calculateExpectedAmount(
-                vaultAssetPrice, strategyAssetPrice, vaultAssetDecimals, TokenizedStrategy.decimals(), underlyingVaultAssets
+                vaultAssetPrice,
+                strategyAssetPrice,
+                VAULT_ASSET_DECIMALS,
+                TokenizedStrategy.decimals(),
+                underlyingVaultAssets
             );
     }
 }

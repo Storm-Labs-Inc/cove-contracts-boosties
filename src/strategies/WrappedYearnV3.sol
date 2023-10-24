@@ -9,9 +9,9 @@ import { Errors } from "../libraries/Errors.sol";
 
 abstract contract WrappedYearnV3 is CurveRouterSwapper {
     // Immutable storage variables
-    address public immutable vault;
-    address public immutable yearnStakingDelegate;
-    address public immutable dYfi;
+    address public immutable VAULT;
+    address public immutable YEARN_STAKING_DELEGATE;
+    address public immutable DYFI;
 
     // Storage variables
     CurveSwapParams internal _harvestSwapParams;
@@ -25,14 +25,14 @@ abstract contract WrappedYearnV3 is CurveRouterSwapper {
 
         // Effects
         // Set storage variable values
-        vault = _vault;
-        yearnStakingDelegate = _yearnStakingDelegate;
-        dYfi = _dYfi;
+        VAULT = _vault;
+        YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
+        DYFI = _dYfi;
     }
 
     function _setHarvestSwapParams(address asset, CurveSwapParams memory curveSwapParams) internal virtual {
         // Checks (includes external view calls)
-        _validateSwapParams(curveSwapParams, dYfi, asset);
+        _validateSwapParams(curveSwapParams, DYFI, asset);
 
         // Effects
         _harvestSwapParams = curveSwapParams;
@@ -40,22 +40,22 @@ abstract contract WrappedYearnV3 is CurveRouterSwapper {
 
     function _depositVaultAssetToYSD(uint256 amount) internal virtual returns (uint256 newShares) {
         // Cache vault address
-        address _vault = vault;
+        address _vault = VAULT;
         // Deposit _amount into vault
         newShares = IVault(_vault).deposit(amount, address(this));
         // Update totalUnderlyingVaultShares
         totalUnderlyingVaultShares += newShares;
         // Deposit _shares into gauge via YSD
-        IYearnStakingDelegate(yearnStakingDelegate).depositToGauge(_vault, newShares);
+        IYearnStakingDelegate(YEARN_STAKING_DELEGATE).depositToGauge(_vault, newShares);
     }
 
     function _redeemVaultSharesFromYSD(uint256 shares) internal virtual returns (uint256 amount) {
         // Cache vault address
-        address _vault = vault;
+        address _vault = VAULT;
         // Update totalUnderlyingVaultShares
         totalUnderlyingVaultShares -= shares;
         // Withdraw _shares from gauge via YSD
-        IYearnStakingDelegate(yearnStakingDelegate).withdrawFromGauge(_vault, shares);
+        IYearnStakingDelegate(YEARN_STAKING_DELEGATE).withdrawFromGauge(_vault, shares);
         // Withdraw _amount from vault
         amount = IVault(_vault).redeem(shares, address(this), address(this));
     }
