@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.20;
+pragma solidity 0.8.18;
 
-import { Governance } from "../../tokenized-strategy-periphery/utils/Governance.sol";
+import {Governance} from "@periphery/utils/Governance.sol";
 
 interface IFactory {
-    function api_version() external view returns (string memory);
+    function apiVersion() external view returns (string memory);
 }
 
 /**
@@ -15,7 +15,11 @@ interface IFactory {
  *  releases of the V3 vaults by API Version.
  */
 contract ReleaseRegistry is Governance {
-    event NewRelease(uint256 indexed releaseId, address indexed factory, string apiVersion);
+    event NewRelease(
+        uint256 indexed releaseId,
+        address indexed factory,
+        string apiVersion
+    );
 
     string public constant name = "Yearn V3 Release Registry";
 
@@ -30,7 +34,7 @@ contract ReleaseRegistry is Governance {
     // place in the order it was released.
     mapping(string => uint256) public releaseTargets;
 
-    constructor(address _governance) Governance(_governance) { }
+    constructor(address _governance) Governance(_governance) {}
 
     /**
      * @notice Returns the latest factory.
@@ -47,13 +51,13 @@ contract ReleaseRegistry is Governance {
      * @return The api version of the latest release.
      */
     function latestRelease() external view returns (string memory) {
-        return IFactory(factories[numReleases - 1]).api_version(); // dev: no release
+        return IFactory(factories[numReleases - 1]).apiVersion(); // dev: no release
     }
 
     /**
      * @notice Issue a new release using a deployed factory.
      * @dev Stores the factory address in `factories` and the release
-     * target in `releaseTargests` with its associated API version.
+     * target in `releaseTargets` with its associated API version.
      *
      *   Throws if caller isn't `governance`.
      *   Throws if the api version is the same as the previous release.
@@ -65,12 +69,14 @@ contract ReleaseRegistry is Governance {
         // Check if the release is different from the current one
         uint256 releaseId = numReleases;
 
-        string memory apiVersion = IFactory(_factory).api_version();
+        string memory apiVersion = IFactory(_factory).apiVersion();
 
         if (releaseId > 0) {
-            // Make sure this isnt the same as the last one
+            // Make sure this isn't the same as the last one
             require(
-                keccak256(bytes(IFactory(factories[releaseId - 1]).api_version())) != keccak256(bytes(apiVersion)),
+                keccak256(
+                    bytes(IFactory(factories[releaseId - 1]).apiVersion())
+                ) != keccak256(bytes(apiVersion)),
                 "ReleaseRegistry: same api version"
             );
         }

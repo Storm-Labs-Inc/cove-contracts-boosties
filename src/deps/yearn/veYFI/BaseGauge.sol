@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
+pragma solidity 0.8.15;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "src/interfaces/deps/yearn/veYFI/IBaseGauge.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./interfaces/IBaseGauge.sol";
 
 abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
-    // solhint-disable-next-line var-name-mixedcase
     IERC20 public immutable REWARD_TOKEN;
     //// @notice rewards are distributed over `duration` seconds when queued.
     uint256 public duration;
@@ -17,9 +15,9 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
     /**
-     * @notice that are queued to be distributed on a `queueNewRewards` call
-     * @dev rewards are queued when an account `_updateReward`.
-     */
+    @notice that are queued to be distributed on a `queueNewRewards` call
+    @dev rewards are queued when an account `_updateReward`.
+    */
     uint256 public queuedRewards;
     uint256 public currentRewards;
     uint256 public historicalRewards;
@@ -47,7 +45,11 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
     );
     event Sweep(address indexed token, uint256 amount);
 
-    event DurationUpdated(uint256 duration, uint256 rewardRate, uint256 periodFinish);
+    event DurationUpdated(
+        uint256 duration,
+        uint256 rewardRate,
+        uint256 periodFinish
+    );
 
     function _newEarning(address) internal view virtual returns (uint256);
 
@@ -61,7 +63,10 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
     }
 
     constructor(address _rewardsToken) {
-        require(address(_rewardsToken) != address(0x0), "rewardsToken 0x0 address");
+        require(
+            address(_rewardsToken) != address(0x0),
+            "rewardsToken 0x0 address"
+        );
         REWARD_TOKEN = IERC20(_rewardsToken);
     }
 
@@ -72,10 +77,12 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
     }
 
     /**
-     * @notice set the duration of the reward distribution.
-     * @param _newDuration duration in seconds.
+    @notice set the duration of the reward distribution.
+    @param _newDuration duration in seconds. 
      */
-    function setDuration(uint256 _newDuration) external onlyOwner updateReward(address(0)) {
+    function setDuration(
+        uint256 _newDuration
+    ) external onlyOwner updateReward(address(0)) {
         require(_newDuration != 0, "duration should be greater than zero");
         if (block.timestamp < periodFinish) {
             uint256 remaining = periodFinish - block.timestamp;
@@ -94,8 +101,7 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
         return Math.min(block.timestamp, periodFinish);
     }
 
-    /**
-     * @notice reward per token deposited
+    /** @notice reward per token deposited
      *  @dev gives the total amount of rewards distributed since the inception of the pool.
      *  @return rewardPerToken
      */
@@ -103,12 +109,13 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
         return _rewardPerToken();
     }
 
-    function _protectedTokens(address _token) internal view virtual returns (bool) {
+    function _protectedTokens(
+        address _token
+    ) internal view virtual returns (bool) {
         return _token == address(REWARD_TOKEN);
     }
 
-    /**
-     * @notice sweep tokens that are airdropped/transferred into the gauge.
+    /** @notice sweep tokens that are airdropped/transferred into the gauge.
      *  @dev sweep can only be done on non-protected tokens.
      *  @return _token to sweep
      */
@@ -121,8 +128,7 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
         return true;
     }
 
-    /**
-     * @notice earnings for an account
+    /** @notice earnings for an account
      *  @dev earnings are based on lock duration and boost
      *  @return amount of tokens earned
      */
@@ -139,7 +145,12 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
      */
     function queueNewRewards(uint256 _amount) external override returns (bool) {
         require(_amount != 0, "==0");
-        SafeERC20.safeTransferFrom(IERC20(REWARD_TOKEN), msg.sender, address(this), _amount);
+        SafeERC20.safeTransferFrom(
+            IERC20(REWARD_TOKEN),
+            msg.sender,
+            address(this),
+            _amount
+        );
         emit RewardsQueued(msg.sender, _amount);
         _amount = _amount + queuedRewards;
 
@@ -148,7 +159,8 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
             queuedRewards = 0;
             return true;
         }
-        uint256 elapsedSinceBeginingOfPeriod = block.timestamp - (periodFinish - duration);
+        uint256 elapsedSinceBeginingOfPeriod = block.timestamp -
+            (periodFinish - duration);
         uint256 distributedSoFar = elapsedSinceBeginingOfPeriod * rewardRate;
         // we only restart a new period if _amount is 120% of distributedSoFar.
 
@@ -161,7 +173,9 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
         return true;
     }
 
-    function _notifyRewardAmount(uint256 _reward) internal updateReward(address(0)) {
+    function _notifyRewardAmount(
+        uint256 _reward
+    ) internal updateReward(address(0)) {
         historicalRewards = historicalRewards + _reward;
 
         if (block.timestamp >= periodFinish) {
@@ -175,6 +189,12 @@ abstract contract BaseGauge is IBaseGauge, OwnableUpgradeable {
         currentRewards = _reward;
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp + duration;
-        emit RewardsAdded(currentRewards, lastUpdateTime, periodFinish, rewardRate, historicalRewards);
+        emit RewardsAdded(
+            currentRewards,
+            lastUpdateTime,
+            periodFinish,
+            rewardRate,
+            historicalRewards
+        );
     }
 }

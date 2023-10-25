@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
 
-import "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
-import "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
+pragma solidity 0.8.15;
+import "./interfaces/IVotingYFI.sol";
+import "./interfaces/IGaugeFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-/**
- * @title Voter
- *     @notice veYFI holders will vote for gauge allocation to vault tokens.
+/** @title Voter
+    @notice veYFI holders will vote for gauge allocation to vault tokens.
  */
 
-contract VeRegistry is Ownable {
+contract Registry is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
-
     address public veToken; // the ve token that governs these contracts
     address public immutable yfi; // reward token
     address public immutable veYfiRewardPool;
@@ -28,11 +26,19 @@ contract VeRegistry is Ownable {
     event VaultRemoved(address indexed vault);
     event UpdatedVeToken(address indexed ve);
 
-    constructor(address _ve, address _yfi, address _gaugefactory, address _veYfiRewardPool) Ownable(msg.sender) {
+    constructor(
+        address _ve,
+        address _yfi,
+        address _gaugefactory,
+        address _veYfiRewardPool
+    ) {
         require(_ve != address(0x0), "_ve 0x0 address");
         require(_yfi != address(0x0), "_yfi 0x0 address");
         require(_gaugefactory != address(0x0), "_gaugefactory 0x0 address");
-        require(_veYfiRewardPool != address(0x0), "_veYfiRewardPool 0x0 address");
+        require(
+            _veYfiRewardPool != address(0x0),
+            "_veYfiRewardPool 0x0 address"
+        );
 
         veToken = _ve;
         yfi = _yfi;
@@ -41,30 +47,36 @@ contract VeRegistry is Ownable {
     }
 
     /**
-     * @notice Set the veYFI token address.
-     * @param _veToken the new address of the veYFI token
-     */
+    @notice Set the veYFI token address.
+    @param _veToken the new address of the veYFI token
+    */
     function setVe(address _veToken) external onlyOwner {
         veToken = _veToken;
         emit UpdatedVeToken(_veToken);
     }
 
-    /**
-     * @return address[] list of vaults with gauge that are possible to vote for.
-     */
+    /** 
+    @return address[] list of vaults with gauge that are possible to vote for.
+    */
     function getVaults() external view returns (address[] memory) {
         return _vaults.values();
     }
 
-    /**
-     * @notice Add a vault to the list of vaults that receives rewards.
-     * @param _vault vault address
-     * @param _owner owner.
-     */
-    function addVaultToRewards(address _vault, address _owner) external onlyOwner returns (address) {
+    /** 
+    @notice Add a vault to the list of vaults that receives rewards.
+    @param _vault vault address
+    @param _owner owner.
+    */
+    function addVaultToRewards(
+        address _vault,
+        address _owner
+    ) external onlyOwner returns (address) {
         require(gauges[_vault] == address(0x0), "exist");
 
-        address _gauge = IGaugeFactory(gaugefactory).createGauge(_vault, _owner);
+        address _gauge = IGaugeFactory(gaugefactory).createGauge(
+            _vault,
+            _owner
+        );
         gauges[_vault] = _gauge;
         vaultForGauge[_gauge] = _vault;
         isGauge[_gauge] = true;
@@ -73,10 +85,10 @@ contract VeRegistry is Ownable {
         return _gauge;
     }
 
-    /**
-     * @notice Remove a vault from the list of vaults receiving rewards.
-     * @param _vault vault address
-     */
+    /** 
+    @notice Remove a vault from the list of vaults receiving rewards.
+    @param _vault vault address
+    */
     function removeVaultFromRewards(address _vault) external onlyOwner {
         address gauge = gauges[_vault];
         require(gauge != address(0x0), "!exist");
