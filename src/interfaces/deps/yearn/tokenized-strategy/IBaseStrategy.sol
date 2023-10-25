@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.20;
+pragma solidity 0.8.18;
 
-interface IBaseTokenizedStrategy {
+interface IBaseStrategy {
+    function tokenizedStrategyAddress() external view returns (address);
+
     /*//////////////////////////////////////////////////////////////
                             IMMUTABLE FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function asset() external view returns (address);
+    function availableDepositLimit(
+        address _owner
+    ) external view returns (uint256);
 
-    function availableDepositLimit(address _owner) external view returns (uint256);
-
-    function availableWithdrawLimit(address _owner) external view returns (uint256);
+    function availableWithdrawLimit(
+        address _owner
+    ) external view returns (uint256);
 
     function deployFunds(uint256 _assets) external;
 
@@ -22,5 +26,5 @@ interface IBaseTokenizedStrategy {
 
     function shutdownWithdraw(uint256 _amount) external;
 
-    function tendTrigger() external view returns (bool);
+    function tendTrigger() external view returns (bool, bytes memory);
 }
