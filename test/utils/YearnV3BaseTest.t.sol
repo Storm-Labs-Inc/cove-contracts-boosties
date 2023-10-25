@@ -19,7 +19,7 @@ import { Registry } from "src/deps/yearn/vault-periphery/registry/Registry.sol";
 
 import { Gauge } from "src/deps/yearn/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/deps/yearn/veYFI/GaugeFactory.sol";
-import { OYfi } from "src/deps/yearn/veYFI/OYfi.sol";
+import { dYFI } from "src/deps/yearn/veYFI/dYFI.sol";
 import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 
 // Interfaces
@@ -110,14 +110,14 @@ contract YearnV3BaseTest is BaseTest {
 
     function _deployDYFI(address owner) internal returns (address) {
         vm.prank(owner);
-        address dYfiAddr = address(new OYfi());
+        address dYfiAddr = address(new dYFI());
         vm.label(dYfiAddr, "DYFI");
         return dYfiAddr;
     }
 
     function _deployDYFIRewardPool(address dYfi, uint256 startTime) internal returns (address) {
         address addr = vyperDeployer.deployContract(
-            "lib/veYFI/contracts/", "OYfiRewardPool", abi.encode(MAINNET_VE_YFI, dYfi, startTime)
+            "lib/veYFI/contracts/", "dYFIRewardPool", abi.encode(MAINNET_VE_YFI, dYfi, startTime)
         );
         vm.label(addr, "DYfiRewardPool");
         return addr;
@@ -470,7 +470,7 @@ contract YearnV3BaseTest is BaseTest {
 
     function endorseStrategy(address strategy) public {
         vm.prank(admin);
-        Registry(yearnRegistry).endorseStrategy(strategy);
+        Registry(yearnRegistry).endorseSingleStrategyVault(strategy);
     }
 
     function logStratInfo(address strategy) public view {
@@ -489,7 +489,7 @@ contract YearnV3BaseTest is BaseTest {
         console.log("****************************************");
         console.log(
             "current debt in strategy: ",
-            deployedVault.strategies(deployedStrategies["Wrapped YearnV3 Strategy"]).currentDebt
+            deployedVault.strategies(deployedStrategies["Wrapped YearnV3 Strategy"]).current_debt
         );
         console.log("vault USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(deployedVault)));
         console.log("vault total debt: ", deployedVault.totalDebt());

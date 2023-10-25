@@ -393,8 +393,12 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         // Check for the new veYfi balance
         IVotingYFI.LockedBalance memory lockedBalance = IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
+        // TODOO: fix cast
         assertApproxEqRel(
-            lockedBalance.amount, 1e18 + yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amount is incorrect"
+            uint256(int256(lockedBalance.amount)),
+            1e18 + yfiAmount,
+            0.001e18,
+            "swapDYfiToVeYfi failed: locked amount is incorrect"
         );
         assertApproxEqRel(
             lockedBalance.end,

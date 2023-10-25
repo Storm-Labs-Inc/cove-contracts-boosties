@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.20;
-import "./interfaces/IVotingYFI.sol";
-import "./interfaces/IGaugeFactory.sol";
+import "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
+import "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
     @notice veYFI holders will vote for gauge allocation to vault tokens.
  */
 
-contract Registry is Ownable {
+contract VeRegistry is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
     address public veToken; // the ve token that governs these contracts
     address public immutable yfi; // reward token
@@ -31,7 +31,7 @@ contract Registry is Ownable {
         address _yfi,
         address _gaugefactory,
         address _veYfiRewardPool
-    ) {
+    ) Ownable(msg.sender) {
         require(_ve != address(0x0), "_ve 0x0 address");
         require(_yfi != address(0x0), "_yfi 0x0 address");
         require(_gaugefactory != address(0x0), "_gaugefactory 0x0 address");

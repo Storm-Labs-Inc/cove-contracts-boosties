@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./interfaces/IExtraReward.sol";
+import "src/interfaces/deps/yearn/veYFI/IExtraReward.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./interfaces/IGauge.sol";
+import "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import "./BaseGauge.sol";
-import "./interfaces/IVotingYFI.sol";
-import "./interfaces/IDYfiRewardPool.sol";
+import "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
+import "src/interfaces/deps/yearn/veYFI/IDYfiRewardPool.sol";
 
 /** @title  Gauge stake vault token get YFI rewards
     @notice Deposit your vault token (one gauge per vault).
@@ -175,7 +175,8 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         address _from,
         address _to,
         uint256
-    ) internal override {
+        // TODO: add back override?
+    ) internal {
         if (_from != address(0)) {
             _updateReward(_from);
         }
@@ -188,7 +189,8 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         address _from,
         address _to,
         uint256
-    ) internal override {
+        // TODO: add back override?
+    ) internal {
         if (_from != address(0)) {
             _boostedBalances[_from] = _boostedBalanceOf(_from);
             emit BoostedBalanceUpdated(_from, _boostedBalances[_from]);

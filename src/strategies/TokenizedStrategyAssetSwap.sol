@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
+import { BaseStrategy } from "src/deps/yearn/tokenized-strategy/BaseStrategy.sol";
 import { StrategyAssetSwap, CurveRouterSwapper } from "src/strategies/StrategyAssetSwap.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -9,7 +9,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
-contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy {
+contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseStrategy {
     // Libraries
     using SafeERC20 for IERC20;
 
@@ -28,7 +28,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         bool _usesOracle
     )
         // TODO: change this to CurveRouterSwapper constructor
-        BaseTokenizedStrategy(_asset, "Tokenized Asset Swap Strategy")
+        BaseStrategy(_asset, "Tokenized Asset Swap Strategy")
         CurveRouterSwapper(_curveRouter)
     {
         // Checks
@@ -74,11 +74,11 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         external
         onlyManagement
     {
-        _setSwapParameters(asset, _VAULT_ASSET, deploySwapParams, freeSwapParams, _swapTolerance);
+        _setSwapParameters(address(asset), _VAULT_ASSET, deploySwapParams, freeSwapParams, _swapTolerance);
     }
 
     function _deployFunds(uint256 _amount) internal override {
-        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_VAULT_ASSET, asset);
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_VAULT_ASSET, address(asset));
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
             strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), vaultAssetDecimals, _amount
@@ -105,7 +105,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         uint256 _withdrawnVaultAssetAmount =
             IERC4626(_VAULT).redeem(vaultSharesToWithdraw, address(this), address(this));
         console.log("redeem amount: ", _withdrawnVaultAssetAmount);
-        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_VAULT_ASSET, asset);
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_VAULT_ASSET, address(asset));
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of tokens to receive from the swap
         uint256 expectedAmount = _calculateExpectedAmount(
@@ -128,7 +128,7 @@ contract TokenizedStrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy 
         // Captures any changes in value in the underlying vault
         uint256 underlyingVaultAssets = IERC4626(_VAULT).convertToAssets(totalOwnedUnderlying4626Shares);
         // Swap this amount in valut asset to get strategy asset amount
-        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_VAULT_ASSET, asset);
+        (uint256 vaultAssetPrice, uint256 strategyAssetPrice) = _getPrices(_VAULT_ASSET, address(asset));
         /// @dev this always returns the worst possible exchange as it is used for the minimum amount to
         /// receive in the swap. TODO may be to change this behavior to have more accurate accounting
         return _calculateExpectedAmount(

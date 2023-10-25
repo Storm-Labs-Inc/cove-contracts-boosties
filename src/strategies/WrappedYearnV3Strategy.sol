@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.20;
 
-import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
+import { BaseStrategy } from "src/deps/yearn/tokenized-strategy/BaseStrategy.sol";
 import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { Errors } from "../libraries/Errors.sol";
@@ -10,7 +10,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { WrappedYearnV3 } from "./WrappedYearnV3.sol";
 
-contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper, WrappedYearnV3 {
+contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYearnV3 {
     // Libraries
     using SafeERC20 for IERC20;
 
@@ -21,7 +21,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper, Wr
         address _dYFI,
         address _curveRouter
     )
-        BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Strategy")
+        BaseStrategy(_asset, "Wrapped YearnV3 Strategy")
         CurveRouterSwapper(_curveRouter)
         WrappedYearnV3(_vault, _yearnStakingDelegate, _dYFI)
     {
@@ -38,7 +38,7 @@ contract WrappedYearnV3Strategy is BaseTokenizedStrategy, CurveRouterSwapper, Wr
     }
 
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external onlyManagement {
-        _setHarvestSwapParams(asset, curveSwapParams);
+        _setHarvestSwapParams(address(asset), curveSwapParams);
     }
 
     function _deployFunds(uint256 _amount) internal virtual override {

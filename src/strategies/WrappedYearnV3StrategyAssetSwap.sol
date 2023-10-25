@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.20;
 
-import { BaseTokenizedStrategy } from "src/deps/yearn/tokenized-strategy/BaseTokenizedStrategy.sol";
+import { BaseStrategy } from "src/deps/yearn/tokenized-strategy/BaseStrategy.sol";
 import { StrategyAssetSwap, CurveRouterSwapper } from "src/strategies/StrategyAssetSwap.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -12,7 +12,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { console2 as console } from "forge-std/console2.sol";
 import { WrappedYearnV3 } from "./WrappedYearnV3.sol";
 
-contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStrategy, WrappedYearnV3 {
+contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseStrategy, WrappedYearnV3 {
     // Libraries
     using SafeERC20 for IERC20;
 
@@ -28,7 +28,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         address _curveRouter,
         bool _usesOracle
     )
-        BaseTokenizedStrategy(_asset, "Wrapped YearnV3 Asset Swap Strategy")
+        BaseStrategy(_asset, "Wrapped YearnV3 Asset Swap Strategy")
         CurveRouterSwapper(_curveRouter)
         WrappedYearnV3(_vault, _yearnStakingDelegate, _dYFI)
     {
@@ -80,7 +80,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
     function _deployFunds(uint256 _amount) internal override {
         // Get prices of strategy asset and vault asset
         // @dev this will be 1,1 if not using an oracle
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, _VAULT_ASSET);
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(address(asset), _VAULT_ASSET);
         // Expected amount of tokens to receive from the swap using oracles or fixed price
         uint256 expectedAmount = _calculateExpectedAmount(
             strategyAssetPrice, vaultAssetPrice, TokenizedStrategy.decimals(), _VAULT_ASSET_DECIMALS, _amount
@@ -104,7 +104,7 @@ contract WrappedYearnV3StrategyAssetSwap is StrategyAssetSwap, BaseTokenizedStra
         uint256 withdrawnVaultAssetAmount = _redeemVaultSharesFromYSD(vaultSharesToWithdraw);
         console.log("redeem amount: ", withdrawnVaultAssetAmount);
         // Get prices of strategy asset and vault asset
-        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(asset, _VAULT_ASSET);
+        (uint256 strategyAssetPrice, uint256 vaultAssetPrice) = _getPrices(address(asset), _VAULT_ASSET);
         console.log("strategyAssetPrice: ", strategyAssetPrice, "vaultAssetPrice: ", vaultAssetPrice);
         // Expected amount of asset to receive from the swap using oracles or fixed price
         uint256 expectedAmount = _calculateExpectedAmount(

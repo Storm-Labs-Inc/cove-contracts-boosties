@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.20;
 import "./IBaseGauge.sol";
-import "./IERC4626.sol";
+import { IERC4626 } from "src/interfaces/deps/yearn/veYFI/IERC4626.sol";
 
 interface IGauge is IBaseGauge, IERC4626 {
     function initialize(address _stakingToken, address _owner) external;

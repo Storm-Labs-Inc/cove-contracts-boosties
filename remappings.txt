@@ -1,5 +1,6 @@
-@openzeppelin/=lib/openzeppelin-contracts/
 @openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@openzeppelin/=lib/openzeppelin-contracts/
 forge-std/=lib/forge-std/src/
 tokenized-strategy-periphery/=lib/tokenized-strategy-periphery/src/
 tokenized-strategy/=lib/tokenized-strategy/src/

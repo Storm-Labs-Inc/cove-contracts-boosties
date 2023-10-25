@@ -3,10 +3,10 @@ pragma solidity ^0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import {Governance} from "@periphery/utils/Governance.sol";
+import { Governance } from "src/deps/yearn/tokenized-strategy-periphery/utils/Governance.sol";
 
-import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
-import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
+import {IVault} from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
+import {IVaultFactory} from "src/interfaces/deps/yearn/yearn-vaults-v3/IVaultFactory.sol";
 import {ReleaseRegistry} from "./ReleaseRegistry.sol";
 
 /**

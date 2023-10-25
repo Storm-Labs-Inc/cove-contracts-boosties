@@ -192,12 +192,13 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         dYfiToSwapAndLock = 0;
         // Interactions
         uint256 yfiAmount = _swap(_routerParam, dYfiAmount, 0, address(this));
-        uint256 totalYfiLocked = _lockYfi(yfiAmount).amount;
+        uint256 totalYfiLocked = uint256(int256(_lockYfi(yfiAmount).amount));
         emit SwapAndLock(dYfiAmount, yfiAmount, totalYfiLocked);
     }
 
     function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory) {
-        return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
+        IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
+        return IVotingYFI(_VE_YFI).locked(address(this));
     }
 
     // Transfer amount of YFI from msg.sender and locks

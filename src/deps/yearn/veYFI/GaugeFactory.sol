@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./interfaces/IGauge.sol";
-import "./interfaces/IExtraReward.sol";
-import "./interfaces/IGaugeFactory.sol";
+import "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import "src/interfaces/deps/yearn/veYFI/IExtraReward.sol";
+import "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 
 /** @title  GaugeFactory
     @notice Creates Gauge and ExtraReward
