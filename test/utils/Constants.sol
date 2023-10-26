@@ -48,19 +48,6 @@ contract Constants is CommonBase {
     /// @dev pool type 1, [FRAX, USDC]
     address public constant MAINNET_FRAX_USDC_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
 
-    struct Users {
-        // Default admin for all contracts.
-        address payable admin;
-        // Impartial user.
-        address payable alice;
-        // Malicious user.
-        address payable attacker;
-        // Default recipient.
-        address payable recipient;
-        // Default sender.
-        address payable sender;
-    }
-
     function _labelEthereumAddresses() internal {
         // Tokens
         vm.label(MAINNET_DAI, "DAI");
@@ -78,6 +65,8 @@ contract Constants is CommonBase {
         vm.label(MAINNET_VAULT_FACTORY, "VAULT_FACTORY");
         vm.label(MAINNET_YFI_REWARD_POOL, "YFI_REWARD_POOL");
         vm.label(MAINNET_DYFI_REWARD_POOL, "DYFI_REWARD_POOL");
+        vm.label(MAINNET_DYFI_GAUGE_IMPLEMENTATION, "DYFI_GAUGE_IMPLEMENTATION");
+        vm.label(MAINNET_VAULT_BLUEPRINT, "VAULT_BLUEPRINT");
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.18;
 
 import "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import "src/interfaces/deps/yearn/veYFI/IExtraReward.sol";
 import "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 
 /**
