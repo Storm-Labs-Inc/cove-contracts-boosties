@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";

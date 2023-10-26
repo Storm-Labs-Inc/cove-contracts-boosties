@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
-import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import { IExtraReward } from "src/interfaces/deps/yearn/veYFI/IExtraReward.sol";
-import { IGaugeFactory } from "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
+import "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import "src/interfaces/deps/yearn/veYFI/IExtraReward.sol";
+import "src/interfaces/deps/yearn/veYFI/IGaugeFactory.sol";
 
 /**
  * @title  GaugeFactory
@@ -36,7 +36,6 @@ contract GaugeFactory is IGaugeFactory {
 
     function _clone(address _source) internal returns (address result) {
         bytes20 targetBytes = bytes20(_source);
-        // solhint-disable-next-line no-inline-assembly
         assembly {
             let clone := mload(0x40)
             mstore(clone, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000)
