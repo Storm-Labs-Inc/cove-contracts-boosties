@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
-import { IVault } from "@yearn-vaults-v3/contracts/interfaces/IVault.sol";
+import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";

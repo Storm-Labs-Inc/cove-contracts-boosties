@@ -3,7 +3,7 @@
 pragma solidity ^0.8.18;
 
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
-import { IVault } from "@yearn-vaults-v3/contracts/interfaces/IVault.sol";
+import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { Errors } from "../libraries/Errors.sol";
 

@@ -13,9 +13,9 @@ import { TokenizedStrategyAssetSwap } from "src/strategies/TokenizedStrategyAsse
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
-import { ReleaseRegistry } from "@vault-periphery/registry/ReleaseRegistry.sol";
-import { RegistryFactory } from "@vault-periphery/registry/RegistryFactory.sol";
-import { Registry } from "@vault-periphery/registry/Registry.sol";
+import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
+import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
+import { Registry } from "vault-periphery/registry/Registry.sol";
 
 import { Gauge } from "src/deps/yearn/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/deps/yearn/veYFI/GaugeFactory.sol";
@@ -23,7 +23,7 @@ import { dYFI } from "src/deps/yearn/veYFI/dYFI.sol";
 import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 
 // Interfaces
-import { IVault } from "@yearn-vaults-v3/contracts/interfaces/IVault.sol";
+import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
@@ -173,9 +173,9 @@ contract YearnV3BaseTest is BaseTest {
         yearnRegistryFactory = _deployYearnRegistryFactory(admin, yearnReleaseRegistry);
         yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", admin);
 
-        address blueprint = vyperDeployer.deployBlueprint("lib/yearn-vaults-v3/contracts/", "VaultV3");
+        address blueprint = vyperDeployer.deployBlueprint("lib/yearn-vaults-v3/", "VaultV3");
         bytes memory args = abi.encode("Vault V3 Factory 3.0.0", blueprint, admin);
-        address factory = vyperDeployer.deployContract("lib/yearn-vaults-v3/contracts/", "VaultFactory", args);
+        address factory = vyperDeployer.deployContract("lib/yearn-vaults-v3/", "VaultFactory", args);
 
         vm.prank(admin);
         ReleaseRegistry(yearnReleaseRegistry).newRelease(factory);

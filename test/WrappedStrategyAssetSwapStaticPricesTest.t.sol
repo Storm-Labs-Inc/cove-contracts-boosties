@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
-import { IVault } from "@yearn-vaults-v3/contracts/interfaces/IVault.sol";
+import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
