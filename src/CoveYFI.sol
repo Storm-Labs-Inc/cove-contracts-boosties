@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -24,7 +24,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     )
         ERC20("Cove YFI", "coveYFI")
         ERC20Permit("Cove YFI")
-        Ownable(msg.sender)
+        Ownable()
     {
         // Checks
         // Check for zero addresses
@@ -42,12 +42,12 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         IERC20(_yfi).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
-    function _update(address from, address to, uint256 value) internal virtual override {
+    function _beforeTokenTransfer(address from, address to, uint256 value) internal virtual override {
         // Only allow minting by allowing transfers from the 0x0 address
         if (paused() && from != address(0x0)) {
             revert Errors.OnlyMintingEnabled();
         }
-        super._update(from, to, value);
+        super._beforeTokenTransfer(from, to, value);
     }
 
     function deposit(uint256 balance) public {

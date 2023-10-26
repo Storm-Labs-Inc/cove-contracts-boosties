@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
 interface ICurveBasePool {
     function get_dy(int128 i, int128 j, uint256 dx) external view returns (uint256 dy);
