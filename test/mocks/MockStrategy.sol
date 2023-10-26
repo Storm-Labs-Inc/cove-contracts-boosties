@@ -19,7 +19,6 @@ contract MockStrategy is BaseStrategy {
     }
 
     function tendTrigger() external view virtual override returns (bool, bytes memory) {
-        // TODO: what's the correct return value for the bytes memory
         return (tendStatus, new bytes(0));
     }
 
