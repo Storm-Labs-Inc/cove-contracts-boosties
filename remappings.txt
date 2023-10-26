@@ -1,12 +1,11 @@
-@openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/
-@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/
 @openzeppelin/=lib/openzeppelin-contracts/
 forge-std/=lib/forge-std/src/
-tokenized-strategy-periphery/=lib/tokenized-strategy-periphery/src/
-tokenized-strategy/=lib/tokenized-strategy/src/
-vault-periphery/=lib/vault-periphery/contracts
+@tokenized-strategy/=lib/tokenized-strategy/src/
+@tokenized-strategy-periphery/=lib/tokenized-strategy-periphery/src/
+@vault-periphery/=lib/vault-periphery/contracts
 veYFI/=lib/veYFI/contracts/
-yearn-vaults-v3/=lib/yearn-vaults-v3/contracts/
+@yearn-vaults-v3/=lib/yearn-vaults-v3/contracts/
 forge-deploy/=node_modules/forge-deploy/contracts/
 script/=script/
 src/=src/

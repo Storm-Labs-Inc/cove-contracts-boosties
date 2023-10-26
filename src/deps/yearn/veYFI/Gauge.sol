@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
 import "src/interfaces/deps/yearn/veYFI/IExtraReward.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "src/interfaces/deps/yearn/veYFI/IGauge.sol";
@@ -12,10 +12,11 @@ import "./BaseGauge.sol";
 import "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
 import "src/interfaces/deps/yearn/veYFI/IDYfiRewardPool.sol";
 
-/** @title  Gauge stake vault token get YFI rewards
-    @notice Deposit your vault token (one gauge per vault).
-    YFI are paid based on the number of vault tokens, the veYFI balance, and the duration of the lock.
-    @dev this contract is used behind multiple delegate proxies.
+/**
+ * @title  Gauge stake vault token get YFI rewards
+ *     @notice Deposit your vault token (one gauge per vault).
+ *     YFI are paid based on the number of vault tokens, the veYFI balance, and the duration of the lock.
+ *     @dev this contract is used behind multiple delegate proxies.
  */
 
 contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
@@ -53,11 +54,7 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
 
     event RecipientUpdated(address indexed account, address indexed recipient);
 
-    constructor(
-        address _veYfi,
-        address _dYfi,
-        address _veYfiDYfiPool
-    ) BaseGauge(_dYfi) {
+    constructor(address _veYfi, address _dYfi, address _veYfiDYfiPool) BaseGauge(_dYfi) {
         require(_veYfi != address(0x0), "_asset 0x0 address");
         require(_veYfiDYfiPool != address(0x0), "_asset 0x0 address");
 
@@ -65,7 +62,8 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         VE_YFI_POOL = _veYfiDYfiPool;
     }
 
-    /** @notice initialize the contract
+    /**
+     * @notice initialize the contract
      *  @dev Initialize called after contract is cloned.
      *  @param _asset The vault token to stake
      *  @param _owner owner address
@@ -80,64 +78,68 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         emit Initialize(_asset, _owner);
     }
 
-    /** @return total of the staked vault token
+    /**
+     * @return total of the staked vault token
      */
     function totalAssets() public view returns (uint256) {
         return totalSupply();
     }
 
     /**
-        The amount of shares that the Vault would exchange for the amount of assets provided.
-    */
+     * The amount of shares that the Vault would exchange for the amount of assets provided.
+     */
     function convertToShares(uint256 _assets) public view returns (uint256) {
         return _assets;
     }
 
     /**
-        The amount of assets that the Vault would exchange for the amount of shares provided.
-    */
+     * The amount of assets that the Vault would exchange for the amount of shares provided.
+     */
     function convertToAssets(uint256 _shares) public view returns (uint256) {
         return _shares;
     }
 
     /**
-    Maximum amount of the underlying asset that can be deposited into the Vault for the receiver, through a deposit call.
-    */
+     * Maximum amount of the underlying asset that can be deposited into the Vault for the receiver, through a deposit
+     * call.
+     */
     function maxDeposit(address) public view returns (uint256) {
         return type(uint256).max;
     }
 
     /**
-    Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block, given current on-chain conditions.
-    */
+     * Allows an on-chain or off-chain user to simulate the effects of their deposit at the current block, given current
+     * on-chain conditions.
+     */
     function previewDeposit(uint256 _assets) public view returns (uint256) {
         return _assets;
     }
 
     /**
-    Maximum amount of shares that can be minted from the Vault for the receiver, through a mint call.
-    */
+     * Maximum amount of shares that can be minted from the Vault for the receiver, through a mint call.
+     */
     function maxMint(address) public view returns (uint256) {
         return type(uint256).max;
     }
 
     /**
-    Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given current on-chain conditions.
-    */
+     * Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given current
+     * on-chain conditions.
+     */
     function previewMint(uint256 _shares) public view returns (uint256) {
         return _shares;
     }
 
-    /** @param _account to look balance for
+    /**
+     * @param _account to look balance for
      *  @return amount of staked token for an account
      */
-    function boostedBalanceOf(
-        address _account
-    ) external view returns (uint256) {
+    function boostedBalanceOf(address _account) external view returns (uint256) {
         return _boostedBalances[_account];
     }
 
-    /** @notice
+    /**
+     * @notice
      *   Performs a snapshot of the account's accrued rewards since the previous update.
      *  @dev
      *   The snapshot made by this function depends on:
@@ -162,11 +164,7 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
             }
             userRewardPerTokenPaid[_account] = rewardPerTokenStored;
             emit UpdatedRewards(
-                _account,
-                rewardPerTokenStored,
-                lastUpdateTime,
-                rewards[_account],
-                userRewardPerTokenPaid[_account]
+                _account, rewardPerTokenStored, lastUpdateTime, rewards[_account], userRewardPerTokenPaid[_account]
             );
         }
     }
@@ -175,8 +173,10 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         address _from,
         address _to,
         uint256
+    )
         // TODO: add back override?
-    ) internal {
+        internal
+    {
         if (_from != address(0)) {
             _updateReward(_from);
         }
@@ -189,8 +189,10 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         address _from,
         address _to,
         uint256
+    )
         // TODO: add back override?
-    ) internal {
+        internal
+    {
         if (_from != address(0)) {
             _boostedBalances[_from] = _boostedBalanceOf(_from);
             emit BoostedBalanceUpdated(_from, _boostedBalances[_from]);
@@ -205,52 +207,43 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         if (totalAssets() == 0) {
             return rewardPerTokenStored;
         }
-        return
-            rewardPerTokenStored +
-            (((lastTimeRewardApplicable() - lastUpdateTime) *
-                rewardRate *
-                PRECISION_FACTOR) / totalAssets());
+        return rewardPerTokenStored
+            + (((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * PRECISION_FACTOR) / totalAssets());
     }
 
-    /** @notice The total undistributed earnings for an account.
+    /**
+     * @notice The total undistributed earnings for an account.
      *  @dev Earnings are based on lock duration and boost
      *  @return
      *   Amount of tokens the account has earned that have yet to be distributed.
      */
-    function earned(
-        address _account
-    ) external view override(BaseGauge, IBaseGauge) returns (uint256) {
+    function earned(address _account) external view override(BaseGauge, IBaseGauge) returns (uint256) {
         uint256 newEarning = _newEarning(_account);
 
         return newEarning + rewards[_account];
     }
 
-    /** @notice Calculates an account's earnings based on their boostedBalance.
+    /**
+     * @notice Calculates an account's earnings based on their boostedBalance.
      *   This function only reflects the accounts earnings since the last time
      *   the account's rewards were calculated via _updateReward.
      */
-    function _newEarning(
-        address _account
-    ) internal view override returns (uint256) {
-        return
-            (_boostedBalances[_account] *
-                (_rewardPerToken() - userRewardPerTokenPaid[_account])) /
-            PRECISION_FACTOR;
+    function _newEarning(address _account) internal view override returns (uint256) {
+        return (_boostedBalances[_account] * (_rewardPerToken() - userRewardPerTokenPaid[_account])) / PRECISION_FACTOR;
     }
 
-    /** @notice Calculates an account's potential maximum earnings based on
+    /**
+     * @notice Calculates an account's potential maximum earnings based on
      *   a maximum boost.
      *   This function only reflects the accounts earnings since the last time
      *   the account's rewards were calculated via _updateReward.
      */
     function _maxEarning(address _account) internal view returns (uint256) {
-        return
-            (balanceOf(_account) *
-                (_rewardPerToken() - userRewardPerTokenPaid[_account])) /
-            PRECISION_FACTOR;
+        return (balanceOf(_account) * (_rewardPerToken() - userRewardPerTokenPaid[_account])) / PRECISION_FACTOR;
     }
 
-    /** @notice
+    /**
+     * @notice
      *   Calculates the boosted balance of based on veYFI balance.
      *  @dev
      *   This function expects this._totalAssets to be up to date.
@@ -258,13 +251,12 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
      *   The account's boosted balance. Always lower than or equal to the
      *   account's real balance.
      */
-    function nextBoostedBalanceOf(
-        address _account
-    ) external view returns (uint256) {
+    function nextBoostedBalanceOf(address _account) external view returns (uint256) {
         return _boostedBalanceOf(_account);
     }
 
-    /** @notice
+    /**
+     * @notice
      *   Calculates the boosted balance of based on veYFI balance.
      *  @dev
      *    This function expects the account's _balances[_account].realBalance
@@ -274,13 +266,12 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
      *   The account's boosted balance. Always lower than or equal to the
      *   account's real balance.
      */
-    function _boostedBalanceOf(
-        address _account
-    ) internal view returns (uint256) {
+    function _boostedBalanceOf(address _account) internal view returns (uint256) {
         return _boostedBalanceOf(_account, balanceOf(_account));
     }
 
-    /** @notice
+    /**
+     * @notice
      *   Calculates the boosted balance of an account based on its gauge stake
      *   proportion & veYFI lock proportion.
      *  @dev This function expects this._totalAssets to be up to date.
@@ -290,41 +281,38 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
      *   The account's boosted balance. Always lower than or equal to the
      *   account's real balance.
      */
-    function _boostedBalanceOf(
-        address _account,
-        uint256 _realBalance
-    ) internal view returns (uint256) {
+    function _boostedBalanceOf(address _account, uint256 _realBalance) internal view returns (uint256) {
         uint256 veTotalSupply = IVotingYFI(VEYFI).totalSupply();
         if (veTotalSupply == 0) {
             return _realBalance;
         }
-        return
-            Math.min(
-                ((_realBalance * BOOSTING_FACTOR) +
-                    (((totalSupply() * IVotingYFI(VEYFI).balanceOf(_account)) /
-                        veTotalSupply) *
-                        (BOOST_DENOMINATOR - BOOSTING_FACTOR))) /
-                    BOOST_DENOMINATOR,
-                _realBalance
-            );
+        return Math.min(
+            (
+                (_realBalance * BOOSTING_FACTOR)
+                    + (
+                        ((totalSupply() * IVotingYFI(VEYFI).balanceOf(_account)) / veTotalSupply)
+                            * (BOOST_DENOMINATOR - BOOSTING_FACTOR)
+                    )
+            ) / BOOST_DENOMINATOR,
+            _realBalance
+        );
     }
 
-    /** @notice deposit vault tokens into the gauge
+    /**
+     * @notice deposit vault tokens into the gauge
      *  @dev a user without a veYFI should not lock.
      *  @dev will deposit the min between user balance and user approval
      *  @dev This call updates claimable rewards
      *  @return amount of assets deposited
      */
     function deposit() external returns (uint256) {
-        uint256 balance = Math.min(
-            asset.balanceOf(msg.sender),
-            asset.allowance(msg.sender, address(this))
-        );
+        uint256 balance = Math.min(asset.balanceOf(msg.sender), asset.allowance(msg.sender, address(this)));
         _deposit(balance, msg.sender);
         return balance;
     }
 
-    /** @notice deposit vault tokens into the gauge
+    /**
+     * @notice deposit vault tokens into the gauge
      *  @dev a user without a veYFI should not lock.
      *  @dev This call updates claimable rewards
      *  @param _assets of vault token
@@ -335,22 +323,21 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         return _assets;
     }
 
-    /** @notice deposit vault tokens into the gauge for a user
+    /**
+     * @notice deposit vault tokens into the gauge for a user
      *   @dev vault token is taken from msg.sender
      *   @dev This call update  `_for` claimable rewards
      *   @param _assets to deposit
      *   @param _receiver the account to deposit to
      *   @return true
      */
-    function deposit(
-        uint256 _assets,
-        address _receiver
-    ) external returns (uint256) {
+    function deposit(uint256 _assets, address _receiver) external returns (uint256) {
         _deposit(_assets, _receiver);
         return _assets;
     }
 
-    /** @notice deposit vault tokens into the gauge for a user
+    /**
+     * @notice deposit vault tokens into the gauge for a user
      *   @dev vault token is taken from msg.sender
      *   @dev This call update  `_for` claimable rewards
      *   @dev shares and
@@ -358,10 +345,7 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
      *   @param _receiver the account to deposit to
      *   @return amount of shares transfered
      */
-    function mint(
-        uint256 _shares,
-        address _receiver
-    ) external returns (uint256) {
+    function mint(uint256 _shares, address _receiver) external returns (uint256) {
         _deposit(_shares, _receiver);
         return _shares;
     }
@@ -379,8 +363,9 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
     }
 
     /**
-      Maximum amount of the underlying asset that can be withdrawn from the owner balance in the Vault, through a withdraw call.
-    */
+     * Maximum amount of the underlying asset that can be withdrawn from the owner balance in the Vault, through a
+     * withdraw call.
+     */
     function maxWithdraw(address _owner) external view returns (uint256) {
         return balanceOf(_owner);
     }
@@ -389,7 +374,8 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         return _assets;
     }
 
-    /** @notice Burns shares from owner and sends exactly assets of underlying tokens to receiver.
+    /**
+     * @notice Burns shares from owner and sends exactly assets of underlying tokens to receiver.
      *  @dev This call updates claimable rewards
      *  @param _assets amount to withdraw
      *  @param _receiver account that will recieve the shares
@@ -397,31 +383,24 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
      *  @param _claim claim veYFI and additional reward
      *  @return amount of shares withdrawn
      */
-    function withdraw(
-        uint256 _assets,
-        address _receiver,
-        address _owner,
-        bool _claim
-    ) external returns (uint256) {
+    function withdraw(uint256 _assets, address _receiver, address _owner, bool _claim) external returns (uint256) {
         return _withdraw(_assets, _receiver, _owner, _claim);
     }
 
-    /** @notice Burns shares from owner and sends exactly assets of underlying tokens to receiver.
+    /**
+     * @notice Burns shares from owner and sends exactly assets of underlying tokens to receiver.
      *  @dev This call updates claimable rewards
      *  @param _assets amount to withdraw
      *  @param _receiver account that will recieve the shares
      *  @param _owner shares will be taken from account
      *  @return amount of shares withdrawn
      */
-    function withdraw(
-        uint256 _assets,
-        address _receiver,
-        address _owner
-    ) external returns (uint256) {
+    function withdraw(uint256 _assets, address _receiver, address _owner) external returns (uint256) {
         return _withdraw(_assets, _receiver, _owner, false);
     }
 
-    /** @notice withdraw all vault tokens from gauge
+    /**
+     * @notice withdraw all vault tokens from gauge
      *   @dev This call updates claimable rewards
      *   @param _claim claim veYFI and additional reward
      *  @return amount of shares withdrawn
@@ -430,7 +409,8 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         return _withdraw(balanceOf(msg.sender), msg.sender, msg.sender, _claim);
     }
 
-    /** @notice withdraw all vault token from gauge
+    /**
+     * @notice withdraw all vault token from gauge
      *  @dev This call update claimable rewards
      *  @return amount of shares withdrawn
      */
@@ -438,12 +418,7 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         return _withdraw(balanceOf(msg.sender), msg.sender, msg.sender, false);
     }
 
-    function _withdraw(
-        uint256 _assets,
-        address _receiver,
-        address _owner,
-        bool _claim
-    ) internal returns (uint256) {
+    function _withdraw(uint256 _assets, address _receiver, address _owner, bool _claim) internal returns (uint256) {
         require(_assets != 0, "RewardPool : Cannot withdraw 0");
 
         if (msg.sender != _owner) {
@@ -470,18 +445,15 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         return _assets;
     }
 
-    /** @notice Burns shares from owner and sends exactly assets of underlying tokens to receiver.
+    /**
+     * @notice Burns shares from owner and sends exactly assets of underlying tokens to receiver.
      *  @dev This call updates claimable rewards
      *  @param _assets amount to withdraw
      *  @param _receiver account that will recieve the shares
      *  @param _owner shares will be taken from account
      *  @return amount of shares withdrawn
      */
-    function redeem(
-        uint256 _assets,
-        address _receiver,
-        address _owner
-    ) external override returns (uint256) {
+    function redeem(uint256 _assets, address _receiver, address _owner) external override returns (uint256) {
         return _withdraw(_assets, _receiver, _owner, true);
     }
 
@@ -502,15 +474,14 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
      * @param _account to claim rewards for
      * @return true
      */
-    function getReward(
-        address _account
-    ) external updateReward(_account) returns (bool) {
+    function getReward(address _account) external updateReward(_account) returns (bool) {
         _getReward(_account);
 
         return true;
     }
 
-    /** @notice Distributes the rewards for the specified account.
+    /**
+     * @notice Distributes the rewards for the specified account.
      *  @dev
      *   This function MUST NOT be called without the caller invoking
      *   updateReward(_account) first.
@@ -538,16 +509,14 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
         IDYfiRewardPool(VE_YFI_POOL).burn(_penalty);
     }
 
-    function _protectedTokens(
-        address _token
-    ) internal view override returns (bool) {
+    function _protectedTokens(address _token) internal view override returns (bool) {
         return _token == address(REWARD_TOKEN) || _token == address(asset);
     }
 
     /**
-    @notice Kick `addr` for abusing their boost
-    @param _accounts Addresses to kick
-    */
+     * @notice Kick `addr` for abusing their boost
+     * @param _accounts Addresses to kick
+     */
     function kick(address[] calldata _accounts) public {
         for (uint256 i = 0; i < _accounts.length; ++i) {
             _kick(_accounts[i]);
@@ -562,9 +531,9 @@ contract Gauge is BaseGauge, ERC20Upgradeable, IGauge {
     }
 
     /**
-    @notice Set the recipient of rewards for an account
-    @param _recipient Address to send rewards to
-    */
+     * @notice Set the recipient of rewards for an account
+     * @param _recipient Address to send rewards to
+     */
     function setRecipient(address _recipient) external {
         recipients[msg.sender] = _recipient;
         emit RecipientUpdated(msg.sender, _recipient);

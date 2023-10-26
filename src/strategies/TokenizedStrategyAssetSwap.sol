@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
-import { BaseStrategy } from "src/deps/yearn/tokenized-strategy/BaseStrategy.sol";
+import { BaseStrategy } from "@tokenized-strategy/BaseStrategy.sol";
 import { StrategyAssetSwap, CurveRouterSwapper } from "src/strategies/StrategyAssetSwap.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";

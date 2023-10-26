@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
-import {IERC20} from '@openzeppelin/contracts/interfaces/IERC20.sol';
+import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -15,12 +15,7 @@ interface IERC4626 is IERC20 {
      * @notice Event indicating that `caller` exchanged `assets` for `shares`, and transferred those `shares` to `owner`
      * @dev Emitted when tokens are deposited into the vault via {mint} and {deposit} methods
      */
-    event Deposit(
-        address indexed caller,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
-    );
+    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
     /**
      * @notice Event indicating that `caller` exchanged `shares`, owned by `owner`, for `assets`, and transferred those
@@ -28,11 +23,7 @@ interface IERC4626 is IERC20 {
      * @dev Emitted when shares are withdrawn from the vault via {redeem} or {withdraw} methods
      */
     event Withdraw(
-        address indexed caller,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
+        address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
 
     /**
@@ -58,7 +49,8 @@ interface IERC4626 is IERC20 {
 
     /**
      *
-     * @notice Returns the amount of shares that, in an ideal scenario, the vault would exchange for the amount of assets
+     * @notice Returns the amount of shares that, in an ideal scenario, the vault would exchange for the amount of
+     * assets
      * provided
      *
      * @param _assets Amount of assets to convert
@@ -77,9 +69,7 @@ interface IERC4626 is IERC20 {
      * This calculation MAY NOT reflect the “per-user” price-per-share, and instead should reflect the
      * “average-user’s” price-per-share, meaning what the average user should expect to see when exchanging to and from.
      */
-    function convertToShares(
-        uint256 _assets
-    ) external view returns (uint256 shares);
+    function convertToShares(uint256 _assets) external view returns (uint256 shares);
 
     /**
      *
@@ -101,13 +91,12 @@ interface IERC4626 is IERC20 {
      * This calculation MAY NOT reflect the “per-user” price-per-share, and instead should reflect the
      * “average-user’s” price-per-share, meaning what the average user should expect to see when exchanging to and from.
      */
-    function convertToAssets(
-        uint256 _shares
-    ) external view returns (uint256 assets);
+    function convertToAssets(uint256 _shares) external view returns (uint256 assets);
 
     /**
      *
-     * @notice Returns the maximum amount of the underlying asset that can be deposited into the vault for the `receiver`
+     * @notice Returns the maximum amount of the underlying asset that can be deposited into the vault for the
+     * `receiver`
      * through a {deposit} call
      *
      * @param _receiver Address whose maximum deposit is being queries
@@ -115,7 +104,7 @@ interface IERC4626 is IERC20 {
      *
      * @dev MUST return the maximum amount of assets {deposit} would allow to be deposited for receiver and not cause a
      * revert, which MUST NOT be higher than the actual maximum that would be accepted (it should underestimate if
-     *necessary). This assumes that the user has infinite assets, i.e. MUST NOT rely on {balanceOf} of asset.
+     * necessary). This assumes that the user has infinite assets, i.e. MUST NOT rely on {balanceOf} of asset.
      *
      * MUST factor in both global and user-specific limits, like if deposits are entirely disabled (even temporarily)
      * it MUST return 0.
@@ -124,15 +113,14 @@ interface IERC4626 is IERC20 {
      *
      * MUST NOT revert.
      */
-    function maxDeposit(
-        address _receiver
-    ) external view returns (uint256 maxAssets);
+    function maxDeposit(address _receiver) external view returns (uint256 maxAssets);
 
     /**
      * @notice Simulate the effects of a user's deposit at the current block, given current on-chain conditions
      * @param _assets Amount of assets
      * @return shares Amount of shares
-     * @dev MUST return as close to and no more than the exact amount of Vault shares that would be minted in a {deposit}
+     * @dev MUST return as close to and no more than the exact amount of Vault shares that would be minted in a
+     * {deposit}
      * call in the same transaction. I.e. deposit should return the same or more shares as {previewDeposit} if called in
      * the same transaction. (I.e. {previewDeposit} should underestimate or round-down)
      *
@@ -147,9 +135,7 @@ interface IERC4626 is IERC20 {
      * Note that any unfavorable discrepancy between convertToShares and previewDeposit SHOULD be considered slippage
      * in share price or some other type of condition, meaning the depositor will lose assets by depositing.
      */
-    function previewDeposit(
-        uint256 _assets
-    ) external view returns (uint256 shares);
+    function previewDeposit(uint256 _assets) external view returns (uint256 shares);
 
     /**
      * @notice Mints `shares` Vault shares to `receiver` by depositing exactly `amount` of underlying tokens
@@ -166,17 +152,15 @@ interface IERC4626 is IERC20 {
      *
      * Note that most implementations will require pre-approval of the Vault with the Vault’s underlying asset token.
      */
-    function deposit(
-        uint256 _assets,
-        address _receiver
-    ) external returns (uint256 shares);
+    function deposit(uint256 _assets, address _receiver) external returns (uint256 shares);
 
     /**
      * @notice Returns the maximum amount of shares that can be minted from the vault for the `receiver``, via a `mint`
      * call
      * @param _receiver Address to deposit minted shares into
      * @return maxShares The maximum amount of shares
-     * @dev MUST return the maximum amount of shares mint would allow to be deposited to receiver and not cause a revert,
+     * @dev MUST return the maximum amount of shares mint would allow to be deposited to receiver and not cause a
+     * revert,
      * which MUST NOT be higher than the actual maximum that would be accepted (it should underestimate if necessary).
      * This assumes that the user has infinite assets, i.e. MUST NOT rely on balanceOf of asset.
      *
@@ -188,9 +172,7 @@ interface IERC4626 is IERC20 {
      *
      * MUST NOT revert.
      */
-    function maxMint(
-        address _receiver
-    ) external view returns (uint256 maxShares);
+    function maxMint(address _receiver) external view returns (uint256 maxShares);
 
     /**
      * @notice Simulate the effects of a user's mint at the current block, given current on-chain conditions
@@ -211,9 +193,7 @@ interface IERC4626 is IERC20 {
      * Note that any unfavorable discrepancy between convertToAssets and previewMint SHOULD be considered slippage in
      * share price or some other type of condition, meaning the depositor will lose assets by minting.
      */
-    function previewMint(
-        uint256 _shares
-    ) external view returns (uint256 assets);
+    function previewMint(uint256 _shares) external view returns (uint256 assets);
 
     /**
      * @notice Mints exactly `shares` vault shares to `receiver` by depositing `amount` of underlying tokens
@@ -231,10 +211,7 @@ interface IERC4626 is IERC20 {
      *
      * Note that most implementations will require pre-approval of the Vault with the Vault’s underlying asset token.
      */
-    function mint(
-        uint256 _shares,
-        address _receiver
-    ) external returns (uint256 assets);
+    function mint(uint256 _shares, address _receiver) external returns (uint256 assets);
 
     /**
      * @notice Returns the maximum amount of the underlying asset that can be withdrawn from the `owner` balance in the
@@ -242,7 +219,8 @@ interface IERC4626 is IERC20 {
      * @param _owner Address of the owner whose max withdrawal amount is being queries
      * @return maxAssets Maximum amount of underlying asset that can be withdrawn
      * @dev MUST return the maximum amount of assets that could be transferred from `owner` through {withdraw} and not
-     * cause a revert, which MUST NOT be higher than the actual maximum that would be accepted (it should underestimate if
+     * cause a revert, which MUST NOT be higher than the actual maximum that would be accepted (it should underestimate
+     * if
      * necessary).
      *
      * MUST factor in both global and user-specific limits, like if withdrawals are entirely disabled
@@ -250,9 +228,7 @@ interface IERC4626 is IERC20 {
      *
      * MUST NOT revert.
      */
-    function maxWithdraw(
-        address _owner
-    ) external view returns (uint256 maxAssets);
+    function maxWithdraw(address _owner) external view returns (uint256 maxAssets);
 
     /**
      * @notice Simulate the effects of a user's withdrawal at the current block, given current on-chain conditions.
@@ -270,12 +246,11 @@ interface IERC4626 is IERC20 {
      * MUST NOT revert due to vault specific user/global limits. MAY revert due to other conditions that would also
      * cause {withdraw} to revert.
      *
-     * Note that any unfavorable discrepancy between convertToShares and previewWithdraw SHOULD be considered slippage in
+     * Note that any unfavorable discrepancy between convertToShares and previewWithdraw SHOULD be considered slippage
+     * in
      * share price or some other type of condition, meaning the depositor will lose assets by depositing.
      */
-    function previewWithdraw(
-        uint256 _assets
-    ) external view returns (uint256 shares);
+    function previewWithdraw(uint256 _assets) external view returns (uint256 shares);
 
     /**
      * @notice Burns `shares` from `owner` and sends exactly `assets` of underlying tokens to `receiver`
@@ -284,7 +259,8 @@ interface IERC4626 is IERC20 {
      * @dev Must emit the {Withdraw} event
      *
      * MUST support a withdraw flow where the shares are burned from `owner` directly where `owner` is `msg.sender`
-     * or `msg.sender` has ERC-20 approval over the shares of `owner`. MAY support an additional flow in which the shares
+     * or `msg.sender` has ERC-20 approval over the shares of `owner`. MAY support an additional flow in which the
+     * shares
      * are transferred to the Vault contract before the withdraw execution, and are accounted for during withdraw.
      *
      * MUST revert if all of assets cannot be withdrawn (due to withdrawal limit being reached, slippage, the owner
@@ -293,18 +269,16 @@ interface IERC4626 is IERC20 {
      * Note that some implementations will require pre-requesting to the Vault before a withdrawal may be performed.
      *  Those methods should be performed separately.
      */
-    function withdraw(
-        uint256 _assets,
-        address _receiver,
-        address _owner
-    ) external returns (uint256 shares);
+    function withdraw(uint256 _assets, address _receiver, address _owner) external returns (uint256 shares);
 
     /**
-     * @notice Returns the maximum amount of vault shares that can be redeemed from the `owner` balance in the vault, via
+     * @notice Returns the maximum amount of vault shares that can be redeemed from the `owner` balance in the vault,
+     * via
      * a `redeem` call.
      * @param _owner Address of the owner whose shares are being queries
      * @return maxShares Maximum amount of shares that can be redeemed
-     * @dev MUST return the maximum amount of shares that could be transferred from `owner` through `redeem` and not cause
+     * @dev MUST return the maximum amount of shares that could be transferred from `owner` through `redeem` and not
+     * cause
      * a revert, which MUST NOT be higher than the actual maximum that would be accepted (it should underestimate if
      * necessary).
      *
@@ -313,9 +287,7 @@ interface IERC4626 is IERC20 {
      *
      * MUST NOT revert
      */
-    function maxRedeem(
-        address _owner
-    ) external view returns (uint256 maxShares);
+    function maxRedeem(address _owner) external view returns (uint256 maxShares);
 
     /**
      * @notice Simulate the effects of a user's redemption at the current block, given current on-chain conditions
@@ -336,9 +308,7 @@ interface IERC4626 is IERC20 {
      * Note that any unfavorable discrepancy between {convertToAssets} and {previewRedeem} SHOULD be considered
      * slippage in share price or some other type of condition, meaning the depositor will lose assets by redeeming.
      */
-    function previewRedeem(
-        uint256 _shares
-    ) external view returns (uint256 assets);
+    function previewRedeem(uint256 _shares) external view returns (uint256 assets);
 
     /**
      * @notice Burns exactly `shares` from `owner` and sends `assets` of underlying tokens to `receiver`
@@ -357,9 +327,5 @@ interface IERC4626 is IERC20 {
      * Note that some implementations will require pre-requesting to the Vault before a withdrawal may be performed.
      * Those methods should be performed separately.
      */
-    function redeem(
-        uint256 _shares,
-        address _receiver,
-        address _owner
-    ) external returns (uint256 assets);
+    function redeem(uint256 _shares, address _receiver, address _owner) external returns (uint256 assets);
 }

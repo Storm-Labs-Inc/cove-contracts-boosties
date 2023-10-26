@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
-import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
+import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { CurveRouterSwapper, ICurveRouter } from "src/swappers/CurveRouterSwapper.sol";
 import { TokenizedStrategyAssetSwap } from "src/strategies/TokenizedStrategyAssetSwap.sol";
 import { StrategyAssetSwap } from "src/strategies/StrategyAssetSwap.sol";

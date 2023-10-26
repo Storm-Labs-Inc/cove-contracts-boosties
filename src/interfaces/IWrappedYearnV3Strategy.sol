@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
-import { IBaseStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IBaseStrategy.sol";
-import { ITokenizedStrategy, IERC4626 } from "src/interfaces/deps/yearn/tokenized-strategy/ITokenizedStrategy.sol";
+import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
-interface IWrappedYearnV3Strategy is IBaseStrategy, ITokenizedStrategy {
+interface IWrappedYearnV3Strategy is IStrategy {
     // Need to override the `asset` function since
     // its defined in both interfaces inherited.
     function asset() external view override(IERC4626) returns (address);

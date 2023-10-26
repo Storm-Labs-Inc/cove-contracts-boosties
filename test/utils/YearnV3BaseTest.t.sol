@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
 import { BaseTest, console2 as console } from "test/utils/BaseTest.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -13,9 +13,9 @@ import { TokenizedStrategyAssetSwap } from "src/strategies/TokenizedStrategyAsse
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
-import { ReleaseRegistry } from "src/deps/yearn/vault-periphery/registry/ReleaseRegistry.sol";
-import { RegistryFactory } from "src/deps/yearn/vault-periphery/registry/RegistryFactory.sol";
-import { Registry } from "src/deps/yearn/vault-periphery/registry/Registry.sol";
+import { ReleaseRegistry } from "@vault-periphery/registry/ReleaseRegistry.sol";
+import { RegistryFactory } from "@vault-periphery/registry/RegistryFactory.sol";
+import { Registry } from "@vault-periphery/registry/Registry.sol";
 
 import { Gauge } from "src/deps/yearn/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/deps/yearn/veYFI/GaugeFactory.sol";
@@ -23,8 +23,8 @@ import { dYFI } from "src/deps/yearn/veYFI/dYFI.sol";
 import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 
 // Interfaces
-import { IVault } from "src/interfaces/deps/yearn/yearn-vaults-v3/IVault.sol";
-import { IStrategy } from "src/interfaces/deps/yearn/tokenized-strategy/IStrategy.sol";
+import { IVault } from "@yearn-vaults-v3/contracts/interfaces/IVault.sol";
+import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 

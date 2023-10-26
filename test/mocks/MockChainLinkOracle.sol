@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
 
 contract MockChainLinkOracle {
     uint256 public price;

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.18;
+
 import "./IBaseGauge.sol";
 import { IERC4626 } from "src/interfaces/deps/yearn/veYFI/IERC4626.sol";
 
