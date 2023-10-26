@@ -5,7 +5,6 @@ import { CoveYFI } from "src/CoveYFI.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Errors } from "../src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 
 contract CoveYFITest is YearnV3BaseTest {
@@ -103,7 +102,7 @@ contract CoveYFITest is YearnV3BaseTest {
 
     function test_rescue_revertsOnNonOwner() public {
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, bob));
+        vm.expectRevert("Ownable: caller is not the owner");
         CoveYFI(coveYFI).rescue(IERC20(address(0)), admin, 1e18);
     }
 }

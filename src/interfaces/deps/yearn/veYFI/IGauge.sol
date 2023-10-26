@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import "./IBaseGauge.sol";
-import { IERC4626 } from "src/interfaces/deps/yearn/veYFI/IERC4626.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 interface IGauge is IBaseGauge, IERC4626 {
     function initialize(address _stakingToken, address _owner) external;

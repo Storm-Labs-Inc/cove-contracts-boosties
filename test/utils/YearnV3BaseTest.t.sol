@@ -17,9 +17,7 @@ import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
 import { Registry } from "vault-periphery/registry/Registry.sol";
 
-import { Gauge } from "src/deps/yearn/veYFI/Gauge.sol";
 import { GaugeFactory } from "src/deps/yearn/veYFI/GaugeFactory.sol";
-import { dYFI } from "src/deps/yearn/veYFI/dYFI.sol";
 import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 
 // Interfaces
@@ -90,8 +88,7 @@ contract YearnV3BaseTest is BaseTest {
 
     /// VE-YFI related functions ///
     function setUpVotingYfiStack() public {
-        gaugeImpl = _deployGaugeImpl(MAINNET_DYFI, MAINNET_DYFI_REWARD_POOL);
-        gaugeFactory = _deployGaugeFactory(gaugeImpl);
+        gaugeFactory = _deployGaugeFactory(MAINNET_DYFI_GAUGE_IMPLEMENTATION);
         gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, MAINNET_DYFI_REWARD_POOL);
         _increaseDYfiEthPoolLiquidity(MAINNET_DYFI_ETH_POOL, 10e18);
     }
@@ -106,13 +103,6 @@ contract YearnV3BaseTest is BaseTest {
         IERC20(MAINNET_DYFI).approve(pool, dYfiAmount);
         ICurveTwoAssetPool(pool).add_liquidity([dYfiAmount, ethAmount], 0);
         vm.stopPrank();
-    }
-
-    function _deployDYFI(address owner) internal returns (address) {
-        vm.prank(owner);
-        address dYfiAddr = address(new dYFI());
-        vm.label(dYfiAddr, "DYFI");
-        return dYfiAddr;
     }
 
     function _deployDYFIRewardPool(address dYfi, uint256 startTime) internal returns (address) {
@@ -137,10 +127,6 @@ contract YearnV3BaseTest is BaseTest {
             "Options",
             abi.encode(MAINNET_YFI, dYfi, MAINNET_VE_YFI, owner, priceFeed, curvePool)
         );
-    }
-
-    function _deployGaugeImpl(address _dYFI, address _dYFIRewardPool) internal returns (address) {
-        return address(new Gauge(MAINNET_VE_YFI, _dYFI, _dYFIRewardPool));
     }
 
     function deployGaugeViaFactory(address vault, address owner, string memory label) public returns (address) {
@@ -173,9 +159,9 @@ contract YearnV3BaseTest is BaseTest {
         yearnRegistryFactory = _deployYearnRegistryFactory(admin, yearnReleaseRegistry);
         yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", admin);
 
-        address blueprint = vyperDeployer.deployBlueprint("lib/yearn-vaults-v3/", "VaultV3");
+        address blueprint = vyperDeployer.deployBlueprint("lib/yearn-vaults-v3/contracts/", "VaultV3");
         bytes memory args = abi.encode("Vault V3 Factory 3.0.0", blueprint, admin);
-        address factory = vyperDeployer.deployContract("lib/yearn-vaults-v3/", "VaultFactory", args);
+        address factory = vyperDeployer.deployContract("lib/yearn-vaults-v3/contracts/", "VaultFactory", args);
 
         vm.prank(admin);
         ReleaseRegistry(yearnReleaseRegistry).newRelease(factory);

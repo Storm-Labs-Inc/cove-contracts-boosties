@@ -348,7 +348,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 14 days);
 
         // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
-        uint256 actualRewardAmount = 1_017_639_902_175_617_933;
+        uint256 actualRewardAmount = 1_016_092_352_451_786_806;
 
         // Calculate split amounts strategy split amount
         uint256 estimatedStrategySplit = actualRewardAmount * 0.3e18 / 1e18;

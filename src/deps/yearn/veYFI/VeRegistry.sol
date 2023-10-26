@@ -29,7 +29,7 @@ contract VeRegistry is Ownable {
     event VaultRemoved(address indexed vault);
     event UpdatedVeToken(address indexed ve);
 
-    constructor(address _ve, address _yfi, address _gaugefactory, address _veYfiRewardPool) Ownable(msg.sender) {
+    constructor(address _ve, address _yfi, address _gaugefactory, address _veYfiRewardPool) Ownable() {
         require(_ve != address(0x0), "_ve 0x0 address");
         require(_yfi != address(0x0), "_yfi 0x0 address");
         require(_gaugefactory != address(0x0), "_gaugefactory 0x0 address");

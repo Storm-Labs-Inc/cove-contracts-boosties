@@ -24,7 +24,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     )
         ERC20("Cove YFI", "coveYFI")
         ERC20Permit("Cove YFI")
-        Ownable(msg.sender)
+        Ownable()
     {
         // Checks
         // Check for zero addresses
@@ -42,12 +42,12 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         IERC20(_yfi).approve(_yearnStakingDelegate, type(uint256).max);
     }
 
-    function _update(address from, address to, uint256 value) internal virtual override {
+    function _beforeTokenTransfer(address from, address to, uint256 value) internal virtual override {
         // Only allow minting by allowing transfers from the 0x0 address
         if (paused() && from != address(0x0)) {
             revert Errors.OnlyMintingEnabled();
         }
-        super._update(from, to, value);
+        super._beforeTokenTransfer(from, to, value);
     }
 
     function deposit(uint256 balance) public {

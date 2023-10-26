@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import { BaseTest } from "./utils/BaseTest.t.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract MasterRegistryTest is BaseTest {
     MasterRegistry public masterRegistry;
@@ -22,7 +22,12 @@ contract MasterRegistryTest is BaseTest {
     }
 
     function _formatAccessControlError(address addr, bytes32 role) internal pure returns (bytes memory) {
-        return abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, addr, role);
+        return abi.encodePacked(
+            "AccessControl: account ",
+            Strings.toHexString(addr),
+            " is missing role ",
+            Strings.toHexString(uint256(role), 32)
+        );
     }
 
     function test_init() public view {

@@ -7,7 +7,6 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 interface IWrappedYearnV3Strategy is IStrategy {
     // Need to override the `asset` function since
     // its defined in both interfaces inherited.
-    function asset() external view override(IERC4626) returns (address);
     function vault() external view returns (address);
     function yearnStakingDelegate() external view returns (address);
     function setHarvestSwapParams(CurveRouterSwapper.CurveSwapParams memory _curveSwapParams) external;
