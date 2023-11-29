@@ -186,8 +186,16 @@ contract YearnV3BaseTest is BaseTest {
     /// @param _manager address of manager
     function setUpYearnStakingDelegate(address _treasury, address _admin, address _manager) public returns (address) {
         vm.startPrank(admin);
-        YearnStakingDelegate yearnStakingDelegate =
-        new YearnStakingDelegate(MAINNET_YFI, MAINNET_DYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, _treasury, _admin, _manager);
+        YearnStakingDelegate yearnStakingDelegate = new YearnStakingDelegate(
+            MAINNET_YFI,
+            MAINNET_DYFI,
+            MAINNET_VE_YFI,
+            MAINNET_SNAPSHOT_DELEGATE_REGISTRY,
+            MAINNET_CURVE_ROUTER,
+            _treasury,
+            _admin,
+            _manager
+        );
 
         CurveRouterSwapper.CurveSwapParams memory ysdSwapParams;
         // [token_from, pool, token_to, pool, ...]
@@ -357,7 +365,9 @@ contract YearnV3BaseTest is BaseTest {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
             address(
-                new WrappedYearnV3Strategy(address(_asset), _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
+                new WrappedYearnV3Strategy(
+                    address(_asset), _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress
+                )
             )
         );
         // set keeper
