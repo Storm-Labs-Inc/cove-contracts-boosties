@@ -225,12 +225,14 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
     /// @notice Set perpetual lock status
     /// @param _shouldPerpetuallyLock if true, lock YFI for 4 years after each harvest
+    // slither-disable-next-line naming-convention
     function setPerpetualLock(bool _shouldPerpetuallyLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
         shouldPerpetuallyLock = _shouldPerpetuallyLock;
     }
 
     /// @notice Set treasury address. This address will receive a portion of the rewards
     /// @param _treasury address to receive rewards
+    // slither-disable-next-line naming-convention
     function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (_treasury == address(0)) {
