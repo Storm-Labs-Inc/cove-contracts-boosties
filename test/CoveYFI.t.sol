@@ -23,6 +23,11 @@ contract CoveYFITest is YearnV3BaseTest {
 
         vm.prank(admin);
         coveYFI = new CoveYFI(MAINNET_YFI, yearnStakingDelegate);
+
+        // TODO: refactor into fork/integration/invariant directories
+        // Invariant test setup
+        targetContract(address(coveYFI));
+        targetSender(address(bob));
     }
 
     function testFuzz_constructor(address noAdminAddress) public {
@@ -104,5 +109,15 @@ contract CoveYFITest is YearnV3BaseTest {
         vm.prank(bob);
         vm.expectRevert("Ownable: caller is not the owner");
         CoveYFI(coveYFI).rescue(IERC20(address(0)), admin, 1e18);
+    }
+
+    // TODO: fix reverts
+    function invariant_no_yfi_balance() external {
+        assertEq(IERC20(MAINNET_YFI).balanceOf(address(this)), 0);
+    }
+
+    // TODO: fix reverts
+    function invariant_veyfi_balance_matches_coveyfi_supply() external {
+        assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(this)), coveYFI.totalSupply());
     }
 }
