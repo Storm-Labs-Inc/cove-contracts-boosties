@@ -10,8 +10,9 @@ import { Errors } from "src/libraries/Errors.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { Rescuable } from "src/Rescuable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
+contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGuard, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
     using Math for uint256;
@@ -39,10 +40,12 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
     // Immutables
     // solhint-disable-next-line var-name-mixedcase
+    // slither-disable-start naming-convention
     address private immutable _SNAPSHOT_DELEGATE_REGISTRY;
     address private immutable _D_YFI;
     address private immutable _VE_YFI;
     address private immutable _YFI;
+    // slither-disable-end naming-convention
 
     // Mappings
     /// @notice Mapping of vault to gauge
@@ -82,6 +85,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         if (
             _yfi == address(0) || _dYfi == address(0) || _veYfi == address(0) || _curveRouter == address(0)
                 || admin == address(0) || manager == address(0) || _treasury == address(0)
+                || _snapshotDelegateRegistry == address(0)
         ) {
             revert Errors.ZeroAddress();
         }
@@ -101,13 +105,15 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
         // Interactions
         // Max approve YFI to veYFI so we can lock it later
-        IERC20(_yfi).approve(_veYfi, type(uint256).max);
+        IERC20(_yfi).forceApprove(_veYfi, type(uint256).max);
         _approveTokenForSwap(_dYfi);
     }
 
     /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
     /// @return userRewardsAmount amount of rewards harvested for the msg.sender
-    function harvest(address vault) external returns (uint256) {
+    // TODO(Trail of Bits): PTAL
+    // slither-disable-start reentrancy-no-eth
+    function harvest(address vault) external nonReentrant returns (uint256) {
         VaultRewards memory vaultRewards = vaultRewardsInfo[vault];
         UserInfo storage user = userInfo[msg.sender][vault];
         uint256 totalRewardsAmount = 0;
@@ -122,6 +128,9 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
             uint256 lpSupply = gaugeBalances[gauge];
             // Get rewards from the gauge
             totalRewardsAmount = IERC20(_D_YFI).balanceOf(address(this));
+            // Yearn's gauge implementation always returns true
+            // Ref: https://github.com/yearn/veYFI/blob/master/contracts/Gauge.sol#L493
+            // slither-disable-next-line unused-return
             IGauge(gauge).getReward(address(this));
             totalRewardsAmount = IERC20(_D_YFI).balanceOf(address(this)) - totalRewardsAmount;
             // Update accRewardsPerShare if there are tokens in the gauge
@@ -149,6 +158,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         }
         return userRewardsAmount;
     }
+    // slither-disable-end reentrancy-no-eth
 
     function depositToGauge(address vault, uint256 amount) external {
         // Checks
@@ -160,9 +170,13 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         UserInfo storage user = userInfo[msg.sender][vault];
         user.balance += uint128(amount);
         user.rewardDebt += uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
+        gaugeBalances[gauge] += amount;
         // Interactions
-        IERC20(vault).transferFrom(msg.sender, address(this), amount);
-        gaugeBalances[gauge] += IGauge(gauge).deposit(amount, address(this));
+        IERC20(vault).safeTransferFrom(msg.sender, address(this), amount);
+        // Yearn's gauge implementation always returns the amount
+        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/Gauge.sol#L348
+        // slither-disable-next-line unused-return
+        IGauge(gauge).deposit(amount, address(this));
     }
 
     function withdrawFromGauge(address vault, uint256 amount) external {
@@ -175,11 +189,15 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         UserInfo storage user = userInfo[msg.sender][vault];
         user.balance -= uint128(amount);
         user.rewardDebt -= uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
+        gaugeBalances[gauge] -= amount;
         // Interactions
-        gaugeBalances[gauge] -= IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
+        // Yearn's gauge implementation always returns the amount
+        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/Gauge.sol#L460
+        // slither-disable-next-line unused-return
+        IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
-    function swapDYfiToVeYfi() external onlyRole(MANAGER_ROLE) {
+    function swapDYfiToVeYfi() external nonReentrant onlyRole(MANAGER_ROLE) {
         // Checks
         uint256 dYfiAmount = dYfiToSwapAndLock;
         if (dYfiAmount == 0) {
@@ -222,12 +240,14 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
     /// @notice Set perpetual lock status
     /// @param _shouldPerpetuallyLock if true, lock YFI for 4 years after each harvest
+    // slither-disable-next-line naming-convention
     function setPerpetualLock(bool _shouldPerpetuallyLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
         shouldPerpetuallyLock = _shouldPerpetuallyLock;
     }
 
     /// @notice Set treasury address. This address will receive a portion of the rewards
     /// @param _treasury address to receive rewards
+    // slither-disable-next-line naming-convention
     function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (_treasury == address(0)) {
@@ -245,7 +265,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         // Effects
         associatedGauge[vault] = gauge;
         // Interactions
-        IERC20(vault).approve(gauge, type(uint256).max);
+        IERC20(vault).forceApprove(gauge, type(uint256).max);
     }
 
     /// Delegates voting power to a given address
@@ -284,7 +304,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         }
         // Interactions
         IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(_VE_YFI).withdraw();
-        IERC20(_YFI).transfer(to, withdrawn.amount);
+        IERC20(_YFI).safeTransfer(to, withdrawn.amount);
     }
 
     function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {

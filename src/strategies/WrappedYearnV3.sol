@@ -9,9 +9,11 @@ import { Errors } from "../libraries/Errors.sol";
 
 abstract contract WrappedYearnV3 is CurveRouterSwapper {
     // Immutable storage variables
+    // slither-disable-start naming-convention
     address internal immutable _VAULT;
     address internal immutable _YEARN_STAKING_DELEGATE;
     address internal immutable _DYFI;
+    // slither-disable-end naming-convention
 
     // Storage variables
     CurveSwapParams internal _harvestSwapParams;
