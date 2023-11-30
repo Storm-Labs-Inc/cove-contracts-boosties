@@ -64,8 +64,16 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
         require(IERC20(MAINNET_DYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
 
-        yearnStakingDelegate =
-        new YearnStakingDelegate(MAINNET_YFI, MAINNET_DYFI, MAINNET_VE_YFI, MAINNET_SNAPSHOT_DELEGATE_REGISTRY, MAINNET_CURVE_ROUTER, treasury, admin, manager);
+        yearnStakingDelegate = new YearnStakingDelegate(
+            MAINNET_YFI,
+            MAINNET_DYFI,
+            MAINNET_VE_YFI,
+            MAINNET_SNAPSHOT_DELEGATE_REGISTRY,
+            MAINNET_CURVE_ROUTER,
+            treasury,
+            admin,
+            manager
+        );
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
