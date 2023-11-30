@@ -21,7 +21,8 @@ contract Rescuable {
             // slither-disable-start incorrect-equality
             balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
             if (balance == 0) revert Errors.ZeroEthTransfer();
-            // slither-disable-next-line arbitrary-send low-level-calls
+            // slither-disable-next-line arbitrary-send
+            // slither-disable-next-line low-level-calls
             (bool success,) = to.call{ value: balance }("");
             if (!success) revert Errors.EthTransferFailed();
         } else {
