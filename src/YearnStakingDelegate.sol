@@ -10,8 +10,9 @@ import { Errors } from "src/libraries/Errors.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { Rescuable } from "src/Rescuable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
+contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGuard, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
     using Math for uint256;
@@ -110,7 +111,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
     /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
     /// @return userRewardsAmount amount of rewards harvested for the msg.sender
-    function harvest(address vault) external returns (uint256) {
+    function harvest(address vault) external nonReentrant returns (uint256) {
         VaultRewards memory vaultRewards = vaultRewardsInfo[vault];
         UserInfo storage user = userInfo[msg.sender][vault];
         uint256 totalRewardsAmount = 0;
@@ -125,6 +126,9 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
             uint256 lpSupply = gaugeBalances[gauge];
             // Get rewards from the gauge
             totalRewardsAmount = IERC20(_D_YFI).balanceOf(address(this));
+            // Yearn's gauge implementation always returns true
+            // Ref: https://github.com/yearn/veYFI/blob/master/contracts/Gauge.sol#L493
+            // slither-disable-next-line unused-return
             IGauge(gauge).getReward(address(this));
             totalRewardsAmount = IERC20(_D_YFI).balanceOf(address(this)) - totalRewardsAmount;
             // Update accRewardsPerShare if there are tokens in the gauge
