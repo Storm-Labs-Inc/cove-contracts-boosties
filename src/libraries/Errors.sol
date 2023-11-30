@@ -47,6 +47,8 @@ library Errors {
 
     error NoDYfiToSwap();
 
+    error GetRewardFailed();
+
     //// WRAPPED STRATEGY CURVE SWAPPER ////
 
     error OracleOutdated();

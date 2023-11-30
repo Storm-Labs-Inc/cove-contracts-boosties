@@ -3,6 +3,8 @@ pragma solidity ^0.8.18;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
+import { IDYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IDYfiRewardPool.sol";
+import { IYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IYfiRewardPool.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -37,6 +39,8 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
     // Constants
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant STRATEGY_ROLE = keccak256("STRATEGY_ROLE");
+    address constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
+    address constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
 
     // Immutables
     // solhint-disable-next-line var-name-mixedcase
@@ -114,6 +118,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
     // TODO(Trail of Bits): PTAL
     // slither-disable-start reentrancy-no-eth
     function harvest(address vault) external nonReentrant returns (uint256) {
+        // Cache vaultRewardsInfo for gas savings
         VaultRewards memory vaultRewards = vaultRewardsInfo[vault];
         UserInfo storage user = userInfo[msg.sender][vault];
         uint256 totalRewardsAmount = 0;
@@ -127,12 +132,11 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
             }
             uint256 lpSupply = gaugeBalances[gauge];
             // Get rewards from the gauge
-            totalRewardsAmount = IERC20(_D_YFI).balanceOf(address(this));
+            totalRewardsAmount = IGauge(gauge).earned(address(this));
             // Yearn's gauge implementation always returns true
             // Ref: https://github.com/yearn/veYFI/blob/master/contracts/Gauge.sol#L493
             // slither-disable-next-line unused-return
             IGauge(gauge).getReward(address(this));
-            totalRewardsAmount = IERC20(_D_YFI).balanceOf(address(this)) - totalRewardsAmount;
             // Update accRewardsPerShare if there are tokens in the gauge
             if (lpSupply > 0) {
                 vaultRewards.accRewardsPerShare += uint128(totalRewardsAmount * rewardSplit.strategy / lpSupply);
@@ -159,6 +163,22 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
         return userRewardsAmount;
     }
     // slither-disable-end reentrancy-no-eth
+
+    /**
+     * @notice Claim DYfi rewards from the reward pool and transfers to treasury
+     */
+    function claimBoostRewards() external {
+        IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
+        IERC20(_D_YFI).safeTransfer(treasury, IERC20(_D_YFI).balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Claim Yfi rewards from the reward pool and transfers to treasury
+     */
+    function claimExitRewards() external {
+        IYfiRewardPool(_YFI_REWARD_POOL).claim();
+        IERC20(_YFI).safeTransfer(treasury, IERC20(_YFI).balanceOf(address(this)));
+    }
 
     function depositToGauge(address vault, uint256 amount) external {
         // Checks
@@ -229,6 +249,20 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
         }
         // Interactions
         IERC20(_YFI).safeTransferFrom(msg.sender, address(this), amount);
+        return _lockYfi(amount);
+    }
+
+    /**
+     * @notice Locks all YFI from this contract and returns the LockedBalance
+     * @return LockedBalance struct
+     */
+    function lockYfi() external returns (IVotingYFI.LockedBalance memory) {
+        // Checks
+        if (!shouldPerpetuallyLock) {
+            revert Errors.PerpetualLockDisabled();
+        }
+        // Interactions
+        uint256 amount = IERC20(_YFI).balanceOf(address(this));
         return _lockYfi(amount);
     }
 

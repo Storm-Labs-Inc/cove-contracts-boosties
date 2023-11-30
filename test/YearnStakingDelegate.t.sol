@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
+import { IYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IYfiRewardPool.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
@@ -50,9 +51,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         // Deploy gauge
         testGauge = deployGaugeViaFactory(testVault, admin, "USDC Test Vault Gauge");
 
-        // Give alice some YFI
-        airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
-
         // Give admin some dYFI
         airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
 
@@ -74,6 +72,12 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
             admin,
             manager
         );
+
+        // Setup approvals for YFI spending
+        vm.startPrank(alice);
+        IERC20(MAINNET_YFI).approve(MAINNET_VE_YFI, type(uint256).max);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), type(uint256).max);
+        vm.stopPrank();
     }
 
     function testFuzz_constructor(address noAdminRole, address noManagerRole) public {
@@ -127,15 +131,22 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         require(yearnStakingDelegate.associatedGauge(testVault) == testGauge, "setAssociatedGauge failed");
     }
 
-    function _lockYFI(address user, uint256 amount) internal {
-        vm.startPrank(user);
-        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), amount);
+    function _lockYfiForYSD(uint256 amount) internal {
+        airdrop(ERC20(MAINNET_YFI), alice, amount);
+        vm.prank(alice);
         yearnStakingDelegate.lockYfi(amount);
+    }
+
+    function _lockYfiForUser(address user, uint256 amount, uint256 duration) internal {
+        airdrop(ERC20(MAINNET_YFI), user, amount);
+        vm.startPrank(user);
+        IERC20(MAINNET_YFI).approve(MAINNET_VE_YFI, amount);
+        IVotingYFI(MAINNET_VE_YFI).modify_lock(amount, block.timestamp + duration, address(user));
         vm.stopPrank();
     }
 
     function test_lockYFI() public {
-        _lockYFI(alice, 1e18);
+        _lockYfiForYSD(1e18);
 
         assertEq(IERC20(MAINNET_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
         assertEq(
@@ -145,10 +156,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_lockYFI_revertWhen_WithZeroAmount() public {
         uint256 lockAmount = 0;
-        vm.startPrank(alice);
-        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), lockAmount);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
-        yearnStakingDelegate.lockYfi(lockAmount);
+        _lockYfiForYSD(lockAmount);
         vm.stopPrank();
     }
 
@@ -156,27 +165,22 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
         uint256 lockAmount = 1e18;
-        vm.startPrank(alice);
-        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), lockAmount);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockDisabled.selector));
-        yearnStakingDelegate.lockYfi(lockAmount);
+        _lockYfiForYSD(lockAmount);
         vm.stopPrank();
     }
 
     function testFuzz_lockYFI_revertWhen_CreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
         vm.assume(lockAmount > 0);
         vm.assume(lockAmount < 1e18);
-        vm.startPrank(alice);
-        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), lockAmount);
         vm.expectRevert();
-        yearnStakingDelegate.lockYfi(lockAmount);
+        _lockYfiForYSD(lockAmount);
         vm.stopPrank();
     }
 
     function testFuzz_lockYFI(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount < IERC20(MAINNET_YFI).balanceOf(alice));
-        _lockYFI(alice, lockAmount);
+        _lockYfiForYSD(lockAmount);
 
         assertEq(IERC20(MAINNET_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
         assertGt(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), lockAmount - 1e9, "lock failed");
@@ -184,7 +188,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_earlyUnlock() public {
-        _lockYFI(alice, 1e18);
+        _lockYfiForYSD(1e18);
 
         vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
@@ -196,8 +200,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function testFuzz_earlyUnlock(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount < IERC20(MAINNET_YFI).balanceOf(alice));
-        _lockYFI(alice, lockAmount);
+        _lockYfiForYSD(lockAmount);
 
         vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
@@ -208,17 +211,26 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_earlyUnlock_revertWhen_PerpeutalLockEnabled() public {
-        _lockYFI(alice, 1e18);
+        _lockYfiForYSD(1e18);
 
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
         yearnStakingDelegate.earlyUnlock(admin);
     }
 
-    function _deposit(address addr, uint256 amount) internal {
-        vm.startPrank(addr);
+    function _depositVaultTokensToYSD(address from, uint256 amount) internal {
+        airdrop(ERC20(testVault), wrappedStrategy, amount);
+        vm.startPrank(from);
         IERC20(testVault).approve(address(yearnStakingDelegate), amount);
         yearnStakingDelegate.depositToGauge(testVault, amount);
+        vm.stopPrank();
+    }
+
+    function _depositVaultTokensToGauge(address from, uint256 amount) internal {
+        airdrop(ERC20(testVault), from, amount);
+        vm.startPrank(from);
+        IERC20(testVault).approve(address(testGauge), amount);
+        IGauge(testGauge).deposit(amount, from);
         vm.stopPrank();
     }
 
@@ -226,8 +238,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.assume(vaultBalance > 0);
         _setAssociatedGauge();
 
-        airdrop(ERC20(testVault), wrappedStrategy, vaultBalance);
-        _deposit(wrappedStrategy, vaultBalance);
+        _depositVaultTokensToYSD(wrappedStrategy, vaultBalance);
 
         // Check the yearn staking delegate has received the gauge tokens
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), vaultBalance, "depositToGauge failed");
@@ -251,8 +262,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.assume(vaultBalance > 0);
         _setAssociatedGauge();
 
-        airdrop(ERC20(testVault), wrappedStrategy, vaultBalance);
-        _deposit(wrappedStrategy, vaultBalance);
+        _depositVaultTokensToYSD(wrappedStrategy, vaultBalance);
 
         // Start withdraw process
         vm.startPrank(wrappedStrategy);
@@ -276,8 +286,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_harvest_passWhen_NoVeYFI() public {
         _setAssociatedGauge();
-        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
-        _deposit(wrappedStrategy, 1e18);
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
@@ -302,9 +311,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_harvest_passWhen_SomeVeYFI() public {
         _setAssociatedGauge();
-        _lockYFI(alice, 1e18);
-        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
-        _deposit(wrappedStrategy, 1e18);
+        _lockYfiForYSD(1e18);
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
@@ -329,9 +337,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_harvest_passWhen_LargeVeYFI() public {
         _setAssociatedGauge();
-        _lockYFI(alice, ALICE_YFI);
-        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
-        _deposit(wrappedStrategy, 1e18);
+        _lockYfiForYSD(ALICE_YFI);
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
@@ -348,11 +355,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_harvest_passWhen_WithVeYfiSplit() public {
         _setAssociatedGauge();
-        _lockYFI(alice, 1e18);
+        _lockYfiForYSD(1e18);
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
         _setRouterParams();
-        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
-        _deposit(wrappedStrategy, 1e18);
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
@@ -377,13 +383,46 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(yearnStakingDelegate.dYfiToSwapAndLock(), estimatedVeYfiSplit, "dYfiToSwapAndLock is incorrect");
     }
 
-    function test_swapDYfiToVeYfi() public {
+    function test_claimBoostRewards() public {
         _setAssociatedGauge();
-        _lockYFI(alice, 1e18);
+        _lockYfiForYSD(10e18);
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
         _setRouterParams();
-        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
-        _deposit(wrappedStrategy, 1e18);
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
+        _depositVaultTokensToGauge(alice, 1e18);
+        vm.warp(block.timestamp + 14 days);
+        // Alice claims dYFI rewards without any boost
+        IGauge(testGauge).getReward(alice);
+        // YSD claims dYFI rewards Alice was penalized for
+        yearnStakingDelegate.claimBoostRewards();
+        assertEq(IERC20(MAINNET_DYFI).balanceOf(treasury), 36_395_783_852_751_212, "claimBoostRewards failed");
+    }
+
+    function test_claimExitRewards() public {
+        // Reward pool needs to be checkpointed first independently
+        IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_token();
+        IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_total_supply();
+        // Lock YFI for YSD
+        _lockYfiForYSD(10e18);
+        // Lock YFI for user
+        _lockYfiForUser(alice, 10e18, 8 * 52 weeks);
+        // Another user early exits
+        vm.prank(alice);
+        IVotingYFI(MAINNET_VE_YFI).withdraw();
+        // Advance to next epoch
+        vm.warp(block.timestamp + 2 weeks);
+        // Claim exit rewards
+        yearnStakingDelegate.claimExitRewards();
+        // Assert treasury balance is increased by expected amount
+        assertEq(IERC20(MAINNET_YFI).balanceOf(treasury), 66_005_769_070_969_234, "claimBoostRewards failed");
+    }
+
+    function test_swapDYfiToVeYfi() public {
+        _setAssociatedGauge();
+        _lockYfiForYSD(1e18);
+        _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
+        _setRouterParams();
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
@@ -414,10 +453,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_swapDYfiToVeYfi_revertWhen_NoDYfiToSwap() public {
         _setAssociatedGauge();
-        _lockYFI(alice, 1e18);
+        _lockYfiForYSD(1e18);
         _setRouterParams();
-        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
-        _deposit(wrappedStrategy, 1e18);
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest but no split is set for veYfi portion
@@ -431,11 +469,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_swapDYfiToVeYfi_revertWhen_PerpetualLockDisabled() public {
         _setAssociatedGauge();
-        _lockYFI(alice, 1e18);
+        _lockYfiForYSD(1e18);
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
         _setRouterParams();
-        airdrop(ERC20(testVault), wrappedStrategy, 1e18);
-        _deposit(wrappedStrategy, 1e18);
+        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
