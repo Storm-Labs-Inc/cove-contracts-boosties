@@ -18,7 +18,7 @@ contract Rescuable {
         if (address(token) == address(0)) {
             // for ether
             uint256 totalBalance = address(this).balance;
-            // slither-disable incorrect-equality
+            // slither-disable-start incorrect-equality
             balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
             if (balance == 0) revert Errors.ZeroEthTransfer();
             // slither-disable-next-line arbitrary-send low-level-calls
