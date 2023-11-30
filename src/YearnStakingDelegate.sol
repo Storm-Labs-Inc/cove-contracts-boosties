@@ -111,6 +111,8 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
 
     /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
     /// @return userRewardsAmount amount of rewards harvested for the msg.sender
+    // TODO(Trail of Bits): PTAL
+    // slither-disable-start reentrancy-no-eth
     function harvest(address vault) external nonReentrant returns (uint256) {
         VaultRewards memory vaultRewards = vaultRewardsInfo[vault];
         UserInfo storage user = userInfo[msg.sender][vault];
@@ -156,6 +158,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
         }
         return userRewardsAmount;
     }
+    // slither-disable-end reentrancy-no-eth
 
     function depositToGauge(address vault, uint256 amount) external {
         // Checks
@@ -194,7 +197,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
         IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
-    function swapDYfiToVeYfi() external onlyRole(MANAGER_ROLE) {
+    function swapDYfiToVeYfi() external nonReentrant onlyRole(MANAGER_ROLE) {
         // Checks
         uint256 dYfiAmount = dYfiToSwapAndLock;
         if (dYfiAmount == 0) {
