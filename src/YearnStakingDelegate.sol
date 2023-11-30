@@ -167,9 +167,13 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
         UserInfo storage user = userInfo[msg.sender][vault];
         user.balance += uint128(amount);
         user.rewardDebt += uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
+        gaugeBalances[gauge] += amount;
         // Interactions
         IERC20(vault).safeTransferFrom(msg.sender, address(this), amount);
-        gaugeBalances[gauge] += IGauge(gauge).deposit(amount, address(this));
+        // Yearn's gauge implementation always returns the amount
+        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/Gauge.sol#L348
+        // slither-disable-next-line unused-return
+        IGauge(gauge).deposit(amount, address(this));
     }
 
     function withdrawFromGauge(address vault, uint256 amount) external {
@@ -182,8 +186,12 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
         UserInfo storage user = userInfo[msg.sender][vault];
         user.balance -= uint128(amount);
         user.rewardDebt -= uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
+        gaugeBalances[gauge] -= amount;
         // Interactions
-        gaugeBalances[gauge] -= IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
+        // Yearn's gauge implementation always returns the amount
+        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/Gauge.sol#L460
+        // slither-disable-next-line unused-return
+        IGauge(gauge).withdraw(amount, address(msg.sender), address(this));
     }
 
     function swapDYfiToVeYfi() external onlyRole(MANAGER_ROLE) {
