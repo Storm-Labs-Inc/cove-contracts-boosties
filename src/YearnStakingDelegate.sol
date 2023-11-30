@@ -39,10 +39,12 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
     // Immutables
     // solhint-disable-next-line var-name-mixedcase
+    // slither-disable-start naming-convention
     address private immutable _SNAPSHOT_DELEGATE_REGISTRY;
     address private immutable _D_YFI;
     address private immutable _VE_YFI;
     address private immutable _YFI;
+    // slither-disable-end naming-convention
 
     // Mappings
     /// @notice Mapping of vault to gauge
@@ -82,6 +84,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         if (
             _yfi == address(0) || _dYfi == address(0) || _veYfi == address(0) || _curveRouter == address(0)
                 || admin == address(0) || manager == address(0) || _treasury == address(0)
+                || _snapshotDelegateRegistry == address(0)
         ) {
             revert Errors.ZeroAddress();
         }
@@ -101,7 +104,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
 
         // Interactions
         // Max approve YFI to veYFI so we can lock it later
-        IERC20(_yfi).approve(_veYfi, type(uint256).max);
+        IERC20(_yfi).forceApprove(_veYfi, type(uint256).max);
         _approveTokenForSwap(_dYfi);
     }
 
@@ -161,7 +164,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         user.balance += uint128(amount);
         user.rewardDebt += uint128(amount * vaultRewardsInfo[vault].accRewardsPerShare / 1e18);
         // Interactions
-        IERC20(vault).transferFrom(msg.sender, address(this), amount);
+        IERC20(vault).safeTransferFrom(msg.sender, address(this), amount);
         gaugeBalances[gauge] += IGauge(gauge).deposit(amount, address(this));
     }
 
@@ -245,7 +248,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         // Effects
         associatedGauge[vault] = gauge;
         // Interactions
-        IERC20(vault).approve(gauge, type(uint256).max);
+        IERC20(vault).forceApprove(gauge, type(uint256).max);
     }
 
     /// Delegates voting power to a given address
@@ -284,7 +287,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, Rescuable {
         }
         // Interactions
         IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(_VE_YFI).withdraw();
-        IERC20(_YFI).transfer(to, withdrawn.amount);
+        IERC20(_YFI).safeTransfer(to, withdrawn.amount);
     }
 
     function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {

@@ -16,15 +16,16 @@ contract Rescuable {
     /// @param balance amount of tokens to rescue. Use zero to rescue all
     function _rescue(IERC20 token, address to, uint256 balance) internal {
         if (address(token) == address(0)) {
-            // for Ether
+            // for ether
             uint256 totalBalance = address(this).balance;
+            // slither-disable incorrect-equality
             balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
             if (balance == 0) revert Errors.ZeroEthTransfer();
-            // slither-disable-next-line arbitrary-send
+            // slither-disable-next-line arbitrary-send low-level-calls
             (bool success,) = to.call{ value: balance }("");
             if (!success) revert Errors.EthTransferFailed();
         } else {
-            // any other erc20
+            // for any other erc20
             uint256 totalBalance = token.balanceOf(address(this));
             balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
             if (balance == 0) revert Errors.ZeroTokenTransfer();

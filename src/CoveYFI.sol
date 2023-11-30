@@ -15,8 +15,10 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     using SafeERC20 for IERC20;
 
     // Immutable storage variables
+    // slither-disable-start naming-convention
     address internal immutable _YFI;
     address internal immutable _YEARN_STAKING_DELEGATE;
+    // slither-disable-end naming-convention
 
     constructor(
         address _yfi,
@@ -39,7 +41,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
 
         // Interactions
         // Max approve YFI for the yearn staking delegate
-        IERC20(_yfi).approve(_yearnStakingDelegate, type(uint256).max);
+        IERC20(_yfi).forceApprove(_yearnStakingDelegate, type(uint256).max);
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 value) internal virtual override {

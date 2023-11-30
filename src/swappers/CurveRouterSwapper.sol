@@ -23,8 +23,10 @@ contract CurveRouterSwapper {
     using SafeERC20 for IERC20;
 
     // solhint-disable-next-line var-name-mixedcase
+    // slither-disable-start naming-convention
     address private immutable _CURVE_ROUTER;
     address private constant _ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    // slither-disable-end naming-convention
 
     struct CurveSwapParams {
         address[11] route;
