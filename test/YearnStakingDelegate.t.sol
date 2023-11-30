@@ -25,6 +25,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
     uint256 public constant DYFI_REWARD_AMOUNT = 10e18;
+    uint256 public constant YFI_MAX_SUPPLY = 36_666e18;
 
     // Addresses
     address public alice;
@@ -147,7 +148,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_lockYFI() public {
         _lockYfiForYSD(1e18);
-
         assertEq(IERC20(MAINNET_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
         assertEq(
             IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 999_999_999_971_481_600, "lock failed"
@@ -157,29 +157,32 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     function test_lockYFI_revertWhen_WithZeroAmount() public {
         uint256 lockAmount = 0;
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
-        _lockYfiForYSD(lockAmount);
-        vm.stopPrank();
+        vm.prank(alice);
+        yearnStakingDelegate.lockYfi(lockAmount);
     }
 
     function test_lockYFI_revertWhen_PerpetualLockDisabled() public {
-        vm.startPrank(admin);
+        vm.prank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
         uint256 lockAmount = 1e18;
+        airdrop(ERC20(MAINNET_YFI), alice, lockAmount);
+        vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockDisabled.selector));
-        _lockYfiForYSD(lockAmount);
-        vm.stopPrank();
+        yearnStakingDelegate.lockYfi(lockAmount);
     }
 
     function testFuzz_lockYFI_revertWhen_CreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
         vm.assume(lockAmount > 0);
         vm.assume(lockAmount < 1e18);
+        airdrop(ERC20(MAINNET_YFI), alice, lockAmount);
+        vm.prank(alice);
         vm.expectRevert();
-        _lockYfiForYSD(lockAmount);
-        vm.stopPrank();
+        yearnStakingDelegate.lockYfi(lockAmount);
     }
 
     function testFuzz_lockYFI(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
+        vm.assume(lockAmount <= YFI_MAX_SUPPLY);
         _lockYfiForYSD(lockAmount);
 
         assertEq(IERC20(MAINNET_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
@@ -200,6 +203,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function testFuzz_earlyUnlock(uint256 lockAmount) public {
         vm.assume(lockAmount >= 1e18);
+        vm.assume(lockAmount <= YFI_MAX_SUPPLY);
         _lockYfiForYSD(lockAmount);
 
         vm.startPrank(admin);
