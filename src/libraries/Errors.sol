@@ -83,4 +83,7 @@ library Errors {
     error ZeroEthTransfer();
     error EthTransferFailed();
     error ZeroTokenTransfer();
+
+    /// GaugeRewardReceiver ///
+    error NotAuthorized();
 }
