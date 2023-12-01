@@ -11,7 +11,6 @@ import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 contract YearnStakingDelegateTest is YearnV3BaseTest {
@@ -21,6 +20,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     IStrategy public mockStrategy;
     address public testVault;
     address public testGauge;
+    address public stakingRewards;
+    address public swapAndLock;
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
@@ -65,16 +66,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
             revert Errors.QueueNewRewardsFailed();
         }
 
-        yearnStakingDelegate = new YearnStakingDelegate(
-            MAINNET_YFI,
-            MAINNET_DYFI,
-            MAINNET_VE_YFI,
-            MAINNET_SNAPSHOT_DELEGATE_REGISTRY,
-            MAINNET_CURVE_ROUTER,
-            treasury,
-            admin,
-            manager
-        );
+        address receiver = setUpGaugeRewardReceiverImplementation(admin);
+        yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, manager);
+        stakingRewards = setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate));
+        swapAndLock = setUpSwapAndLock(admin, address(yearnStakingDelegate), stakingRewards);
 
         // Setup approvals for YFI spending
         vm.startPrank(alice);
@@ -92,9 +87,10 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
         assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
-        (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) = yearnStakingDelegate.rewardSplit();
+        (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) =
+            yearnStakingDelegate.gaugeRewardSplit(testGauge);
         assertEq(treasurySplit, 0);
-        assertEq(strategySplit, 1e18);
+        assertEq(strategySplit, 0);
         assertEq(veYfiSplit, 0);
         // Check for roles
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), manager));
@@ -105,35 +101,14 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }
 
-    function _setAssociatedGauge() internal {
+    function _setGaugeRewards() internal {
         vm.prank(manager);
-        yearnStakingDelegate.setAssociatedGauge(testVault, testGauge);
+        yearnStakingDelegate.addGaugeRewards(testGauge, stakingRewards);
     }
 
-    function _setRewardSplit(uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
+    function _setRewardSplit(address gauge, uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
         vm.prank(admin);
-        yearnStakingDelegate.setRewardSplit(treasurySplit, strategySplit, veYfiSplit);
-    }
-
-    function _setRouterParams() internal {
-        _routerParams.route[0] = MAINNET_DYFI;
-        _routerParams.route[1] = MAINNET_DYFI_ETH_POOL;
-        _routerParams.route[2] = MAINNET_ETH;
-        _routerParams.route[3] = MAINNET_YFI_ETH_POOL;
-        _routerParams.route[4] = MAINNET_YFI;
-
-        _routerParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        _routerParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-
-        vm.prank(admin);
-        yearnStakingDelegate.setRouterParams(_routerParams);
-    }
-
-    function test_setAssociatedGauge() public {
-        _setAssociatedGauge();
-        if (yearnStakingDelegate.associatedGauge(testVault) != testGauge) {
-            revert Errors.SetAssociatedGaugeFailed();
-        }
+        yearnStakingDelegate.setRewardSplit(gauge, treasurySplit, strategySplit, veYfiSplit);
     }
 
     function _lockYfiForYSD(uint256 amount) internal {
@@ -226,27 +201,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.earlyUnlock(admin);
     }
 
-    function _depositVaultTokensToYSD(address from, uint256 amount) internal {
-        airdrop(ERC20(testVault), wrappedStrategy, amount);
+    function _depositGaugeTokensToYSD(address from, uint256 amount) internal {
+        airdrop(ERC20(testGauge), from, amount);
         vm.startPrank(from);
-        IERC20(testVault).approve(address(yearnStakingDelegate), amount);
-        yearnStakingDelegate.depositToGauge(testVault, amount);
-        vm.stopPrank();
-    }
-
-    function _depositVaultTokensToGauge(address from, uint256 amount) internal {
-        airdrop(ERC20(testVault), from, amount);
-        vm.startPrank(from);
-        IERC20(testVault).approve(address(testGauge), amount);
-        IGauge(testGauge).deposit(amount, from);
+        IERC20(testGauge).approve(address(yearnStakingDelegate), amount);
+        yearnStakingDelegate.deposit(testGauge, amount);
         vm.stopPrank();
     }
 
     function testFuzz_depositToGauge(uint256 vaultBalance) public {
         vm.assume(vaultBalance > 0);
-        _setAssociatedGauge();
 
-        _depositVaultTokensToYSD(wrappedStrategy, vaultBalance);
+        _depositGaugeTokensToYSD(wrappedStrategy, vaultBalance);
 
         // Check the yearn staking delegate has received the gauge tokens
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), vaultBalance, "depositToGauge failed");
@@ -262,19 +228,18 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.startPrank(wrappedStrategy);
         IERC20(testVault).approve(address(yearnStakingDelegate), vaultBalance);
         vm.expectRevert(abi.encodeWithSelector(Errors.NoAssociatedGauge.selector));
-        yearnStakingDelegate.depositToGauge(testVault, vaultBalance);
+        yearnStakingDelegate.deposit(testVault, vaultBalance);
         vm.stopPrank();
     }
 
     function testFuzz_withdrawFromGauge(uint256 vaultBalance) public {
         vm.assume(vaultBalance > 0);
-        _setAssociatedGauge();
 
-        _depositVaultTokensToYSD(wrappedStrategy, vaultBalance);
+        _depositGaugeTokensToYSD(wrappedStrategy, vaultBalance);
 
         // Start withdraw process
         vm.startPrank(wrappedStrategy);
-        yearnStakingDelegate.withdrawFromGauge(testVault, vaultBalance);
+        yearnStakingDelegate.withdraw(testVault, vaultBalance);
         vm.stopPrank();
 
         // Check the yearn staking delegate has released the gauge tokens
@@ -293,8 +258,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_harvest_passWhen_NoVeYFI() public {
-        _setAssociatedGauge();
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
+        _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
@@ -318,9 +282,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_harvest_passWhen_SomeVeYFI() public {
-        _setAssociatedGauge();
         _lockYfiForYSD(1e18);
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
+        _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
@@ -344,9 +307,8 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_harvest_passWhen_LargeVeYFI() public {
-        _setAssociatedGauge();
         _lockYfiForYSD(ALICE_YFI);
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
+        _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
@@ -362,11 +324,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
     }
 
     function test_harvest_passWhen_WithVeYfiSplit() public {
-        _setAssociatedGauge();
         _lockYfiForYSD(1e18);
-        _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
-        _setRouterParams();
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
+        _setRewardSplit(testGauge, 0.3e18, 0.3e18, 0.4e18);
+        _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
         // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
@@ -388,16 +348,14 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
         assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");
 
-        assertEq(yearnStakingDelegate.dYfiToSwapAndLock(), estimatedVeYfiSplit, "dYfiToSwapAndLock is incorrect");
+        uint256 swapAndLockBalance = IERC20(MAINNET_DYFI).balanceOf(address(swapAndLock));
+        assertEq(swapAndLockBalance, estimatedVeYfiSplit, "veYfi split is incorrect");
     }
 
     function test_claimBoostRewards() public {
-        _setAssociatedGauge();
         _lockYfiForYSD(10e18);
-        _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
-        _setRouterParams();
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
-        _depositVaultTokensToGauge(alice, 1e18);
+        _setRewardSplit(testGauge, 0.3e18, 0.3e18, 0.4e18);
+        _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
         // Alice claims dYFI rewards without any boost
         IGauge(testGauge).getReward(alice);
@@ -423,76 +381,6 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.claimExitRewards();
         // Assert the treasury balance is increased by the expected amount
         assertEq(IERC20(MAINNET_YFI).balanceOf(treasury), 66_005_769_070_969_234, "claimBoostRewards failed");
-    }
-
-    function test_swapDYfiToVeYfi() public {
-        _setAssociatedGauge();
-        _lockYfiForYSD(1e18);
-        _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
-        _setRouterParams();
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
-        vm.warp(block.timestamp + 14 days);
-
-        // Harvest
-        vm.prank(wrappedStrategy);
-        yearnStakingDelegate.harvest(testVault);
-
-        // Calculate expected yfi amount after swapping through curve pools
-        // dYFI -> WETH then WETH -> YFI
-        uint256 wethAmount =
-            ICurveTwoAssetPool(MAINNET_DYFI_ETH_POOL).get_dy(0, 1, yearnStakingDelegate.dYfiToSwapAndLock());
-        uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_YFI_ETH_POOL).get_dy(0, 1, wethAmount);
-
-        vm.prank(manager);
-        yearnStakingDelegate.swapDYfiToVeYfi();
-
-        // Check for the new veYfi balance
-        // solhint-disable-next-line max-line-length
-        IVotingYFI.LockedBalance memory lockedBalance = IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
-        assertApproxEqRel(
-            lockedBalance.amount, 1e18 + yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amount is incorrect"
-        );
-        assertApproxEqRel(
-            lockedBalance.end,
-            block.timestamp + 4 * 365 days + 4 weeks,
-            0.001e18,
-            "swapDYfiToVeYfi failed: locked end timestamp is incorrect"
-        );
-    }
-
-    function test_swapDYfiToVeYfi_revertWhen_NoDYfiToSwap() public {
-        _setAssociatedGauge();
-        _lockYfiForYSD(1e18);
-        _setRouterParams();
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
-        vm.warp(block.timestamp + 14 days);
-
-        // Harvest but no split is set for veYfi portion
-        vm.prank(wrappedStrategy);
-        yearnStakingDelegate.harvest(testVault);
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.NoDYfiToSwap.selector));
-        vm.prank(manager);
-        yearnStakingDelegate.swapDYfiToVeYfi();
-    }
-
-    function test_swapDYfiToVeYfi_revertWhen_PerpetualLockDisabled() public {
-        _setAssociatedGauge();
-        _lockYfiForYSD(1e18);
-        _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
-        _setRouterParams();
-        _depositVaultTokensToYSD(wrappedStrategy, 1e18);
-        vm.warp(block.timestamp + 14 days);
-
-        // Harvest
-        vm.prank(wrappedStrategy);
-        yearnStakingDelegate.harvest(testVault);
-
-        vm.startPrank(admin);
-        yearnStakingDelegate.setPerpetualLock(false);
-        vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockDisabled.selector));
-        yearnStakingDelegate.swapDYfiToVeYfi();
-        vm.stopPrank();
     }
 
     function test_setSnapshotDelegate() public {
@@ -537,8 +425,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.assume(uint256(a) + b <= 1e18);
         uint80 c = 1e18 - a - b;
         vm.prank(admin);
-        yearnStakingDelegate.setRewardSplit(a, b, c);
-        (uint80 treasurySplit, uint80 strategySplit, uint80 lockSplit) = yearnStakingDelegate.rewardSplit();
+        yearnStakingDelegate.setRewardSplit(testGauge, a, b, c);
+        (uint80 treasurySplit, uint80 strategySplit, uint80 lockSplit) =
+            yearnStakingDelegate.gaugeRewardSplit(testGauge);
         assertEq(treasurySplit, a, "setRewardSplit failed, treasury split is incorrect");
         assertEq(strategySplit, b, "setRewardSplit failed, strategy split is incorrect");
         assertEq(lockSplit, c, "setRewardSplit failed, lock split is incorrect");
@@ -548,61 +437,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         vm.assume(uint256(a) + b + c != 1e18);
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
-        yearnStakingDelegate.setRewardSplit(a, b, c);
+        yearnStakingDelegate.setRewardSplit(testGauge, a, b, c);
         vm.stopPrank();
-    }
-
-    function test_setRouterParams_revertWhen_EmptyPaths() public {
-        vm.prank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, MAINNET_DYFI, address(0)));
-        yearnStakingDelegate.setRouterParams(params);
-    }
-
-    function test_setRouterParams_revertWhen_InvalidFromToken() public {
-        vm.prank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        // Set from token to be USDC instead of dYFI
-        params.route[0] = MAINNET_USDC;
-        params.route[1] = MAINNET_TRI_CRYPTO_USDC;
-        params.route[2] = MAINNET_ETH;
-        params.route[3] = MAINNET_YFI_ETH_POOL;
-        params.route[4] = MAINNET_YFI;
-
-        params.swapParams[0] = [uint256(0), 2, 1, 2, 2];
-        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, MAINNET_DYFI, MAINNET_USDC));
-        yearnStakingDelegate.setRouterParams(params);
-    }
-
-    function test_setRouterParams_revertWhen_InvalidToToken() public {
-        vm.prank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        params.route[0] = MAINNET_DYFI;
-        params.route[1] = MAINNET_DYFI_ETH_POOL;
-        params.route[2] = MAINNET_ETH;
-        params.route[3] = MAINNET_TRI_CRYPTO_USDC;
-        params.route[4] = MAINNET_USDC;
-
-        params.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        params.swapParams[1] = [uint256(2), 0, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToToken.selector, MAINNET_YFI, MAINNET_USDC));
-        yearnStakingDelegate.setRouterParams(params);
-    }
-
-    function test_setRouterParams_revertWhen_InvalidCoinIndex() public {
-        vm.prank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        // Set route to include a token address that does not exist in the given pools
-        params.route[0] = MAINNET_DYFI;
-        params.route[1] = MAINNET_DYFI_ETH_POOL;
-        params.route[2] = MAINNET_USDC;
-        params.route[3] = MAINNET_YFI_ETH_POOL;
-        params.route[4] = MAINNET_YFI;
-
-        params.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
-        yearnStakingDelegate.setRouterParams(params);
     }
 }
