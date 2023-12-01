@@ -12,5 +12,4 @@ interface IGauge is IBaseGauge, IERC4626 {
     function getReward(address _account) external returns (bool);
 
     function setRecipient(address _recipient) external;
-    function deposit(uint256 _assets) external returns (uint256);
 }

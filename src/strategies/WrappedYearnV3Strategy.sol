@@ -56,8 +56,9 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         uint256 newIdleBalance = 0;
         // If dYFI was received, swap it for vault asset
         if (dYFIBalance > 0) {
-            uint256 receivedVaultTokens = _swap(_harvestSwapParams, dYFIBalance, 0, address(this));
-            uint256 receivedGaugeTokens = IGauge(address(asset)).deposit(receivedVaultTokens);
+            uint256 receivedBaseTokens = _swap(_harvestSwapParams, dYFIBalance, 0, address(this));
+            uint256 receivedGaugeTokens =
+                IGauge(IGauge(address(asset)).asset()).deposit(receivedBaseTokens, address(this));
 
             // If the strategy is not shutdown, deploy the funds
             // Else add the received tokens to the idle balance
