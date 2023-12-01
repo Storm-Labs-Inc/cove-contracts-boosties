@@ -9,7 +9,6 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
-    bytes32 constant _STAKING_DELEGATE_ROLE = keccak256("STAKING_DELEGATE_ROLE");
 
     address immutable _REWARDS_TOKEN;
     address immutable _STAKING_DELEGATE;
