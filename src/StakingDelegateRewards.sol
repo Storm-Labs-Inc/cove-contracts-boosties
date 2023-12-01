@@ -70,6 +70,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
+
     function getReward(address stakingToken) public nonReentrant returns (uint256) {
         _updateReward(msg.sender, stakingToken);
         uint256 reward = rewards[msg.sender][stakingToken];

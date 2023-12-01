@@ -11,6 +11,7 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 contract WrappedStrategyTest is YearnV3BaseTest {
     IStrategy public mockStrategy;
@@ -84,7 +85,9 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.startPrank(admin);
         IERC20(MAINNET_DYFI).approve(deployedGauge, DYFI_REWARD_AMOUNT);
         IGauge(deployedGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
-        require(IERC20(MAINNET_DYFI).balanceOf(deployedGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        if (IERC20(MAINNET_DYFI).balanceOf(deployedGauge) != DYFI_REWARD_AMOUNT) {
+            revert Errors.QueueNewRewardsFailed();
+        }
         vm.stopPrank();
     }
 

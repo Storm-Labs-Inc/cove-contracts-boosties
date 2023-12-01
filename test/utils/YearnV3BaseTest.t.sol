@@ -7,6 +7,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "../mocks/MockStrategy.sol";
 import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
@@ -24,6 +25,7 @@ import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 
+// solhint-disable max-states-count
 contract YearnV3BaseTest is BaseTest {
     using SafeERC20 for IERC20;
 
@@ -296,7 +298,9 @@ contract YearnV3BaseTest is BaseTest {
         returns (IVault.StrategyParams memory)
     {
         // Require strategy is added to vault
-        require(IVault(vault).strategies(strategy).activation > 0, "YearnV3BaseTest: Strategy not added to vault");
+        if (IVault(vault).strategies(strategy).activation <= 0) {
+            revert Errors.StrategyNotAddedToVault();
+        }
         // Airdrop asset amount into strategy
         address asset = IStrategy(strategy).asset();
         airdrop(ERC20(asset), strategy, amount);

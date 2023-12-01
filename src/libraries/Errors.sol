@@ -76,15 +76,24 @@ library Errors {
     error InvalidToToken(address intendedToToken, address actualToToken);
     error InvalidCoinIndex();
 
-    //// coveYFI ////
+    //// COVEYFI ////
 
     error OnlyMintingEnabled();
 
-    /// Rescuable ///
+    /// RESCUABLE ///
+
     error ZeroEthTransfer();
     error EthTransferFailed();
     error ZeroTokenTransfer();
 
-    /// GaugeRewardReceiver ///
+    /// GAUGEREWARDRECEIVER ///
+
     error NotAuthorized();
+
+    /// TESTING ///
+
+    error TakeAwayNotEnoughBalance();
+    error StrategyNotAddedToVault();
+    error QueueNewRewardsFailed();
+    error SetAssociatedGaugeFailed();
 }
