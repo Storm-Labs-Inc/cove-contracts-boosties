@@ -2,71 +2,49 @@
 
 pragma solidity ^0.8.18;
 
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
-import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { Errors } from "../libraries/Errors.sol";
 
-abstract contract WrappedYearnV3 is CurveRouterSwapper {
+abstract contract WrappedYearnV3 {
+    // Libraries
+    using SafeERC20 for IERC20;
+
     // Immutable storage variables
     // slither-disable-start naming-convention
-    address internal immutable _VAULT;
-    address internal immutable _YEARN_STAKING_DELEGATE;
-    address internal immutable _DYFI;
+    address private immutable _YEARN_STAKING_DELEGATE;
+    address private immutable _DYFI;
     // slither-disable-end naming-convention
 
-    // Storage variables
-    CurveSwapParams internal _harvestSwapParams;
-    uint256 public totalUnderlyingVaultShares;
-
-    constructor(address _vault, address _yearnStakingDelegate, address _dYfi) {
+    constructor(address asset, address _yearnStakingDelegate, address _dYfi) {
         // Check for zero addresses
-        if (_vault == address(0) || _yearnStakingDelegate == address(0) || _dYfi == address(0)) {
+        if (_yearnStakingDelegate == address(0) || _dYfi == address(0)) {
             revert Errors.ZeroAddress();
         }
 
         // Effects
         // Set storage variable values
-        _VAULT = _vault;
         _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
         _DYFI = _dYfi;
+
+        // Interactions
+        IERC20(asset).forceApprove(_YEARN_STAKING_DELEGATE, type(uint256).max);
     }
 
-    function _setHarvestSwapParams(address asset, CurveSwapParams memory curveSwapParams) internal virtual {
-        // Checks (includes external view calls)
-        _validateSwapParams(curveSwapParams, _DYFI, asset);
-
-        // Effects
-        _harvestSwapParams = curveSwapParams;
+    function _depositToYSD(address asset, uint256 amount) internal virtual {
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).deposit(asset, amount);
     }
 
-    function _depositVaultAssetToYSD(uint256 amount) internal virtual returns (uint256 newShares) {
-        // Deposit _amount into vault
-        newShares = IVault(_VAULT).deposit(amount, address(this));
+    function _withdrawFromYSD(address asset, uint256 amount) internal virtual {
         // Update totalUnderlyingVaultShares
-        totalUnderlyingVaultShares += newShares;
-        // Deposit _shares into gauge via YSD
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).depositToGauge(_VAULT, newShares);
+        // Withdraw gauge from YSD which transfers to msg.sender
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdraw(asset, amount);
     }
 
-    function _redeemVaultSharesFromYSD(uint256 shares) internal virtual returns (uint256 amount) {
-        // Update totalUnderlyingVaultShares
-        totalUnderlyingVaultShares -= shares;
-        // Withdraw _shares from gauge via YSD
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdrawFromGauge(_VAULT, shares);
-        // Withdraw _amount from vault
-        amount = IVault(_VAULT).redeem(shares, address(this), address(this));
-    }
-
-    function vault() external view returns (address) {
-        return _VAULT;
-    }
-
-    function yearnStakingDelegate() external view returns (address) {
+    function yearnStakingDelegate() public view returns (address) {
         return _YEARN_STAKING_DELEGATE;
     }
 
-    function dYfi() external view returns (address) {
+    function dYfi() public view returns (address) {
         return _DYFI;
     }
 }
