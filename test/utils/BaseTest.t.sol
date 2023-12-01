@@ -6,6 +6,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Constants } from "./Constants.sol";
 import { VyperDeployer } from "./VyperDeployer.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 abstract contract BaseTest is Test, Constants {
     //// VARIABLES ////
@@ -113,7 +114,9 @@ abstract contract BaseTest is Test, Constants {
     /// @param _amount amount to take away
     function takeAway(ERC20 _asset, address _from, uint256 _amount) public {
         uint256 balanceBefore = _asset.balanceOf(_from);
-        require(balanceBefore >= _amount, "BaseTest:takeaway(): not enough balance");
+        if (balanceBefore < _amount) {
+            revert Errors.TakeAwayNotEnoughBalance();
+        }
         deal(address(_asset), _from, balanceBefore - _amount);
     }
 }

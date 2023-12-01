@@ -3,7 +3,6 @@ pragma solidity ^0.8.18;
 
 ///@notice This cheat codes interface is named _CheatCodes so you can use the CheatCodes interface in other testing
 /// files without errors
-// solhint-disable-next-line contract-name-camelcase
 interface _CheatCodes {
     function ffi(string[] calldata) external returns (bytes memory);
 }
@@ -18,7 +17,6 @@ interface _CheatCodes {
  */
 
 contract VyperDeployer {
-    // solhint-disable-next-line private-vars-leading-underscore
     address private constant HEVM_ADDRESS = address(bytes20(uint160(uint256(keccak256("hevm cheat code")))));
 
     /// @notice Initializes cheat codes in order to use ffi to compile Vyper contracts

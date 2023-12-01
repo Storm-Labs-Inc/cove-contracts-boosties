@@ -19,9 +19,9 @@
     "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
   },
   "lint-staged": {
-    "!(src/deps/**/*|src/interfaces/deps/**/*)*.sol": [
+    "!(src/deps/**/*|src/interfaces/deps/**/*|test/utils/VyperDeployer**)*.sol": [
       "forge fmt",
-      "npx solhint --fix --ignore-path .solhintignore"
+      "npx solhint --fix"
     ],
     "**/*.{json,md,yml,yaml}": [
       "prettier --write"
