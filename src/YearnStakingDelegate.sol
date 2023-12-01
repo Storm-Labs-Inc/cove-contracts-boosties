@@ -115,7 +115,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
 
     /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
     /// @return userRewardsAmount amount of rewards harvested for the msg.sender
-    // TODO(Trail of Bits): PTAL
+    // TODO(Trail of Bits): PTAL at how to fix this reentrancy
     // slither-disable-start reentrancy-no-eth
     function harvest(address vault) external nonReentrant returns (uint256) {
         // Cache vaultRewardsInfo for gas savings
@@ -165,7 +165,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
     // slither-disable-end reentrancy-no-eth
 
     /**
-     * @notice Claim DYfi rewards from the reward pool and transfers to treasury
+     * @notice Claim DYfi rewards from the reward pool and transfer them to the treasury
      */
     function claimBoostRewards() external {
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
@@ -173,7 +173,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
     }
 
     /**
-     * @notice Claim Yfi rewards from the reward pool and transfers to treasury
+     * @notice Claim YFI rewards from the reward pool and transfer them to the treasury
      */
     function claimExitRewards() external {
         IYfiRewardPool(_YFI_REWARD_POOL).claim();
@@ -262,8 +262,7 @@ contract YearnStakingDelegate is AccessControl, CurveRouterSwapper, ReentrancyGu
             revert Errors.PerpetualLockDisabled();
         }
         // Interactions
-        uint256 amount = IERC20(_YFI).balanceOf(address(this));
-        return _lockYfi(amount);
+        return _lockYfi(IERC20(_YFI).balanceOf(address(this)));
     }
 
     function setRouterParams(CurveSwapParams calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {

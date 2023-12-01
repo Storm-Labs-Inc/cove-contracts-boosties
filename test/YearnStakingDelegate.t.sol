@@ -408,16 +408,16 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_total_supply();
         // Lock YFI for YSD
         _lockYfiForYSD(10e18);
-        // Lock YFI for user
+        // Lock YFI for the user
         _lockYfiForUser(alice, 10e18, 8 * 52 weeks);
         // Another user early exits
         vm.prank(alice);
         IVotingYFI(MAINNET_VE_YFI).withdraw();
-        // Advance to next epoch
+        // Advance to the next epoch
         vm.warp(block.timestamp + 2 weeks);
         // Claim exit rewards
         yearnStakingDelegate.claimExitRewards();
-        // Assert treasury balance is increased by expected amount
+        // Assert the treasury balance is increased by the expected amount
         assertEq(IERC20(MAINNET_YFI).balanceOf(treasury), 66_005_769_070_969_234, "claimBoostRewards failed");
     }
 
