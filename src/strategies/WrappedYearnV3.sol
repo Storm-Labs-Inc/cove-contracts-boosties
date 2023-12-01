@@ -36,7 +36,6 @@ abstract contract WrappedYearnV3 {
     }
 
     function _withdrawFromYSD(address asset, uint256 amount) internal virtual {
-        // Update totalUnderlyingVaultShares
         // Withdraw gauge from YSD which transfers to msg.sender
         IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdraw(asset, amount);
     }
