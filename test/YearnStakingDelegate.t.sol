@@ -61,7 +61,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
         vm.stopPrank();
 
-        require(IERC20(MAINNET_DYFI).balanceOf(testGauge) == DYFI_REWARD_AMOUNT, "queueNewRewards failed");
+        if (IERC20(MAINNET_DYFI).balanceOf(testGauge) != DYFI_REWARD_AMOUNT) {
+            revert Errors.QueueNewRewardsFailed();
+        }
 
         yearnStakingDelegate = new YearnStakingDelegate(
             MAINNET_YFI,
@@ -129,7 +131,9 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
 
     function test_setAssociatedGauge() public {
         _setAssociatedGauge();
-        require(yearnStakingDelegate.associatedGauge(testVault) == testGauge, "setAssociatedGauge failed");
+        if (yearnStakingDelegate.associatedGauge(testVault) != testGauge) {
+            revert Errors.SetAssociatedGaugeFailed();
+        }
     }
 
     function _lockYfiForYSD(uint256 amount) internal {
@@ -443,6 +447,7 @@ contract YearnStakingDelegateTest is YearnV3BaseTest {
         yearnStakingDelegate.swapDYfiToVeYfi();
 
         // Check for the new veYfi balance
+        // solhint-disable-next-line max-line-length
         IVotingYFI.LockedBalance memory lockedBalance = IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
         assertApproxEqRel(
             lockedBalance.amount, 1e18 + yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amount is incorrect"

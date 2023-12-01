@@ -10,6 +10,7 @@ contract MockStrategy is BaseStrategy {
 
     constructor(address _asset) BaseStrategy(_asset, "Mock Basic Strategy") { }
 
+    // solhint-disable no-empty-blocks
     function _deployFunds(uint256) internal override { }
 
     function _freeFunds(uint256) internal override { }
