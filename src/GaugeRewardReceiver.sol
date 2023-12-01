@@ -73,7 +73,7 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
         if (strategyAmount != 0) {
             StakingDelegateRewards(stakingDelegateRewards()).notifyRewardAmount(gauge(), strategyAmount);
         }
-        // Trasnfer rewards to the treasury
+        // Transfer rewards to the treasury
         if (rewardSplit.treasury != 0) {
             IERC20(rewardToken()).safeTransfer(treasury, treasuryAmount);
         }
