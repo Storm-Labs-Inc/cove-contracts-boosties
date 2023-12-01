@@ -13,7 +13,7 @@ import { Rescuable } from "src/Rescuable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
-import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 
 contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
     // Libraries
@@ -41,17 +41,17 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
 
     // Mappings
     /// @notice Mapping of vault to gauge
-    mapping(address vault => address) public associatedGauge;
-    mapping(address gauge => address) public associatedGaugeRewardReceiver;
+    mapping(address gauge => address) public gaugeStakingRewards;
+    mapping(address gauge => address) public gaugeRewardReceivers;
     mapping(address vault => RewardSplit) public gaugeRewardSplit;
     mapping(address strategy => mapping(address => uint256)) public balances;
 
     // Variables
     address public treasury;
     bool public shouldPerpetuallyLock;
-    uint256 public dYfiToSwapAndLock;
     address public swapAndLock;
 
+    /* ========== CONSTRUCTOR ========== */
     constructor(address gaugeRewardReceiverImpl, address _treasury, address admin, address manager) {
         // Checks
         // Check for zero addresses
@@ -76,6 +76,45 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
         IERC20(_YFI).forceApprove(_VE_YFI, type(uint256).max);
     }
 
+    /* ========== VIEWS ========== */
+    function yfi() external pure returns (address) {
+        return _YFI;
+    }
+
+    function dYfi() external pure returns (address) {
+        return _D_YFI;
+    }
+
+    function veYfi() external pure returns (address) {
+        return _VE_YFI;
+    }
+
+    /* ========== MUTATIVE FUNCTIONS ========== */
+    function deposit(address gauge, uint256 amount) external {
+        // Effects
+        uint256 newBalance = balances[gauge][msg.sender] + amount;
+        balances[gauge][msg.sender] = newBalance;
+        // Interactions
+        _checkpointUserBalance(gauge, msg.sender, newBalance);
+        IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    function withdraw(address gauge, uint256 amount) external {
+        // Effects
+        uint256 newBalance = balances[gauge][msg.sender] - amount;
+        balances[gauge][msg.sender] = newBalance;
+        // Interactions
+        _checkpointUserBalance(gauge, msg.sender, newBalance);
+        IERC20(gauge).safeTransfer(msg.sender, amount);
+    }
+
+    function _checkpointUserBalance(address gauge, address user, uint256 userBalance) internal {
+        address stakingDelegateReward = gaugeStakingRewards[gauge];
+        if (stakingDelegateReward != address(0)) {
+            StakingDelegateRewards(stakingDelegateReward).updateUserBalance(gauge, user, userBalance);
+        }
+    }
+
     /**
      * @notice Claim dYFI rewards from the reward pool and transfer them to the treasury
      */
@@ -86,7 +125,7 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        IERC20(_D_YFI).safeTransfer(treasury, IERC20(_D_YFI).balanceOf(address(this)) - dYfiToSwapAndLock);
+        IERC20(_D_YFI).safeTransfer(treasury, IERC20(_D_YFI).balanceOf(address(this)));
     }
 
     /**
@@ -102,31 +141,9 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
         IERC20(_YFI).safeTransfer(treasury, IERC20(_YFI).balanceOf(address(this)));
     }
 
-    function harvest(address strategy) external returns (uint256) {
-        address gauge = associatedGauge[strategy];
-        address gaugeRewardReceiver = associatedGaugeRewardReceiver[gauge];
-
+    function harvest(address gauge) external returns (uint256) {
+        address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
         return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock, treasury, gaugeRewardSplit[gauge]);
-    }
-
-    function deposit(address gauge, uint256 amount) external {
-        // Checks
-        if (gauge != associatedGauge[msg.sender]) {
-            revert Errors.NoAssociatedGauge();
-        }
-        // Interactions
-        balances[gauge][msg.sender] += amount;
-        IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
-    }
-
-    function withdraw(address gauge, uint256 amount) external {
-        // Checks
-        if (gauge != associatedGauge[msg.sender]) {
-            revert Errors.NoAssociatedGauge();
-        }
-        // Interactions
-        balances[gauge][msg.sender] -= amount;
-        IERC20(gauge).safeTransfer(msg.sender, amount);
     }
 
     function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory) {
@@ -146,6 +163,8 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
         IERC20(_YFI).safeTransferFrom(msg.sender, address(this), amount);
         return _lockYfi(amount);
     }
+
+    /* ========== RESTRICTED FUNCTIONS ========== */
 
     /// @notice Set perpetual lock status
     /// @param _shouldPerpetuallyLock if true, lock YFI for 4 years after each harvest
@@ -174,19 +193,28 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
         swapAndLock = _swapAndLock;
     }
 
-    function addStrategy(address strategy) external nonReentrant onlyRole(MANAGER_ROLE) {
+    function addGaugeRewards(
+        address gauge,
+        address stakingDelegateRewards
+    )
+        external
+        nonReentrant
+        onlyRole(MANAGER_ROLE)
+    {
         // Checks
-        address gauge = IWrappedYearnV3Strategy(strategy).asset();
-        if (strategy == address(0) || gauge == address(0)) {
+        if (gauge == address(0) || stakingDelegateRewards == address(0)) {
             revert Errors.ZeroAddress();
         }
         // Effects
-        associatedGauge[strategy] = gauge;
-        _setRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to compound, 0% to veYFI for relocking
-        address receiver = _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, strategy));
-        associatedGaugeRewardReceiver[gauge] = receiver;
+        _setRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
+        address receiver =
+            _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
+        gaugeRewardReceivers[gauge] = receiver;
+        gaugeStakingRewards[gauge] = stakingDelegateRewards;
         // Interactions
+        GaugeRewardReceiver(receiver).initialize();
         IGauge(gauge).setRecipient(receiver);
+        StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
     }
 
     /// Delegates voting power to a given address
@@ -238,17 +266,5 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
 
     function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _rescue(token, to, balance);
-    }
-
-    function yfi() external view returns (address) {
-        return _YFI;
-    }
-
-    function dYfi() external view returns (address) {
-        return _D_YFI;
-    }
-
-    function veYfi() external view returns (address) {
-        return _VE_YFI;
     }
 }

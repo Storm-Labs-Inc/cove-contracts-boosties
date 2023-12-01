@@ -26,6 +26,8 @@ contract SwapAndLock is CurveRouterSwapper, AccessControl, ReentrancyGuard {
 
     CurveSwapParams internal _routerParam;
 
+    /* ========== CONSTRUCTOR ========== */
+
     constructor(address _curveRouter, address _yearnStakingDelegate) CurveRouterSwapper(_curveRouter) {
         // Checks
         if (_yearnStakingDelegate == address(0)) {
@@ -33,10 +35,13 @@ contract SwapAndLock is CurveRouterSwapper, AccessControl, ReentrancyGuard {
         }
         // Effects
         _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // Interactions
         _approveTokenForSwap(_D_YFI);
         IERC20(_YFI).forceApprove(_yearnStakingDelegate, type(uint256).max);
     }
+
+    /* ========== RESTRICTED FUNCTIONS ========== */
 
     function setRouterParams(CurveSwapParams calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks

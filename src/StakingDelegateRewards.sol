@@ -71,34 +71,29 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
-
-    function stake(address stakingToken, uint256 amount) external nonReentrant {
-        _updateReward(msg.sender, stakingToken);
-        require(amount > 0, "Cannot stake 0");
-        _totalSupply[stakingToken] = _totalSupply[stakingToken] + amount;
-        _balances[msg.sender][stakingToken] = _balances[msg.sender][stakingToken] + amount;
-        emit Staked(msg.sender, amount);
-    }
-
-    function withdraw(address stakingToken, uint256 amount) public nonReentrant {
-        _updateReward(msg.sender, stakingToken);
-        require(amount > 0, "Cannot withdraw 0");
-        _totalSupply[stakingToken] = _totalSupply[stakingToken] - amount;
-        _balances[msg.sender][stakingToken] = _balances[msg.sender][stakingToken] - amount;
-        emit Withdrawn(msg.sender, amount);
-    }
-
-    function getReward(address stakingToken) public nonReentrant {
+    function getReward(address stakingToken) public nonReentrant returns (uint256) {
         _updateReward(msg.sender, stakingToken);
         uint256 reward = rewards[msg.sender][stakingToken];
         if (reward > 0) {
             rewards[msg.sender][stakingToken] = 0;
             IERC20(_REWARDS_TOKEN).safeTransfer(msg.sender, reward);
-            emit RewardPaid(msg.sender, reward);
+            emit RewardPaid(msg.sender, stakingToken, reward);
         }
+        return reward;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
+    function updateUserBalance(address stakingToken, address user, uint256 totalAmount) external nonReentrant {
+        if (msg.sender != _STAKING_DELEGATE) {
+            revert("Only the staking delegate can update a user's balance");
+        }
+        _updateReward(user, stakingToken);
+        uint256 currentUserBalance = _balances[user][stakingToken];
+        _balances[user][stakingToken] = totalAmount;
+        _totalSupply[stakingToken] = _totalSupply[stakingToken] - currentUserBalance + totalAmount;
+        emit UserBalanceUpdated(user, stakingToken, totalAmount);
+    }
+
     function addStakingToken(address stakingToken, address rewardDistributioner) external {
         if (msg.sender != _STAKING_DELEGATE) {
             revert("Only the staking delegate can add a staking token");
@@ -108,7 +103,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
         rewardsDuration[stakingToken] = 7 days;
     }
 
-    function notifyRewardAmount(address stakingToken, uint256 reward) external {
+    function notifyRewardAmount(address stakingToken, uint256 reward) external nonReentrant {
         if (msg.sender != rewardDistributioners[stakingToken]) {
             revert("Only the reward distributioner can notify the reward amount");
         }
@@ -125,7 +120,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
         lastUpdateTime[stakingToken] = block.timestamp;
         periodFinish[stakingToken] = block.timestamp + (rewardsDuration[stakingToken]);
         IERC20(_REWARDS_TOKEN).safeTransferFrom(msg.sender, address(this), reward);
-        emit RewardAdded(reward);
+        emit RewardAdded(stakingToken, reward);
     }
 
     // Added to support recovering LP Rewards from other systems such as BAL to be distributed to holders
@@ -149,7 +144,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
             "Previous rewards period must be complete before changing the duration for the new period"
         );
         rewardsDuration[stakingToken] = _rewardsDuration;
-        emit RewardsDurationUpdated(rewardsDuration[stakingToken]);
+        emit RewardsDurationUpdated(stakingToken, rewardsDuration[stakingToken]);
     }
 
     /* ========== MODIFIERS ========== */
@@ -165,10 +160,9 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
 
     /* ========== EVENTS ========== */
 
-    event RewardAdded(uint256 reward);
-    event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
-    event RewardPaid(address indexed user, uint256 reward);
-    event RewardsDurationUpdated(uint256 newDuration);
+    event RewardAdded(address indexed stakingToken, uint256 reward);
+    event UserBalanceUpdated(address indexed user, address indexed stakingToken, uint256 amount);
+    event RewardPaid(address indexed user, address indexed stakingToken, uint256 reward);
+    event RewardsDurationUpdated(address indexed stakingToken, uint256 newDuration);
     event Recovered(address token, uint256 amount);
 }
