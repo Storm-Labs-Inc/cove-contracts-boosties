@@ -3,11 +3,14 @@
 pragma solidity ^0.8.18;
 
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
-import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { Errors } from "../libraries/Errors.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract WrappedYearnV3 is CurveRouterSwapper {
+    // Libraries
+    using SafeERC20 for IERC20;
+
     // Immutable storage variables
     // slither-disable-start naming-convention
     address internal immutable _VAULT;
@@ -40,22 +43,17 @@ abstract contract WrappedYearnV3 is CurveRouterSwapper {
         _harvestSwapParams = curveSwapParams;
     }
 
-    function _depositVaultAssetToYSD(uint256 amount) internal virtual returns (uint256 newShares) {
-        // Deposit _amount into vault
-        newShares = IVault(_VAULT).deposit(amount, address(this));
-        // Update totalUnderlyingVaultShares
-        totalUnderlyingVaultShares += newShares;
-        // Deposit _shares into gauge via YSD
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).depositToGauge(_VAULT, newShares);
+    function _depositGaugeToYSD(address gauge, uint256 amount) internal virtual {
+        totalUnderlyingVaultShares += amount;
+        IERC20(gauge).forceApprove(_YEARN_STAKING_DELEGATE, amount);
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).deposit(gauge, amount);
     }
 
-    function _redeemVaultSharesFromYSD(uint256 shares) internal virtual returns (uint256 amount) {
+    function _withdrawGaugeFromYSD(address gauge, uint256 amount) internal virtual {
         // Update totalUnderlyingVaultShares
-        totalUnderlyingVaultShares -= shares;
-        // Withdraw _shares from gauge via YSD
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdrawFromGauge(_VAULT, shares);
-        // Withdraw _amount from vault
-        amount = IVault(_VAULT).redeem(shares, address(this), address(this));
+        totalUnderlyingVaultShares -= amount;
+        // Withdraw gauge from YSD which transfers to msg.sender
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdraw(gauge, amount);
     }
 
     function vault() external view returns (address) {
