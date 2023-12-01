@@ -41,14 +41,18 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
         //// yearn staking delegate ////
         {
-            yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(treasury, admin, manager));
+            address receiver = setUpGaugeRewardReceiverImplementation(admin);
+            yearnStakingDelegate = YearnStakingDelegate(setUpYearnStakingDelegate(receiver, treasury, admin, manager));
+            address stakingDelegateRewards =
+                setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate));
             // Deploy gauge
             deployedGauge = deployGaugeViaFactory(address(deployedVault), admin, "Test Gauge for USDC Vault");
+            // Setup gauge rewards
+            vm.prank(admin);
+            yearnStakingDelegate.addGaugeRewards(deployedGauge, stakingDelegateRewards);
             // Give admin some dYFI
             airdrop(ERC20(MAINNET_YFI), alice, ALICE_YFI);
             airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
-            vm.prank(admin);
-            yearnStakingDelegate.setAssociatedGauge(address(deployedVault), deployedGauge);
         }
 
         //// wrapped strategy ////
@@ -280,7 +284,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
         // set reward split to 50/50
         vm.prank(admin);
-        yearnStakingDelegate.setRewardSplit(0, 0.5e18, 0.5e18);
+        yearnStakingDelegate.setRewardSplit(deployedGauge, 0, 0.5e18, 0.5e18);
         // alice locks her YFI
         vm.startPrank(alice);
         IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), ALICE_YFI);

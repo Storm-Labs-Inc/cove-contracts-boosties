@@ -10,7 +10,10 @@ import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.so
 import { Errors } from "src/libraries/Errors.sol";
 
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
+import { SwapAndLock } from "src/SwapAndLock.sol";
+import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 
 import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
@@ -181,35 +184,71 @@ contract YearnV3BaseTest is BaseTest {
         return factoryAddr;
     }
 
+    function setUpStakingDelegateRewards(
+        address owner,
+        address rewardToken,
+        address yearnStakingDelegate
+    )
+        public
+        returns (address)
+    {
+        vm.prank(owner);
+        address stakingDelegateRewards = address(new StakingDelegateRewards(rewardToken, yearnStakingDelegate));
+        vm.label(stakingDelegateRewards, "StakingDelegateRewards");
+        return stakingDelegateRewards;
+    }
+
+    function setUpGaugeRewardReceiverImplementation(address owner) public returns (address) {
+        vm.prank(owner);
+        address gaugeRewardReceiverImplementation = address(new GaugeRewardReceiver());
+        vm.label(gaugeRewardReceiverImplementation, "GaugeRewardReceiverImplementation");
+        return gaugeRewardReceiverImplementation;
+    }
+
+    function setUpSwapAndLock(
+        address owner,
+        address curveRouter,
+        address yearnStakingDelegate
+    )
+        public
+        returns (address)
+    {
+        vm.startPrank(owner);
+        address swapAndLock = address(new SwapAndLock(curveRouter, yearnStakingDelegate));
+        vm.label(swapAndLock, "SwapAndLock");
+        CurveRouterSwapper.CurveSwapParams memory dYfiToYfiParams;
+        // [token_from, pool, token_to, pool, ...]
+        dYfiToYfiParams.route[0] = MAINNET_DYFI;
+        dYfiToYfiParams.route[1] = MAINNET_DYFI_ETH_POOL;
+        dYfiToYfiParams.route[2] = MAINNET_ETH;
+        dYfiToYfiParams.route[3] = MAINNET_YFI_ETH_POOL;
+        dYfiToYfiParams.route[4] = MAINNET_YFI;
+
+        dYfiToYfiParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];
+        dYfiToYfiParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
+        SwapAndLock(swapAndLock).setRouterParams(dYfiToYfiParams);
+        vm.stopPrank();
+        return swapAndLock;
+    }
+
     /// @notice Deploy YearnStakingDelegate with known mainnet addresses
     /// @dev uses ethereum mainnet addresses from Constants.sol
     /// @param _treasury address of treasury
     /// @param _admin address of admin
     /// @param _manager address of manager
-    function setUpYearnStakingDelegate(address _treasury, address _admin, address _manager) public returns (address) {
+    function setUpYearnStakingDelegate(
+        address rewardReceiver,
+        address _treasury,
+        address _admin,
+        address _manager
+    )
+        public
+        returns (address)
+    {
         vm.startPrank(admin);
-        YearnStakingDelegate yearnStakingDelegate = new YearnStakingDelegate(
-            MAINNET_YFI,
-            MAINNET_DYFI,
-            MAINNET_VE_YFI,
-            MAINNET_SNAPSHOT_DELEGATE_REGISTRY,
-            MAINNET_CURVE_ROUTER,
-            _treasury,
-            _admin,
-            _manager
-        );
-
-        CurveRouterSwapper.CurveSwapParams memory ysdSwapParams;
-        // [token_from, pool, token_to, pool, ...]
-        ysdSwapParams.route[0] = MAINNET_DYFI;
-        ysdSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
-        ysdSwapParams.route[2] = MAINNET_ETH;
-        ysdSwapParams.route[3] = MAINNET_YFI_ETH_POOL;
-        ysdSwapParams.route[4] = MAINNET_YFI;
-
-        ysdSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        ysdSwapParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-        yearnStakingDelegate.setRouterParams(ysdSwapParams);
+        YearnStakingDelegate yearnStakingDelegate =
+            new YearnStakingDelegate(rewardReceiver, _treasury, _admin, _manager);
+        vm.label(address(yearnStakingDelegate), "YearnStakingDelegate");
         vm.stopPrank();
         return address(yearnStakingDelegate);
     }

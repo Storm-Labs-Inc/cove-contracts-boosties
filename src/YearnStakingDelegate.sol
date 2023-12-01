@@ -142,8 +142,12 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
     }
 
     function harvest(address gauge) external returns (uint256) {
+        address _swapAndLock = swapAndLock;
+        if (_swapAndLock == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock, treasury, gaugeRewardSplit[gauge]);
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(_swapAndLock, treasury, gaugeRewardSplit[gauge]);
     }
 
     function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory) {

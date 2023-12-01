@@ -19,7 +19,8 @@ contract CoveYFITest is YearnV3BaseTest {
 
         bob = createUser("bob");
 
-        yearnStakingDelegate = setUpYearnStakingDelegate(admin, admin, admin);
+        address receiver = setUpGaugeRewardReceiverImplementation(admin);
+        yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin);
 
         vm.prank(admin);
         coveYFI = new CoveYFI(MAINNET_YFI, yearnStakingDelegate);
