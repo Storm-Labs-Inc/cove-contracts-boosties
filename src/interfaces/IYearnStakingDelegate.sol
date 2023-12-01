@@ -9,6 +9,8 @@ interface IYearnStakingDelegate {
 
     function depositToGauge(address vault, uint256 amount) external;
     function withdrawFromGauge(address vault, uint256 amount) external;
+    function deposit(address gauge, uint256 amount) external;
+    function withdraw(address gauge, uint256 amount) external;
     function lockYfi(uint256 amount) external;
 
     function userInfo(address user, address vault) external view returns (UserInfo memory);
