@@ -48,9 +48,10 @@ library Errors {
     error NoDYfiToSwap();
 
     error GetRewardFailed();
+    error GaugeRewardsAlreadyAdded();
+    error GaugeRewardsNotYetAdded();
 
     //// WRAPPED STRATEGY CURVE SWAPPER ////
-
     error OracleOutdated();
 
     error VaultAssetDiffers();
@@ -83,4 +84,7 @@ library Errors {
     error ZeroEthTransfer();
     error EthTransferFailed();
     error ZeroTokenTransfer();
+
+    /// GaugeRewardReceiver ///
+    error NotAuthorized();
 }

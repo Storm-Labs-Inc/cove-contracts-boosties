@@ -10,4 +10,6 @@ interface IGauge is IBaseGauge, IERC4626 {
     function boostedBalanceOf(address _account) external view returns (uint256);
 
     function getReward(address _account) external returns (bool);
+
+    function setRecipient(address _recipient) external;
 }
