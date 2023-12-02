@@ -101,15 +101,49 @@ contract GaugeRewardReceiverTest is BaseTest {
         gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize();
 
-        ERC20Mock(rewardToken).mint(gauge, 100e18);
+        uint256 totalRewardAmount = 100e18;
+        YearnStakingDelegate.RewardSplit memory rewardSplit = YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17);
+        ERC20Mock(rewardToken).mint(gauge, totalRewardAmount);
+        vm.prank(stakingDelegate);
+        GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock, treasury, rewardSplit);
+
+        uint256 expectedTreasuryAmount = rewardSplit.treasury * totalRewardAmount / 1e18;
+        uint256 expectedSwapAndLockAmount = rewardSplit.lock * totalRewardAmount / 1e18;
+        uint256 expectedStrategyAmount = totalRewardAmount - expectedTreasuryAmount - expectedSwapAndLockAmount;
+
+        assertEq(IERC20(rewardToken).balanceOf(treasury), expectedTreasuryAmount);
+        assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
+        assertEq(IERC20(rewardToken).balanceOf(swapAndLock), expectedSwapAndLockAmount);
+    }
+
+    function testFuzz_harvest(uint256 amount, uint80 treasurySplit, uint80 strategySplit) public {
+        vm.assume(amount < type(uint256).max / 1e18);
+        vm.assume(uint256(treasurySplit) + strategySplit < 1e18);
+        uint80 lockSplit = 1e18 - treasurySplit - strategySplit;
+
+        address stakingDelegate = TEST_ADDRESS_1;
+        address gauge = mockGauge;
+        address rewardToken = mockToken;
+        address stakingDelegateRewards = mockStakingDelegateRewards;
+        address swapAndLock = TEST_ADDRESS_2;
+        address treasury = TEST_ADDRESS_3;
+
+        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
+        GaugeRewardReceiver(gaugeRewardReceiver).initialize();
+
+        ERC20Mock(rewardToken).mint(gauge, amount);
         vm.prank(stakingDelegate);
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLock, treasury, YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17)
+            swapAndLock, treasury, YearnStakingDelegate.RewardSplit(treasurySplit, strategySplit, lockSplit)
         );
 
-        assertEq(IERC20(rewardToken).balanceOf(treasury), 1e17 * 100e18 / 1e18);
-        assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), 2e17 * 100e18 / 1e18);
-        assertEq(IERC20(rewardToken).balanceOf(swapAndLock), 7e17 * 100e18 / 1e18);
+        uint256 expectedTreasuryAmount = treasurySplit * amount / 1e18;
+        uint256 expectedSwapAndLockAmount = lockSplit * amount / 1e18;
+        uint256 expectedStrategyAmount = amount - expectedTreasuryAmount - expectedSwapAndLockAmount;
+
+        assertEq(IERC20(rewardToken).balanceOf(treasury), expectedTreasuryAmount);
+        assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
+        assertEq(IERC20(rewardToken).balanceOf(swapAndLock), expectedSwapAndLockAmount);
     }
 
     function test_harvest_revertWhen_NotAuthorized() public {
