@@ -15,8 +15,10 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
     // Libraries
     using SafeERC20 for IERC20;
 
+    // slither-disable naming-convention
     address internal immutable _VAULT_ASSET;
     address internal immutable _VAULT;
+    // slither-enable naming-convention
 
     CurveSwapParams internal _harvestSwapParams;
 
@@ -30,6 +32,12 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         CurveRouterSwapper(_curveRouter)
         WrappedYearnV3(_asset, _yearnStakingDelegate, _dYFI)
     {
+        // Checks
+        // Check for zero addresses
+        if (_asset == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+
         // Effects
         // Assume asset is yearn gauge
         address _vault = IGauge(_asset).asset();

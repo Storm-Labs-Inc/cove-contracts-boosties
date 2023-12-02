@@ -11,8 +11,10 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
 
     /* ========== STATE VARIABLES ========== */
 
+    // slither-disable naming-convention
     address private immutable _REWARDS_TOKEN;
     address private immutable _STAKING_DELEGATE;
+    // slither-enable naming-convention
 
     mapping(address => bool) public isStakingToken;
     mapping(address => uint256) public periodFinish;
@@ -29,6 +31,12 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _rewardsToken, address _stakingDelegate) {
+        // Checks
+        // Check for zero addresses
+        if (_rewardsToken == address(0) || _stakingDelegate == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _REWARDS_TOKEN = _rewardsToken;
         _STAKING_DELEGATE = _stakingDelegate;
@@ -46,6 +54,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
 
     function lastTimeRewardApplicable(address stakingToken) public view returns (uint256) {
         uint256 finish = periodFinish[stakingToken];
+        // slither-disable-next-line timestamp
         return block.timestamp < finish ? block.timestamp : finish;
     }
 
@@ -110,6 +119,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
         }
         _updateReward(address(0), stakingToken);
 
+        // slither-disable-next-line timestamp
         if (block.timestamp >= periodFinish[stakingToken]) {
             rewardRate[stakingToken] = reward / rewardsDuration[stakingToken];
         } else {
@@ -136,11 +146,13 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
         if (tokenAddress == _REWARDS_TOKEN || isStakingToken[tokenAddress]) {
             revert Errors.CannotWithdrawStakingToken();
         }
-        IERC20(tokenAddress).safeTransfer(to, tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
+        IERC20(tokenAddress).safeTransfer(to, tokenAmount);
     }
 
+    // slither-disable-next-line naming-convention
     function setRewardsDuration(address stakingToken, uint256 _rewardsDuration) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // slither-disable-next-line timestamp
         if (block.timestamp <= periodFinish[stakingToken]) {
             revert Errors.PreviousRewardsPeriodNotCompleted();
         }
