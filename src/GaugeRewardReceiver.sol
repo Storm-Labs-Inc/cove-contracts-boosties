@@ -14,8 +14,11 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
     // Libraries
     using SafeERC20 for IERC20;
 
-    /* ========== INITIALIZER ========== */
+    constructor() {
+        _disableInitializers();
+    }
 
+    /* ========== INITIALIZER ========== */
     function initialize() public initializer {
         __ReentrancyGuard_init();
         IERC20(rewardToken()).safeApprove(stakingDelegateRewards(), type(uint256).max);
@@ -56,6 +59,9 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
     {
         if (msg.sender != stakingDelegate()) {
             revert Errors.NotAuthorized();
+        }
+        if (rewardSplit.lock + rewardSplit.treasury + rewardSplit.strategy != 1e18) {
+            revert Errors.InvalidRewardSplit();
         }
         // Read pending dYFI rewards from the gauge
         // Yearn's gauge implementation always returns true

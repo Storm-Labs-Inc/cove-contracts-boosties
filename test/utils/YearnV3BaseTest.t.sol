@@ -397,7 +397,7 @@ contract YearnV3BaseTest is BaseTest {
     function setUpWrappedStrategy(
         string memory name,
         address _asset,
-        address _v3VaultAddress,
+        address,
         address _yearnStakingDelegateAddress,
         address _dYFIAddress,
         address _curveRouterAddress
@@ -409,7 +409,7 @@ contract YearnV3BaseTest is BaseTest {
         IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
             address(
                 new WrappedYearnV3Strategy(
-                    address(_asset), _v3VaultAddress, _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress
+                    address(_asset), _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress
                 )
             )
         );
