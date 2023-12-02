@@ -111,6 +111,7 @@ contract GaugeRewardReceiverTest is BaseTest {
         uint256 expectedSwapAndLockAmount = rewardSplit.lock * totalRewardAmount / 1e18;
         uint256 expectedStrategyAmount = totalRewardAmount - expectedTreasuryAmount - expectedSwapAndLockAmount;
 
+        assertEq(IERC20(rewardToken).balanceOf(gaugeRewardReceiver), 0);
         assertEq(IERC20(rewardToken).balanceOf(treasury), expectedTreasuryAmount);
         assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
         assertEq(IERC20(rewardToken).balanceOf(swapAndLock), expectedSwapAndLockAmount);
@@ -141,6 +142,7 @@ contract GaugeRewardReceiverTest is BaseTest {
         uint256 expectedSwapAndLockAmount = lockSplit * amount / 1e18;
         uint256 expectedStrategyAmount = amount - expectedTreasuryAmount - expectedSwapAndLockAmount;
 
+        assertEq(IERC20(rewardToken).balanceOf(gaugeRewardReceiver), 0);
         assertEq(IERC20(rewardToken).balanceOf(treasury), expectedTreasuryAmount);
         assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
         assertEq(IERC20(rewardToken).balanceOf(swapAndLock), expectedSwapAndLockAmount);
