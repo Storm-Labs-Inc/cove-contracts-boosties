@@ -43,6 +43,8 @@ contract SwapAndLockTest is YearnV3BaseTest {
         );
     }
 
+    // TODO: remove after implementation
+    // solhint-disable-next-line no-empty-blocks
     function test_swapDYfiToVeYfi_revertWhen_NoDYfiToSwap() public { }
 
     function test_setRouterParams_revertWhen_EmptyPaths() public {

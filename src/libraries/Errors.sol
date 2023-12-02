@@ -51,6 +51,13 @@ library Errors {
     error GaugeRewardsAlreadyAdded();
     error GaugeRewardsNotYetAdded();
 
+    //// STAKING DELEGATE REWARDS ////
+    error CannotWithdrawStakingToken();
+    error PreviousRewardsPeriodNotCompleted();
+    error OnlyStakingDelegateCanUpdateUserBalance();
+    error OnlyStakingDelegateCanAddStakingToken();
+    error OnlyRewardDistributorCanNotifyRewardAmount();
+
     //// WRAPPED STRATEGY CURVE SWAPPER ////
     error OracleOutdated();
 

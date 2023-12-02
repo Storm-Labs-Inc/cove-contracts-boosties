@@ -29,15 +29,15 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
 
     // Constants
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    address constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
-    address constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
-    address constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
-    address constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
-    address constant _VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
-    address constant _SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+    address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
+    address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
+    address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
+    address private constant _VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
+    address private constant _SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
 
     // Immutables
-    address immutable _GAUGE_REWARD_RECEIVER_IMPL;
+    address private immutable _GAUGE_REWARD_RECEIVER_IMPL;
 
     // Mappings
     /// @notice Mapping of vault to gauge

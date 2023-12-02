@@ -18,11 +18,11 @@ contract SwapAndLock is CurveRouterSwapper, AccessControl, ReentrancyGuard {
 
     // Constants
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    address constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
-    address constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
+    address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
 
     // Immutables
-    address immutable _YEARN_STAKING_DELEGATE;
+    address private immutable _YEARN_STAKING_DELEGATE;
 
     CurveSwapParams internal _routerParam;
 
