@@ -10,13 +10,16 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { WrappedYearnV3 } from "./WrappedYearnV3.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYearnV3 {
     // Libraries
     using SafeERC20 for IERC20;
 
+    // slither-disable-start naming-convention
     address internal immutable _VAULT_ASSET;
     address internal immutable _VAULT;
+    // slither-disable-end naming-convention
 
     CurveSwapParams internal _harvestSwapParams;
 
@@ -30,16 +33,24 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         CurveRouterSwapper(_curveRouter)
         WrappedYearnV3(_asset, _yearnStakingDelegate, _dYFI)
     {
+        address vault = IGauge(_asset).asset();
+        address vaultAsset = IERC4626(vault).asset();
+
+        // Checks
+        // Check for zero addresses
+        if (vault == address(0) || vaultAsset == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+
         // Effects
         // Assume asset is yearn gauge
-        address _vault = IGauge(_asset).asset();
-        _VAULT_ASSET = IERC4626(_vault).asset();
-        _VAULT = _vault;
+        _VAULT_ASSET = vaultAsset;
+        _VAULT = vault;
 
         // Interactions
         _approveTokenForSwap(_dYFI);
-        IERC20(_asset).forceApprove(_vault, type(uint256).max);
-        IERC20(_vault).forceApprove(_yearnStakingDelegate, type(uint256).max);
+        IERC20(_asset).forceApprove(vault, type(uint256).max);
+        IERC20(vault).forceApprove(_yearnStakingDelegate, type(uint256).max);
     }
 
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external virtual {

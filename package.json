@@ -21,7 +21,7 @@
   "lint-staged": {
     "!(src/deps/**/*|src/interfaces/deps/**/*|test/utils/VyperDeployer**)*.sol": [
       "forge fmt",
-      "npx solhint --fix"
+      "npx solhint --fix --noPrompt"
     ],
     "**/*.{json,md,yml,yaml}": [
       "prettier --write"
@@ -38,6 +38,6 @@
     "husky": "^8.0.3",
     "lint-staged": "^15.0.1",
     "prettier": "^3.0.3",
-    "solhint": "^3.6.2"
+    "solhint": "^4.0.0"
   }
 }

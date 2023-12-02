@@ -4,14 +4,17 @@ pragma solidity ^0.8.18;
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
 
-    address immutable _REWARDS_TOKEN;
-    address immutable _STAKING_DELEGATE;
+    // slither-disable-start naming-convention
+    address private immutable _REWARDS_TOKEN;
+    address private immutable _STAKING_DELEGATE;
+    // slither-disable-end naming-convention
 
     mapping(address => bool) public isStakingToken;
     mapping(address => uint256) public periodFinish;
@@ -21,13 +24,19 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
     mapping(address => uint256) public rewardPerTokenStored;
     mapping(address => mapping(address => uint256)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint256)) public rewards;
-    mapping(address => address) public rewardDistributioners;
+    mapping(address => address) public rewardDistributors;
     mapping(address => uint256) private _totalSupply;
     mapping(address => mapping(address => uint256)) private _balances;
 
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _rewardsToken, address _stakingDelegate) {
+        // Checks
+        // Check for zero addresses
+        if (_rewardsToken == address(0) || _stakingDelegate == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _REWARDS_TOKEN = _rewardsToken;
         _STAKING_DELEGATE = _stakingDelegate;
@@ -45,6 +54,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
 
     function lastTimeRewardApplicable(address stakingToken) public view returns (uint256) {
         uint256 finish = periodFinish[stakingToken];
+        // slither-disable-next-line timestamp
         return block.timestamp < finish ? block.timestamp : finish;
     }
 
@@ -85,7 +95,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
     /* ========== RESTRICTED FUNCTIONS ========== */
     function updateUserBalance(address stakingToken, address user, uint256 totalAmount) external nonReentrant {
         if (msg.sender != _STAKING_DELEGATE) {
-            revert("Only the staking delegate can update a user's balance");
+            revert Errors.OnlyStakingDelegateCanUpdateUserBalance();
         }
         _updateReward(user, stakingToken);
         uint256 currentUserBalance = _balances[user][stakingToken];
@@ -96,19 +106,20 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
 
     function addStakingToken(address stakingToken, address rewardDistributioner) external {
         if (msg.sender != _STAKING_DELEGATE) {
-            revert("Only the staking delegate can add a staking token");
+            revert Errors.OnlyStakingDelegateCanAddStakingToken();
         }
         isStakingToken[stakingToken] = true;
-        rewardDistributioners[stakingToken] = rewardDistributioner;
+        rewardDistributors[stakingToken] = rewardDistributioner;
         rewardsDuration[stakingToken] = 7 days;
     }
 
     function notifyRewardAmount(address stakingToken, uint256 reward) external nonReentrant {
-        if (msg.sender != rewardDistributioners[stakingToken]) {
-            revert("Only the reward distributioner can notify the reward amount");
+        if (msg.sender != rewardDistributors[stakingToken]) {
+            revert Errors.OnlyRewardDistributorCanNotifyRewardAmount();
         }
         _updateReward(address(0), stakingToken);
 
+        // slither-disable-next-line timestamp
         if (block.timestamp >= periodFinish[stakingToken]) {
             rewardRate[stakingToken] = reward / rewardsDuration[stakingToken];
         } else {
@@ -132,17 +143,19 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        require(tokenAddress != _REWARDS_TOKEN, "Cannot withdraw the staking token");
-        require(!isStakingToken[tokenAddress], "Cannot withdraw a token that is a staking token");
-        IERC20(tokenAddress).safeTransfer(to, tokenAmount);
+        if (tokenAddress == _REWARDS_TOKEN || isStakingToken[tokenAddress]) {
+            revert Errors.CannotWithdrawStakingToken();
+        }
         emit Recovered(tokenAddress, tokenAmount);
+        IERC20(tokenAddress).safeTransfer(to, tokenAmount);
     }
 
+    // slither-disable-next-line naming-convention
     function setRewardsDuration(address stakingToken, uint256 _rewardsDuration) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(
-            block.timestamp > periodFinish[stakingToken],
-            "Previous rewards period must be complete before changing the duration for the new period"
-        );
+        // slither-disable-next-line timestamp
+        if (block.timestamp <= periodFinish[stakingToken]) {
+            revert Errors.PreviousRewardsPeriodNotCompleted();
+        }
         rewardsDuration[stakingToken] = _rewardsDuration;
         emit RewardsDurationUpdated(stakingToken, rewardsDuration[stakingToken]);
     }

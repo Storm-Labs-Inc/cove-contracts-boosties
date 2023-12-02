@@ -10,7 +10,7 @@
         "ignoreConstructors": true
       }
     ],
-    "max-line-length": ["warn", 120],
+    "max-line-length": ["warn", 121],
     "named-parameters-mapping": "off",
     "no-console": "off",
     "not-rely-on-time": "off",

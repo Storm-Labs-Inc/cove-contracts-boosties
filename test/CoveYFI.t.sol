@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { CoveYFI } from "src/CoveYFI.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Errors } from "../src/libraries/Errors.sol";
+import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 
