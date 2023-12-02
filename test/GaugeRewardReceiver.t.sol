@@ -61,12 +61,19 @@ contract GaugeRewardReceiverTest is BaseTest {
         assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegateRewards(), stakingDelegateRewards);
     }
 
-    function testFuzz_clone() public {
-        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
-        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegate(), STAKING_DELEGATE);
-        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).gauge(), gauge);
-        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).rewardToken(), rewardToken);
-        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegateRewards(), stakingDelegateRewards);
+    function testFuzz_clone(
+        address _stakingDelegate,
+        address _gauge,
+        address _rewardToken,
+        address _stakingDelegateRewards
+    )
+        public
+    {
+        gaugeRewardReceiver = _deployCloneWithArgs(_stakingDelegate, _gauge, _rewardToken, _stakingDelegateRewards);
+        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegate(), _stakingDelegate);
+        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).gauge(), _gauge);
+        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).rewardToken(), _rewardToken);
+        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegateRewards(), _stakingDelegateRewards);
     }
 
     function test_initialize() public {
