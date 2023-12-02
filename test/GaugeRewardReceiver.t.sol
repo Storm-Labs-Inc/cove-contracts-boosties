@@ -16,36 +16,36 @@ contract GaugeRewardReceiverTest is BaseTest {
 
     address public gaugeRewardReceiverImpl;
     address public gaugeRewardReceiver;
-    address public mockGauge;
-    address public mockToken;
-    address public mockStakingDelegateRewards;
+    address public gauge;
+    address public rewardToken;
+    address public stakingDelegateRewards;
 
-    address public constant TEST_ADDRESS_1 = 0x1111111111111111111111111111111111111111;
-    address public constant TEST_ADDRESS_2 = 0x2222222222222222222222222222222222222222;
-    address public constant TEST_ADDRESS_3 = 0x3333333333333333333333333333333333333333;
-    address public constant TEST_ADDRESS_4 = 0x4444444444444444444444444444444444444444;
+    address public constant STAKING_DELEGATE = 0x1111111111111111111111111111111111111111;
+    address public constant SWAP_AND_LOCK = 0x2222222222222222222222222222222222222222;
+    address public constant TREASURY = 0x3333333333333333333333333333333333333333;
 
     function setUp() public override {
         gaugeRewardReceiverImpl = address(new GaugeRewardReceiver());
-        mockToken = address(new ERC20Mock());
-        vm.label(mockToken, "mockToken");
-        mockGauge = address(new MockGauge(mockToken));
-        vm.label(mockGauge, "mockGauge");
-        mockStakingDelegateRewards = address(new MockStakingDelegateRewards(mockToken, TEST_ADDRESS_1));
-        vm.label(mockStakingDelegateRewards, "mockStakingDelegateRewards");
+        rewardToken = address(new ERC20Mock());
+        vm.label(rewardToken, "rewardToken");
+        gauge = address(new MockGauge(rewardToken));
+        vm.label(gauge, "gauge");
+        stakingDelegateRewards = address(new MockStakingDelegateRewards(rewardToken, STAKING_DELEGATE));
+        vm.label(stakingDelegateRewards, "stakingDelegateRewards");
     }
 
     function _deployCloneWithArgs(
-        address stakingDelegate,
-        address gauge,
-        address rewardToken,
-        address stakingDelegateRewards
+        address stakingDelegateAddress,
+        address gaugeAddress,
+        address rewardTokenAddress,
+        address stakingDelegateRewardsAddress
     )
         internal
         returns (address)
     {
-        return
-            gaugeRewardReceiverImpl.clone(abi.encodePacked(stakingDelegate, gauge, rewardToken, stakingDelegateRewards));
+        return gaugeRewardReceiverImpl.clone(
+            abi.encodePacked(stakingDelegateAddress, gaugeAddress, rewardTokenAddress, stakingDelegateRewardsAddress)
+        );
     }
 
     function test_initialize_revertWhen_IsImplementation() public {
@@ -54,67 +54,45 @@ contract GaugeRewardReceiverTest is BaseTest {
     }
 
     function test_clone() public {
-        address stakingDelegate = TEST_ADDRESS_1;
-        address gauge = mockGauge;
-        address rewardToken = mockToken;
-        address stakingDelegateRewards = mockStakingDelegateRewards;
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
-        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegate(), stakingDelegate);
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
+        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegate(), STAKING_DELEGATE);
         assertEq(GaugeRewardReceiver(gaugeRewardReceiver).gauge(), gauge);
         assertEq(GaugeRewardReceiver(gaugeRewardReceiver).rewardToken(), rewardToken);
         assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegateRewards(), stakingDelegateRewards);
     }
 
-    function testFuzz_clone(
-        address stakingDelegate,
-        address gauge,
-        address rewardToken,
-        address stakingDelegateRewards
-    )
-        public
-    {
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
-        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegate(), stakingDelegate);
+    function testFuzz_clone() public {
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
+        assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegate(), STAKING_DELEGATE);
         assertEq(GaugeRewardReceiver(gaugeRewardReceiver).gauge(), gauge);
         assertEq(GaugeRewardReceiver(gaugeRewardReceiver).rewardToken(), rewardToken);
         assertEq(GaugeRewardReceiver(gaugeRewardReceiver).stakingDelegateRewards(), stakingDelegateRewards);
     }
 
     function test_initialize() public {
-        address stakingDelegate = TEST_ADDRESS_1;
-        address gauge = mockGauge;
-        address rewardToken = mockToken;
-        address stakingDelegateRewards = mockStakingDelegateRewards;
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize();
         assertEq(IERC20(rewardToken).allowance(address(gaugeRewardReceiver), stakingDelegateRewards), type(uint256).max);
     }
 
     function test_harvest() public {
-        address stakingDelegate = TEST_ADDRESS_1;
-        address gauge = mockGauge;
-        address rewardToken = mockToken;
-        address stakingDelegateRewards = mockStakingDelegateRewards;
-        address swapAndLock = TEST_ADDRESS_2;
-        address treasury = TEST_ADDRESS_3;
-
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize();
 
         uint256 totalRewardAmount = 100e18;
         YearnStakingDelegate.RewardSplit memory rewardSplit = YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17);
         ERC20Mock(rewardToken).mint(gauge, totalRewardAmount);
-        vm.prank(stakingDelegate);
-        GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock, treasury, rewardSplit);
+        vm.prank(STAKING_DELEGATE);
+        GaugeRewardReceiver(gaugeRewardReceiver).harvest(SWAP_AND_LOCK, TREASURY, rewardSplit);
 
         uint256 expectedTreasuryAmount = rewardSplit.treasury * totalRewardAmount / 1e18;
         uint256 expectedSwapAndLockAmount = rewardSplit.lock * totalRewardAmount / 1e18;
         uint256 expectedStrategyAmount = totalRewardAmount - expectedTreasuryAmount - expectedSwapAndLockAmount;
 
         assertEq(IERC20(rewardToken).balanceOf(gaugeRewardReceiver), 0);
-        assertEq(IERC20(rewardToken).balanceOf(treasury), expectedTreasuryAmount);
+        assertEq(IERC20(rewardToken).balanceOf(TREASURY), expectedTreasuryAmount);
         assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
-        assertEq(IERC20(rewardToken).balanceOf(swapAndLock), expectedSwapAndLockAmount);
+        assertEq(IERC20(rewardToken).balanceOf(SWAP_AND_LOCK), expectedSwapAndLockAmount);
     }
 
     function testFuzz_harvest(uint256 amount, uint80 treasurySplit, uint80 strategySplit) public {
@@ -122,20 +100,13 @@ contract GaugeRewardReceiverTest is BaseTest {
         vm.assume(uint256(treasurySplit) + strategySplit < 1e18);
         uint80 lockSplit = 1e18 - treasurySplit - strategySplit;
 
-        address stakingDelegate = TEST_ADDRESS_1;
-        address gauge = mockGauge;
-        address rewardToken = mockToken;
-        address stakingDelegateRewards = mockStakingDelegateRewards;
-        address swapAndLock = TEST_ADDRESS_2;
-        address treasury = TEST_ADDRESS_3;
-
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize();
 
         ERC20Mock(rewardToken).mint(gauge, amount);
-        vm.prank(stakingDelegate);
+        vm.prank(STAKING_DELEGATE);
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLock, treasury, YearnStakingDelegate.RewardSplit(treasurySplit, strategySplit, lockSplit)
+            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(treasurySplit, strategySplit, lockSplit)
         );
 
         uint256 expectedTreasuryAmount = treasurySplit * amount / 1e18;
@@ -143,64 +114,43 @@ contract GaugeRewardReceiverTest is BaseTest {
         uint256 expectedStrategyAmount = amount - expectedTreasuryAmount - expectedSwapAndLockAmount;
 
         assertEq(IERC20(rewardToken).balanceOf(gaugeRewardReceiver), 0);
-        assertEq(IERC20(rewardToken).balanceOf(treasury), expectedTreasuryAmount);
+        assertEq(IERC20(rewardToken).balanceOf(TREASURY), expectedTreasuryAmount);
         assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
-        assertEq(IERC20(rewardToken).balanceOf(swapAndLock), expectedSwapAndLockAmount);
+        assertEq(IERC20(rewardToken).balanceOf(SWAP_AND_LOCK), expectedSwapAndLockAmount);
     }
 
     function test_harvest_revertWhen_NotAuthorized() public {
-        address stakingDelegate = TEST_ADDRESS_1;
-        address gauge = mockGauge;
-        address rewardToken = mockToken;
-        address stakingDelegateRewards = mockStakingDelegateRewards;
-        address swapAndLock = TEST_ADDRESS_2;
-        address treasury = TEST_ADDRESS_3;
-
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize();
 
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector));
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLock, treasury, YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17)
+            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17)
         );
     }
 
     function test_harvest_revertWhen_InvalidRewardSplit() public {
-        address stakingDelegate = TEST_ADDRESS_1;
-        address gauge = mockGauge;
-        address rewardToken = mockToken;
-        address stakingDelegateRewards = mockStakingDelegateRewards;
-        address swapAndLock = TEST_ADDRESS_2;
-        address treasury = TEST_ADDRESS_3;
-
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize();
 
-        vm.prank(stakingDelegate);
+        vm.prank(STAKING_DELEGATE);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLock, treasury, YearnStakingDelegate.RewardSplit(1e17, 2e17, 8e17)
+            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(1e17, 2e17, 8e17)
         );
     }
 
     function test_harvest_passWhen_NoRewards() public {
-        address stakingDelegate = TEST_ADDRESS_1;
-        address gauge = mockGauge;
-        address rewardToken = mockToken;
-        address stakingDelegateRewards = mockStakingDelegateRewards;
-        address swapAndLock = TEST_ADDRESS_2;
-        address treasury = TEST_ADDRESS_3;
-
-        gaugeRewardReceiver = _deployCloneWithArgs(stakingDelegate, gauge, rewardToken, stakingDelegateRewards);
+        gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize();
 
-        vm.prank(stakingDelegate);
+        vm.prank(STAKING_DELEGATE);
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLock, treasury, YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17)
+            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17)
         );
 
-        assertEq(IERC20(rewardToken).balanceOf(treasury), 0);
+        assertEq(IERC20(rewardToken).balanceOf(TREASURY), 0);
         assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), 0);
-        assertEq(IERC20(rewardToken).balanceOf(swapAndLock), 0);
+        assertEq(IERC20(rewardToken).balanceOf(SWAP_AND_LOCK), 0);
     }
 }
