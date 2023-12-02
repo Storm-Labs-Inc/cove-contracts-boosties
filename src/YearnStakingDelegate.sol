@@ -28,7 +28,7 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
     }
 
     // Constants
-    // slither-disable naming-convention
+    // slither-disable-start naming-convention
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
@@ -39,7 +39,7 @@ contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
 
     // Immutables
     address private immutable _GAUGE_REWARD_RECEIVER_IMPL;
-    // slither-enable naming-convention
+    // slither-disable-end naming-convention
 
     // Mappings
     /// @notice Mapping of vault to gauge

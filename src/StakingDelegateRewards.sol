@@ -11,10 +11,10 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
 
     /* ========== STATE VARIABLES ========== */
 
-    // slither-disable naming-convention
+    // slither-disable-start naming-convention
     address private immutable _REWARDS_TOKEN;
     address private immutable _STAKING_DELEGATE;
-    // slither-enable naming-convention
+    // slither-disable-end naming-convention
 
     mapping(address => bool) public isStakingToken;
     mapping(address => uint256) public periodFinish;
