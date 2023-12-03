@@ -28,7 +28,7 @@ contract SwapAndLockForkedTest is YearnV3BaseTest {
     function test_swapDYfiToVeYfi() public {
         uint256 dYfiAmount = 20e18;
         airdrop(IERC20(MAINNET_DYFI), swapAndLock, dYfiAmount);
-        // Calculate expected yfi amount after swapping through curve pools
+        // Calculate expected YFI amount after swapping through curve pools
         // dYFI -> WETH then WETH -> YFI
         uint256 wethAmount = ICurveTwoAssetPool(MAINNET_DYFI_ETH_POOL).get_dy(0, 1, dYfiAmount);
         uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_YFI_ETH_POOL).get_dy(0, 1, wethAmount);
@@ -36,7 +36,7 @@ contract SwapAndLockForkedTest is YearnV3BaseTest {
         vm.prank(admin);
         ISwapAndLock(swapAndLock).swapDYfiToVeYfi(yfiAmount);
 
-        // Check for the new veYfi balance
+        // Check for the new veYFI balance
         IVotingYFI.LockedBalance memory lockedBalance = IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
         assertApproxEqRel(
             lockedBalance.amount, yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amount is incorrect"
