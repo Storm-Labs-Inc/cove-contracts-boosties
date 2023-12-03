@@ -27,17 +27,17 @@ contract SwapAndLock is ISwapAndLock, CurveRouterSwapper, AccessControl, Reentra
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _curveRouter, address _yearnStakingDelegate) CurveRouterSwapper(_curveRouter) {
+    constructor(address curveRouter_, address yearnStakingDelegate_) CurveRouterSwapper(curveRouter_) {
         // Checks
-        if (_yearnStakingDelegate == address(0)) {
+        if (yearnStakingDelegate_ == address(0)) {
             revert Errors.ZeroAddress();
         }
         // Effects
-        _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
+        _YEARN_STAKING_DELEGATE = yearnStakingDelegate_;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // Interactions
         _approveTokenForSwap(_D_YFI);
-        IERC20(_YFI).forceApprove(_yearnStakingDelegate, type(uint256).max);
+        IERC20(_YFI).forceApprove(yearnStakingDelegate_, type(uint256).max);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

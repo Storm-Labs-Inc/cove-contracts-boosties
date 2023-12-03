@@ -12,11 +12,13 @@ abstract contract WrappedYearnV3 {
     using SafeERC20 for IERC20;
 
     // Immutable storage variables
+    /* solhint-disable immutable-vars-naming */
     // slither-disable-start naming-convention
-    address private immutable _YEARN_STAKING_DELEGATE;
-    address private immutable _DYFI;
-    address internal immutable _VAULT_ASSET;
-    address internal immutable _VAULT;
+    address public immutable yearnStakingDelegate;
+    address public immutable dYfi;
+    address public immutable vaultAsset;
+    address public immutable vault;
+    /* solhint-enable immutable-vars-naming */
     // slither-disable-end naming-convention
 
     constructor(address asset_, address yearnStakingDelegate_, address dYfi_) {
@@ -32,37 +34,21 @@ abstract contract WrappedYearnV3 {
 
         // Effects
         // Set storage variable values
-        _YEARN_STAKING_DELEGATE = yearnStakingDelegate_;
-        _DYFI = dYfi_;
-        _VAULT = vault_;
-        _VAULT_ASSET = vaultAsset_;
+        yearnStakingDelegate = yearnStakingDelegate_;
+        dYfi = dYfi_;
+        vault = vault_;
+        vaultAsset = vaultAsset_;
 
         // Interactions
-        IERC20(asset_).forceApprove(_YEARN_STAKING_DELEGATE, type(uint256).max);
+        IERC20(asset_).forceApprove(yearnStakingDelegate_, type(uint256).max);
     }
 
     function _depositToYSD(address asset, uint256 amount) internal virtual {
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).deposit(asset, amount);
+        IYearnStakingDelegate(yearnStakingDelegate).deposit(asset, amount);
     }
 
     function _withdrawFromYSD(address asset, uint256 amount) internal virtual {
         // Withdraw gauge from YSD which transfers to msg.sender
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdraw(asset, amount);
-    }
-
-    function yearnStakingDelegate() public view returns (address) {
-        return _YEARN_STAKING_DELEGATE;
-    }
-
-    function dYfi() public view returns (address) {
-        return _DYFI;
-    }
-
-    function vault() public view returns (address) {
-        return _VAULT;
-    }
-
-    function vaultAsset() public view returns (address) {
-        return _VAULT_ASSET;
+        IYearnStakingDelegate(yearnStakingDelegate).withdraw(asset, amount);
     }
 }
