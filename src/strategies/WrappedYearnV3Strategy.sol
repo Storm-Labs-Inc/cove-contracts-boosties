@@ -62,18 +62,18 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         _harvestSwapParams = curveSwapParams;
     }
 
-    function setMaxTotalAssets(uint256 _maxTotalAssets) external virtual onlyManagement {
-        maxTotalAssets = _maxTotalAssets;
+    function setMaxTotalAssets(uint256 maxTotalAssets_) external virtual onlyManagement {
+        maxTotalAssets = maxTotalAssets_;
     }
 
     function availableDepositLimit(address) public view virtual override returns (uint256) {
         uint256 currentTotalAssets = TokenizedStrategy.totalAssets();
-        uint256 _maxTotalAssets = maxTotalAssets;
-        if (currentTotalAssets >= _maxTotalAssets) {
+        uint256 maxTotalAssets_ = maxTotalAssets;
+        if (currentTotalAssets >= maxTotalAssets_) {
             return 0;
         }
         unchecked {
-            return _maxTotalAssets - currentTotalAssets;
+            return maxTotalAssets_ - currentTotalAssets;
         }
     }
 
