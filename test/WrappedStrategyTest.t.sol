@@ -154,7 +154,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
         // manager calls report on the wrapped strategy
         vm.prank(tpManagement);
-        (uint256 profit, uint256 loss) = wrappedYearnV3Strategy.report();
+        (uint256 profit,) = wrappedYearnV3Strategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
 
         // warp blocks forward to profit locking is finished
@@ -165,7 +165,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.report();
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
         assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
     }
 
@@ -228,7 +227,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
-        uint256 expectedShares = wrappedYearnV3Strategy.previewDeposit(amount);
         // shutdown strategy
         vm.prank(tpManagement);
         wrappedYearnV3Strategy.shutdownStrategy();
@@ -262,7 +260,7 @@ contract WrappedStrategyTest is YearnV3BaseTest {
 
         // manager calls report on the wrapped strategy
         vm.prank(tpManagement);
-        (uint256 profit, uint256 loss) = wrappedYearnV3Strategy.report();
+        (uint256 profit,) = wrappedYearnV3Strategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
 
         // warp blocks forward to profit locking is finished
@@ -273,7 +271,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.report();
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        uint256 afterPreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
         // todo: fails here, this should increase even during shutdown?
         assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
     }

@@ -13,7 +13,7 @@ contract MockStakingDelegateRewards {
         SafeERC20.safeTransferFrom(IERC20(_REWARDS_TOKEN), msg.sender, address(this), amount);
     }
 
-    function getReward(address stakingToken) external returns (uint256) {
+    function getReward(address) external returns (uint256) {
         uint256 toSend = IERC20(_REWARDS_TOKEN).balanceOf(address(this));
         if (toSend > 0) {
             SafeERC20.safeTransfer(IERC20(_REWARDS_TOKEN), msg.sender, toSend);

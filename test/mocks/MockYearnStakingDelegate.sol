@@ -6,7 +6,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 contract MockYearnStakingDelegate {
     using SafeERC20 for IERC20;
 
-    address mockgaugeStakingRewards;
+    address private _mockgaugeStakingRewards;
 
     mapping(address => mapping(address => uint256)) public balances;
 
@@ -18,12 +18,12 @@ contract MockYearnStakingDelegate {
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function gaugeStakingRewards(address asset) external view returns (address) {
-        return mockgaugeStakingRewards;
+    function gaugeStakingRewards(address) external view returns (address) {
+        return _mockgaugeStakingRewards;
     }
 
     function setGaugeStakingRewards(address rewards) external {
-        mockgaugeStakingRewards = rewards;
+        _mockgaugeStakingRewards = rewards;
     }
 
     function withdraw(address gauge, uint256 amount) external {
