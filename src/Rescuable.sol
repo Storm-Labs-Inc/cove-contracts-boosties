@@ -18,19 +18,23 @@ contract Rescuable {
         if (address(token) == address(0)) {
             // for ether
             uint256 totalBalance = address(this).balance;
-            // slither-disable-start incorrect-equality
-            balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
-            if (balance == 0) revert Errors.ZeroEthTransfer();
-            // slither-disable-next-line arbitrary-send
-            // slither-disable-next-line low-level-calls
-            (bool success,) = to.call{ value: balance }("");
-            if (!success) revert Errors.EthTransferFailed();
+            balance = balance != 0 ? Math.min(totalBalance, balance) : totalBalance;
+            if (balance != 0) {
+                // slither-disable-next-line arbitrary-send, low-level-calls
+                (bool success,) = to.call{ value: balance }("");
+                if (!success) revert Errors.EthTransferFailed();
+                return;
+            }
+            revert Errors.ZeroEthTransfer();
         } else {
             // for any other erc20
             uint256 totalBalance = token.balanceOf(address(this));
-            balance = balance == 0 ? totalBalance : Math.min(totalBalance, balance);
-            if (balance == 0) revert Errors.ZeroTokenTransfer();
-            token.safeTransfer(to, balance);
+            balance = balance != 0 ? Math.min(totalBalance, balance) : totalBalance;
+            if (balance != 0) {
+                token.safeTransfer(to, balance);
+                return;
+            }
+            revert Errors.ZeroTokenTransfer();
         }
     }
 }
