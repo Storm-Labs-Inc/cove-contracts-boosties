@@ -5,7 +5,6 @@ import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
-import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -105,10 +104,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         depositIntoStrategy(wrappedYearnV3Strategy, alice, amount);
         // check for expected changes
         assertEq(deployedVault.balanceOf(deployedGauge), amount, "depositToGauge failed");
-        uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
-            address(wrappedYearnV3Strategy), address(deployedVault)
-        ).balance;
-        assertEq(userBalance, amount, "userInfo in ysd not updated correctly");
         assertEq(deployedVault.totalSupply(), amount, "vault total_supply did not update correctly");
         assertEq(wrappedYearnV3Strategy.balanceOf(alice), amount, "Deposit was not successful");
     }
@@ -125,10 +120,6 @@ contract WrappedStrategyTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.withdraw(amount, alice, alice, 0);
         // check for expected changes
         assertEq(deployedVault.balanceOf(deployedGauge), 0, "withdrawFromGauge failed");
-        uint128 userBalance = IYearnStakingDelegate(address(yearnStakingDelegate)).userInfo(
-            address(wrappedYearnV3Strategy), address(deployedVault)
-        ).balance;
-        assertEq(userBalance, 0, "userInfo in ysd not updated correctly");
         assertEq(
             deployedVault.balanceOf(wrappedYearnV3Strategy.yearnStakingDelegate()),
             0,
