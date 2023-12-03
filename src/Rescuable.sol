@@ -20,8 +20,7 @@ contract Rescuable {
             uint256 totalBalance = address(this).balance;
             balance = balance != 0 ? Math.min(totalBalance, balance) : totalBalance;
             if (balance != 0) {
-                // slither-disable-next-line arbitrary-send
-                // slither-disable-next-line low-level-calls
+                // slither-disable-next-line arbitrary-send, low-level-calls
                 (bool success,) = to.call{ value: balance }("");
                 if (!success) revert Errors.EthTransferFailed();
                 return;
