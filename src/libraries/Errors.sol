@@ -45,8 +45,6 @@ library Errors {
 
     error NoAssociatedGauge();
 
-    error NoDYfiToSwap();
-
     error GetRewardFailed();
     error GaugeRewardsAlreadyAdded();
     error GaugeRewardsNotYetAdded();
@@ -82,6 +80,9 @@ library Errors {
     error InvalidFromToken(address intendedFromToken, address actualFromToken);
     error InvalidToToken(address intendedToToken, address actualToToken);
     error InvalidCoinIndex();
+
+    /// SWAP AND LOCK ///
+    error NoDYfiToSwap();
 
     //// COVEYFI ////
 

@@ -7,14 +7,12 @@ import { Errors } from "src/libraries/Errors.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
 
-contract SwapAndLock is CurveRouterSwapper, AccessControl, ReentrancyGuard {
+contract SwapAndLock is ISwapAndLock, CurveRouterSwapper, AccessControl, ReentrancyGuard {
     // Libraries
     using SafeERC20 for IERC20;
-
-    // Events
-    event SwapAndLocked(uint256 dYfiAmount, uint256 yfiAmount, uint256 totalLockedYfiBalance);
 
     // Constants
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
@@ -43,7 +41,6 @@ contract SwapAndLock is CurveRouterSwapper, AccessControl, ReentrancyGuard {
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
-
     function setRouterParams(CurveSwapParams calldata routerParam) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         _validateSwapParams(routerParam, _D_YFI, _YFI);
@@ -53,13 +50,13 @@ contract SwapAndLock is CurveRouterSwapper, AccessControl, ReentrancyGuard {
     function swapDYfiToVeYfi(uint256 minYfiAmount) external nonReentrant onlyRole(MANAGER_ROLE) {
         // Checks
         uint256 dYfiAmount = IERC20(_D_YFI).balanceOf(address(this));
-        // slither-disable-next-line incorrect-equality
-        if (dYfiAmount == 0) {
+        if (dYfiAmount != 0) {
+            // Interactions
+            uint256 yfiAmount = _swap(_routerParam, dYfiAmount, minYfiAmount, address(this));
+            uint256 totalYfiLocked = IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(yfiAmount).amount;
+            emit SwapAndLocked(dYfiAmount, yfiAmount, totalYfiLocked);
+        } else {
             revert Errors.NoDYfiToSwap();
         }
-        // Interactions
-        uint256 yfiAmount = _swap(_routerParam, dYfiAmount, minYfiAmount, address(this));
-        uint256 totalYfiLocked = YearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(yfiAmount).amount;
-        emit SwapAndLocked(dYfiAmount, yfiAmount, totalYfiLocked);
     }
 }
