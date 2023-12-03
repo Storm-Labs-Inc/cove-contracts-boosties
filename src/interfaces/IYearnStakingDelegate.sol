@@ -17,4 +17,5 @@ interface IYearnStakingDelegate {
     function harvest(address vault) external returns (uint256);
     function setRewardSplit(uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) external;
     function balances(address gauge, address user) external view returns (uint256);
+    function gaugeStakingRewards(address gauge) external view returns (address);
 }
