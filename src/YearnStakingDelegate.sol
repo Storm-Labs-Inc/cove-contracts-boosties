@@ -14,8 +14,9 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
-contract YearnStakingDelegate is AccessControl, ReentrancyGuard, Rescuable {
+contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
     using ClonesWithImmutableArgs for address;
