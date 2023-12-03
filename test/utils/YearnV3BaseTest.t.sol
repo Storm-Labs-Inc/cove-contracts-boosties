@@ -32,7 +32,6 @@ import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool
 contract YearnV3BaseTest is BaseTest {
     using SafeERC20 for IERC20;
 
-    ERC20 public baseAsset = ERC20(MAINNET_USDC);
     mapping(string => address) public deployedVaults;
     mapping(string => address) public deployedStrategies;
 
@@ -397,7 +396,6 @@ contract YearnV3BaseTest is BaseTest {
     function setUpWrappedStrategy(
         string memory name,
         address _asset,
-        address,
         address _yearnStakingDelegateAddress,
         address _dYFIAddress,
         address _curveRouterAddress
@@ -469,6 +467,7 @@ contract YearnV3BaseTest is BaseTest {
         public
         returns (uint256 shares)
     {
+        IERC20 baseAsset = IERC20(_strategy.asset());
         vm.prank(_user);
         baseAsset.approve(address(_strategy), _amount);
 
@@ -479,12 +478,13 @@ contract YearnV3BaseTest is BaseTest {
     function mintAndDepositIntoStrategy(
         IWrappedYearnV3Strategy _strategy,
         address _user,
-        uint256 _amount
+        uint256 _amount,
+        address asset
     )
         public
         returns (uint256 shares)
     {
-        airdrop(baseAsset, _user, _amount);
+        airdrop(ERC20(asset), _user, _amount);
         return depositIntoStrategy(_strategy, _user, _amount);
     }
 

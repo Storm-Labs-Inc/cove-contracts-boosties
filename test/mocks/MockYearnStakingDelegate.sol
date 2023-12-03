@@ -20,20 +20,20 @@ contract MockYearnStakingDelegate {
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function gaugeStakingRewards(address) external view returns (address) {
-        return _mockgaugeStakingRewards;
-    }
-
-    function setGaugeStakingRewards(address rewards) external {
-        _mockgaugeStakingRewards = rewards;
-    }
-
     function withdraw(address gauge, uint256 amount) external {
         // Effects
         uint256 newBalance = balances[gauge][msg.sender] - amount;
         balances[gauge][msg.sender] = newBalance;
         // Interactions
         IERC20(gauge).safeTransfer(msg.sender, amount);
+    }
+
+    function gaugeStakingRewards(address) external view returns (address) {
+        return _mockgaugeStakingRewards;
+    }
+
+    function setGaugeStakingRewards(address rewards) external {
+        _mockgaugeStakingRewards = rewards;
     }
 
     function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory lockedBalance) {

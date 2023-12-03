@@ -5,8 +5,9 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { IStakingDelegateRewards } from "src/interfaces/deps/yearn/veYFI/IStakingDelegateRewards.sol";
 
-contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
+contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
@@ -81,7 +82,7 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function getReward(address stakingToken) public nonReentrant returns (uint256) {
+    function getReward(address stakingToken) public nonReentrant {
         _updateReward(msg.sender, stakingToken);
         uint256 reward = rewards[msg.sender][stakingToken];
         if (reward > 0) {
@@ -89,7 +90,6 @@ contract StakingDelegateRewards is AccessControl, ReentrancyGuard {
             IERC20(_REWARDS_TOKEN).safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, stakingToken, reward);
         }
-        return reward;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
