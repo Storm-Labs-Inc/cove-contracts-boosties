@@ -22,6 +22,7 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
     // slither-disable-end naming-convention
 
     CurveSwapParams internal _harvestSwapParams;
+    uint256 public maxDeposit;
 
     constructor(
         address _asset,
@@ -61,7 +62,19 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         _harvestSwapParams = curveSwapParams;
     }
 
+    function setMaxDeposit(uint256 _maxDeposit) external virtual onlyManagement {
+        maxDeposit = _maxDeposit;
+    }
+
+    function checkMaxDepositAvailable(uint256 _amount) internal view {
+        uint256 currentTotalAssets = TokenizedStrategy.totalAssets();
+        if (_amount >= currentTotalAssets - maxDeposit) {
+            revert Errors.MaxDepositExceeded(maxDeposit);
+        }
+    }
+
     function _deployFunds(uint256 _amount) internal virtual override {
+        checkMaxDepositAvailable(_amount);
         _depositToYSD(_VAULT, _amount);
     }
 
