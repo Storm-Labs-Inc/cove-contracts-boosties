@@ -7,6 +7,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Constants } from "./Constants.sol";
 import { VyperDeployer } from "./VyperDeployer.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 abstract contract BaseTest is Test, Constants {
     //// VARIABLES ////
@@ -103,7 +105,7 @@ abstract contract BaseTest is Test, Constants {
     /// @param _asset address of the asset to airdrop
     /// @param _to address to airdrop to
     /// @param _amount amount to airdrop
-    function airdrop(ERC20 _asset, address _to, uint256 _amount) public {
+    function airdrop(IERC20 _asset, address _to, uint256 _amount) public {
         uint256 balanceBefore = _asset.balanceOf(_to);
         deal(address(_asset), _to, balanceBefore + _amount);
     }
@@ -112,11 +114,35 @@ abstract contract BaseTest is Test, Constants {
     /// @param _asset address of the asset to take away
     /// @param _from address to take away from
     /// @param _amount amount to take away
-    function takeAway(ERC20 _asset, address _from, uint256 _amount) public {
+    function takeAway(IERC20 _asset, address _from, uint256 _amount) public {
         uint256 balanceBefore = _asset.balanceOf(_from);
         if (balanceBefore < _amount) {
             revert Errors.TakeAwayNotEnoughBalance();
         }
         deal(address(_asset), _from, balanceBefore - _amount);
+    }
+
+    function generateMockCurveSwapParams(
+        address fromToken,
+        address toToken
+    )
+        public
+        pure
+        returns (CurveRouterSwapper.CurveSwapParams memory)
+    {
+        CurveRouterSwapper.CurveSwapParams memory params;
+        params.route[0] = fromToken;
+        params.route[1] = address(1); // pool address is not needed
+        params.route[2] = toToken;
+        return params;
+    }
+
+    function _formatAccessControlError(address addr, bytes32 role) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            "AccessControl: account ",
+            Strings.toHexString(addr),
+            " is missing role ",
+            Strings.toHexString(uint256(role), 32)
+        );
     }
 }

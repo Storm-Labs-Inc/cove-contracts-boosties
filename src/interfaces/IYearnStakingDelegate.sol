@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-interface IYearnStakingDelegate {
-    struct UserInfo {
-        uint128 balance;
-        uint128 rewardDebt;
-    }
+import { IVotingYFI } from "./deps/yearn/veYFI/IVotingYFI.sol";
 
-    function depositToGauge(address vault, uint256 amount) external;
-    function withdrawFromGauge(address vault, uint256 amount) external;
+interface IYearnStakingDelegate {
     function deposit(address gauge, uint256 amount) external;
     function withdraw(address gauge, uint256 amount) external;
-    function lockYfi(uint256 amount) external;
-
-    function userInfo(address user, address vault) external view returns (UserInfo memory);
+    function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory);
     function harvest(address vault) external returns (uint256);
-    function setRewardSplit(uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) external;
+    function setRewardSplit(address gauge, uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) external;
+    function setSwapAndLock(address swapAndLock) external;
     function balances(address gauge, address user) external view returns (uint256);
 }
