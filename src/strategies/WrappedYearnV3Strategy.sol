@@ -22,7 +22,7 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
     // slither-disable-end naming-convention
 
     CurveSwapParams internal _harvestSwapParams;
-    uint256 public maxDeposit;
+    uint256 public maxTotalAssets;
 
     constructor(
         address _asset,
@@ -62,19 +62,22 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         _harvestSwapParams = curveSwapParams;
     }
 
-    function setMaxDeposit(uint256 _maxDeposit) external virtual onlyManagement {
-        maxDeposit = _maxDeposit;
+    function setMaxTotalAssets(uint256 _maxTotalAssets) external virtual onlyManagement {
+        maxTotalAssets = _maxTotalAssets;
     }
 
-    function checkMaxDepositAvailable(uint256 _amount) internal view {
+    function availableDepositLimit(address) public view virtual override returns (uint256) {
         uint256 currentTotalAssets = TokenizedStrategy.totalAssets();
-        if (_amount >= currentTotalAssets - maxDeposit) {
-            revert Errors.MaxDepositExceeded(maxDeposit);
+        uint256 _maxTotalAssets = maxTotalAssets;
+        if (currentTotalAssets >= _maxTotalAssets) {
+            return 0;
+        }
+        unchecked {
+            return _maxTotalAssets - currentTotalAssets;
         }
     }
 
     function _deployFunds(uint256 _amount) internal virtual override {
-        checkMaxDepositAvailable(_amount);
         _depositToYSD(_VAULT, _amount);
     }
 
@@ -97,7 +100,6 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
             if (!TokenizedStrategy.isShutdown()) {
                 _deployFunds(receivedGaugeTokens);
             } else {
-                // todo: do we return vault tokens or gauge
                 newIdleBalance = receivedGaugeTokens;
             }
         }

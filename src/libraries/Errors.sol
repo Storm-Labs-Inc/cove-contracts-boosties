@@ -77,8 +77,6 @@ library Errors {
 
     error TokenNotFoundInPool(address token);
 
-    error MaxDepositExceeded(uint256 maxDeposit);
-
     /// CURVE ROUTER SWAPPER ///
 
     error InvalidFromToken(address intendedFromToken, address actualFromToken);
