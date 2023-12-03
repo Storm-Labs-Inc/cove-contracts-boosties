@@ -34,13 +34,13 @@ contract CurveRouterSwapper {
         address[5] pools;
     }
 
-    constructor(address _curveRouter) {
+    constructor(address curveRouter_) {
         // Checks
-        if (_curveRouter == address(0)) {
+        if (curveRouter_ == address(0)) {
             revert Errors.ZeroAddress();
         }
         // Effects
-        _CURVE_ROUTER = _curveRouter;
+        _CURVE_ROUTER = curveRouter_;
     }
 
     function _approveTokenForSwap(address token) internal {
