@@ -279,6 +279,7 @@ contract WrappedStrategy_Test is BaseTest {
     }
 
     function testFuzz_setHarvestSwapParams_revertWhen_CallerIsNotManagement(address caller) public {
+        vm.assume(caller != manager);
         vm.expectRevert("!management");
         vm.prank(caller);
         wrappedYearnV3Strategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
