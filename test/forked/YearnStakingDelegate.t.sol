@@ -91,7 +91,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function _setSwapAndLock() internal {
-        vm.prank(manager);
+        vm.prank(admin);
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
     }
 
