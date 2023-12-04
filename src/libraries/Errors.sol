@@ -49,6 +49,8 @@ library Errors {
     error GaugeRewardsAlreadyAdded();
     error GaugeRewardsNotYetAdded();
     error CannotRescueUserTokens();
+    error ExecutionNotAllowed();
+    error ExecutionFailed();
 
     //// STAKING DELEGATE REWARDS ////
     error CannotWithdrawStakingToken();
