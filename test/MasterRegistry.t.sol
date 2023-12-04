@@ -5,7 +5,7 @@ import { BaseTest } from "./utils/BaseTest.t.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract MasterRegistryTest is BaseTest {
+contract MasterRegistry_Test is BaseTest {
     MasterRegistry public masterRegistry;
     bytes32 public adminRole;
     bytes32 public managerRole;

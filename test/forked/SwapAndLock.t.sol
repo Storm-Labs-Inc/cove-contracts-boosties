@@ -10,7 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract SwapAndLockForkedTest is YearnV3BaseTest {
+contract SwapAndLock_ForkedTest is YearnV3BaseTest {
     address public yearnStakingDelegate;
     address public swapAndLock;
 
