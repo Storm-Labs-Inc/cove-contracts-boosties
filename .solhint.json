@@ -24,6 +24,6 @@
     "contract-name-camelcase": "error",
     "no-unused-vars": "error",
     "no-unused-import": "error",
-    "immutable-vars-naming": "error"
+    "immutable-vars-naming": ["error", { "immutablesAsConstants": true }]
   }
 }

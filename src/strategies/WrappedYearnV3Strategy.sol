@@ -32,7 +32,7 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
 
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external virtual onlyManagement {
         // Checks (includes external view calls)
-        _validateSwapParams(curveSwapParams, dYfi(), _VAULT_ASSET);
+        _validateSwapParams(curveSwapParams, dYfi, vaultAsset);
 
         // Effects
         _harvestSwapParams = curveSwapParams;
@@ -54,25 +54,24 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
     }
 
     function _deployFunds(uint256 _amount) internal virtual override {
-        _depositToYSD(TokenizedStrategy.asset(), _amount);
+        _depositToYSD(address(asset), _amount);
     }
 
     function _freeFunds(uint256 _amount) internal override {
-        _withdrawFromYSD(TokenizedStrategy.asset(), _amount);
+        _withdrawFromYSD(address(asset), _amount);
     }
 
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Get any dYFI rewards
-        address _asset = address(asset);
-        address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate()).gaugeStakingRewards(_asset);
-        IStakingDelegateRewards(stakingDelegateRewards).getReward(_asset);
-        uint256 dYFIBalance = IERC20(dYfi()).balanceOf(address(this));
+        address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(address(asset));
+        IStakingDelegateRewards(stakingDelegateRewards).getReward(address(asset));
+        uint256 dYFIBalance = IERC20(dYfi).balanceOf(address(this));
         uint256 newIdleBalance = 0;
         // If dYFI was received, swap it for vault asset
         if (dYFIBalance > 0) {
             uint256 receivedBaseTokens = _swap(_harvestSwapParams, dYFIBalance, 0, address(this));
-            uint256 receivedVaultTokens = IERC4626(_VAULT).deposit(receivedBaseTokens, address(this));
-            uint256 receivedGaugeTokens = IERC4626(_asset).deposit(receivedVaultTokens, address(this));
+            uint256 receivedVaultTokens = IERC4626(vault).deposit(receivedBaseTokens, address(this));
+            uint256 receivedGaugeTokens = IERC4626(address(asset)).deposit(receivedVaultTokens, address(this));
 
             // If the strategy is not shutdown, deploy the funds
             // Else add the received tokens to the idle balance
@@ -85,6 +84,6 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         // TODO: below may not be accurate accounting as the underlying vault may not have realized gains/losses
         // additionally profits may have been awarded but not fully unlocked yet, these are concerns to be investigated
         // off-chain by management in the timing of calling _harvestAndReport
-        return newIdleBalance + IYearnStakingDelegate(yearnStakingDelegate()).balances(_asset, address(this));
+        return newIdleBalance + IYearnStakingDelegate(yearnStakingDelegate).balances(address(asset), address(this));
     }
 }
