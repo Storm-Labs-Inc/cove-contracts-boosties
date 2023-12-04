@@ -179,7 +179,7 @@ contract WrappedStrategy_Test is BaseTest {
         public
     {
         vm.assume(amount != 0 && amount1 >= 1e6 && amount2 >= 1e6);
-        // 1e6 for futher deposits to avoid "ZERO_SHARES" error due to rounding
+        // 1e6 for further deposits to avoid "ZERO_SHARES" error due to rounding
         vm.assume(amount < type(uint128).max && amount1 < type(uint128).max && amount2 < type(uint128).max);
         uint256 profitedVaultAssetAmount = 1e18;
         address bob = createUser("bob");
