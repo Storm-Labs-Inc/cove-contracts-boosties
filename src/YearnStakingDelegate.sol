@@ -47,7 +47,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     mapping(address gauge => address) public gaugeStakingRewards;
     mapping(address gauge => address) public gaugeRewardReceivers;
     mapping(address vault => RewardSplit) public gaugeRewardSplit;
-    mapping(address strategy => mapping(address => uint256)) public balances;
+    mapping(address user => mapping(address token => uint256)) public balanceOf;
 
     // Variables
     address public treasury;
@@ -103,8 +103,8 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Effects
-        uint256 newBalance = balances[gauge][msg.sender] + amount;
-        balances[gauge][msg.sender] = newBalance;
+        uint256 newBalance = balanceOf[msg.sender][gauge] + amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
@@ -116,8 +116,8 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ZeroAmount();
         }
         // Effects
-        uint256 newBalance = balances[gauge][msg.sender] - amount;
-        balances[gauge][msg.sender] = newBalance;
+        uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransfer(msg.sender, amount);

@@ -227,7 +227,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _depositGaugeTokensToYSD(wrappedStrategy, amount);
 
         // Check the yearn staking delegate has received the gauge tokens
-        assertEq(yearnStakingDelegate.balances(testGauge, wrappedStrategy), amount, "deposit failed");
+        assertEq(yearnStakingDelegate.balanceOf(wrappedStrategy, testGauge), amount, "deposit failed");
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
         assertEq(IERC20(testGauge).balanceOf(wrappedStrategy), 0, "deposit failed");
     }
@@ -258,7 +258,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         // Check the yearn staking delegate has released the gauge tokens
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), 0, "withdraw failed");
         // Check the accounting is correct
-        assertEq(yearnStakingDelegate.balances(testGauge, wrappedStrategy), 0, "withdraw failed");
+        assertEq(yearnStakingDelegate.balanceOf(wrappedStrategy, testGauge), 0, "withdraw failed");
         // Check that wrappedStrategy has received the vault tokens
         assertEq(IERC20(testGauge).balanceOf(wrappedStrategy), amount, "withdraw failed");
     }

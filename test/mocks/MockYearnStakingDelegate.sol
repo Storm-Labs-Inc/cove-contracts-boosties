@@ -10,20 +10,20 @@ contract MockYearnStakingDelegate {
     address private _mockgaugeStakingRewards;
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
 
-    mapping(address => mapping(address => uint256)) public balances;
+    mapping(address user => mapping(address token => uint256)) public balanceOf;
 
     function deposit(address gauge, uint256 amount) external {
         // Effects
-        uint256 newBalance = balances[gauge][msg.sender] + amount;
-        balances[gauge][msg.sender] = newBalance;
+        uint256 newBalance = balanceOf[msg.sender][gauge] + amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function withdraw(address gauge, uint256 amount) external {
         // Effects
-        uint256 newBalance = balances[gauge][msg.sender] - amount;
-        balances[gauge][msg.sender] = newBalance;
+        uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }

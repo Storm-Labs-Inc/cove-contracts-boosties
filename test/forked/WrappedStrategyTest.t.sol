@@ -106,7 +106,7 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         // check for expected changes
         assertEq(wrappedYearnV3Strategy.balanceOf(alice), expectedShares, "Deposit was not successful");
         assertEq(
-            mockYearnStakingDelegate.balances(testGauge, address(wrappedYearnV3Strategy)),
+            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
             amount,
             "yearn staking delegate deposit failed"
         );
@@ -124,10 +124,10 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         vm.prank(alice);
         wrappedYearnV3Strategy.withdraw(expectedShares, alice, alice);
         assertEq(
-            mockYearnStakingDelegate.balances(testGauge, address(wrappedYearnV3Strategy)), 0, "depositToGauge failed"
+            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge), 0, "depositToGauge failed"
         );
         assertEq(
-            mockYearnStakingDelegate.balances(testGauge, address(wrappedYearnV3Strategy)),
+            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
             0,
             "yearn staking delegate withdraw failed"
         );
@@ -212,10 +212,10 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         vm.prank(alice);
         wrappedYearnV3Strategy.withdraw(expectedShares, alice, alice);
         assertEq(
-            mockYearnStakingDelegate.balances(testGauge, address(wrappedYearnV3Strategy)), 0, "depositToGauge failed"
+            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge), 0, "depositToGauge failed"
         );
         assertEq(
-            mockYearnStakingDelegate.balances(testGauge, address(wrappedYearnV3Strategy)),
+            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
             0,
             "yearn staking delegate withdraw failed"
         );
