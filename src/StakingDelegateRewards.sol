@@ -12,13 +12,12 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
 
     /* ========== STATE VARIABLES ========== */
 
-    uint256 public constant DEFAULT_DURATION = 7 days;
-
     // slither-disable-start naming-convention
     address private immutable _REWARDS_TOKEN;
     address private immutable _STAKING_DELEGATE;
     // slither-disable-end naming-convention
 
+    mapping(address => bool) public isStakingToken;
     mapping(address => uint256) public periodFinish;
     mapping(address => uint256) public rewardRate;
     mapping(address => uint256) public rewardsDuration;
@@ -27,24 +26,32 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     mapping(address => mapping(address => uint256)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint256)) public rewards;
     mapping(address => address) public rewardDistributors;
-    mapping(address => uint256) public totalSupply;
-    mapping(address => mapping(address => uint256)) public balanceOf;
+    mapping(address => uint256) private _totalSupply;
+    mapping(address => mapping(address => uint256)) private _balances;
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address rewardsToken_, address stakingDelegate_) {
+    constructor(address _rewardsToken, address _stakingDelegate) {
         // Checks
         // Check for zero addresses
-        if (rewardsToken_ == address(0) || stakingDelegate_ == address(0)) {
+        if (_rewardsToken == address(0) || _stakingDelegate == address(0)) {
             revert Errors.ZeroAddress();
         }
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _REWARDS_TOKEN = rewardsToken_;
-        _STAKING_DELEGATE = stakingDelegate_;
+        _REWARDS_TOKEN = _rewardsToken;
+        _STAKING_DELEGATE = _stakingDelegate;
     }
 
     /* ========== VIEWS ========== */
+
+    function totalSupply(address stakingToken) external view returns (uint256) {
+        return _totalSupply[stakingToken];
+    }
+
+    function balanceOf(address account, address stakingToken) external view returns (uint256) {
+        return _balances[account][stakingToken];
+    }
 
     function lastTimeRewardApplicable(address stakingToken) public view returns (uint256) {
         uint256 finish = periodFinish[stakingToken];
@@ -53,19 +60,18 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     }
 
     function rewardPerToken(address stakingToken) public view returns (uint256) {
-        uint256 totalSupply_ = totalSupply[stakingToken];
-        if (totalSupply_ == 0) {
+        if (_totalSupply[stakingToken] == 0) {
             return rewardPerTokenStored[stakingToken];
         }
         return rewardPerTokenStored[stakingToken]
             + (lastTimeRewardApplicable(stakingToken) - lastUpdateTime[stakingToken]) * rewardRate[stakingToken] * 1e18
-                / totalSupply_;
+                / _totalSupply[stakingToken];
     }
 
     function earned(address account, address stakingToken) public view returns (uint256) {
         return rewards[account][stakingToken]
             + (
-                balanceOf[account][stakingToken]
+                _balances[account][stakingToken]
                     * (rewardPerToken(stakingToken) - userRewardPerTokenPaid[account][stakingToken]) / 1e18
             );
     }
@@ -92,9 +98,9 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
             revert Errors.OnlyStakingDelegateCanUpdateUserBalance();
         }
         _updateReward(user, stakingToken);
-        uint256 currentUserBalance = balanceOf[user][stakingToken];
-        balanceOf[user][stakingToken] = totalAmount;
-        totalSupply[stakingToken] = totalSupply[stakingToken] - currentUserBalance + totalAmount;
+        uint256 currentUserBalance = _balances[user][stakingToken];
+        _balances[user][stakingToken] = totalAmount;
+        _totalSupply[stakingToken] = _totalSupply[stakingToken] - currentUserBalance + totalAmount;
         emit UserBalanceUpdated(user, stakingToken, totalAmount);
     }
 
@@ -102,13 +108,10 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         if (msg.sender != _STAKING_DELEGATE) {
             revert Errors.OnlyStakingDelegateCanAddStakingToken();
         }
-        if (rewardDistributors[stakingToken] != address(0)) {
-            revert Errors.StakingTokenAlreadyAdded();
-        }
+        isStakingToken[stakingToken] = true;
         rewardDistributors[stakingToken] = rewardDistributioner;
-        rewardsDuration[stakingToken] = DEFAULT_DURATION;
+        rewardsDuration[stakingToken] = 7 days;
         emit StakingTokenAdded(stakingToken, rewardDistributioner);
-        emit RewardsDurationUpdated(stakingToken, DEFAULT_DURATION);
     }
 
     function notifyRewardAmount(address stakingToken, uint256 reward) external nonReentrant {
@@ -117,12 +120,11 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         }
         _updateReward(address(0), stakingToken);
 
-        uint256 periodFinish_ = periodFinish[stakingToken];
         // slither-disable-next-line timestamp
-        if (block.timestamp >= periodFinish_) {
+        if (block.timestamp >= periodFinish[stakingToken]) {
             rewardRate[stakingToken] = reward / rewardsDuration[stakingToken];
         } else {
-            uint256 remaining = periodFinish_ - block.timestamp;
+            uint256 remaining = periodFinish[stakingToken] - block.timestamp;
             uint256 leftover = remaining * rewardRate[stakingToken];
             rewardRate[stakingToken] = (reward + leftover) / rewardsDuration[stakingToken];
         }
@@ -142,20 +144,21 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (tokenAddress == _REWARDS_TOKEN || rewardDistributors[tokenAddress] != address(0)) {
+        if (tokenAddress == _REWARDS_TOKEN || isStakingToken[tokenAddress]) {
             revert Errors.CannotWithdrawStakingToken();
         }
         emit Recovered(tokenAddress, tokenAmount);
         IERC20(tokenAddress).safeTransfer(to, tokenAmount);
     }
 
-    function setRewardsDuration(address stakingToken, uint256 rewardsDuration_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    // slither-disable-next-line naming-convention
+    function setRewardsDuration(address stakingToken, uint256 _rewardsDuration) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // slither-disable-next-line timestamp
         if (block.timestamp <= periodFinish[stakingToken]) {
             revert Errors.PreviousRewardsPeriodNotCompleted();
         }
-        rewardsDuration[stakingToken] = rewardsDuration_;
-        emit RewardsDurationUpdated(stakingToken, rewardsDuration_);
+        rewardsDuration[stakingToken] = _rewardsDuration;
+        emit RewardsDurationUpdated(stakingToken, rewardsDuration[stakingToken]);
     }
 
     /* ========== MODIFIERS ========== */
