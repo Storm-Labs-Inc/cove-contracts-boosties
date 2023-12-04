@@ -15,4 +15,6 @@ contract MockGauge is ERC4626Mock {
     function setRewardToken(address rewardToken_) external {
         REWARD_TOKEN = rewardToken_;
     }
+
+    function setRecipient(address) external { }
 }

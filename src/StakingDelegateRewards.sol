@@ -111,6 +111,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         isStakingToken[stakingToken] = true;
         rewardDistributors[stakingToken] = rewardDistributioner;
         rewardsDuration[stakingToken] = 7 days;
+        emit StakingTokenAdded(stakingToken, rewardDistributioner);
     }
 
     function notifyRewardAmount(address stakingToken, uint256 reward) external nonReentrant {
@@ -174,6 +175,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     /* ========== EVENTS ========== */
 
     event RewardAdded(address indexed stakingToken, uint256 reward);
+    event StakingTokenAdded(address indexed stakingToken, address rewardDistributioner);
     event UserBalanceUpdated(address indexed user, address indexed stakingToken, uint256 amount);
     event RewardPaid(address indexed user, address indexed stakingToken, uint256 reward);
     event RewardsDurationUpdated(address indexed stakingToken, uint256 newDuration);
