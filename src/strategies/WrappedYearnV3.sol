@@ -39,6 +39,8 @@ abstract contract WrappedYearnV3 {
 
         // Interactions
         IERC20(asset_).forceApprove(yearnStakingDelegate_, type(uint256).max);
+        IERC20(vaultAsset_).forceApprove(vault, type(uint256).max);
+        IERC20(vault_).forceApprove(asset_, type(uint256).max);
     }
 
     function _depositToYSD(address asset, uint256 amount) internal virtual {

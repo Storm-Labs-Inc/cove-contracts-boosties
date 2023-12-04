@@ -5,9 +5,9 @@ import { CoveYFI } from "src/CoveYFI.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { YearnV3BaseTest } from "./utils/YearnV3BaseTest.t.sol";
+import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
 
-contract CoveYFITest is YearnV3BaseTest {
+contract CoveYFI_ForkedTest is YearnV3BaseTest {
     CoveYFI public coveYFI;
 
     // Addresses
