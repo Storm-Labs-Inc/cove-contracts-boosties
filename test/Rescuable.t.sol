@@ -8,7 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"
 import { MockRescuable } from "./mocks/MockRescuable.sol";
 import { MockNonPayable } from "./mocks/MockNonPayable.sol";
 
-contract RescuableTest is BaseTest {
+contract Rescuable_Test is BaseTest {
     MockRescuable public mockRescuable;
 
     // Addresses

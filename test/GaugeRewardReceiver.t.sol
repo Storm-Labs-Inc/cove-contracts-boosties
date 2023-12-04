@@ -11,7 +11,7 @@ import { MockGauge } from "./mocks/MockGauge.sol";
 import { MockStakingDelegateRewards } from "./mocks/MockStakingDelegateRewards.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract GaugeRewardReceiverTest is BaseTest {
+contract GaugeRewardReceiver_Test is BaseTest {
     using ClonesWithImmutableArgs for address;
 
     address public gaugeRewardReceiverImpl;
@@ -28,7 +28,8 @@ contract GaugeRewardReceiverTest is BaseTest {
         gaugeRewardReceiverImpl = address(new GaugeRewardReceiver());
         rewardToken = address(new ERC20Mock());
         vm.label(rewardToken, "rewardToken");
-        gauge = address(new MockGauge(rewardToken));
+        gauge = address(new MockGauge(address(0)));
+        MockGauge(gauge).setRewardToken(rewardToken);
         vm.label(gauge, "gauge");
         stakingDelegateRewards = address(new MockStakingDelegateRewards(rewardToken, STAKING_DELEGATE));
         vm.label(stakingDelegateRewards, "stakingDelegateRewards");

@@ -10,4 +10,5 @@ interface IWrappedYearnV3Strategy is IStrategy {
     function vault() external view returns (address);
     function yearnStakingDelegate() external view returns (address);
     function setHarvestSwapParams(CurveRouterSwapper.CurveSwapParams memory _curveSwapParams) external;
+    function setMaxTotalAssets(uint256 _maxTotalAssets) external;
 }
