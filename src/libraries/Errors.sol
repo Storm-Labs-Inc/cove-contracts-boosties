@@ -53,7 +53,7 @@ library Errors {
     error ExecutionFailed();
 
     //// STAKING DELEGATE REWARDS ////
-    error CannotWithdrawStakingToken();
+    error RescueNotAllowed();
     error PreviousRewardsPeriodNotCompleted();
     error OnlyStakingDelegateCanUpdateUserBalance();
     error OnlyStakingDelegateCanAddStakingToken();

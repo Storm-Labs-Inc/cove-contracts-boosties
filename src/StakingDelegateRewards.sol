@@ -46,6 +46,14 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
 
     /* ========== VIEWS ========== */
 
+    function rewardToken() external view returns (address) {
+        return _REWARDS_TOKEN;
+    }
+
+    function stakingDelegate() external view returns (address) {
+        return _STAKING_DELEGATE;
+    }
+
     function lastTimeRewardApplicable(address stakingToken) public view returns (uint256) {
         uint256 finish = periodFinish[stakingToken];
         // slither-disable-next-line timestamp
@@ -76,17 +84,15 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function getReward(address stakingToken) public nonReentrant {
-        _updateReward(msg.sender, stakingToken);
-        uint256 reward = rewards[msg.sender][stakingToken];
-        if (reward > 0) {
-            rewards[msg.sender][stakingToken] = 0;
-            IERC20(_REWARDS_TOKEN).safeTransfer(msg.sender, reward);
-            emit RewardPaid(msg.sender, stakingToken, reward);
-        }
+    function getReward(address stakingToken) external nonReentrant {
+        _getReward(msg.sender, stakingToken);
     }
 
     function getReward(address user, address stakingToken) external nonReentrant {
+        _getReward(user, stakingToken);
+    }
+
+    function _getReward(address user, address stakingToken) internal {
         _updateReward(user, stakingToken);
         uint256 reward = rewards[user][stakingToken];
         if (reward > 0) {
@@ -153,7 +159,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         if (tokenAddress == _REWARDS_TOKEN || rewardDistributors[tokenAddress] != address(0)) {
-            revert Errors.CannotWithdrawStakingToken();
+            revert Errors.RescueNotAllowed();
         }
         emit Recovered(tokenAddress, tokenAmount);
         IERC20(tokenAddress).safeTransfer(to, tokenAmount);
