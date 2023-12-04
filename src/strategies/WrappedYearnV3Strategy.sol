@@ -80,6 +80,6 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         }
         // Return the total idle assets and the deployed assets
         return IERC20(asset).balanceOf(address(this))
-            + IYearnStakingDelegate(yearnStakingDelegate).balances(address(asset), address(this));
+            + IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), address(asset));
     }
 }
