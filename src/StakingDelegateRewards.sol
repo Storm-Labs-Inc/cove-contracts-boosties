@@ -86,8 +86,18 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         }
     }
 
+    function getReward(address user, address stakingToken) external nonReentrant {
+        _updateReward(user, stakingToken);
+        uint256 reward = rewards[user][stakingToken];
+        if (reward > 0) {
+            rewards[user][stakingToken] = 0;
+            IERC20(_REWARDS_TOKEN).safeTransfer(user, reward);
+            emit RewardPaid(user, stakingToken, reward);
+        }
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
-    function updateUserBalance(address stakingToken, address user, uint256 totalAmount) external nonReentrant {
+    function updateUserBalance(address user, address stakingToken, uint256 totalAmount) external {
         if (msg.sender != _STAKING_DELEGATE) {
             revert Errors.OnlyStakingDelegateCanUpdateUserBalance();
         }
