@@ -13,13 +13,11 @@ abstract contract WrappedYearnV3 {
 
     // Immutable storage variables
     /* solhint-disable immutable-vars-naming */
-    // slither-disable-start naming-convention
     address public immutable yearnStakingDelegate;
     address public immutable dYfi;
     address public immutable vaultAsset;
     address public immutable vault;
     /* solhint-enable immutable-vars-naming */
-    // slither-disable-end naming-convention
 
     constructor(address asset_, address yearnStakingDelegate_, address dYfi_) {
         address vault_ = IERC4626(asset_).asset();
