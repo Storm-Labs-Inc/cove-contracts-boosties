@@ -324,10 +324,35 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         IERC20(_YFI).safeTransfer(to, withdrawn.amount);
     }
 
-    function rescue(address token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (token == _YFI || token == _D_YFI || gaugeStakingRewards[token] != address(0)) {
-            revert Errors.CannotRescueUserTokens();
+    /**
+     * @notice Execute arbitrary calls from the staking delegate. This function is callable
+     * by the admin role for future proofing. Target must not be YFI, dYFI, veYFI, or a known
+     * gauge token.
+     * @param target contract to call
+     * @param data calldata to execute the call with
+     * @param value call value
+     * @return result of the call
+     */
+    function execute(
+        address target,
+        bytes memory data,
+        uint256 value
+    )
+        external
+        payable
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (bytes memory)
+    {
+        // Checks
+        if (target == _YFI || target == _D_YFI || target == _VE_YFI || gaugeStakingRewards[target] != address(0)) {
+            revert Errors.ExecutionNotAllowed();
         }
-        _rescue(IERC20(token), to, balance);
+        // Interactions
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory result) = target.call{ value: value }(data);
+        if (!success) {
+            revert Errors.ExecutionFailed();
+        }
+        return result;
     }
 }
