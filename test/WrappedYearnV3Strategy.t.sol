@@ -19,7 +19,7 @@ import { MockGauge } from "test/mocks/MockGauge.sol";
 
 import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
 
-contract WrappedStrategy_Test is BaseTest {
+contract WrappedYearnV3Strategy_Test is BaseTest {
     using SafeERC20 for IERC20;
 
     IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
@@ -131,9 +131,10 @@ contract WrappedStrategy_Test is BaseTest {
         assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
     }
 
-    function testFuzz_report_staking_rewards_profit(uint256 amount) public {
+    function testFuzz_report_passWhen_Profit(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
+        // Assume the exchange rate from vaultAsset to vault to gauge tokens is 1:1:1
         uint256 profitedVaultAssetAmount = 1e18;
 
         _depositFromUser(alice, amount);
@@ -171,7 +172,7 @@ contract WrappedStrategy_Test is BaseTest {
         assertEq(wrappedYearnV3Strategy.balanceOf(treasury), profit / 10, "treasury should have 10% of profit");
     }
 
-    function testFuzz_report_passWhen_noProfits(uint256 amount) public {
+    function testFuzz_report_passWhen_NoProfits(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
@@ -198,7 +199,7 @@ contract WrappedStrategy_Test is BaseTest {
         assertEq(wrappedYearnV3Strategy.balanceOf(treasury), 0, "treasury should have 0 profit");
     }
 
-    function testFuzz_withdraw_duringShutdown(uint256 amount) public {
+    function testFuzz_withdraw_passWhen_DuringShutdown(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
@@ -217,7 +218,7 @@ contract WrappedStrategy_Test is BaseTest {
         assertEq(wrappedYearnV3Strategy.balanceOf(alice), 0, "Withdraw was not successful");
     }
 
-    function testFuzz_deposit_duringShutdown(uint256 amount) public {
+    function testFuzz_deposit_passWhen_DuringShutdown(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
@@ -234,9 +235,10 @@ contract WrappedStrategy_Test is BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
+    function testFuzz_report_passWhen_DuringShutdown(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
+        // Assume the exchange rate from vaultAsset to vault to gauge tokens is 1:1:1
         uint256 profitedVaultAssetAmount = 1e18;
 
         // deposit into strategy happens
@@ -262,7 +264,7 @@ contract WrappedStrategy_Test is BaseTest {
         // manager calls report on the wrapped strategy
         vm.prank(manager);
         (uint256 profit,) = wrappedYearnV3Strategy.report();
-        assertGt(profit, 0, "profit should be greater than 0");
+        assertEq(profit, profitedVaultAssetAmount, "profit should match newly minted gauge tokens");
 
         // warp blocks forward to profit locking is finished
         vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
@@ -279,6 +281,7 @@ contract WrappedStrategy_Test is BaseTest {
     }
 
     function testFuzz_setHarvestSwapParams_revertWhen_CallerIsNotManagement(address caller) public {
+        vm.assume(caller != manager);
         vm.expectRevert("!management");
         vm.prank(caller);
         wrappedYearnV3Strategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
