@@ -80,6 +80,7 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
             curveSwapParams.swapParams[1] = [uint256(2), 0, 1, 2, 3]; // ETH -> USDC
             // set params for harvest rewards swapping
             wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
+            wrappedYearnV3Strategy.setMaxTotalAssets(type(uint256).max);
             vm.stopPrank();
         }
     }

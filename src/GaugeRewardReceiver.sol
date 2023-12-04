@@ -60,7 +60,7 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
         if (msg.sender != stakingDelegate()) {
             revert Errors.NotAuthorized();
         }
-        if (rewardSplit.lock + rewardSplit.treasury + rewardSplit.strategy != 1e18) {
+        if (rewardSplit.lock + rewardSplit.treasury + rewardSplit.user != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
         // Read pending dYFI rewards from the gauge
@@ -73,11 +73,11 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
         // Store the amount of dYFI to use for locking later
         uint256 swapAndLockAmount = totalRewardsAmount * uint256(rewardSplit.lock) / 1e18;
         uint256 treasuryAmount = totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18;
-        uint256 strategyAmount = totalRewardsAmount - swapAndLockAmount - treasuryAmount;
+        uint256 userAmount = totalRewardsAmount - swapAndLockAmount - treasuryAmount;
 
         // Transfer rewards to the staking delegate rewards contract
-        if (strategyAmount != 0) {
-            StakingDelegateRewards(stakingDelegateRewards()).notifyRewardAmount(gauge(), strategyAmount);
+        if (userAmount != 0) {
+            StakingDelegateRewards(stakingDelegateRewards()).notifyRewardAmount(gauge(), userAmount);
         }
         // Transfer rewards to the treasury
         if (rewardSplit.treasury != 0) {
@@ -88,7 +88,7 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
             IERC20(rewardToken()).safeTransfer(swapAndLock, swapAndLockAmount);
         }
 
-        return strategyAmount;
+        return userAmount;
     }
     // slither-disable-end reentrancy-no-eth
 }

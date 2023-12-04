@@ -43,11 +43,12 @@ library Errors {
 
     error PerpetualLockDisabled();
 
-    error NoAssociatedGauge();
+    error SwapAndLockNotSet();
 
     error GetRewardFailed();
     error GaugeRewardsAlreadyAdded();
     error GaugeRewardsNotYetAdded();
+    error CannotRescueUserTokens();
 
     //// STAKING DELEGATE REWARDS ////
     error CannotWithdrawStakingToken();

@@ -24,7 +24,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     // Struct definitions
     struct RewardSplit {
         uint80 treasury;
-        uint80 strategy;
+        uint80 user;
         uint80 lock;
     }
 
@@ -94,28 +94,45 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /* ========== MUTATIVE FUNCTIONS ========== */
     function deposit(address gauge, uint256 amount) external {
+        // Checks
+        if (amount == 0) {
+            revert Errors.ZeroAmount();
+        }
+        address stakingDelegateReward = gaugeStakingRewards[gauge];
+        if (stakingDelegateReward == address(0)) {
+            revert Errors.GaugeRewardsNotYetAdded();
+        }
         // Effects
         uint256 newBalance = balances[gauge][msg.sender] + amount;
         balances[gauge][msg.sender] = newBalance;
         // Interactions
-        _checkpointUserBalance(gauge, msg.sender, newBalance);
+        _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function withdraw(address gauge, uint256 amount) external {
+        // Checks
+        if (amount == 0) {
+            revert Errors.ZeroAmount();
+        }
         // Effects
         uint256 newBalance = balances[gauge][msg.sender] - amount;
         balances[gauge][msg.sender] = newBalance;
         // Interactions
-        _checkpointUserBalance(gauge, msg.sender, newBalance);
+        _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }
 
-    function _checkpointUserBalance(address gauge, address user, uint256 userBalance) internal {
-        address stakingDelegateReward = gaugeStakingRewards[gauge];
-        if (stakingDelegateReward != address(0)) {
-            StakingDelegateRewards(stakingDelegateReward).updateUserBalance(gauge, user, userBalance);
-        }
+    function _checkpointUserBalance(
+        address stakingDelegateReward,
+        address gauge,
+        address user,
+        uint256 userBalance
+    )
+        internal
+    {
+        // In case of error, we don't want to block the entire tx so we try-catch
+        try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(gauge, user, userBalance) { } catch { }
     }
 
     /**
@@ -145,12 +162,17 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     function harvest(address gauge) external returns (uint256) {
-        address _swapAndLock = swapAndLock;
-        if (_swapAndLock == address(0)) {
-            revert Errors.ZeroAddress();
+        // Checks
+        address swapAndLock_ = swapAndLock;
+        if (swapAndLock_ == address(0)) {
+            revert Errors.SwapAndLockNotSet();
         }
         address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(_swapAndLock, treasury, gaugeRewardSplit[gauge]);
+        if (gaugeRewardReceiver == address(0)) {
+            revert Errors.GaugeRewardsNotYetAdded();
+        }
+        // Interactions
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
     }
 
     function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory) {
@@ -173,62 +195,53 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    /// @notice Set perpetual lock status
-    /// @param _shouldPerpetuallyLock if true, lock YFI for 4 years after each harvest
-    // slither-disable-next-line naming-convention
-    function setPerpetualLock(bool _shouldPerpetuallyLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        shouldPerpetuallyLock = _shouldPerpetuallyLock;
-    }
-
     /// @notice Set treasury address. This address will receive a portion of the rewards
-    /// @param _treasury address to receive rewards
-    // slither-disable-next-line naming-convention
-    function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /// @param treasury_ address to receive rewards
+    function setTreasury(address treasury_) external onlyRole(MANAGER_ROLE) {
         // Checks
-        if (_treasury == address(0)) {
+        if (treasury_ == address(0)) {
             revert Errors.ZeroAddress();
         }
         // Effects
-        treasury = _treasury;
+        treasury = treasury_;
     }
 
-    // slither-disable-next-line naming-convention
-    function setSwapAndLock(address _swapAndLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSwapAndLock(address swapAndLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
-        if (_swapAndLock == address(0)) {
+        if (swapAndLock_ == address(0)) {
             revert Errors.ZeroAddress();
         }
-        swapAndLock = _swapAndLock;
+        swapAndLock = swapAndLock_;
     }
 
-    function addGaugeRewards(
+    function _setRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
+        if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
+            revert Errors.InvalidRewardSplit();
+        }
+        gaugeRewardSplit[gauge] = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
+    }
+
+    /// @notice Set the reward split percentages
+    /// @param treasuryPct percentage of rewards to treasury
+    /// @param userPct percentage of rewards to user
+    /// @param veYfiPct percentage of rewards to veYFI
+    /// @dev Sum of percentages must equal to 1e18
+    function setRewardSplit(
         address gauge,
-        address stakingDelegateRewards
+        uint80 treasuryPct,
+        uint80 userPct,
+        uint80 veYfiPct
     )
         external
-        nonReentrant
-        onlyRole(MANAGER_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        // Checks
-        if (gauge == address(0) || stakingDelegateRewards == address(0)) {
-            revert Errors.ZeroAddress();
-        }
-        // Effects
-        _setRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
-        address receiver =
-            _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
-        gaugeRewardReceivers[gauge] = receiver;
-        gaugeStakingRewards[gauge] = stakingDelegateRewards;
-        // Interactions
-        GaugeRewardReceiver(receiver).initialize();
-        IGauge(gauge).setRecipient(receiver);
-        StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
+        _setRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
     }
 
     /// Delegates voting power to a given address
     /// @param id name of the space in snapshot to apply delegation. For yearn it is "veyfi.eth"
     /// @param delegate address to delegate voting power to
-    function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(MANAGER_ROLE) {
+    function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (delegate == address(0)) {
             revert Errors.ZeroAddress();
@@ -237,28 +250,67 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         ISnapshotDelegateRegistry(_SNAPSHOT_DELEGATE_REGISTRY).setDelegate(id, delegate);
     }
 
-    function _setRewardSplit(address gauge, uint80 treasuryPct, uint80 compoundPct, uint80 veYfiPct) internal {
-        if (uint256(treasuryPct) + compoundPct + veYfiPct != 1e18) {
-            revert Errors.InvalidRewardSplit();
-        }
-        gaugeRewardSplit[gauge] = RewardSplit(treasuryPct, compoundPct, veYfiPct);
-    }
-
-    /// @notice Set the reward split percentages
-    /// @param treasuryPct percentage of rewards to treasury
-    /// @param compoundPct percentage of rewards to compound
-    /// @param veYfiPct percentage of rewards to veYFI
-    /// @dev Sum of percentages must equal to 1e18
-    function setRewardSplit(
+    function addGaugeRewards(
         address gauge,
-        uint80 treasuryPct,
-        uint80 compoundPct,
-        uint80 veYfiPct
+        address stakingDelegateRewards
     )
         external
-        onlyRole(MANAGER_ROLE)
+        nonReentrant
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setRewardSplit(gauge, treasuryPct, compoundPct, veYfiPct);
+        // Checks
+        if (gauge == address(0) || stakingDelegateRewards == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        if (gaugeStakingRewards[gauge] != address(0)) {
+            revert Errors.GaugeRewardsAlreadyAdded();
+        }
+        // Effects
+        _setRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
+        gaugeStakingRewards[gauge] = stakingDelegateRewards;
+        address receiver =
+            _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
+        gaugeRewardReceivers[gauge] = receiver;
+        // Interactions
+        GaugeRewardReceiver(receiver).initialize();
+        IGauge(gauge).setRecipient(receiver);
+        StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
+    }
+
+    function updateGaugeRewards(
+        address gauge,
+        address stakingDelegateRewards
+    )
+        external
+        nonReentrant
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        // Checks
+        if (gauge == address(0) || stakingDelegateRewards == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        address previousStakingDelegateRewards = gaugeStakingRewards[gauge];
+        if (previousStakingDelegateRewards == address(0)) {
+            revert Errors.GaugeRewardsNotYetAdded();
+        }
+        if (previousStakingDelegateRewards == stakingDelegateRewards) {
+            revert Errors.GaugeRewardsAlreadyAdded();
+        }
+        // Effects
+        gaugeStakingRewards[gauge] = stakingDelegateRewards;
+        address receiver =
+            _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
+        gaugeRewardReceivers[gauge] = receiver;
+        // Interactions
+        GaugeRewardReceiver(receiver).initialize();
+        IGauge(gauge).setRecipient(receiver);
+        StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
+    }
+
+    /// @notice Set perpetual lock status
+    /// @param shouldPerpetuallyLock_ if true, lock YFI for 4 years after each harvest
+    function setPerpetualLock(bool shouldPerpetuallyLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        shouldPerpetuallyLock = shouldPerpetuallyLock_;
     }
 
     /// @notice early unlock veYFI
@@ -272,7 +324,10 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         IERC20(_YFI).safeTransfer(to, withdrawn.amount);
     }
 
-    function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescue(token, to, balance);
+    function rescue(address token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (token == _YFI || token == _D_YFI || gaugeStakingRewards[token] != address(0)) {
+            revert Errors.CannotRescueUserTokens();
+        }
+        _rescue(IERC20(token), to, balance);
     }
 }
