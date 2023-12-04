@@ -92,7 +92,7 @@ contract WrappedStrategy_Test is BaseTest {
         // check for expected changes
         assertEq(wrappedYearnV3Strategy.balanceOf(alice), amount, "Deposit was not successful");
         assertEq(
-            IYearnStakingDelegate(yearnStakingDelegate).balances(gauge, address(wrappedYearnV3Strategy)),
+            IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(wrappedYearnV3Strategy), gauge),
             amount,
             "yearn staking delegate deposit failed"
         );
@@ -122,7 +122,7 @@ contract WrappedStrategy_Test is BaseTest {
         vm.prank(alice);
         wrappedYearnV3Strategy.withdraw(amount, alice, alice);
         assertEq(
-            IYearnStakingDelegate(yearnStakingDelegate).balances(gauge, address(wrappedYearnV3Strategy)),
+            IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(wrappedYearnV3Strategy), gauge),
             0,
             "yearn staking delegate withdraw failed"
         );
@@ -165,7 +165,7 @@ contract WrappedStrategy_Test is BaseTest {
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
         assertEq(
             afterTotalAssets,
-            yearnStakingDelegate.balances(gauge, address(wrappedYearnV3Strategy)),
+            yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge),
             "all assets should be deployed"
         );
         assertEq(wrappedYearnV3Strategy.balanceOf(treasury), profit / 10, "treasury should have 10% of profit");
@@ -211,7 +211,7 @@ contract WrappedStrategy_Test is BaseTest {
 
         vm.prank(alice);
         wrappedYearnV3Strategy.withdraw(amount, alice, alice);
-        assertEq(yearnStakingDelegate.balances(gauge, address(wrappedYearnV3Strategy)), 0, "_withdrawFromYSD failed");
+        assertEq(yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge), 0, "_withdrawFromYSD failed");
         assertEq(wrappedYearnV3Strategy.totalSupply(), 0, "totalSupply did not update correctly");
         assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
         assertEq(wrappedYearnV3Strategy.balanceOf(alice), 0, "Withdraw was not successful");
@@ -244,7 +244,7 @@ contract WrappedStrategy_Test is BaseTest {
         uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
-        uint256 beforeDeployedAssets = yearnStakingDelegate.balances(gauge, address(wrappedYearnV3Strategy));
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
         assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
@@ -272,7 +272,7 @@ contract WrappedStrategy_Test is BaseTest {
         wrappedYearnV3Strategy.report();
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        uint256 afterDeployedAssets = yearnStakingDelegate.balances(gauge, address(wrappedYearnV3Strategy));
+        uint256 afterDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
         assertEq(afterTotalAssets, beforeTotalAssets + profitedVaultAssetAmount, "report did not increase total assets");
         assertEq(wrappedYearnV3Strategy.balanceOf(treasury), profit / 10, "treasury should have 10% of profit");
         assertEq(beforeDeployedAssets, afterDeployedAssets, "deployed assets should not change");
