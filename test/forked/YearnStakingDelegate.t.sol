@@ -368,7 +368,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         // Calculate split amounts strategy split amount
         uint256 estimatedTreasurySplit = actualRewardAmount * 0.3e18 / 1e18;
         uint256 estimatedVeYfiSplit = actualRewardAmount * 0.4e18 / 1e18;
-        uint256 estimatedStrategySplit = actualRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
+        uint256 estimatedUserSplit = actualRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
 
         // Harvest
         vm.prank(wrappedStrategy);
@@ -376,7 +376,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards);
         assertEq(rewardAmount, strategyDYfiBalance, "harvest did not return correct value");
-        assertEq(strategyDYfiBalance, estimatedStrategySplit, "strategy split is incorrect");
+        assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
 
         uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
         assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");

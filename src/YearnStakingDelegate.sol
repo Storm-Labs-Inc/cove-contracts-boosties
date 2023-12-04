@@ -206,7 +206,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         treasury = treasury_;
     }
 
-    function setSwapAndLock(address swapAndLock_) external onlyRole(MANAGER_ROLE) {
+    function setSwapAndLock(address swapAndLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (swapAndLock_ == address(0)) {
             revert Errors.ZeroAddress();
@@ -233,7 +233,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         uint80 veYfiPct
     )
         external
-        onlyRole(MANAGER_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _setRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
     }
