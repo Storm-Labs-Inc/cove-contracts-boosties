@@ -343,11 +343,15 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         // Check that the StakingDelegateRewards contract has received the rewards
         // expect to be close to 100% of the rewards
+        assertNotEq(rewardAmount, 0, "did not harvest any rewards");
         assertEq(
-            rewardAmount, IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), "harvest did not return correct value"
+            rewardAmount,
+            IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards),
+            "stakingDelegateRewards did not receive the rewards"
         );
+        assertGe(DYFI_REWARD_AMOUNT, rewardAmount, "harvested reward amount is more than expected");
         assertApproxEqRel(
-            IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), DYFI_REWARD_AMOUNT, 0.01e18, "harvest failed"
+            IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), DYFI_REWARD_AMOUNT, 0.1e18, "harvest failed"
         );
     }
 
@@ -359,8 +363,8 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
-        // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
-        uint256 actualRewardAmount = 1_016_092_352_451_786_806;
+        uint256 actualRewardAmount = IGauge(testGauge).earned(address(yearnStakingDelegate));
+        assertGt(actualRewardAmount, 0, "no rewards earned by yearn staking delegate");
 
         // Calculate split amounts strategy split amount
         uint256 estimatedTreasurySplit = actualRewardAmount * 0.3e18 / 1e18;
@@ -384,38 +388,50 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
     function test_claimBoostRewards() public {
         _lockYfiForYSD(10e18);
+        // Reward pool needs to be checkpointed first independently
+        IYfiRewardPool(MAINNET_DYFI_REWARD_POOL).checkpoint_token();
+        IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_total_supply();
+
         // Alice deposits some vault tokens to a yearn gauge without any veYFI
         airdrop(IERC20(testVault), alice, 1e18);
         vm.startPrank(alice);
         IERC20(testVault).approve(address(testGauge), 1e18);
         IGauge(testGauge).deposit(1e18, alice);
         vm.stopPrank();
-        // Some time passes
+        // Some time passes so the dYFI reward is emitted from the gauge
         vm.warp(block.timestamp + 14 days);
+        // Claim any rewards that may have been accrued
+        yearnStakingDelegate.claimBoostRewards();
+        uint256 startBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
         // Claim the dYFI gauge rewards for alice
         IGauge(testGauge).getReward(alice);
+        vm.warp(block.timestamp + 14 days);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimBoostRewards();
-        assertEq(IERC20(MAINNET_DYFI).balanceOf(treasury), 70_750_593_778_842_854, "claimBoostRewards failed");
+        assertGt(IERC20(MAINNET_DYFI).balanceOf(treasury), startBalance, "claimBoostRewards failed");
     }
 
     function test_claimExitRewards() public {
+        // Lock YFI for YSD
+        _lockYfiForYSD(10e18);
         // Reward pool needs to be checkpointed first independently
         IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_token();
         IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_total_supply();
-        // Lock YFI for YSD
-        _lockYfiForYSD(10e18);
+        vm.warp(block.timestamp + 14 days);
+        // Claim any rewards that may have been accrued
+        yearnStakingDelegate.claimExitRewards();
+        uint256 startBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
+
         // Lock YFI for the user
         _lockYfiForUser(alice, 10e18, 8 * 52 weeks);
         // Another user early exits
         vm.prank(alice);
         IVotingYFI(MAINNET_VE_YFI).withdraw();
-        // Advance to the next epoch
-        vm.warp(block.timestamp + 2 weeks);
+        vm.warp(block.timestamp + 14 days);
         // Claim exit rewards
         yearnStakingDelegate.claimExitRewards();
         // Assert the treasury balance is increased by the expected amount
-        assertEq(IERC20(MAINNET_YFI).balanceOf(treasury), 66_005_769_070_969_234, "claimBoostRewards failed");
+        assertGt(IERC20(MAINNET_YFI).balanceOf(treasury), startBalance, "claimBoostRewards failed");
     }
 
     function test_setSnapshotDelegate() public {

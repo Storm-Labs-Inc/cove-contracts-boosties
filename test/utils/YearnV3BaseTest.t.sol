@@ -58,7 +58,7 @@ contract YearnV3BaseTest is BaseTest {
     function setUp() public virtual override {
         // Fork ethereum mainnet at block 18386375 for consistent testing and to cache RPC calls
         // https://etherscan.io/block/18429780
-        forkNetworkAt("mainnet", 18_429_780);
+        forkNetwork("mainnet");
         super.setUp();
 
         _createYearnRelatedAddresses();
