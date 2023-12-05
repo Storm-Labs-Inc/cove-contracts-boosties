@@ -53,11 +53,12 @@ library Errors {
     error ExecutionFailed();
 
     //// STAKING DELEGATE REWARDS ////
-    error CannotWithdrawStakingToken();
+    error RescueNotAllowed();
     error PreviousRewardsPeriodNotCompleted();
     error OnlyStakingDelegateCanUpdateUserBalance();
     error OnlyStakingDelegateCanAddStakingToken();
     error OnlyRewardDistributorCanNotifyRewardAmount();
+    error StakingTokenAlreadyAdded();
 
     //// WRAPPED STRATEGY CURVE SWAPPER ////
     error OracleOutdated();
