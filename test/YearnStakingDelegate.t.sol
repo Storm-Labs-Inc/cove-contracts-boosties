@@ -410,8 +410,8 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
     }
 
     function test_execute_passWhen_ZeroValue() public {
-        vm.prank(admin);
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        vm.prank(admin);
         yearnStakingDelegate.execute{ value: 0 }(mockTarget, data, 0);
         assertEq(MockTarget(payable(mockTarget)).value(), 0, "execute failed");
         assertEq(MockTarget(payable(mockTarget)).data(), data, "execute failed");
@@ -419,48 +419,86 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
 
     function testFuzz_execute(bytes4 selector, bytes32 data, address data2, uint256 value) public {
         vm.assume(selector != MockTarget.fail.selector);
-        vm.prank(admin);
-        vm.deal(admin, value);
         bytes memory fullData = abi.encodeWithSelector(selector, data, data2);
         assertEq(fullData.length, 68, "data packing failed");
+        hoax(admin, value);
         yearnStakingDelegate.execute{ value: value }(mockTarget, fullData, value);
         assertEq(MockTarget(payable(mockTarget)).value(), value, "execute failed");
         assertEq(MockTarget(payable(mockTarget)).data(), fullData, "execute failed");
     }
 
     function test_execute_revertWhen_TargetIsYFI_ExecutionNotAllowed() public {
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
         vm.prank(admin);
-        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         yearnStakingDelegate.execute{ value: 1 ether }(yfi, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsDYFI_ExecutionNotAllowed() public {
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
         vm.prank(admin);
-        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         yearnStakingDelegate.execute{ value: 1 ether }(dYfi, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsGaugeToken_ExecutionNotAllowed() public {
         _setGaugeRewards();
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
         vm.prank(admin);
-        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         yearnStakingDelegate.execute{ value: 1 ether }(testGauge, data, 1 ether);
     }
 
-    function test_execute_revertWhen_TargetIsVeYFI_ExecutionNotAllowed() public {
+    function test_execute_revertWhen_TargetIsRewardReceiver_ExecutionNotAllowed() public {
+        _setGaugeRewards();
+        address target = yearnStakingDelegate.gaugeRewardReceivers(testGauge);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
         vm.prank(admin);
+        yearnStakingDelegate.execute{ value: 1 ether }(target, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_TargetIsStakingRewards_ExecutionNotAllowed() public {
+        _setGaugeRewards();
+        address target = yearnStakingDelegate.gaugeStakingRewards(testGauge);
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
+        yearnStakingDelegate.execute{ value: 1 ether }(target, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_TargetIsVeYFI_ExecutionNotAllowed() public {
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
         yearnStakingDelegate.execute{ value: 1 ether }(veYfi, data, 1 ether);
     }
 
+    function test_execute_revertWhen_TargetIsYFIRewardPool_ExecutionNotAllowed() public {
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
+        yearnStakingDelegate.execute{ value: 1 ether }(yfiRewardPool, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_TargetIsDYFIRewardPool_ExecutionNotAllowed() public {
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
+        yearnStakingDelegate.execute{ value: 1 ether }(dYfiRewardPool, data, 1 ether);
+    }
+
     function test_execute_revertWhen_ExecutionFailed() public {
+        bytes memory data = abi.encodeWithSelector(MockTarget.fail.selector);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionFailed.selector));
         vm.prank(admin);
-        bytes memory data = abi.encodeWithSelector(MockTarget.fail.selector);
+        yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_CallerIsNotAdmin() public {
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        vm.expectRevert(_formatAccessControlError(alice, yearnStakingDelegate.DEFAULT_ADMIN_ROLE()));
+        vm.prank(alice);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
 }
