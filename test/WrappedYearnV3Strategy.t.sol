@@ -118,6 +118,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         vm.assume(amount < type(uint128).max);
 
         _depositFromUser(alice, amount); // deposit into strategy happens
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
 
         vm.prank(alice);
         wrappedYearnV3Strategy.withdraw(amount, alice, alice);
@@ -140,6 +142,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
@@ -189,6 +193,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of alice's deposit should be deployed");
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
@@ -207,12 +213,20 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         vm.warp(block.timestamp + wrappedYearnV3Strategy.profitMaxUnlockTime());
         // Test multiple users interaction
         _depositFromUser(bob, amount1);
+        uint256 afterBobDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(
+            afterBobDeployedAssets, beforeDeployedAssets + amount1 + profit, "all of bob's deposit should be deployed"
+        );
 
         // manager calls report
         vm.prank(manager);
         wrappedYearnV3Strategy.report();
         // Test multiple users interaction
         _depositFromUser(charlie, amount2);
+        uint256 afterCharlieDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(
+            afterCharlieDeployedAssets, afterBobDeployedAssets + amount2, "all of Charlie's deposit should be deployed"
+        );
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
         // Profit should only be compared to assets deposited before profit was reported+unlocked
@@ -237,6 +251,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
@@ -343,15 +359,17 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         wrappedYearnV3Strategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
     }
 
-    function test_emergencyWithdraw_revertWhen_nonManager() public {
-        vm.prank(alice);
+    function test_emergencyWithdraw_revertWhen_nonManager(address caller) public {
+        vm.assume(caller != manager);
+        vm.prank(caller);
         vm.expectRevert("!emergency authorized");
         wrappedYearnV3Strategy.emergencyWithdraw(1e18);
     }
 
     function testFuzz_emergencyWithdraw(uint256 amount) public {
-        vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        vm.assume(amount != 0);
+        vm.assume(amount < type(uint128).max);
+
         // deposit into strategy happens
         _depositFromUser(alice, amount);
         // manager calls report

@@ -9,7 +9,6 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
@@ -262,7 +261,7 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.report();
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
+        assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
     }
 
     function test_setHarvestSwapParams_nonManager() public {

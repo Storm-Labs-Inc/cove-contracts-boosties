@@ -62,8 +62,7 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
     }
 
     function _emergencyWithdraw(uint256 amount) internal override {
-        uint256 currentTotalBalance =
-            IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), address(asset));
+        uint256 currentTotalBalance = TokenizedStrategy.totalDebt();
         uint256 withdrawAmount = amount > currentTotalBalance ? currentTotalBalance : amount;
         _withdrawFromYSD(address(asset), withdrawAmount);
     }
