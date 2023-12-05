@@ -307,6 +307,20 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         vm.stopPrank();
     }
 
+    function testFuzz_setSwapAndLock(address newSwapAndLock) public {
+        vm.assume(newSwapAndLock != address(0));
+        vm.prank(admin);
+        yearnStakingDelegate.setSwapAndLock(newSwapAndLock);
+        assertEq(yearnStakingDelegate.swapAndLock(), newSwapAndLock, "setSwapAndLock failed");
+    }
+
+    function test_setSwapAndLock_revertWhen_ZeroAddress() public {
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        yearnStakingDelegate.setSwapAndLock(address(0));
+        vm.stopPrank();
+    }
+
     function testFuzz_setRewardSplit(uint80 a, uint80 b) public {
         // Workaround for vm.assume max tries
         vm.assume(uint256(a) + b <= 1e18);
