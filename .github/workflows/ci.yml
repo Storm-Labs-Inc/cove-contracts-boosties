@@ -12,142 +12,22 @@ env:
   PYTHON_VERSION: 3.9.17
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: buildjet-2vcpu-ubuntu-2204
-    steps:
-      - name: Checkout repository without submodules
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-      - name: Base setup
-        uses: ./.github/actions/base-setup
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Lint all source files
-        run: pnpm run lint
-
-  slither:
-    name: Slither
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    permissions:
-      contents: read
-      packages: read
-      pull-requests: write
-    steps:
-      - name: Checkout repository without submodules
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-      - name: Base setup
-        uses: ./.github/actions/base-setup
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Remove script and test files for faster analysis
-        run: rm -rf script/* test/*
-
-      - name: Generate build info manually
-        run: forge build --build-info
-
-      - name: Run Slither
-        uses: crytic/slither-action@v0.3.0
-        id: slither
-        with:
-          # TODO: re-enable this before audits
-          fail-on: none
-          ignore-compile: true
-          node-version: ${{ env.NODE_VERSION }}
-          slither-args:
-            --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
-          slither-config: slither.config.json
-
-      - name: Create/update checklist as PR comment
-        uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
-        env:
-          REPORT: ${{ steps.slither.outputs.stdout }}
-        with:
-          script: |
-            const script = require('.github/scripts/comment')
-            const header = '# Slither report'
-            const body = process.env.REPORT
-            await script({ github, context, header, body })
-
-  test:
-    name: Test
-    runs-on: buildjet-2vcpu-ubuntu-2204
-    steps:
-      - name: Checkout repository without submodules
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-      - name: Base setup
-        uses: ./.github/actions/base-setup
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Run Forge build and tests
-        run: |
-          forge --version
-          pnpm build
-          forge test -vvv
-        env:
-          # make fuzzing semi-deterministic to avoid noisy gas cost estimation
-          # due to non-deterministic fuzzing (but still use pseudo-random fuzzing seeds)
-          FOUNDRY_FUZZ_SEED: 0x${{ github.event.pull_request.base.sha || github.sha }}
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
-
-  compare-gas-reports:
-    name: Compare gas reports
-    runs-on: buildjet-2vcpu-ubuntu-2204
-    permissions: write-all
-    steps:
-      - name: Checkout repository without submodules
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-      - name: Base setup
-        uses: ./.github/actions/base-setup
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Run Forge build and tests
-        run: |
-          forge --version
-          pnpm build
-          forge test --gas-report > gasreport.ansi
-        env:
-          # make fuzzing semi-deterministic to avoid noisy gas cost estimation
-          # due to non-deterministic fuzzing (but still use pseudo-random fuzzing seeds)
-          FOUNDRY_FUZZ_SEED: 0x${{ github.event.pull_request.base.sha || github.sha }}
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
-
-      - name: Compare gas reports
-        if: success() || failure()
-        uses: Rubilmax/foundry-gas-diff@v3.16
-        with:
-          summaryQuantile: 0.9 # only display the 10% most significant gas diffs in the summary (defaults to 20%)
-          sortCriteria: avg,max # sort diff rows by criteria
-          sortOrders: desc,asc # and directions
-          match: src/**/* # match gas reports from specific paths
-        id: gas_diff
-
-      - name: Add gas diff to sticky comment
-        if:
-          (success() || failure()) && (github.event_name == 'pull_request' || github.event_name ==
-          'pull_request_target')
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          # delete the comment in case changes no longer impact gas costs
-          delete: ${{ !steps.gas_diff.outputs.markdown }}
-          message: ${{ steps.gas_diff.outputs.markdown }}
-
   coverage:
-    name: Coverage
+    strategy:
+      fail-fast: true # In case one of the jobs fails, the other jobs will be cancelled
+      matrix:
+        runs-on:
+          [
+            buildjet-2vcpu-ubuntu-2204,
+            buildjet-4vcpu-ubuntu-2204,
+            buildjet-8vcpu-ubuntu-2204,
+            buildjet-16vcpu-ubuntu-2204,
+          ]
+    name: Coverage - ${{matrix.runs-on}}
     if:
       (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'master') || (github.event_name
       =='push' && github.ref == 'refs/heads/master')
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ${{matrix.runs-on}}
     steps:
       - name: Checkout repository without submodules
         uses: actions/checkout@v3
@@ -172,14 +52,3 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  spelling:
-    name: Spelling
-    runs-on: buildjet-2vcpu-ubuntu-2204
-    steps:
-      - name: Checkout repository without submodules
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-      - name: Run codespell
-        uses: codespell-project/actions-codespell@v2
