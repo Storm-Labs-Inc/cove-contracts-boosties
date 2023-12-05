@@ -394,4 +394,44 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         assertEq(MockTarget(payable(mockTarget)).value(), 1 ether, "execute failed");
         assertEq(MockTarget(payable(mockTarget)).data(), data, "execute failed");
     }
+
+    function test_execute_passWhen_ZeroValue() public {
+        vm.prank(admin);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        yearnStakingDelegate.execute{ value: 0 }(mockTarget, data, 0);
+        assertEq(MockTarget(payable(mockTarget)).value(), 0, "execute failed");
+        assertEq(MockTarget(payable(mockTarget)).data(), data, "execute failed");
+    }
+
+    function testFuzz_execute(bytes4 selector, bytes32 data, address data2, uint256 value) public {
+        vm.prank(admin);
+        vm.deal(admin, value);
+        bytes memory fullData = abi.encodeWithSelector(selector, data, data2);
+        assertEq(fullData.length, 68, "data packing failed");
+        yearnStakingDelegate.execute{ value: value }(mockTarget, fullData, value);
+        assertEq(MockTarget(payable(mockTarget)).value(), value, "execute failed");
+        assertEq(MockTarget(payable(mockTarget)).data(), fullData, "execute failed");
+    }
+
+    function test_execute_revertWhen_TargetIsYFI_ExecutionNotAllowed() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        yearnStakingDelegate.execute{ value: 1 ether }(yfi, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_TargetIsDYFI_ExecutionNotAllowed() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        yearnStakingDelegate.execute{ value: 1 ether }(dYfi, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_TargetIsGaugeToken_ExecutionNotAllowed() public {
+        _setGaugeRewards();
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        yearnStakingDelegate.execute{ value: 1 ether }(testGauge, data, 1 ether);
+    }
 }
