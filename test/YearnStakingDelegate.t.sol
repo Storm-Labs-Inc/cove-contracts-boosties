@@ -418,6 +418,7 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
     }
 
     function testFuzz_execute(bytes4 selector, bytes32 data, address data2, uint256 value) public {
+        vm.assume(selector != MockTarget.fail.selector);
         vm.prank(admin);
         vm.deal(admin, value);
         bytes memory fullData = abi.encodeWithSelector(selector, data, data2);
@@ -447,5 +448,19 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         vm.prank(admin);
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         yearnStakingDelegate.execute{ value: 1 ether }(testGauge, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_TargetIsVeYFI_ExecutionNotAllowed() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
+        vm.prank(admin);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
+        yearnStakingDelegate.execute{ value: 1 ether }(veYfi, data, 1 ether);
+    }
+
+    function test_execute_revertWhen_ExecutionFailed() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionFailed.selector));
+        vm.prank(admin);
+        bytes memory data = abi.encodeWithSelector(MockTarget.fail.selector);
+        yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
 }

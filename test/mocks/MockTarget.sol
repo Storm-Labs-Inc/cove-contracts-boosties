@@ -9,4 +9,8 @@ contract MockTarget {
         data = msg.data;
         value = msg.value;
     }
+
+    function fail() external {
+        revert("MockTarget: fail");
+    }
 }
