@@ -258,7 +258,7 @@ contract CurveRouterSwapperTest is BaseTest {
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 
-    function test_validateSwapParams_revertWhenInvalidTokenIndex() public {
+    function test_validateSwapParams_revertWhenNextInvalidTokenIndex() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -271,6 +271,25 @@ contract CurveRouterSwapperTest is BaseTest {
 
         // i, j, swap_type, pool_type, n_coins
         curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 1, 3]; // DAI -> USDC
+        curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 3, 3]; // USDT -> WETH
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
+        swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
+    }
+
+    function test_validateSwapParams_revertWhenFromTokenInvalidTokenIndex() public {
+        swapper.approveTokenForSwap(MAINNET_DAI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
+
+        // [token_from, pool, token_to, pool, ...]
+        curveSwapParams.route[0] = MAINNET_DAI;
+        curveSwapParams.route[1] = MAINNET_CRV3POOL;
+        curveSwapParams.route[2] = MAINNET_USDT;
+        curveSwapParams.route[3] = MAINNET_TRI_CRYPTO_2;
+        curveSwapParams.route[4] = MAINNET_WETH;
+
+        // i, j, swap_type, pool_type, n_coins
+        curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 1, 3]; // DAI -> USDC
         curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 3, 3]; // USDT -> WETH
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
