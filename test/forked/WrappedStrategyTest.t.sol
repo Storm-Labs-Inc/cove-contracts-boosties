@@ -46,7 +46,7 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         mockStrategy = IStrategy(_mockStrategy);
         vm.label(_mockStrategy, "mockStrategy");
         mockYearnStakingDelegate = new MockYearnStakingDelegate();
-        mockStakingDelegateRewards = new MockStakingDelegateRewards(MAINNET_DYFI, address(0));
+        mockStakingDelegateRewards = new MockStakingDelegateRewards(MAINNET_DYFI);
         vm.label(address(mockYearnStakingDelegate), "mockYearnStakingDelegate");
         vm.label(address(mockStakingDelegateRewards), "mockStakingDelegateRewards");
         mockYearnStakingDelegate.setGaugeStakingRewards(address(mockStakingDelegateRewards));

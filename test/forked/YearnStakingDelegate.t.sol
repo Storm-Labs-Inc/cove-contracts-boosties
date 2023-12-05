@@ -2,7 +2,6 @@
 pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
-import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { IYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IYfiRewardPool.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -17,7 +16,6 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
     YearnStakingDelegate public yearnStakingDelegate;
-    IStrategy public mockStrategy;
     address public testGauge;
     address public testVault;
     address public stakingDelegateRewards;
@@ -281,7 +279,6 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _setSwapAndLock();
         _setGaugeRewards();
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
-        IERC20(testGauge).transfer(address(yearnStakingDelegate), 0);
         vm.warp(block.timestamp + 14 days);
 
         // Harvest

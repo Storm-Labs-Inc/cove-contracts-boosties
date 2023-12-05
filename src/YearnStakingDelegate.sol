@@ -175,8 +175,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
     }
 
-    function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory) {
-        return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
+    function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory lockedBalance) {
+        lockedBalance = IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
+        emit LockYfi(msg.sender, amount);
     }
 
     // Transfer amount of YFI from msg.sender and locks
