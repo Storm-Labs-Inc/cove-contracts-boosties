@@ -102,12 +102,17 @@ abstract contract BaseTest is Test, Constants {
     }
 
     /// @notice Airdrop an asset to an address with a given amount
+    /// @dev This function should only be used for ERC20s that have totalSupply storage slot
     /// @param _asset address of the asset to airdrop
     /// @param _to address to airdrop to
     /// @param _amount amount to airdrop
-    function airdrop(IERC20 _asset, address _to, uint256 _amount) public {
+    function airdrop(IERC20 _asset, address _to, uint256 _amount, bool adjust) public {
         uint256 balanceBefore = _asset.balanceOf(_to);
-        deal(address(_asset), _to, balanceBefore + _amount);
+        deal(address(_asset), _to, balanceBefore + _amount, adjust);
+    }
+
+    function airdrop(IERC20 _asset, address _to, uint256 _amount) public {
+        airdrop(_asset, _to, _amount, true);
     }
 
     /// @notice Take an asset away from an address with a given amount
