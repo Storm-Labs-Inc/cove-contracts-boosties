@@ -270,8 +270,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (gaugeStakingRewards[gauge] != address(0)) {
             revert Errors.GaugeRewardsAlreadyAdded();
         }
-        // Effects & Interactions
+        // Effects
         _setRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
+        // Effects & Interactions
         _setGaugeRewards(gauge, stakingDelegateRewards);
     }
 
