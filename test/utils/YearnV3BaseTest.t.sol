@@ -98,7 +98,7 @@ contract YearnV3BaseTest is BaseTest {
     function _increaseDYfiEthPoolLiquidity(address pool, uint256 ethAmount) internal {
         uint256 dYfiPerEth = ICurveTwoAssetPool(pool).price_oracle();
         uint256 dYfiAmount = ethAmount * 1e18 / dYfiPerEth;
-        airdrop(ERC20(MAINNET_WETH), admin, ethAmount);
+        airdrop(ERC20(MAINNET_WETH), admin, ethAmount, false);
         airdrop(ERC20(MAINNET_DYFI), admin, dYfiAmount);
         vm.startPrank(admin);
         IERC20(MAINNET_WETH).approve(pool, ethAmount);

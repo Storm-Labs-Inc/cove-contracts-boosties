@@ -9,6 +9,7 @@ import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { MockYearnStakingDelegate } from "./mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "./mocks/MockStakingDelegateRewards.sol";
 import { MockCurveRouter } from "test/mocks/MockCurveRouter.sol";
@@ -61,7 +62,7 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         vm.label(gauge, "gauge");
         curveRouter = address(new MockCurveRouter());
         yearnStakingDelegate = IYearnStakingDelegate(address(new MockYearnStakingDelegate()));
-        stakingDelegateRewards = address(new MockStakingDelegateRewards(dYfi, address(yearnStakingDelegate)));
+        stakingDelegateRewards = address(new MockStakingDelegateRewards(dYfi));
         MockYearnStakingDelegate(address(yearnStakingDelegate)).setGaugeStakingRewards(stakingDelegateRewards);
 
         vm.startPrank(manager);
@@ -76,8 +77,12 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
     }
 
     function _depositFromUser(address from, uint256 amount) internal {
-        airdrop(IERC20(gauge), from, amount);
+        airdrop(IERC20(vaultAsset), from, amount);
         vm.startPrank(from);
+        IERC20(vaultAsset).approve(address(vault), amount);
+        IERC4626(vault).deposit(amount, from);
+        IERC20(vault).approve(address(gauge), amount);
+        IERC4626(gauge).deposit(amount, from);
         IERC20(gauge).approve(address(wrappedYearnV3Strategy), amount);
         wrappedYearnV3Strategy.deposit(amount, from);
         vm.stopPrank();

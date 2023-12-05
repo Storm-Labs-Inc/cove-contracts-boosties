@@ -31,7 +31,7 @@ contract GaugeRewardReceiver_Test is BaseTest {
         gauge = address(new MockGauge(address(0)));
         MockGauge(gauge).setRewardToken(rewardToken);
         vm.label(gauge, "gauge");
-        stakingDelegateRewards = address(new MockStakingDelegateRewards(rewardToken, STAKING_DELEGATE));
+        stakingDelegateRewards = address(new MockStakingDelegateRewards(rewardToken));
         vm.label(stakingDelegateRewards, "stakingDelegateRewards");
     }
 
