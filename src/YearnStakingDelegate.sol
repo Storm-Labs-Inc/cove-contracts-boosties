@@ -48,6 +48,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     mapping(address gauge => address) public gaugeRewardReceivers;
     mapping(address vault => RewardSplit) public gaugeRewardSplit;
     mapping(address user => mapping(address token => uint256)) public balanceOf;
+    mapping(address target => bool) private _blockedTargets;
 
     // Variables
     address public treasury;
@@ -70,6 +71,13 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         treasury = _treasury;
         shouldPerpetuallyLock = true;
         _GAUGE_REWARD_RECEIVER_IMPL = gaugeRewardReceiverImpl;
+        _blockedTargets[_YFI] = true;
+        _blockedTargets[_D_YFI] = true;
+        _blockedTargets[_VE_YFI] = true;
+        _blockedTargets[_YFI_REWARD_POOL] = true;
+        _blockedTargets[_DYFI_REWARD_POOL] = true;
+        _blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
+        _blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MANAGER_ROLE, admin);
         _grantRole(MANAGER_ROLE, manager);
@@ -175,11 +183,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
     }
 
-    function _lockYfi(uint256 amount) internal returns (IVotingYFI.LockedBalance memory lockedBalance) {
-        lockedBalance = IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
-        emit LockYfi(msg.sender, amount);
-    }
-
     // Transfer amount of YFI from msg.sender and locks
     function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory) {
         // Checks
@@ -190,8 +193,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.PerpetualLockDisabled();
         }
         // Interactions
+        emit LockYfi(msg.sender, amount);
         IERC20(_YFI).safeTransferFrom(msg.sender, address(this), amount);
-        return _lockYfi(amount);
+        return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -268,14 +272,8 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         }
         // Effects
         _setRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
-        gaugeStakingRewards[gauge] = stakingDelegateRewards;
-        address receiver =
-            _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
-        gaugeRewardReceivers[gauge] = receiver;
-        // Interactions
-        GaugeRewardReceiver(receiver).initialize();
-        IGauge(gauge).setRecipient(receiver);
-        StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
+        // Effects & Interactions
+        _setGaugeRewards(gauge, stakingDelegateRewards);
     }
 
     function updateGaugeRewards(
@@ -297,11 +295,18 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (previousStakingDelegateRewards == stakingDelegateRewards) {
             revert Errors.GaugeRewardsAlreadyAdded();
         }
-        // Effects
+        // Effects & Interactions
+        _setGaugeRewards(gauge, stakingDelegateRewards);
+    }
+
+    function _setGaugeRewards(address gauge, address stakingDelegateRewards) internal {
         gaugeStakingRewards[gauge] = stakingDelegateRewards;
+        _blockedTargets[gauge] = true;
+        _blockedTargets[stakingDelegateRewards] = true;
         address receiver =
             _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
         gaugeRewardReceivers[gauge] = receiver;
+        _blockedTargets[receiver] = true;
         // Interactions
         GaugeRewardReceiver(receiver).initialize();
         IGauge(gauge).setRecipient(receiver);
@@ -345,12 +350,16 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         returns (bytes memory)
     {
         // Checks
-        if (target == _YFI || target == _D_YFI || target == _VE_YFI || gaugeStakingRewards[target] != address(0)) {
+        if (_blockedTargets[target]) {
             revert Errors.ExecutionNotAllowed();
         }
         // Interactions
+        // slither-disable-start arbitrary-send-eth
+        // slither-disable-start low-level-calls
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = target.call{ value: value }(data);
+        // slither-disable-end arbitrary-send-eth
+        // slither-disable-end low-level-calls
         if (!success) {
             revert Errors.ExecutionFailed();
         }
