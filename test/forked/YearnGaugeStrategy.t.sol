@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
-import { ISingleAssetYearnGaugeStrategy } from "src/interfaces/ISingleAssetYearnGaugeStrategy.sol";
+import { IYearnGaugeStrategy } from "src/interfaces/IYearnGaugeStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -17,7 +17,7 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
     IStrategy public mockStrategy;
-    ISingleAssetYearnGaugeStrategy public wrappedYearnV3Strategy;
+    IYearnGaugeStrategy public wrappedYearnV3Strategy;
     MockYearnStakingDelegate public mockYearnStakingDelegate;
     MockStakingDelegateRewards public mockStakingDelegateRewards;
     IVault public deployedVault;
@@ -297,8 +297,7 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         curveSwapParams.swapParams[1] = [uint256(2), 2, 1, 2, 3]; // ETH -> USDC
         // set params for harvest rewards swapping
         vm.startPrank(tpManagement);
-        // abi.encodeWithSelector(Errors.OnlyMintingEnabled.selector)
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapParams.selector));
         wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
 
         // swap does not end in strategy base asset, but index is correct

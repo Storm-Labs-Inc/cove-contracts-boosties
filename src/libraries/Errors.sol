@@ -83,10 +83,10 @@ library Errors {
     error InvalidDepositToken();
 
     /// CURVE ROUTER SWAPPER ///
-
     error InvalidFromToken(address intendedFromToken, address actualFromToken);
     error InvalidToToken(address intendedToToken, address actualToToken);
-    error InvalidCoinIndex();
+    error ExpectedAmountZero();
+    error InvalidSwapParams();
 
     /// SWAP AND LOCK ///
     error NoDYfiToSwap();

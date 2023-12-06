@@ -30,7 +30,8 @@ contract Constants is CommonBase {
     address public constant MAINNET_DYFI_GAUGE_IMPLEMENTATION = 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc;
     address public constant MAINNET_VAULT_BLUEPRINT = 0xDE992C652b266AE649FEC8048aFC35954Bee6145;
     address public constant MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION = 0xDFC8cD9F2f2d306b7C0d109F005DF661E14f4ff2;
-    address public constant MAINNET_YETH_VAULT = 0x58900d761Ae3765B75DDFc235c1536B527F25d8F;
+    address public constant MAINNET_WETH_YETH_POOL_VAULT = 0x58900d761Ae3765B75DDFc235c1536B527F25d8F;
+    address public constant MAINNET_WETH_YETH_POOL_GAUGE = 0x81d93531720d86f0491DeE7D03f30b3b5aC24e59;
 
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
@@ -49,6 +50,8 @@ contract Constants is CommonBase {
     address public constant MAINNET_YFI_ETH_POOL = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
     /// @dev pool type 1, [FRAX, USDC]
     address public constant MAINNET_FRAX_USDC_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    /// @dev pool type 1, [WETH, YETH]
+    address public constant MAINNET_WETH_YETH_POOL = 0x69ACcb968B19a53790f43e57558F5E443A91aF22;
 
     function _labelEthereumAddresses() internal {
         // Tokens
@@ -69,6 +72,8 @@ contract Constants is CommonBase {
         vm.label(MAINNET_DYFI_REWARD_POOL, "DYFI_REWARD_POOL");
         vm.label(MAINNET_DYFI_GAUGE_IMPLEMENTATION, "DYFI_GAUGE_IMPLEMENTATION");
         vm.label(MAINNET_VAULT_BLUEPRINT, "VAULT_BLUEPRINT");
+        vm.label(MAINNET_WETH_YETH_POOL_VAULT, "YETH_POOL_VAULT");
+        vm.label(MAINNET_WETH_YETH_POOL_GAUGE, "YETH_POOL_GAUGE");
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");
@@ -79,5 +84,6 @@ contract Constants is CommonBase {
         vm.label(MAINNET_TRI_CRYPTO_2, "TRI_CRYPTO_2");
         vm.label(MAINNET_YFI_ETH_POOL, "YFI_ETH_POOL");
         vm.label(MAINNET_FRAX_USDC_POOL, "FRAX_USDC_POOL");
+        vm.label(MAINNET_WETH_YETH_POOL, "ETH_WETH_YETH_POOL");
     }
 }

@@ -271,9 +271,9 @@ contract CurveRouterSwapperTest is BaseTest {
 
         // i, j, swap_type, pool_type, n_coins
         curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 1, 3]; // DAI -> USDC
-        curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 3, 3]; // USDT -> WETH
+        curveSwapParams.swapParams[1] = [uint256(0), 5, 1, 3, 3]; // USDT -> WETH
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapParams.selector));
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 
@@ -292,7 +292,7 @@ contract CurveRouterSwapperTest is BaseTest {
         curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 1, 3]; // DAI -> USDC
         curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 3, 3]; // USDT -> WETH
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapParams.selector));
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 }
