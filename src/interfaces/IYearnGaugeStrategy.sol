@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
-interface ISingleAssetYearnGaugeStrategy is IStrategy {
+interface IYearnGaugeStrategy is IStrategy {
     // Need to override the `asset` function since
     // its defined in both interfaces inherited.
     function vault() external view returns (address);

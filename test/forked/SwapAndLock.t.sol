@@ -96,16 +96,16 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
     function test_setRouterParams_revertWhen_InvalidCoinIndex() public {
         vm.startPrank(admin);
         CurveRouterSwapper.CurveSwapParams memory params;
-        // Set route to include a token address that does not exist in the given pools
+        // Set route to include a token index that does not exist in the given pools
         params.route[0] = MAINNET_DYFI;
         params.route[1] = MAINNET_DYFI_ETH_POOL;
-        params.route[2] = MAINNET_USDC;
+        params.route[2] = MAINNET_WETH;
         params.route[3] = MAINNET_YFI_ETH_POOL;
         params.route[4] = MAINNET_YFI;
 
         params.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidCoinIndex.selector));
+        params.swapParams[1] = [uint256(5), 1, 1, 2, 2];
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapParams.selector));
         ISwapAndLock(swapAndLock).setRouterParams(params);
     }
 }
