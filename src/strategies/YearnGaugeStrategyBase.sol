@@ -7,7 +7,7 @@ import { Errors } from "src/libraries/Errors.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-abstract contract WrappedYearnV3 {
+abstract contract YearnGaugeStrategyBase {
     // Libraries
     using SafeERC20 for IERC20;
 

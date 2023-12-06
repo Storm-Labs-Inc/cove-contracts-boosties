@@ -3,9 +3,9 @@ pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
-import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
+import { SingleAssetYearnGaugeStrategy } from "src/strategies/SingleAssetYearnGaugeStrategy.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { ISingleAssetYearnGaugeStrategy } from "src/interfaces/ISingleAssetYearnGaugeStrategy.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -20,10 +20,10 @@ import { MockGauge } from "test/mocks/MockGauge.sol";
 
 import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
 
-contract WrappedYearnV3Strategy_Test is BaseTest {
+contract SingleAssetYearnGaugeStrategy_Test is BaseTest {
     using SafeERC20 for IERC20;
 
-    IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
+    ISingleAssetYearnGaugeStrategy public wrappedYearnV3Strategy;
     IYearnStakingDelegate public yearnStakingDelegate;
     address public stakingDelegateRewards;
     address public dYfi;
@@ -66,8 +66,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         MockYearnStakingDelegate(address(yearnStakingDelegate)).setGaugeStakingRewards(stakingDelegateRewards);
 
         vm.startPrank(manager);
-        wrappedYearnV3Strategy = IWrappedYearnV3Strategy(
-            address(new WrappedYearnV3Strategy(gauge, address(yearnStakingDelegate), dYfi, curveRouter))
+        wrappedYearnV3Strategy = ISingleAssetYearnGaugeStrategy(
+            address(new SingleAssetYearnGaugeStrategy(gauge, address(yearnStakingDelegate), dYfi, curveRouter))
         );
         wrappedYearnV3Strategy.setPerformanceFeeRecipient(treasury);
         wrappedYearnV3Strategy.setKeeper(keeper);
