@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
-import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { ISingleAssetYearnGaugeStrategy } from "src/interfaces/ISingleAssetYearnGaugeStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -17,7 +17,7 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
     IStrategy public mockStrategy;
-    IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
+    ISingleAssetYearnGaugeStrategy public wrappedYearnV3Strategy;
     MockYearnStakingDelegate public mockYearnStakingDelegate;
     MockStakingDelegateRewards public mockStakingDelegateRewards;
     IVault public deployedVault;

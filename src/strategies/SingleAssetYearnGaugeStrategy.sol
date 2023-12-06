@@ -7,10 +7,10 @@ import { IStakingDelegateRewards } from "src/interfaces/deps/yearn/veYFI/IStakin
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
-import { WrappedYearnV3 } from "./WrappedYearnV3.sol";
+import { YearnGaugeStrategyBase } from "./YearnGaugeStrategyBase.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
-contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYearnV3 {
+contract SingleAssetYearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrategyBase {
     // Libraries
     using SafeERC20 for IERC20;
 
@@ -25,7 +25,7 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
     )
         BaseStrategy(asset_, "Wrapped YearnV3 Strategy")
         CurveRouterSwapper(curveRouter_)
-        WrappedYearnV3(asset_, yearnStakingDelegate_, dYfi_)
+        YearnGaugeStrategyBase(asset_, yearnStakingDelegate_, dYfi_)
     {
         _approveTokenForSwap(dYfi_);
     }
@@ -74,6 +74,8 @@ contract WrappedYearnV3Strategy is BaseStrategy, CurveRouterSwapper, WrappedYear
         uint256 dYFIBalance = IERC20(dYfi).balanceOf(address(this));
         // If dYFI was received, swap it for vault asset
         if (dYFIBalance > 0) {
+            // This is a dangerous swap call that will get sandwiched if sent to a public network
+            // Must be sent to a private network or use a minAmount derived from a price oracle
             uint256 receivedBaseTokens = _swap(_harvestSwapParams, dYFIBalance, 0, address(this));
             uint256 receivedVaultTokens = IERC4626(vault).deposit(receivedBaseTokens, address(this));
             uint256 receivedGaugeTokens = IERC4626(address(asset)).deposit(receivedVaultTokens, address(this));

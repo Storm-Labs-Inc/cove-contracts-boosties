@@ -6,7 +6,7 @@ import { BaseTest, console2 as console } from "test/utils/BaseTest.t.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { MockStrategy } from "../mocks/MockStrategy.sol";
-import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
+import { SingleAssetYearnGaugeStrategy } from "src/strategies/SingleAssetYearnGaugeStrategy.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
@@ -25,7 +25,7 @@ import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 // Interfaces
 import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
-import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { ISingleAssetYearnGaugeStrategy } from "src/interfaces/ISingleAssetYearnGaugeStrategy.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 
 // solhint-disable max-states-count
@@ -401,12 +401,12 @@ contract YearnV3BaseTest is BaseTest {
         address _curveRouterAddress
     )
         public
-        returns (IWrappedYearnV3Strategy)
+        returns (ISingleAssetYearnGaugeStrategy)
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
-        IWrappedYearnV3Strategy _wrappedStrategy = IWrappedYearnV3Strategy(
+        ISingleAssetYearnGaugeStrategy _wrappedStrategy = ISingleAssetYearnGaugeStrategy(
             address(
-                new WrappedYearnV3Strategy(
+                new SingleAssetYearnGaugeStrategy(
                     address(_asset), _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress
                 )
             )
@@ -437,7 +437,7 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function logStratInfo(address strategy) public view {
-        IWrappedYearnV3Strategy wrappedYearnV3Strategy = IWrappedYearnV3Strategy(strategy);
+        ISingleAssetYearnGaugeStrategy wrappedYearnV3Strategy = ISingleAssetYearnGaugeStrategy(strategy);
         console.log("****************************************");
         console.log("price per share: ", wrappedYearnV3Strategy.pricePerShare());
         console.log("total assets: ", wrappedYearnV3Strategy.totalAssets());
@@ -460,7 +460,7 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function depositIntoStrategy(
-        IWrappedYearnV3Strategy _strategy,
+        ISingleAssetYearnGaugeStrategy _strategy,
         address _user,
         uint256 _amount
     )
@@ -476,7 +476,7 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function mintAndDepositIntoStrategy(
-        IWrappedYearnV3Strategy _strategy,
+        ISingleAssetYearnGaugeStrategy _strategy,
         address _user,
         uint256 _amount,
         address asset
