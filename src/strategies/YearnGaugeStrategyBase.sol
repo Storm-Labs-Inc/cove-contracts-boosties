@@ -6,6 +6,7 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
 import { Errors } from "src/libraries/Errors.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol";
 
 abstract contract YearnGaugeStrategyBase {
     // Libraries
@@ -21,7 +22,12 @@ abstract contract YearnGaugeStrategyBase {
 
     constructor(address asset_, address yearnStakingDelegate_, address dYfi_) {
         address vault_ = IERC4626(asset_).asset();
-        address vaultAsset_ = IERC4626(vault_).asset();
+        address vaultAsset_;
+        try IERC4626(vault_).asset() {
+            vaultAsset_ = IERC4626(vault_).asset();
+        } catch {
+            vaultAsset_ = IYearnVaultV2(vault_).token();
+        }
         // Check for zero addresses
         if (
             yearnStakingDelegate_ == address(0) || dYfi_ == address(0) || vault_ == address(0)
