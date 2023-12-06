@@ -180,28 +180,22 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         assertEq(wrappedYearnV3Strategy.balanceOf(treasury), profit / 10, "treasury should have 10% of profit");
     }
 
-    function testFuzz_report_passWhen_stakingRewardsProfitMultipleUsers(
-        uint256 amount,
-        uint256 amount1,
-        uint256 amount2
-    )
-        public
-    {
-        vm.assume(amount != 0 && amount1 >= 1e6 && amount2 >= 1e6);
-        // 1e6 for further deposits to avoid "ZERO_SHARES" error due to rounding
-        vm.assume(amount < type(uint128).max && amount1 < type(uint128).max && amount2 < type(uint128).max);
-        uint256 profitedVaultAssetAmount = 1e18;
+    function testFuzz_report_passWhen_stakingRewardsProfitMultipleUsers(uint256 amount0, uint256 amount1) public {
+        // first deposit will always be a large amount
+        uint256 initialDeposit = 10e18;
+        vm.assume(amount0 < type(uint128).max && amount1 < type(uint128).max);
+        uint256 profitedVaultAssetAmount = 1e8;
         address bob = createUser("bob");
         address charlie = createUser("charlie");
 
-        _depositFromUser(alice, amount);
+        _depositFromUser(alice, initialDeposit);
         uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
         uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
-        assertEq(beforeDeployedAssets, amount, "all of alice's deposit should be deployed");
-        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
-        assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
+        assertEq(beforeDeployedAssets, initialDeposit, "all of alice's deposit should be deployed");
+        assertEq(beforeTotalAssets, initialDeposit, "total assets should be equal to deposit initialDeposit");
+        assertEq(beforePreviewRedeem, initialDeposit, "preview redeem should return deposit initialDeposit");
 
         // Send rewards to stakingDelegateRewards which will be claimed on report()
         airdrop(IERC20(dYfi), stakingDelegateRewards, 1e18);
@@ -216,27 +210,32 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
 
         // warp blocks forward to profit locking is finished
         vm.warp(block.timestamp + wrappedYearnV3Strategy.profitMaxUnlockTime());
+
+        // calculate the minimun amount that can be deposited to result in at least 1 share
+        vm.assume(amount0 * wrappedYearnV3Strategy.totalSupply() > wrappedYearnV3Strategy.totalAssets());
+
         // Test multiple users interaction
-        _depositFromUser(bob, amount1);
+        _depositFromUser(bob, amount0);
         uint256 afterBobDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
         assertEq(
-            afterBobDeployedAssets, beforeDeployedAssets + amount1 + profit, "all of bob's deposit should be deployed"
+            afterBobDeployedAssets, beforeDeployedAssets + amount0 + profit, "all of bob's deposit should be deployed"
         );
 
         // manager calls report
         vm.prank(manager);
         wrappedYearnV3Strategy.report();
-        // Test multiple users interaction
-        _depositFromUser(charlie, amount2);
+        // Test multiple users interaction, deposit is require to result in at least one shar
+        vm.assume(amount1 * wrappedYearnV3Strategy.totalSupply() > wrappedYearnV3Strategy.totalAssets());
+        _depositFromUser(charlie, amount1);
         uint256 afterCharlieDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
         assertEq(
-            afterCharlieDeployedAssets, afterBobDeployedAssets + amount2, "all of Charlie's deposit should be deployed"
+            afterCharlieDeployedAssets, afterBobDeployedAssets + amount1, "all of Charlie's deposit should be deployed"
         );
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
         // Profit should only be compared to assets deposited before profit was reported+unlocked
         assertEq(
-            afterTotalAssets - amount1 - amount2, beforeTotalAssets + profit, "report did not increase total assets"
+            afterTotalAssets - amount0 - amount1, beforeTotalAssets + profit, "report did not increase total assets"
         );
         // All assets should be deployed if there has been a report() since the deposit
         assertEq(
