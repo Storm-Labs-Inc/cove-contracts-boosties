@@ -79,6 +79,9 @@ library Errors {
 
     error TokenNotFoundInPool(address token);
 
+    /// CURVE TWO ASSET POOL YEARN GAUGE STRATEGY ///
+    error InvalidDepositToken();
+
     /// CURVE ROUTER SWAPPER ///
 
     error InvalidFromToken(address intendedFromToken, address actualFromToken);
