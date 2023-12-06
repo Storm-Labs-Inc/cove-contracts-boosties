@@ -84,6 +84,8 @@ contract CurveRouterSwapper {
         if (toTokenInRoute != toToken) {
             revert Errors.InvalidToToken(toToken, toTokenInRoute);
         }
+        // Note that this does not check whether supplied token exists in the pool since the
+        // get_dy function only relies on the indexes on swaps instead of addresses.
         try ICurveRouter(_CURVE_ROUTER).get_dy(
             curveSwapParams.route,
             curveSwapParams.swapParams,
