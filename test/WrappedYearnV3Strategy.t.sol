@@ -211,7 +211,7 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         // warp blocks forward to profit locking is finished
         vm.warp(block.timestamp + wrappedYearnV3Strategy.profitMaxUnlockTime());
 
-        // calculate the minimun amount that can be deposited to result in at least 1 share
+        // calculate the minimum amount that can be deposited to result in at least 1 share
         vm.assume(amount0 * wrappedYearnV3Strategy.totalSupply() > wrappedYearnV3Strategy.totalAssets());
 
         // Test multiple users interaction
