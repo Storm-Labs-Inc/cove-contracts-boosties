@@ -113,7 +113,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
 
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 10_000_000 * 1e6); // limit deposit size to 10 Million USDC
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, gauge);
@@ -153,7 +153,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
 
     function testFuzz_report_passWhen_noProfits(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, gauge);
@@ -220,7 +220,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
 
     function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, gauge);
