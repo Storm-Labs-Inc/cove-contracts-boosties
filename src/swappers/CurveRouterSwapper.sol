@@ -60,7 +60,6 @@ contract CurveRouterSwapper {
         );
     }
 
-    /* solhint-disable code-complexity */
     function _validateSwapParams(
         CurveSwapParams memory curveSwapParams,
         address fromToken,
@@ -99,5 +98,4 @@ contract CurveRouterSwapper {
             revert Errors.InvalidSwapParams();
         }
     }
-    /* solhint-enable code-complexity */
 }
