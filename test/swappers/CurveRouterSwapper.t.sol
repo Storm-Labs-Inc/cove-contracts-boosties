@@ -24,7 +24,7 @@ contract CurveRouterSwapperTest is BaseTest {
         airdrop(ERC20(MAINNET_USDT), address(swapper), 1000 * 10 ** ERC20(MAINNET_USDT).decimals());
     }
 
-    function testFuzz_constructor_revertWhenZeroAddress() public {
+    function testFuzz_constructor_revertWhen_ZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         new CurveRouterSwapper(address(0));
     }
@@ -56,7 +56,7 @@ contract CurveRouterSwapperTest is BaseTest {
         assertEq(ERC20(MAINNET_DAI).balanceOf(address(swapper)), 0);
     }
 
-    function test_swap_revertWhenIndexOutOfRange() public {
+    function test_swap_revertWhen_IndexOutOfRange() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -73,7 +73,7 @@ contract CurveRouterSwapperTest is BaseTest {
         swapper.swap(curveSwapParams, amount, expected, address(swapper));
     }
 
-    function test_swap_revertWhenExpectedNotReached() public {
+    function test_swap_revertWhen_ExpectedNotReached() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -139,7 +139,7 @@ contract CurveRouterSwapperTest is BaseTest {
         assertEq(ERC20(MAINNET_DAI).balanceOf(address(swapper)), 0);
     }
 
-    function test_swap_revertWhenUsingInvalidSwapParams() public {
+    function test_swap_revertWhen_UsingInvalidSwapParams() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -208,7 +208,7 @@ contract CurveRouterSwapperTest is BaseTest {
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 
-    function test_validateSwapParams_revertWhenEmptyRoute() public {
+    function test_validateSwapParams_revertWhen_EmptyRoute() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -220,7 +220,7 @@ contract CurveRouterSwapperTest is BaseTest {
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 
-    function test_validateSwapParams_revertWhenInvalidRouteFromTokenMismatch() public {
+    function test_validateSwapParams_revertWhen_InvalidRouteFromTokenMismatch() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -239,7 +239,7 @@ contract CurveRouterSwapperTest is BaseTest {
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 
-    function test_validateSwapParams_revertWhenInvalidRouteToTokenMismatch() public {
+    function test_validateSwapParams_revertWhen_InvalidRouteToTokenMismatch() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -258,7 +258,7 @@ contract CurveRouterSwapperTest is BaseTest {
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 
-    function test_validateSwapParams_revertWhenNextInvalidTokenIndex() public {
+    function test_validateSwapParams_revertWhen_NextInvalidTokenIndex() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
@@ -277,7 +277,7 @@ contract CurveRouterSwapperTest is BaseTest {
         swapper.validateSwapParams(curveSwapParams, MAINNET_DAI, MAINNET_WETH);
     }
 
-    function test_validateSwapParams_revertWhenFromTokenInvalidTokenIndex() public {
+    function test_validateSwapParams_revertWhen_FromTokenInvalidTokenIndex() public {
         swapper.approveTokenForSwap(MAINNET_DAI);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
 
