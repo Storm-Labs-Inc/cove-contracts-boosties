@@ -9,7 +9,6 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
@@ -85,17 +84,6 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         }
     }
 
-    function _setUpDYfiRewards() internal {
-        // Start new rewards
-        vm.startPrank(admin);
-        IERC20(MAINNET_DYFI).approve(testGauge, DYFI_REWARD_AMOUNT);
-        IGauge(testGauge).queueNewRewards(DYFI_REWARD_AMOUNT);
-        if (IERC20(MAINNET_DYFI).balanceOf(testGauge) != DYFI_REWARD_AMOUNT) {
-            revert Errors.QueueNewRewardsFailed();
-        }
-        vm.stopPrank();
-    }
-
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
@@ -139,8 +127,6 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
-        // DYI emissions are setup
-        // _setUpDYfiRewards();
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
@@ -166,14 +152,17 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.report();
 
         uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
+        assertEq(
+            afterTotalAssets,
+            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
+            "all assets should be deployed"
+        );
+        assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
     }
 
     function testFuzz_report_passWhen_noProfits(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
-        // DYI emissions are setup
-        // _setUpDYfiRewards();
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
@@ -240,41 +229,40 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         wrappedYearnV3Strategy.deposit(amount, alice);
     }
 
-    // function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
-    //     vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-    //     vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+    function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
+        vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
+        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
 
-    //     // deposit into strategy happens
-    //     mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
-    //     uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
-    //     uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
-    //     uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
-    //     assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
-    //     assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
+        // deposit into strategy happens
+        mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
+        uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
+        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
+        assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
-    //     // Simulate profit by mocking stakingDelegateRewards sending rewards on harvestAndReport()
-    //     airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), 1e18);
+        // Simulate profit by mocking stakingDelegateRewards sending rewards on harvestAndReport()
+        airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), 1e18);
 
-    //     // shutdown strategy
-    //     vm.prank(tpManagement);
-    //     wrappedYearnV3Strategy.shutdownStrategy();
+        // shutdown strategy
+        vm.prank(tpManagement);
+        wrappedYearnV3Strategy.shutdownStrategy();
 
-    //     // manager calls report on the wrapped strategy
-    //     vm.prank(tpManagement);
-    //     (uint256 profit,) = wrappedYearnV3Strategy.report();
-    //     assertGt(profit, 0, "profit should be greater than 0");
+        // manager calls report on the wrapped strategy
+        vm.prank(tpManagement);
+        (uint256 profit,) = wrappedYearnV3Strategy.report();
+        assertGt(profit, 0, "profit should be greater than 0");
 
-    //     // warp blocks forward to profit locking is finished
-    //     vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
 
-    //     // manager calls report
-    //     vm.prank(tpManagement);
-    //     wrappedYearnV3Strategy.report();
+        // manager calls report
+        vm.prank(tpManagement);
+        wrappedYearnV3Strategy.report();
 
-    //     uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
-    //     // todo: fails here, this should increase even during shutdown?
-    //     // assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
-    // }
+        uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
+    }
 
     function test_setHarvestSwapParams_nonManager() public {
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
@@ -318,12 +306,4 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToToken.selector, MAINNET_USDC, MAINNET_ETH));
         wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
     }
-
-    // function testFuzz_report_passWhen_onlyUnderlyingVaultProfits(
-    //     uint256 amount,
-    //     uint256 underlyingVaultProfit
-    // )
-    //     public
-    // {
-    // }
 }

@@ -61,6 +61,12 @@ contract SingleAssetYearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, Year
         _withdrawFromYSD(address(asset), _amount);
     }
 
+    function _emergencyWithdraw(uint256 amount) internal override {
+        uint256 currentTotalBalance = TokenizedStrategy.totalDebt();
+        uint256 withdrawAmount = amount > currentTotalBalance ? currentTotalBalance : amount;
+        _withdrawFromYSD(address(asset), withdrawAmount);
+    }
+
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Get any dYFI rewards
         address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(address(asset));
