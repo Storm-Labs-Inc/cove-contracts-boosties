@@ -25,19 +25,19 @@ contract MasterRegistry_Test is BaseTest {
         assert(masterRegistry.hasRole(managerRole, users["admin"]));
     }
 
-    function test_addRegistry_revertWhenCalledWithEmptyString(address addr) public {
+    function test_addRegistry_revertWhen_CalledWithEmptyString(address addr) public {
         vm.assume(addr != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         masterRegistry.addRegistry("", addr);
     }
 
-    function test_addRegistry_revertWhenCalledWithEmptyAddress(bytes32 name) public {
+    function test_addRegistry_revertWhen_CalledWithEmptyAddress(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         masterRegistry.addRegistry(name, address(0));
     }
 
-    function test_addRegistry_revertWhenCalledWithDuplicateAddress(bytes32 name, bytes32 name2, address addr) public {
+    function test_addRegistry_revertWhen_CalledWithDuplicateAddress(bytes32 name, bytes32 name2, address addr) public {
         vm.assume(name != name2);
         vm.assume(name != bytes32(0));
         vm.assume(name2 != bytes32(0));
@@ -47,7 +47,7 @@ contract MasterRegistry_Test is BaseTest {
         masterRegistry.addRegistry(name2, addr);
     }
 
-    function test_addRegistry_revertWhenCalledWithDuplicateName(bytes32 name, address addr, address addr2) public {
+    function test_addRegistry_revertWhen_CalledWithDuplicateName(bytes32 name, address addr, address addr2) public {
         vm.assume(addr != addr2);
         vm.assume(name != bytes32(0));
         vm.assume(addr != address(0));
@@ -58,19 +58,19 @@ contract MasterRegistry_Test is BaseTest {
         masterRegistry.addRegistry(name, addr2);
     }
 
-    function testFuzz_updateRegistry_revertWhenCalledWithEmptyString(address addr) public {
+    function testFuzz_updateRegistry_revertWhen_CalledWithEmptyString(address addr) public {
         vm.assume(addr != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.NameEmpty.selector));
         masterRegistry.updateRegistry("", addr);
     }
 
-    function testFuzz_updateRegistry_revertWhenCalledWithEmptyAddress(bytes32 name) public {
+    function testFuzz_updateRegistry_revertWhen_CalledWithEmptyAddress(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.AddressEmpty.selector));
         masterRegistry.updateRegistry(name, address(0));
     }
 
-    function testFuzz_updateRegistry_revertWhenCalledWithDuplicateAddress(
+    function testFuzz_updateRegistry_revertWhen_CalledWithDuplicateAddress(
         bytes32 name,
         bytes32 name2,
         address addr,
@@ -90,7 +90,7 @@ contract MasterRegistry_Test is BaseTest {
         masterRegistry.updateRegistry(name, addr2);
     }
 
-    function test_updateRegistry_revertWhenNameNotFound(bytes32 name, address addr) public {
+    function test_updateRegistry_revertWhen_NameNotFound(bytes32 name, address addr) public {
         vm.assume(addr != address(0));
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));
@@ -114,7 +114,7 @@ contract MasterRegistry_Test is BaseTest {
         assertEq(masterRegistry.resolveNameToLatestAddress(name), addr2);
     }
 
-    function testFuzz_resolveNameToLatestAddress_revertWhenNameNotFound(bytes32 name) public {
+    function testFuzz_resolveNameToLatestAddress_revertWhen_NameNotFound(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));
         masterRegistry.resolveNameToLatestAddress(name);
@@ -132,13 +132,13 @@ contract MasterRegistry_Test is BaseTest {
         assertEq(res[1], addr2);
     }
 
-    function testFuzz_resolveNameToAllAddresses_revertWhenNamNotFound(bytes32 name) public {
+    function testFuzz_resolveNameToAllAddresses_revertWhen_NamNotFound(bytes32 name) public {
         vm.assume(name != bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryNameNotFound.selector, name));
         masterRegistry.resolveNameToAllAddresses(name);
     }
 
-    function testFuzz_resolveNameAndVersionToAddress_revertWhenNameAndVersionNotFound(
+    function testFuzz_resolveNameAndVersionToAddress_revertWhen_NameAndVersionNotFound(
         bytes32 name,
         address addr
     )
@@ -164,7 +164,7 @@ contract MasterRegistry_Test is BaseTest {
         assertEq(masterRegistry.resolveNameAndVersionToAddress(name, 1), addr2);
     }
 
-    function testFuzz_resolveAddressToRegistryData_revertWhenRegistryAddressNotFound(address addr) public {
+    function testFuzz_resolveAddressToRegistryData_revertWhen_RegistryAddressNotFound(address addr) public {
         vm.assume(addr != address(0));
         vm.expectRevert(abi.encodeWithSelector(Errors.RegistryAddressNotFound.selector, addr));
         masterRegistry.resolveAddressToRegistryData(addr);
@@ -211,7 +211,7 @@ contract MasterRegistry_Test is BaseTest {
         assertEq(masterRegistry.getRoleAdmin(managerRole), bytes32(0));
     }
 
-    function testFuzz_addRegistry_revertWhenCalledByNonManager(bytes32 name, address addr) public {
+    function testFuzz_addRegistry_revertWhen_CalledByNonManager(bytes32 name, address addr) public {
         vm.assume(name != bytes32(0));
         vm.assume(addr != address(0));
         vm.stopPrank();
@@ -220,7 +220,7 @@ contract MasterRegistry_Test is BaseTest {
         masterRegistry.addRegistry(name, addr);
     }
 
-    function testFuzz_updateRegistry_revertWhenCalledByNonManager(bytes32 name, address addr, address addr2) public {
+    function testFuzz_updateRegistry_revertWhen_CalledByNonManager(bytes32 name, address addr, address addr2) public {
         vm.assume(name != bytes32(0));
         vm.assume(addr != address(0));
         vm.assume(addr2 != address(0));
@@ -233,7 +233,7 @@ contract MasterRegistry_Test is BaseTest {
     }
 
     // Try granting manager role from an account without admin role
-    function test_grantRole_revertWhenCalledByNonAdmin() public {
+    function test_grantRole_revertWhen_CalledByNonAdmin() public {
         vm.stopPrank();
         vm.startPrank(users["alice"]);
         // account is users["alice"]'s address, role is bytes(0) as defined in the contract
@@ -269,7 +269,7 @@ contract MasterRegistry_Test is BaseTest {
         masterRegistry.grantRole(managerRole, users["bob"]);
     }
 
-    function test_revokeRole_managerRole_revertWhenRevokeRoleWithoutAdmin() public {
+    function test_revokeRole_managerRole_revertWhen_RevokeRoleWithoutAdmin() public {
         vm.stopPrank();
         vm.startPrank(users["alice"]);
         // account is users["alice"]'s address, role is bytes(0) as defined in the contract
