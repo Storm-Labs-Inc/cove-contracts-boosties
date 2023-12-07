@@ -3,9 +3,9 @@ pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
-import { WrappedYearnV3Strategy } from "src/strategies/WrappedYearnV3Strategy.sol";
+import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { IWrappedYearnV3Strategy } from "src/interfaces/IWrappedYearnV3Strategy.sol";
+import { IYearnGaugeStrategy } from "src/interfaces/IYearnGaugeStrategy.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -20,10 +20,10 @@ import { MockGauge } from "test/mocks/MockGauge.sol";
 
 import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
 
-contract WrappedYearnV3Strategy_Test is BaseTest {
+contract YearnGaugeStrategy_Test is BaseTest {
     using SafeERC20 for IERC20;
 
-    IWrappedYearnV3Strategy public wrappedYearnV3Strategy;
+    IYearnGaugeStrategy public wrappedYearnV3Strategy;
     IYearnStakingDelegate public yearnStakingDelegate;
     address public stakingDelegateRewards;
     address public dYfi;
@@ -66,8 +66,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         MockYearnStakingDelegate(address(yearnStakingDelegate)).setGaugeStakingRewards(stakingDelegateRewards);
 
         vm.startPrank(manager);
-        wrappedYearnV3Strategy = IWrappedYearnV3Strategy(
-            address(new WrappedYearnV3Strategy(gauge, address(yearnStakingDelegate), dYfi, curveRouter))
+        wrappedYearnV3Strategy = IYearnGaugeStrategy(
+            address(new YearnGaugeStrategy(gauge, address(yearnStakingDelegate), dYfi, curveRouter))
         );
         wrappedYearnV3Strategy.setPerformanceFeeRecipient(treasury);
         wrappedYearnV3Strategy.setKeeper(keeper);
@@ -123,6 +123,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         vm.assume(amount < type(uint128).max);
 
         _depositFromUser(alice, amount); // deposit into strategy happens
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
 
         vm.prank(alice);
         wrappedYearnV3Strategy.withdraw(amount, alice, alice);
@@ -136,16 +138,17 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
     }
 
-    function testFuzz_report_passWhen_Profit(uint256 amount) public {
+    function testFuzz_report_passWhen_stakingRewardsProfit(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
-        // Assume the exchange rate from vaultAsset to vault to gauge tokens is 1:1:1
         uint256 profitedVaultAssetAmount = 1e18;
 
         _depositFromUser(alice, amount);
         uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
@@ -177,7 +180,73 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         assertEq(wrappedYearnV3Strategy.balanceOf(treasury), profit / 10, "treasury should have 10% of profit");
     }
 
-    function testFuzz_report_passWhen_NoProfits(uint256 amount) public {
+    function testFuzz_report_passWhen_stakingRewardsProfitMultipleUsers(uint256 amount0, uint256 amount1) public {
+        // first deposit will always be a large amount
+        uint256 initialDeposit = 10e18;
+        vm.assume(amount0 < type(uint128).max && amount1 < type(uint128).max);
+        uint256 profitedVaultAssetAmount = 1e8;
+        address bob = createUser("bob");
+        address charlie = createUser("charlie");
+
+        _depositFromUser(alice, initialDeposit);
+        uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
+        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, initialDeposit, "all of alice's deposit should be deployed");
+        assertEq(beforeTotalAssets, initialDeposit, "total assets should be equal to deposit initialDeposit");
+        assertEq(beforePreviewRedeem, initialDeposit, "preview redeem should return deposit initialDeposit");
+
+        // Send rewards to stakingDelegateRewards which will be claimed on report()
+        airdrop(IERC20(dYfi), stakingDelegateRewards, 1e18);
+        // The strategy will swap dYFI to vaultAsset using the CurveRouter
+        // Then the strategy will deposit vaultAsset into the vault, and into the gauge
+        airdrop(IERC20(vaultAsset), curveRouter, profitedVaultAssetAmount);
+
+        // manager calls report on the wrapped strategy
+        vm.prank(manager);
+        (uint256 profit,) = wrappedYearnV3Strategy.report();
+        assertEq(profit, profitedVaultAssetAmount, "profit should match newly minted gauge tokens");
+
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + wrappedYearnV3Strategy.profitMaxUnlockTime());
+
+        // calculate the minimum amount that can be deposited to result in at least 1 share
+        vm.assume(amount0 * wrappedYearnV3Strategy.totalSupply() > wrappedYearnV3Strategy.totalAssets());
+
+        // Test multiple users interaction
+        _depositFromUser(bob, amount0);
+        uint256 afterBobDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(
+            afterBobDeployedAssets, beforeDeployedAssets + amount0 + profit, "all of bob's deposit should be deployed"
+        );
+
+        // manager calls report
+        vm.prank(manager);
+        wrappedYearnV3Strategy.report();
+        // Test multiple users interaction, deposit is require to result in at least one shar
+        vm.assume(amount1 * wrappedYearnV3Strategy.totalSupply() > wrappedYearnV3Strategy.totalAssets());
+        _depositFromUser(charlie, amount1);
+        uint256 afterCharlieDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(
+            afterCharlieDeployedAssets, afterBobDeployedAssets + amount1, "all of Charlie's deposit should be deployed"
+        );
+
+        uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        // Profit should only be compared to assets deposited before profit was reported+unlocked
+        assertEq(
+            afterTotalAssets - amount0 - amount1, beforeTotalAssets + profit, "report did not increase total assets"
+        );
+        // All assets should be deployed if there has been a report() since the deposit
+        assertEq(
+            afterTotalAssets,
+            yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge),
+            "all assets should be deployed"
+        );
+        assertEq(wrappedYearnV3Strategy.balanceOf(treasury), profit / 10, "treasury should have 10% of profit");
+    }
+
+    function testFuzz_report_passWhen_noProfits(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
@@ -186,6 +255,8 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
         uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
         uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
@@ -290,5 +361,42 @@ contract WrappedYearnV3Strategy_Test is BaseTest {
         vm.expectRevert("!management");
         vm.prank(caller);
         wrappedYearnV3Strategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
+    }
+
+    function test_emergencyWithdraw_revertWhen_nonManager(address caller) public {
+        vm.assume(caller != manager);
+        vm.prank(caller);
+        vm.expectRevert("!emergency authorized");
+        wrappedYearnV3Strategy.emergencyWithdraw(1e18);
+    }
+
+    function testFuzz_emergencyWithdraw(uint256 amount) public {
+        vm.assume(amount != 0);
+        vm.assume(amount < type(uint128).max);
+
+        // deposit into strategy happens
+        _depositFromUser(alice, amount);
+        // manager calls report
+        vm.prank(manager);
+        wrappedYearnV3Strategy.report();
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
+
+        // shutdown strategy
+        vm.prank(manager);
+        wrappedYearnV3Strategy.shutdownStrategy();
+
+        // emergency withdraw, if given max amount will always attempt to withdraw its total balance
+        vm.prank(manager);
+        wrappedYearnV3Strategy.emergencyWithdraw(type(uint256).max);
+        uint256 afterDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
+        assertEq(afterDeployedAssets, 0, "emergency withdraw failed");
+
+        // user withdraws
+        vm.prank(alice);
+        wrappedYearnV3Strategy.withdraw(amount, alice, alice);
+        assertEq(wrappedYearnV3Strategy.balanceOf(alice), 0, "Withdraw was not successful");
+        assertEq(wrappedYearnV3Strategy.totalSupply(), 0, "totalSupply did not update correctly");
+        assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
     }
 }

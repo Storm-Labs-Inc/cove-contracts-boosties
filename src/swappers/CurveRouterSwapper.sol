@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
-import { ICurveBasePool } from "src/interfaces/deps/curve/ICurveBasePool.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @title Curve Router Library
 /// @notice Contains helper methods for interacting with Curve Router.
@@ -25,7 +25,6 @@ contract CurveRouterSwapper {
     // solhint-disable-next-line var-name-mixedcase
     // slither-disable-start naming-convention
     address private immutable _CURVE_ROUTER;
-    address private constant _ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     // slither-disable-end naming-convention
 
     struct CurveSwapParams {
@@ -61,7 +60,6 @@ contract CurveRouterSwapper {
         );
     }
 
-    /* solhint-disable code-complexity */
     function _validateSwapParams(
         CurveSwapParams memory curveSwapParams,
         address fromToken,
@@ -70,43 +68,34 @@ contract CurveRouterSwapper {
         internal
         view
     {
-        // Check fromToken address matches the current route token
-        if (curveSwapParams.route[0] != fromToken) {
+        // Check if fromToken is in the route
+        if (fromToken != curveSwapParams.route[0]) {
             revert Errors.InvalidFromToken(fromToken, curveSwapParams.route[0]);
         }
-        for (uint256 i = 0; i < curveSwapParams.swapParams.length; i++) {
-            // Break if this is the last swap
-            address curvePool = curveSwapParams.route[i * 2 + 1];
-            if (curvePool == address(0)) {
+        // Check if toToken is in the route
+        address toTokenInRoute;
+        for (uint256 i = 0; i < curveSwapParams.route.length; i++) {
+            if (curveSwapParams.route[i] == address(0)) {
                 break;
             }
-            // Read the next token address
-            address nextToken = curveSwapParams.route[(i + 1) * 2];
-            // If this is a regular swap, check if the pool indexes match
-            if (curveSwapParams.swapParams[i][2] == 1) {
-                // @dev Skip ETH address check since coins() returns WETH on mainnet ETH. We could add WETH as a
-                // constant here but then would require us to create different CurveRouterSwapper per chain.
-                // Even if this check passes in case where we supply ETH address when the actual coin at index is not
-                // ETH or WETH, this will get reverted at router level. Therefore its not critical if we miss this
-                // check, just prevents us from having to update to the correct swap params in the future.
-                if (fromToken != _ETH_ADDRESS) {
-                    if (ICurveBasePool(curvePool).coins(curveSwapParams.swapParams[i][0]) != fromToken) {
-                        revert Errors.InvalidCoinIndex();
-                    }
-                }
-                if (nextToken != _ETH_ADDRESS) {
-                    if (ICurveBasePool(curvePool).coins(curveSwapParams.swapParams[i][1]) != nextToken) {
-                        revert Errors.InvalidCoinIndex();
-                    }
-                }
-            }
-            // Update fromToken to the next token
-            fromToken = nextToken;
+            toTokenInRoute = curveSwapParams.route[i];
         }
-
-        if (fromToken != toToken) {
-            revert Errors.InvalidToToken(toToken, fromToken);
+        if (toTokenInRoute != toToken) {
+            revert Errors.InvalidToToken(toToken, toTokenInRoute);
+        }
+        // Note that this does not check whether supplied token exists in the pool since the
+        // get_dy function only relies on the indexes on swaps instead of addresses.
+        try ICurveRouter(_CURVE_ROUTER).get_dy(
+            curveSwapParams.route,
+            curveSwapParams.swapParams,
+            10 ** IERC20Metadata(fromToken).decimals(),
+            curveSwapParams.pools
+        ) returns (uint256 expected) {
+            if (expected == 0) {
+                revert Errors.ExpectedAmountZero();
+            }
+        } catch {
+            revert Errors.InvalidSwapParams();
         }
     }
-    /* solhint-enable code-complexity */
 }

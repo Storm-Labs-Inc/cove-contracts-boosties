@@ -65,6 +65,6 @@ contract MockCurveRouter is ICurveRouter {
         view
         returns (uint256)
     {
-        return 0;
+        return uint256(1);
     }
 }
