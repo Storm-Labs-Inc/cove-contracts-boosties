@@ -90,7 +90,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         IERC20(_YFI).safeTransferFrom(sender, address(this), balance);
         // lockYfi ultimately calls modify_lock which returns a struct with unnecessary balance information
         // Ref: https://github.com/yearn/veYFI/blob/master/contracts/VotingYFI.vy#L300
-        // slither-disable-next-line unchecked-return-value
+        // slither-disable-next-line unused-return
         IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
     }
 
