@@ -12,57 +12,42 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { Errors } from "src/libraries/Errors.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
+import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 
-contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
+contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
-    IStrategy public mockStrategy;
-    IYearnGaugeStrategy public wrappedYearnV3Strategy;
+    IYearnGaugeStrategy public yearnGaugeStrategy;
     MockYearnStakingDelegate public mockYearnStakingDelegate;
     MockStakingDelegateRewards public mockStakingDelegateRewards;
-    IVault public deployedVault;
-
-    // Airdrop amounts
-    uint256 public constant ALICE_YFI = 50_000e18;
-    uint256 public constant DYFI_REWARD_AMOUNT = 10e18;
+    IVault public vault;
 
     // Addresses
     address public alice;
-    address public testGauge;
+    address public gauge;
     address public manager;
-    address public treasury;
-    address public deployedGauge = address(0);
 
     function setUp() public override {
         super.setUp();
         //// generic ////
         alice = createUser("alice");
         manager = createUser("manager");
-        treasury = createUser("treasury");
-        (address _deployedVault, address _mockStrategy) = deployVaultV3WithMockStrategy("USDC Vault", MAINNET_USDC);
-        deployedVault = IVault(_deployedVault);
-        vm.label(_deployedVault, "deployedVault");
-        mockStrategy = IStrategy(_mockStrategy);
-        vm.label(_mockStrategy, "mockStrategy");
+        vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
+        vm.label(address(vault), "wethyethPoolVault");
+        gauge = MAINNET_WETH_YETH_POOL_GAUGE;
+        vm.label(gauge, "wethyethPoolGauge");
+
+        // Deploy Mock Contracts
         mockYearnStakingDelegate = new MockYearnStakingDelegate();
         mockStakingDelegateRewards = new MockStakingDelegateRewards(MAINNET_DYFI);
         vm.label(address(mockYearnStakingDelegate), "mockYearnStakingDelegate");
         vm.label(address(mockStakingDelegateRewards), "mockStakingDelegateRewards");
         mockYearnStakingDelegate.setGaugeStakingRewards(address(mockStakingDelegateRewards));
 
-        // Deploy gauge
-        testGauge = deployGaugeViaFactory(_deployedVault, admin, "USDC Test Vault Gauge");
-
-        vm.label(testGauge, "testGauge");
-
         //// wrapped strategy ////
         {
-            wrappedYearnV3Strategy = setUpWrappedStrategy(
-                "Wrapped YearnV3 Strategy",
-                testGauge,
-                address(mockYearnStakingDelegate),
-                MAINNET_DYFI,
-                MAINNET_CURVE_ROUTER
+            yearnGaugeStrategy = setUpWrappedStrategy(
+                "Wrapped YearnV3 Strategy", gauge, address(mockYearnStakingDelegate), MAINNET_DYFI, MAINNET_CURVE_ROUTER
             );
             vm.startPrank(tpManagement);
             // setting CurveRouterSwapper params for harvest rewards swapping
@@ -70,91 +55,102 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
             // [token_from, pool, token_to, pool, ...]
             curveSwapParams.route[0] = MAINNET_DYFI;
             curveSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
-            curveSwapParams.route[2] = MAINNET_ETH;
-            curveSwapParams.route[3] = MAINNET_TRI_CRYPTO_USDC;
-            curveSwapParams.route[4] = MAINNET_USDC;
+            curveSwapParams.route[2] = MAINNET_WETH;
+            curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
+            curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL; // expect the lp token back
 
             // i, j, swap_type, pool_type, n_coins
-            curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2]; // dYFI -> ETH
-            curveSwapParams.swapParams[1] = [uint256(2), 0, 1, 2, 3]; // ETH -> USDC
+            curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2]; // dYFI -> wETH
+            // wETH -> weth/yeth pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
+            curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
             // set params for harvest rewards swapping
-            wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
-            wrappedYearnV3Strategy.setMaxTotalAssets(type(uint256).max);
+            yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
+            yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
             vm.stopPrank();
         }
+    }
+
+    function _airdropGaugeTokens(address user, uint256 amount) internal {
+        airdrop(ERC20(address(vault)), user, amount);
+        vm.startPrank(user);
+        IERC20(vault).approve(address(gauge), amount);
+        IGauge(gauge).deposit(amount, user);
+        vm.stopPrank();
     }
 
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
-        uint256 expectedShares = wrappedYearnV3Strategy.previewDeposit(amount);
+        uint256 expectedShares = yearnGaugeStrategy.previewDeposit(amount);
         // deposit into strategy happens
-        mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
         // check for expected changes
-        assertEq(wrappedYearnV3Strategy.balanceOf(alice), expectedShares, "Deposit was not successful");
+        assertEq(yearnGaugeStrategy.balanceOf(alice), expectedShares, "Deposit was not successful");
         assertEq(
-            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
+            mockYearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
             amount,
             "yearn staking delegate deposit failed"
         );
-        assertEq(wrappedYearnV3Strategy.totalSupply(), expectedShares, "totalSupply did not update correctly");
+        assertEq(yearnGaugeStrategy.totalSupply(), expectedShares, "totalSupply did not update correctly");
     }
 
     function testFuzz_withdraw(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
-        uint256 expectedShares = wrappedYearnV3Strategy.previewDeposit(amount);
+        uint256 expectedShares = yearnGaugeStrategy.previewDeposit(amount);
         // deposit into strategy happens
-        mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
 
         vm.prank(alice);
-        wrappedYearnV3Strategy.withdraw(expectedShares, alice, alice);
+        yearnGaugeStrategy.withdraw(expectedShares, alice, alice);
+        assertEq(mockYearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge), 0, "depositToGauge failed");
         assertEq(
-            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge), 0, "depositToGauge failed"
-        );
-        assertEq(
-            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
+            mockYearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
             0,
             "yearn staking delegate withdraw failed"
         );
-        assertEq(wrappedYearnV3Strategy.totalSupply(), 0, "totalSupply did not update correctly");
-        assertEq(IERC20(testGauge).balanceOf(alice), amount, "asset was not returned on withdraw");
-        assertEq(wrappedYearnV3Strategy.balanceOf(alice), 0, "Withdraw was not successful");
+        assertEq(yearnGaugeStrategy.totalSupply(), 0, "totalSupply did not update correctly");
+        assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
+        assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
     }
 
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
 
         // deposit into strategy happens
-        mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
-        uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
-        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
+        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
+        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
-        // Simulate profit by mocking stakingDelegateRewards sending rewards on harvestAndReport()
-        airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), 1e18);
+        // Gauge rewards are currently active, warp block forward to accrue rewards
+        vm.warp(block.timestamp + 1 weeks);
+        // get the current rewards earned by the yearn staking delegate
+        uint256 accruedRewards = IGauge(gauge).earned(address(mockYearnStakingDelegate));
+        // send earned rewards to the staking delegate rewards contract
+        airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), accruedRewards);
 
         // manager calls report on the wrapped strategy
         vm.prank(tpManagement);
-        (uint256 profit,) = wrappedYearnV3Strategy.report();
+        (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
 
         // warp blocks forward to profit locking is finished
-        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
+        vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report
         vm.prank(tpManagement);
-        wrappedYearnV3Strategy.report();
+        yearnGaugeStrategy.report();
 
-        uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 afterTotalAssets = yearnGaugeStrategy.totalAssets();
         assertEq(
             afterTotalAssets,
-            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
+            mockYearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
             "all assets should be deployed"
         );
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
@@ -162,26 +158,26 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
 
     function testFuzz_report_passWhen_noProfits(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
 
         // deposit into strategy happens
-        mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
-        uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
-        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
+        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
+        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // manager calls report on the wrapped strategy
         vm.prank(tpManagement);
-        wrappedYearnV3Strategy.report();
+        yearnGaugeStrategy.report();
 
         // warp blocks forward to profit locking is finished
-        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
+        vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report
         vm.prank(tpManagement);
-        (uint256 profit, uint256 loss) = wrappedYearnV3Strategy.report();
+        (uint256 profit, uint256 loss) = yearnGaugeStrategy.report();
         assertEq(profit, 0, "profit should be 0");
         assertEq(loss, 0, "loss should be 0");
     }
@@ -190,27 +186,25 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
-        uint256 expectedShares = wrappedYearnV3Strategy.previewDeposit(amount);
+        uint256 expectedShares = yearnGaugeStrategy.previewDeposit(amount);
         // deposit into strategy happens
-        mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
 
         // shutdown strategy
         vm.prank(tpManagement);
-        wrappedYearnV3Strategy.shutdownStrategy();
+        yearnGaugeStrategy.shutdownStrategy();
 
         vm.prank(alice);
-        wrappedYearnV3Strategy.withdraw(expectedShares, alice, alice);
+        yearnGaugeStrategy.withdraw(expectedShares, alice, alice);
+        assertEq(mockYearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge), 0, "depositToGauge failed");
         assertEq(
-            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge), 0, "depositToGauge failed"
-        );
-        assertEq(
-            mockYearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), testGauge),
+            mockYearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
             0,
             "yearn staking delegate withdraw failed"
         );
-        assertEq(wrappedYearnV3Strategy.totalSupply(), 0, "totalSupply did not update correctly");
-        assertEq(IERC20(testGauge).balanceOf(alice), amount, "asset was not returned on withdraw");
-        assertEq(wrappedYearnV3Strategy.balanceOf(alice), 0, "Withdraw was not successful");
+        assertEq(yearnGaugeStrategy.totalSupply(), 0, "totalSupply did not update correctly");
+        assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
+        assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
     }
 
     function testFuzz_deposit_duringShutdown(uint256 amount) public {
@@ -219,25 +213,25 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
 
         // shutdown strategy
         vm.prank(tpManagement);
-        wrappedYearnV3Strategy.shutdownStrategy();
+        yearnGaugeStrategy.shutdownStrategy();
         // deposit into strategy happens
-        airdrop(ERC20(testGauge), alice, amount);
+        _airdropGaugeTokens(alice, amount);
         vm.startPrank(alice);
-        IERC20(wrappedYearnV3Strategy.asset()).safeApprove(address(wrappedYearnV3Strategy), amount);
+        IERC20(yearnGaugeStrategy.asset()).safeApprove(address(yearnGaugeStrategy), amount);
         // TokenizedStrategy.maxDeposit() returns 0 on shutdown
         vm.expectRevert("ERC4626: deposit more than max");
-        wrappedYearnV3Strategy.deposit(amount, alice);
+        yearnGaugeStrategy.deposit(amount, alice);
     }
 
     function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 1_000_000_000 * 1e6); // limit deposit size to 1 Billion USDC
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
 
         // deposit into strategy happens
-        mintAndDepositIntoStrategy(wrappedYearnV3Strategy, alice, amount, testGauge);
-        uint256 shares = wrappedYearnV3Strategy.balanceOf(alice);
-        uint256 beforeTotalAssets = wrappedYearnV3Strategy.totalAssets();
-        uint256 beforePreviewRedeem = wrappedYearnV3Strategy.previewRedeem(shares);
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
+        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
+        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
@@ -246,21 +240,21 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
 
         // shutdown strategy
         vm.prank(tpManagement);
-        wrappedYearnV3Strategy.shutdownStrategy();
+        yearnGaugeStrategy.shutdownStrategy();
 
         // manager calls report on the wrapped strategy
         vm.prank(tpManagement);
-        (uint256 profit,) = wrappedYearnV3Strategy.report();
+        (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
 
         // warp blocks forward to profit locking is finished
-        vm.warp(block.timestamp + IStrategy(address(wrappedYearnV3Strategy)).profitMaxUnlockTime());
+        vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report
         vm.prank(tpManagement);
-        wrappedYearnV3Strategy.report();
+        yearnGaugeStrategy.report();
 
-        uint256 afterTotalAssets = wrappedYearnV3Strategy.totalAssets();
+        uint256 afterTotalAssets = yearnGaugeStrategy.totalAssets();
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
     }
 
@@ -279,30 +273,23 @@ contract WrappedStrategy_ForkedTest is YearnV3BaseTest {
         // set params for harvest rewards swapping
         vm.prank(alice);
         vm.expectRevert("!management");
-        wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
+        yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
     }
 
-    function test_SetSwapParams_validateSwapParams() public {
+    function test_setHarvestSwapParams_validateSwapParams_revertWhen_InvalidCoinIndex() public {
+        vm.startPrank(tpManagement);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
-        // [token_from, pool, token_to, pool, ...]
+        // Set route to include a token index that does not exist in the given pools
         curveSwapParams.route[0] = MAINNET_DYFI;
         curveSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
         curveSwapParams.route[2] = MAINNET_ETH;
-        curveSwapParams.route[3] = MAINNET_TRI_CRYPTO_USDC;
-        curveSwapParams.route[4] = MAINNET_USDC;
+        curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
+        curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL;
 
         // i, j, swap_type, pool_type, n_coins
         curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2]; // dYFI -> ETH
-        // coin index is incorrect
-        curveSwapParams.swapParams[1] = [uint256(2), 2, 1, 2, 3]; // ETH -> USDC
-        // set params for harvest rewards swapping
-        vm.startPrank(tpManagement);
+        curveSwapParams.swapParams[1] = [uint256(5), 1, 4, 1, 2];
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapParams.selector));
-        wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
-
-        // swap does not end in strategy base asset, but index is correct
-        curveSwapParams.route[4] = MAINNET_ETH;
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToToken.selector, MAINNET_USDC, MAINNET_ETH));
-        wrappedYearnV3Strategy.setHarvestSwapParams(curveSwapParams);
+        yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
     }
 }
