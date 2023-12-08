@@ -22,9 +22,9 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 contract CurveRouterSwapper {
     using SafeERC20 for IERC20;
 
+    /// @notice The address of the Curve Router contract
     // solhint-disable-next-line var-name-mixedcase
     // slither-disable-next-line naming-convention
-    /// @notice The address of the Curve Router contract
     address private immutable _CURVE_ROUTER;
 
     /// @notice Struct to store parameters for a Curve swap
