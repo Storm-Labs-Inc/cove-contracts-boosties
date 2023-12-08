@@ -134,22 +134,24 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         _updateReward(address(0), stakingToken);
 
         uint256 periodFinish_ = periodFinish[stakingToken];
+        uint256 rewardDuration_ = rewardsDuration[stakingToken];
         uint256 newRewardRate = 0;
         // slither-disable-next-line timestamp
         if (block.timestamp >= periodFinish_) {
-            newRewardRate = reward / rewardsDuration[stakingToken];
+            newRewardRate = reward / rewardDuration_;
         } else {
             uint256 remaining = periodFinish_ - block.timestamp;
             uint256 leftover = remaining * rewardRate[stakingToken];
-            newRewardRate = (reward + leftover) / rewardsDuration[stakingToken];
+            newRewardRate = (reward + leftover) / rewardDuration_;
         }
+        // If reward < duration, newRewardRate will be 0, causing dust to be left in the contract
+        // slither-disable-next-line incorrect-equality
         if (newRewardRate == 0) {
             revert Errors.RewardRateTooLow();
         }
         rewardRate[stakingToken] = newRewardRate;
-
         lastUpdateTime[stakingToken] = block.timestamp;
-        periodFinish[stakingToken] = block.timestamp + (rewardsDuration[stakingToken]);
+        periodFinish[stakingToken] = block.timestamp + (rewardDuration_);
         IERC20(_REWARDS_TOKEN).safeTransferFrom(msg.sender, address(this), reward);
         emit RewardAdded(stakingToken, reward);
     }
