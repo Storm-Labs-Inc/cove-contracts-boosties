@@ -140,6 +140,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         internal
     {
         // In case of error, we don't want to block the entire tx so we try-catch
+        // solhint-disable-next-line no-empty-blocks
         try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
     }
 
