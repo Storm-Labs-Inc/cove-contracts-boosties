@@ -59,6 +59,7 @@ library Errors {
     error OnlyStakingDelegateCanAddStakingToken();
     error OnlyRewardDistributorCanNotifyRewardAmount();
     error StakingTokenAlreadyAdded();
+    error RewardRateTooLow();
 
     //// WRAPPED STRATEGY CURVE SWAPPER ////
     error OracleOutdated();

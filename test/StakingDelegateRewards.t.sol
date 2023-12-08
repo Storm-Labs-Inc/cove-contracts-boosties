@@ -165,6 +165,37 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingDelegateRewards.notifyRewardAmount(stakingToken, REWARD_AMOUNT);
     }
 
+    function testFuzz_notifyRewardAmount(uint256 reward) public {
+        vm.assume(reward != 0);
+        vm.assume(reward >= 7 days);
+        vm.prank(yearnStakingDelegate);
+        stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
+
+        airdrop(IERC20(rewardToken), rewardDistributor, reward);
+        vm.startPrank(rewardDistributor);
+        IERC20(rewardToken).approve(address(stakingDelegateRewards), reward);
+        stakingDelegateRewards.notifyRewardAmount(stakingToken, reward);
+        vm.stopPrank();
+
+        assertEq(stakingDelegateRewards.rewardRate(stakingToken), uint256(reward) / 7 days);
+        assertEq(stakingDelegateRewards.lastUpdateTime(stakingToken), block.timestamp);
+        assertEq(stakingDelegateRewards.periodFinish(stakingToken), block.timestamp + 7 days);
+        assertEq(IERC20(rewardToken).balanceOf(address(stakingDelegateRewards)), reward);
+    }
+
+    function testFuzz_notifyRewardAmount_revertWhen_RewardRateTooLow(uint256 reward) public {
+        vm.assume(reward < 7 days);
+        vm.prank(yearnStakingDelegate);
+        stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
+
+        airdrop(IERC20(rewardToken), rewardDistributor, reward);
+        vm.startPrank(rewardDistributor);
+        IERC20(rewardToken).approve(address(stakingDelegateRewards), reward);
+        vm.expectRevert(abi.encodeWithSelector(Errors.RewardRateTooLow.selector));
+        stakingDelegateRewards.notifyRewardAmount(stakingToken, reward);
+        vm.stopPrank();
+    }
+
     function test_updateUserBalance() public {
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
