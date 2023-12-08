@@ -167,7 +167,7 @@ contract StakingDelegateRewards_Test is BaseTest {
 
     function testFuzz_notifyRewardAmount(uint256 reward) public {
         vm.assume(reward != 0);
-        vm.assume(reward > 7 days);
+        vm.assume(reward >= 7 days);
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
 
@@ -184,7 +184,7 @@ contract StakingDelegateRewards_Test is BaseTest {
     }
 
     function testFuzz_notifyRewardAmount_revertWhen_RewardRateTooLow(uint256 reward) public {
-        vm.assume(reward <= 7 days);
+        vm.assume(reward < 7 days);
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
 
