@@ -134,14 +134,19 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         _updateReward(address(0), stakingToken);
 
         uint256 periodFinish_ = periodFinish[stakingToken];
+        uint256 newRewardRate = 0;
         // slither-disable-next-line timestamp
         if (block.timestamp >= periodFinish_) {
-            rewardRate[stakingToken] = reward / rewardsDuration[stakingToken];
+            newRewardRate = reward / rewardsDuration[stakingToken];
         } else {
             uint256 remaining = periodFinish_ - block.timestamp;
             uint256 leftover = remaining * rewardRate[stakingToken];
-            rewardRate[stakingToken] = (reward + leftover) / rewardsDuration[stakingToken];
+            newRewardRate = (reward + leftover) / rewardsDuration[stakingToken];
         }
+        if (newRewardRate == 0) {
+            revert Errors.RewardRateTooLow();
+        }
+        rewardRate[stakingToken] = newRewardRate;
 
         lastUpdateTime[stakingToken] = block.timestamp;
         periodFinish[stakingToken] = block.timestamp + (rewardsDuration[stakingToken]);
