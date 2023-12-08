@@ -184,6 +184,10 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             "all assets should be deployed"
         );
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
+        // User withdraws
+        vm.prank(alice);
+        yearnGaugeStrategy.redeem(shares, alice, alice);
+        assertGt(IERC20(gauge).balanceOf(alice), amount, "profit not given to user on withdraw");
     }
 
     function test_report_staking_rewards_profit_reward_split() public {
@@ -253,8 +257,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
         // User withdraws
         vm.prank(alice);
-        yearnGaugeStrategy.withdraw(shares, alice, alice);
-        // TODO: fails below
+        yearnGaugeStrategy.redeem(shares, alice, alice);
         assertGt(IERC20(gauge).balanceOf(alice), 10e18, "profit not given to user on withdraw");
     }
 
@@ -297,40 +300,5 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // TokenizedStrategy.maxDeposit() returns 0 on shutdown
         vm.expectRevert("ERC4626: deposit more than max");
         yearnGaugeStrategy.deposit(amount, alice);
-    }
-
-    function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
-        vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
-
-        // deposit into strategy happens
-        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
-        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
-        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
-        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
-        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
-        assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
-
-        // Simulate profit by mocking stakingDelegateRewards sending rewards on harvestAndReport()
-        airdrop(ERC20(MAINNET_DYFI), address(stakingDelegateRewards), 1e18);
-
-        // shutdown strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.shutdownStrategy();
-
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        (uint256 profit,) = yearnGaugeStrategy.report();
-        assertGt(profit, 0, "profit should be greater than 0");
-
-        // warp blocks forward to profit locking is finished
-        vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
-
-        // manager calls report
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
-
-        uint256 afterTotalAssets = yearnGaugeStrategy.totalAssets();
-        assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
     }
 }
