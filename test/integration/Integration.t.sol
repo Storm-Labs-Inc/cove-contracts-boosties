@@ -144,7 +144,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
         // We must set RewardsDuration to a low number to handle for small deposits
         vm.prank(admin);
-        stakingDelegateRewards.setRewardsDuration(gauge, 100);
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -300,5 +299,57 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // TokenizedStrategy.maxDeposit() returns 0 on shutdown
         vm.expectRevert("ERC4626: deposit more than max");
         yearnGaugeStrategy.deposit(amount, alice);
+    }
+
+    function testFuzz_withdraw_duringShutdownReport_buh(uint256 amount) public {
+        //todo: change after reward claim revert is implemented
+        vm.assume(amount > 1e18); // Minimum deposit size is required to farm dYFI emission
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+
+        // deposit into strategy happens
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
+        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
+        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
+        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
+        assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
+
+        // Gauge rewards are currently active, warp block forward to accrue rewards
+        vm.warp(block.timestamp + 11 weeks);
+
+        // yearn staking delegate harvests available rewards
+        vm.prank(admin);
+        yearnStakingDelegate.harvest(gauge);
+
+        // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
+        uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
+        vm.warp(stakingDelegateperiodFinish);
+
+        // shutdown strategy
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.shutdownStrategy();
+
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
+
+        // manager calls report on the wrapped strategy
+        vm.prank(tpManagement);
+        (uint256 profit,) = yearnGaugeStrategy.report();
+        assertGt(profit, 0, "profit should be greater than 0");
+
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
+
+        // manager calls report
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.report();
+
+        uint256 afterTotalAssets = yearnGaugeStrategy.totalAssets();
+        assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
+
+        // User withdraws
+        vm.prank(alice);
+        yearnGaugeStrategy.redeem(shares, alice, alice);
+        assertGt(IERC20(gauge).balanceOf(alice), amount, "profit not given to user on withdraw");
     }
 }
