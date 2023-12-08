@@ -16,6 +16,9 @@ import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
+/// @title YearnStakingDelegate
+/// @notice Contract for staking tokens, managing rewards, and delegating voting power.
+/// @dev Inherits from IYearnStakingDelegate, AccessControl, ReentrancyGuard, and Rescuable.
 contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
@@ -56,6 +59,13 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     address public swapAndLock;
 
     /* ========== CONSTRUCTOR ========== */
+    /**
+     * @dev Initializes the contract by setting up roles and initializing state variables.
+     * @param gaugeRewardReceiverImpl Address of the GaugeRewardReceiver implementation.
+     * @param _treasury Address of the treasury.
+     * @param admin Address of the admin.
+     * @param manager Address of the manager.
+     */
     constructor(address gaugeRewardReceiverImpl, address _treasury, address admin, address manager) {
         // Checks
         // Check for zero addresses
@@ -101,6 +111,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
+    /**
+     * @notice Deposits tokens into a gauge.
+     * @param gauge Address of the gauge to deposit into.
+     * @param amount Amount of tokens to deposit.
+     */
     function deposit(address gauge, uint256 amount) external {
         // Checks
         if (amount == 0) {
@@ -118,6 +133,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
 
+    /**
+     * @notice Withdraws tokens from a gauge.
+     * @param gauge Address of the gauge to withdraw from.
+     * @param amount Amount of tokens to withdraw.
+     */
     function withdraw(address gauge, uint256 amount) external {
         // Checks
         if (amount == 0) {
@@ -131,6 +151,13 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }
 
+    /**
+     * @dev Internal function to checkpoint a user's balance for a gauge.
+     * @param stakingDelegateReward Address of the StakingDelegateRewards contract.
+     * @param gauge Address of the gauge.
+     * @param user Address of the user.
+     * @param userBalance New balance of the user for the gauge.
+     */
     function _checkpointUserBalance(
         address stakingDelegateReward,
         address gauge,
@@ -170,6 +197,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         IERC20(_YFI).safeTransfer(treasury, IERC20(_YFI).balanceOf(address(this)));
     }
 
+    /**
+     * @notice Harvests rewards from a gauge and distributes them.
+     * @param gauge Address of the gauge to harvest from.
+     * @return The amount of rewards harvested.
+     */
     function harvest(address gauge) external returns (uint256) {
         // Checks
         address swapAndLock_ = swapAndLock;
@@ -184,7 +216,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
     }
 
-    // Transfer amount of YFI from msg.sender and locks
+    /**
+     * @notice Locks YFI tokens in the veYFI contract.
+     * @param amount Amount of YFI tokens to lock.
+     * @return The locked balance information.
+     */
     function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory) {
         // Checks
         if (amount == 0) {
@@ -212,6 +248,10 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         treasury = treasury_;
     }
 
+    /**
+     * @notice Sets the address for the SwapAndLock contract.
+     * @param swapAndLock_ Address of the SwapAndLock contract.
+     */
     function setSwapAndLock(address swapAndLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (swapAndLock_ == address(0)) {
@@ -220,6 +260,13 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         swapAndLock = swapAndLock_;
     }
 
+    /**
+     * @dev Internal function to set the reward split for a gauge.
+     * @param gauge Address of the gauge.
+     * @param treasuryPct Percentage of rewards to the treasury.
+     * @param userPct Percentage of rewards to the user.
+     * @param lockPct Percentage of rewards to lock in veYFI.
+     */
     function _setRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
         if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
             revert Errors.InvalidRewardSplit();
@@ -256,6 +303,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         ISnapshotDelegateRegistry(_SNAPSHOT_DELEGATE_REGISTRY).setDelegate(id, delegate);
     }
 
+    /**
+     * @notice Adds gauge rewards configuration.
+     * @param gauge Address of the gauge.
+     * @param stakingDelegateRewards Address of the StakingDelegateRewards contract.
+     */
     function addGaugeRewards(
         address gauge,
         address stakingDelegateRewards
@@ -277,6 +329,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         _setGaugeRewards(gauge, stakingDelegateRewards);
     }
 
+    /**
+     * @notice Updates gauge rewards configuration.
+     * @param gauge Address of the gauge.
+     * @param stakingDelegateRewards Address of the new StakingDelegateRewards contract.
+     */
     function updateGaugeRewards(
         address gauge,
         address stakingDelegateRewards
@@ -300,6 +357,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         _setGaugeRewards(gauge, stakingDelegateRewards);
     }
 
+    /**
+     * @dev Internal function to set gauge rewards and reward receiver.
+     * @param gauge Address of the gauge.
+     * @param stakingDelegateRewards Address of the StakingDelegateRewards contract.
+     */
     function _setGaugeRewards(address gauge, address stakingDelegateRewards) internal {
         gaugeStakingRewards[gauge] = stakingDelegateRewards;
         _blockedTargets[gauge] = true;

@@ -22,17 +22,22 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 contract CurveRouterSwapper {
     using SafeERC20 for IERC20;
 
+    /// @notice The address of the Curve Router contract
     // solhint-disable-next-line var-name-mixedcase
-    // slither-disable-start naming-convention
+    // slither-disable-next-line naming-convention
     address private immutable _CURVE_ROUTER;
-    // slither-disable-end naming-convention
 
+    /// @notice Struct to store parameters for a Curve swap
     struct CurveSwapParams {
         address[11] route;
         uint256[5][5] swapParams;
         address[5] pools;
     }
 
+    /**
+     * @dev Sets the Curve Router address on contract deployment.
+     * @param curveRouter_ The address of the Curve Router.
+     */
     constructor(address curveRouter_) {
         // Checks
         if (curveRouter_ == address(0)) {
@@ -42,10 +47,22 @@ contract CurveRouterSwapper {
         _CURVE_ROUTER = curveRouter_;
     }
 
+    /**
+     * @dev Approves the Curve Router to spend the specified token.
+     * @param token The ERC20 token address to approve.
+     */
     function _approveTokenForSwap(address token) internal {
         IERC20(token).forceApprove(_CURVE_ROUTER, type(uint256).max);
     }
 
+    /**
+     * @dev Executes a token swap via the Curve Router.
+     * @param curveSwapParams The parameters for the swap.
+     * @param amount The amount of the input token to swap.
+     * @param expected The minimum amount of the output token expected to receive.
+     * @param receiver The address that will receive the output tokens.
+     * @return The amount of the output token received from the swap.
+     */
     function _swap(
         CurveSwapParams memory curveSwapParams,
         uint256 amount,
@@ -60,6 +77,12 @@ contract CurveRouterSwapper {
         );
     }
 
+    /**
+     * @dev Validates the swap parameters against the provided route and tokens.
+     * @param curveSwapParams The parameters for the swap.
+     * @param fromToken The address of the input token.
+     * @param toToken The address of the output token.
+     */
     function _validateSwapParams(
         CurveSwapParams memory curveSwapParams,
         address fromToken,
