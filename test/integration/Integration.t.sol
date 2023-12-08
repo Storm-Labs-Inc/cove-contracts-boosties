@@ -13,7 +13,6 @@ import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
-import { console2 as console } from "forge-std/Console2.sol";
 
 contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -139,9 +138,11 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
     }
 
-    function testFuzz_report_staking_rewards_profit_buh(uint256 amount) public {
+    function testFuzz_report_staking_rewards_profit(uint256 amount) public {
         vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        // We must set RewardsDuration to a low number to handle for small deposits
+        StakingDelegateRewards.setRewardsDuration(gauge, 100);
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -152,34 +153,27 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // Gauge rewards are currently active, warp block forward to accrue rewards
-        vm.warp(block.timestamp + 1 weeks);
-        // get the current rewards earned by the yearn staking delegate
-        uint256 accruedRewards = IGauge(gauge).earned(address(yearnStakingDelegate));
-        console.log("accruedRewards: %s", accruedRewards);
+        vm.warp(block.timestamp + 11 weeks);
 
         // yearn staking delegate harvests available rewards
         vm.prank(admin);
-        yearnStakingDelegate.harvest(gauge); // gets rewards from gauge and successfully calls
-            // StakingDelegateRewards.notifyRewardAmount(reward)
+        yearnStakingDelegate.harvest(gauge);
 
         // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
-        console.log("reward rate", stakingDelegateRewards.rewardRate(gauge)); // 0
-        console.log("reward per token stored: ", stakingDelegateRewards.rewardPerTokenStored(gauge)); // 0
-        vm.warp(stakingDelegateperiodFinish); // not 0 does get set
+        vm.warp(stakingDelegateperiodFinish);
 
         // manager calls report on the wrapped strategy
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
-        assertGt(profit, 0, "profit should be greater than 0"); // always reporting 0
+        assertGt(profit, 0, "profit should be greater than 0");
 
         // warp blocks forward to profit locking is finished
         vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report
         vm.prank(tpManagement);
-        yearnGaugeStrategy.report(); // here the StakingDelegateRewards.getReward() is called but does nothing meaning
-            // the rewards() are empty
+        yearnGaugeStrategy.report();
 
         uint256 afterTotalAssets = yearnGaugeStrategy.totalAssets();
         assertEq(
@@ -187,7 +181,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
             "all assets should be deployed"
         );
-        assertGt(afterTotalAssets, beforeTotalAssets, "report did not increase total assets");
+        assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
     }
 
     function testFuzz_withdraw_duringShutdown(uint256 amount) public {
