@@ -84,6 +84,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
             vm.stopPrank();
         }
+
+        // Setup approvals for YFI spending
+        vm.startPrank(alice);
+        IERC20(MAINNET_YFI).approve(MAINNET_VE_YFI, type(uint256).max);
+        IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), type(uint256).max);
+        vm.stopPrank();
     }
 
     // Need a special function to airdrop to the gauge since it relies on totalSupply for calculation
@@ -98,6 +104,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     function _setRewardSplit(uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
         vm.prank(admin);
         yearnStakingDelegate.setRewardSplit(gauge, treasurySplit, strategySplit, veYfiSplit);
+    }
+
+    function _lockYfiForYSD(uint256 amount) internal {
+        airdrop(ERC20(MAINNET_YFI), alice, amount);
+        vm.prank(alice);
+        yearnStakingDelegate.lockYfi(amount);
     }
 
     function testFuzz_deposit(uint256 amount) public {
@@ -301,7 +313,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         yearnGaugeStrategy.deposit(amount, alice);
     }
 
-    function testFuzz_withdraw_duringShutdownReport_buh(uint256 amount) public {
+    function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
         //todo: change after reward claim revert is implemented
         vm.assume(amount > 1e18); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
@@ -351,5 +363,105 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.prank(alice);
         yearnGaugeStrategy.redeem(shares, alice, alice);
         assertGt(IERC20(gauge).balanceOf(alice), amount, "profit not given to user on withdraw");
+    }
+
+    function test_report_boosted_profit() public {
+        _lockYfiForYSD(1e18); // locks veYfi for alice
+        // deposit into strategy happens
+        uint256 userDepositAmount = 1e18;
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, userDepositAmount, gauge);
+        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
+        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
+        assertEq(beforeTotalAssets, userDepositAmount, "total assets should be equal to deposit amount");
+        assertEq(beforePreviewRedeem, userDepositAmount, "preview redeem should return deposit amount");
+
+        address bob = createUser("bob");
+        _airdropGaugeTokens(bob, userDepositAmount);
+
+        // Gauge rewards are currently active, warp block forward to accrue rewards
+        vm.warp(block.timestamp + 14 days);
+
+        // yearn staking delegate harvests available rewards
+        vm.prank(admin);
+        uint256 rewardAmount = yearnStakingDelegate.harvest(gauge);
+        assertGt(rewardAmount, 0, "harvest failed");
+        vm.prank(bob);
+        IGauge(gauge).getReward(bob);
+        uint256 nonBoostedRewardAmount = IERC20(MAINNET_DYFI).balanceOf(bob);
+        assertGt(nonBoostedRewardAmount, 0, "harvest failed");
+        assertGt(rewardAmount, nonBoostedRewardAmount, "veYfi boost failed");
+        // Check that the vault has received the rewards
+        assertEq(
+            rewardAmount,
+            IERC20(MAINNET_DYFI).balanceOf(address(stakingDelegateRewards)),
+            "harvest did not return correct value"
+        );
+    }
+
+    function testFuzz_report_staking_rewards_profit_mulitple_users(uint256 amount0, uint256 amount1) public {
+        IYearnGaugeStrategy gaugeStrategy = yearnGaugeStrategy;
+        // first deposit will always be a large amount
+        uint256 initialDeposit = 10e18;
+        vm.assume(amount0 < type(uint128).max && amount1 < type(uint128).max);
+        address bob = createUser("bob");
+        address charlie = createUser("charlie");
+
+        // deposit into strategy happens
+        mintAndDepositIntoStrategy(gaugeStrategy, alice, initialDeposit, gauge);
+        uint256 beforeTotalAssets = gaugeStrategy.totalAssets();
+        uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(gaugeStrategy), gauge);
+        // Gauge rewards are currently active, warp block forward to accrue rewards
+        vm.warp(block.timestamp + 11 weeks);
+
+        // yearn staking delegate harvests available rewards
+        vm.prank(admin);
+        yearnStakingDelegate.harvest(gauge);
+
+        // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
+        uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
+        vm.warp(stakingDelegateperiodFinish);
+
+        // manager calls report on the wrapped strategy
+        vm.prank(tpManagement);
+        (uint256 profit,) = gaugeStrategy.report();
+        assertGt(profit, 0, "profit should be greater than 0");
+
+        // warp blocks forward to profit locking is finished
+        vm.warp(block.timestamp + IStrategy(address(gaugeStrategy)).profitMaxUnlockTime());
+
+        // calculate the minimum amount that can be deposited to result in at least 1 share
+        vm.assume(amount0 * gaugeStrategy.totalSupply() > gaugeStrategy.totalAssets());
+
+        // Test multiple users interaction
+        mintAndDepositIntoStrategy(gaugeStrategy, bob, amount0, gauge);
+        uint256 afterBobDeployedAssets = yearnStakingDelegate.balanceOf(address(gaugeStrategy), gauge);
+        assertEq(
+            afterBobDeployedAssets, beforeDeployedAssets + amount0 + profit, "all of bob's deposit should be deployed"
+        );
+
+        // manager calls report
+        vm.prank(tpManagement);
+        gaugeStrategy.report();
+
+        // Test multiple users interaction, deposit is require to result in at least one shar
+        vm.assume(amount1 * gaugeStrategy.totalSupply() > gaugeStrategy.totalAssets());
+        mintAndDepositIntoStrategy(gaugeStrategy, charlie, amount1, gauge);
+        uint256 afterCharlieDeployedAssets = yearnStakingDelegate.balanceOf(address(gaugeStrategy), gauge);
+        assertEq(
+            afterCharlieDeployedAssets, afterBobDeployedAssets + amount1, "all of Charlie's deposit should be deployed"
+        );
+
+        uint256 afterTotalAssets = gaugeStrategy.totalAssets();
+        // Profit should only be compared to assets deposited before profit was reported+unlocked
+        assertEq(
+            afterTotalAssets - amount0 - amount1, beforeTotalAssets + profit, "report did not increase total assets"
+        );
+        // All assets should be deployed if there has been a report() since the deposit
+        assertEq(
+            afterTotalAssets,
+            yearnStakingDelegate.balanceOf(address(gaugeStrategy), gauge),
+            "all assets should be deployed"
+        );
     }
 }
