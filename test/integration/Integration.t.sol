@@ -151,11 +151,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
-        //todo: change after reward claim revert is implemented
-        vm.assume(amount > 1e18); // Minimum deposit size is required to farm dYFI emission
+        vm.assume(amount > 1e10); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
-        // We must set RewardsDuration to a low number to handle for small deposits
-        vm.prank(admin);
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -204,9 +201,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     function test_report_staking_rewards_profit_reward_split() public {
         // non-fuzzing for amount to ensure reward calculation
         uint256 amount = 10e18;
-        // We must set RewardsDuration to a low number to handle for small deposits
-        vm.prank(admin);
-        stakingDelegateRewards.setRewardsDuration(gauge, 12 hours);
         // Set the reward split for treasury and swap and lock
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
 
@@ -314,8 +308,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
-        //todo: change after reward claim revert is implemented
-        vm.assume(amount > 1e18); // Minimum deposit size is required to farm dYFI emission
+        vm.assume(amount > 1e10); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
 
         // deposit into strategy happens
