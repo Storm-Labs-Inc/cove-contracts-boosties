@@ -178,6 +178,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         _updateReward(address(0), stakingToken);
 
         uint256 periodFinish_ = periodFinish[stakingToken];
+        // slither-disable-next-line similar-names
         uint256 rewardDuration_ = rewardsDuration[stakingToken];
         uint256 newRewardRate = 0;
         // slither-disable-next-line timestamp

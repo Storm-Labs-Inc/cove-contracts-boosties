@@ -212,8 +212,8 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function harvest(address gauge) external returns (uint256) {
         // Checks
-        address swapAndLock_ = _swapAndLock;
-        if (swapAndLock_ == address(0)) {
+        address swapAndLockAddress = _swapAndLock;
+        if (swapAndLockAddress == address(0)) {
             revert Errors.SwapAndLockNotSet();
         }
         address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
@@ -221,7 +221,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Interactions
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, _treasury, gaugeRewardSplit[gauge]);
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLockAddress, _treasury, gaugeRewardSplit[gauge]);
     }
 
     /**
@@ -258,14 +258,14 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /**
      * @notice Sets the address for the SwapAndLock contract.
-     * @param swapAndLock_ Address of the SwapAndLock contract.
+     * @param swapAndLockAddress Address of the SwapAndLock contract.
      */
-    function setSwapAndLock(address swapAndLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSwapAndLock(address swapAndLockAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
-        if (swapAndLock_ == address(0)) {
+        if (swapAndLockAddress == address(0)) {
             revert Errors.ZeroAddress();
         }
-        _swapAndLock = swapAndLock_;
+        _swapAndLock = swapAndLockAddress;
     }
 
     /**
