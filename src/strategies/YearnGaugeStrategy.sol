@@ -14,9 +14,17 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     // Libraries
     using SafeERC20 for IERC20;
 
+    /// @notice Parameters for Curve swap used during harvest
     CurveSwapParams internal _harvestSwapParams;
+
+    /// @notice Maximum total assets that the strategy can manage
     uint256 public maxTotalAssets;
 
+    /// @notice Initializes the YearnGaugeStrategy
+    /// @param asset_ The address of the asset (gauge token)
+    /// @param yearnStakingDelegate_ The address of the YearnStakingDelegate
+    /// @param dYfi_ The address of the dYFI token
+    /// @param curveRouter_ The address of the Curve router
     constructor(
         address asset_,
         address yearnStakingDelegate_,
@@ -30,6 +38,8 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         _approveTokenForSwap(dYfi_);
     }
 
+    /// @notice Sets the parameters for the Curve swap used in the harvest function
+    /// @param curveSwapParams The parameters for the Curve swap
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external virtual onlyManagement {
         // Checks (includes external view calls)
         _validateSwapParams(curveSwapParams, dYfi, vaultAsset);
@@ -38,10 +48,14 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         _harvestSwapParams = curveSwapParams;
     }
 
+    /// @notice Sets the maximum total assets the strategy can manage
+    /// @param maxTotalAssets_ The maximum total assets
     function setMaxTotalAssets(uint256 maxTotalAssets_) external virtual onlyManagement {
         maxTotalAssets = maxTotalAssets_;
     }
 
+    /// @notice Calculates the available deposit limit for the strategy
+    /// @return The strategy's available deposit limit
     function availableDepositLimit(address) public view virtual override returns (uint256) {
         uint256 currentTotalAssets = TokenizedStrategy.totalAssets();
         uint256 maxTotalAssets_ = maxTotalAssets;
@@ -53,20 +67,28 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         }
     }
 
+    /// @dev Deploys funds into the YearnStakingDelegate by depositing the asset.
+    /// @param _amount The amount of the asset to deposit.
     function _deployFunds(uint256 _amount) internal virtual override {
         _depositToYSD(address(asset), _amount);
     }
 
+    /// @dev Withdraws funds from the YearnStakingDelegate by withdrawing the asset.
+    /// @param _amount The amount of the asset to withdraw.
     function _freeFunds(uint256 _amount) internal override {
         _withdrawFromYSD(address(asset), _amount);
     }
 
+    /// @dev Performs an emergency withdrawal from the YearnStakingDelegate.
+    /// @param amount The amount to withdraw in case of an emergency.
     function _emergencyWithdraw(uint256 amount) internal override {
         uint256 currentTotalBalance = TokenizedStrategy.totalDebt();
         uint256 withdrawAmount = amount > currentTotalBalance ? currentTotalBalance : amount;
         _withdrawFromYSD(address(asset), withdrawAmount);
     }
 
+    /// @notice Harvests dYFI rewards, swaps for the vault asset, and re-deposits or adds to idle balance
+    /// @return _totalAssets The total assets after harvest and redeposit/idle balance update
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Get any dYFI rewards
         address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(address(asset));

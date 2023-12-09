@@ -10,15 +10,20 @@ import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
+/// @title GaugeRewardReceiver
+/// @notice Contract to receive rewards from a Yearn gauge and distribute them according to specified splits.
+/// @dev Inherits from Clone and ReentrancyGuardUpgradeable for creating clones acts and preventing reentrancy attacks.
 contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
     // Libraries
     using SafeERC20 for IERC20;
 
+    /// @dev Initializes the contract by disabling initializers from the Clone pattern.
     constructor() {
         _disableInitializers();
     }
 
     /* ========== INITIALIZER ========== */
+    /// @notice Initializes the GaugeRewardReceiver contract.
     function initialize() public initializer {
         __ReentrancyGuard_init();
         IERC20(rewardToken()).safeApprove(stakingDelegateRewards(), type(uint256).max);
@@ -26,28 +31,39 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
 
     /* ========== VIEWS ========== */
 
+    /// @notice Gets the address of the staking delegate from the contract's immutable arguments.
+    /// @return The address of the staking delegate.
     function stakingDelegate() public pure returns (address) {
         return _getArgAddress(0);
     }
 
+    /// @notice Gets the address of the gauge from the contract's immutable arguments.
+    /// @return The address of the gauge.
     function gauge() public pure returns (address) {
         return _getArgAddress(20);
     }
 
+    /// @notice Gets the address of the reward token from the contract's immutable arguments.
+    /// @return The address of the reward token.
     function rewardToken() public pure returns (address) {
         return _getArgAddress(40);
     }
 
+    /// @notice Gets the address of the staking delegate rewards contract from the contract's immutable arguments.
+    /// @return The address of the staking delegate rewards contract.
     function stakingDelegateRewards() public pure returns (address) {
         return _getArgAddress(60);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
-    /// @return userRewardsAmount amount of rewards harvested for the msg.sender
     // TODO(Trail of Bits): PTAL at how to fix this reentrancy
     // slither-disable-start reentrancy-no-eth
+    /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
+    /// @param swapAndLock Address of the SwapAndLock contract.
+    /// @param treasury Address of the treasury to receive a portion of the rewards.
+    /// @param rewardSplit Struct containing the split percentages for lock, treasury, and user rewards.
+    /// @return userRewardsAmount The amount of rewards harvested for the user.
     function harvest(
         address swapAndLock,
         address treasury,
