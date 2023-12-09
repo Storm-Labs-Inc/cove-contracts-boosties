@@ -397,7 +397,6 @@ contract YearnV3BaseTest is BaseTest {
         string memory name,
         address _asset,
         address _yearnStakingDelegateAddress,
-        address _dYFIAddress,
         address _curveRouterAddress
     )
         public
@@ -405,9 +404,7 @@ contract YearnV3BaseTest is BaseTest {
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IYearnGaugeStrategy _wrappedStrategy = IYearnGaugeStrategy(
-            address(
-                new YearnGaugeStrategy(address(_asset), _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
-            )
+            address(new YearnGaugeStrategy(address(_asset), _yearnStakingDelegateAddress, _curveRouterAddress))
         );
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);

@@ -77,6 +77,20 @@ contract CurveRouterSwapper {
         );
     }
 
+    function _swapWithEth(
+        CurveSwapParams memory curveSwapParams,
+        uint256 amount,
+        uint256 expected,
+        address receiver
+    )
+        internal
+        returns (uint256)
+    {
+        return ICurveRouter(_CURVE_ROUTER).exchange{ value: amount }(
+            curveSwapParams.route, curveSwapParams.swapParams, amount, expected, curveSwapParams.pools, receiver
+        );
+    }
+
     /**
      * @dev Validates the swap parameters against the provided route and tokens.
      * @param curveSwapParams The parameters for the swap.

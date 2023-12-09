@@ -47,7 +47,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         //// wrapped strategy ////
         {
             yearnGaugeStrategy = setUpWrappedStrategy(
-                "Wrapped YearnV3 Strategy", gauge, address(mockYearnStakingDelegate), MAINNET_DYFI, MAINNET_CURVE_ROUTER
+                "Wrapped YearnV3 Strategy", gauge, address(mockYearnStakingDelegate), MAINNET_CURVE_ROUTER
             );
             vm.startPrank(tpManagement);
             // setting CurveRouterSwapper params for harvest rewards swapping

@@ -12,6 +12,7 @@ contract MockCurveRouter is ICurveRouter {
         uint256
     )
         public
+        payable
         returns (uint256)
     {
         address fromToken = route[0];
@@ -37,6 +38,7 @@ contract MockCurveRouter is ICurveRouter {
         address
     )
         public
+        payable
         returns (uint256)
     {
         return exchange(route, swapParams, amount, expected);
@@ -50,6 +52,7 @@ contract MockCurveRouter is ICurveRouter {
         address[5] memory
     )
         public
+        payable
         returns (uint256)
     {
         return exchange(route, swapParams, amount, expected);

@@ -66,9 +66,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
         MockYearnStakingDelegate(address(yearnStakingDelegate)).setGaugeStakingRewards(stakingDelegateRewards);
 
         vm.startPrank(manager);
-        yearnGaugeStrategy = IYearnGaugeStrategy(
-            address(new YearnGaugeStrategy(gauge, address(yearnStakingDelegate), dYfi, curveRouter))
-        );
+        yearnGaugeStrategy =
+            IYearnGaugeStrategy(address(new YearnGaugeStrategy(gauge, address(yearnStakingDelegate), curveRouter)));
         yearnGaugeStrategy.setPerformanceFeeRecipient(treasury);
         yearnGaugeStrategy.setKeeper(keeper);
         yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));

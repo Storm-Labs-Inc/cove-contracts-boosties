@@ -82,9 +82,9 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
     }
 
-    function _setRewardSplit(address gauge, uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
+    function _setRewardSplit(address gauge_, uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
         vm.prank(admin);
-        yearnStakingDelegate.setRewardSplit(gauge, treasurySplit, strategySplit, veYfiSplit);
+        yearnStakingDelegate.setRewardSplit(gauge_, treasurySplit, strategySplit, veYfiSplit);
     }
 
     function _lockYfiForYSD(uint256 amount) internal {
