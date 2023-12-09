@@ -172,7 +172,7 @@ contract CurveRouterSwapperTest is BaseTest {
         curveSwapParams.route[2] = MAINNET_USDC;
         curveSwapParams.route[3] = MAINNET_TRI_CRYPTO_USDC;
         curveSwapParams.route[4] = MAINNET_ETH;
-        curveSwapParams.route[5] = MAINNET_YFI_ETH_POOL;
+        curveSwapParams.route[5] = MAINNET_ETH_YFI_POOL;
         curveSwapParams.route[6] = MAINNET_YFI;
 
         // i, j, swap_type, pool_type, n_coins

@@ -30,7 +30,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
 
     /// @dev Address of WETH
     address internal constant _WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address internal constant _ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /// @dev Address of the Curve pool for [ETH/WETH, YFI]
     address internal constant _ETH_YFI_POOL = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
@@ -142,11 +141,11 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
             revert Errors.InvalidTokensReceived();
         }
         IWETH(_WETH).withdraw(amounts[0]);
+        uint256 returnAmount = amounts[0] + feeAmounts[0];
         uint256 yfiAmount = _redeem(abi.decode(userData, (uint256)), amounts[0]);
         // Swap YFI for ETH
-        uint256 ethAmount = ICurveTwoAssetPool(_ETH_YFI_POOL).exchange(1, 0, yfiAmount, 0, true);
+        uint256 ethAmount = ICurveTwoAssetPool(_ETH_YFI_POOL).exchange(1, 0, yfiAmount, returnAmount, true);
         // Pay back the flash loan
-        uint256 returnAmount = amounts[0] + feeAmounts[0];
         if (ethAmount < returnAmount) {
             revert Errors.InsufficientFlashLoanPayment();
         }
@@ -155,6 +154,10 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     }
 
     function _convertDYfiToEth(uint256 dYfiAmount) internal returns (uint256) {
+        address flashloanProvider_ = flashloanProvider;
+        if (flashloanProvider_ == address(0)) {
+            revert Errors.FlashloanProviderNotSet();
+        }
         // Determine ETH required for redemption
         uint256 ethRequired = _ethRequiredForRedemption(dYfiAmount);
         IERC20[] memory tokens = new IERC20[](1);
@@ -162,9 +165,16 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = ethRequired;
         // Flashloan ETH required for redemption
-        IFlashLoanProvider(flashloanProvider).flashLoan(this, tokens, amounts, abi.encode(dYfiAmount));
+        IFlashLoanProvider(flashloanProvider_).flashLoan(this, tokens, amounts, abi.encode(dYfiAmount));
         // Return ETH balance
         return address(this).balance;
+    }
+
+    function setFlashLoanProvider(address flashloanProvider_) external onlyManagement {
+        if (flashloanProvider_ == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        flashloanProvider = flashloanProvider_;
     }
 
     receive() external payable { }

@@ -5,10 +5,9 @@ import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 interface IYearnGaugeStrategy is IStrategy {
-    // Need to override the `asset` function since
-    // its defined in both interfaces inherited.
     function vault() external view returns (address);
     function yearnStakingDelegate() external view returns (address);
-    function setHarvestSwapParams(CurveRouterSwapper.CurveSwapParams memory _curveSwapParams) external;
-    function setMaxTotalAssets(uint256 _maxTotalAssets) external;
+    function setHarvestSwapParams(CurveRouterSwapper.CurveSwapParams memory curveSwapParams_) external;
+    function setMaxTotalAssets(uint256 maxTotalAssets_) external;
+    function setFlashLoanProvider(address flashloanProvider_) external;
 }

@@ -3,8 +3,9 @@ pragma solidity ^0.8.18;
 
 import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Constants } from "test/utils/Constants.sol";
 
-contract MockCurveRouter is ICurveRouter {
+contract MockCurveRouter is ICurveRouter, Constants {
     function exchange(
         address[11] memory route,
         uint256[5][5] memory,
@@ -24,8 +25,16 @@ contract MockCurveRouter is ICurveRouter {
             toToken = route[i];
         }
         uint256 outputAmount = IERC20(toToken).balanceOf(address(this));
-        IERC20(fromToken).transferFrom(msg.sender, address(this), amount);
-        IERC20(toToken).transfer(msg.sender, outputAmount);
+        if (fromToken != MAINNET_ETH) {
+            IERC20(fromToken).transferFrom(msg.sender, address(this), amount);
+        } else {
+            require(msg.value == amount, "MockCurveRouter: incorrect ETH amount");
+        }
+        if (toToken != MAINNET_ETH) {
+            IERC20(toToken).transfer(msg.sender, outputAmount);
+        } else {
+            payable(msg.sender).transfer(outputAmount);
+        }
         return outputAmount;
     }
 

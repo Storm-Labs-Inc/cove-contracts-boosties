@@ -220,7 +220,7 @@ contract YearnV3BaseTest is BaseTest {
         dYfiToYfiParams.route[0] = MAINNET_DYFI;
         dYfiToYfiParams.route[1] = MAINNET_DYFI_ETH_POOL;
         dYfiToYfiParams.route[2] = MAINNET_ETH;
-        dYfiToYfiParams.route[3] = MAINNET_YFI_ETH_POOL;
+        dYfiToYfiParams.route[3] = MAINNET_ETH_YFI_POOL;
         dYfiToYfiParams.route[4] = MAINNET_YFI;
 
         dYfiToYfiParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];

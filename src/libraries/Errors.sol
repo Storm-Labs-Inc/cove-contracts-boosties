@@ -81,6 +81,7 @@ library Errors {
     error TokenNotFoundInPool(address token);
     error InvalidTokensReceived();
     error InsufficientFlashLoanPayment();
+    error FlashloanProviderNotSet();
 
     /// CURVE TWO ASSET POOL YEARN GAUGE STRATEGY ///
     error InvalidDepositToken();

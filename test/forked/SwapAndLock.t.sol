@@ -31,7 +31,7 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
         // Calculate expected YFI amount after swapping through curve pools
         // dYFI -> WETH then WETH -> YFI
         uint256 wethAmount = ICurveTwoAssetPool(MAINNET_DYFI_ETH_POOL).get_dy(0, 1, dYfiAmount);
-        uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_YFI_ETH_POOL).get_dy(0, 1, wethAmount);
+        uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_ETH_YFI_POOL).get_dy(0, 1, wethAmount);
 
         vm.prank(admin);
         ISwapAndLock(swapAndLock).swapDYfiToVeYfi(yfiAmount);
@@ -69,7 +69,7 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
         params.route[0] = MAINNET_USDC;
         params.route[1] = MAINNET_TRI_CRYPTO_USDC;
         params.route[2] = MAINNET_ETH;
-        params.route[3] = MAINNET_YFI_ETH_POOL;
+        params.route[3] = MAINNET_ETH_YFI_POOL;
         params.route[4] = MAINNET_YFI;
 
         params.swapParams[0] = [uint256(0), 2, 1, 2, 2];
@@ -100,7 +100,7 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
         params.route[0] = MAINNET_DYFI;
         params.route[1] = MAINNET_DYFI_ETH_POOL;
         params.route[2] = MAINNET_WETH;
-        params.route[3] = MAINNET_YFI_ETH_POOL;
+        params.route[3] = MAINNET_ETH_YFI_POOL;
         params.route[4] = MAINNET_YFI;
 
         params.swapParams[0] = [uint256(0), 1, 1, 2, 2];

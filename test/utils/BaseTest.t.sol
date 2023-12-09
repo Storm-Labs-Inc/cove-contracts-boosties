@@ -31,6 +31,7 @@ abstract contract BaseTest is Test, Constants {
     function setUp() public virtual {
         // Instantiate vyper deployer
         vyperDeployer = new VyperDeployer();
+        _labelEthereumAddresses();
     }
 
     //// HELPERS ////
