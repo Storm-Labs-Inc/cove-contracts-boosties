@@ -88,9 +88,12 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_deposit(uint256 amount) public {
+    function testFuzz_deposit_buh(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
+
+        vm.expectEmit();
+        emit IYearnGaugeStrategy.UserBalanceUpdate(alice, gauge, amount);
 
         // deposit into strategy happens
         _depositFromUser(alice, amount);
@@ -125,6 +128,9 @@ contract YearnGaugeStrategy_Test is BaseTest {
         _depositFromUser(alice, amount); // deposit into strategy happens
         uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(wrappedYearnV3Strategy), gauge);
         assertEq(beforeDeployedAssets, amount, "all of deposit should be deployed");
+
+        vm.expectEmit();
+        emit IYearnGaugeStrategy.UserBalanceUpdate(alice, gauge, amount);
 
         vm.prank(alice);
         wrappedYearnV3Strategy.withdraw(amount, alice, alice);

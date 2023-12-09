@@ -20,6 +20,9 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     /// @notice Maximum total assets that the strategy can manage
     uint256 public maxTotalAssets;
 
+    /// @notice Emitted when a users balance is updated
+    event UserBalanceUpdate(address indexed sender, address indexed gauge, uint256 userGaugeBalance);
+
     /// @notice Initializes the YearnGaugeStrategy
     /// @param asset_ The address of the asset (gauge token)
     /// @param yearnStakingDelegate_ The address of the YearnStakingDelegate
@@ -71,12 +74,22 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     /// @param _amount The amount of the asset to deposit.
     function _deployFunds(uint256 _amount) internal virtual override {
         _depositToYSD(address(asset), _amount);
+        emit UserBalanceUpdate(
+            msg.sender,
+            address(asset),
+            IYearnStakingDelegate(yearnStakingDelegate).balanceOf(msg.sender, address(asset))
+        );
     }
 
     /// @dev Withdraws funds from the YearnStakingDelegate by withdrawing the asset.
     /// @param _amount The amount of the asset to withdraw.
     function _freeFunds(uint256 _amount) internal override {
         _withdrawFromYSD(address(asset), _amount);
+        emit UserBalanceUpdate(
+            msg.sender,
+            address(asset),
+            IYearnStakingDelegate(yearnStakingDelegate).balanceOf(msg.sender, address(asset))
+        );
     }
 
     /// @dev Performs an emergency withdrawal from the YearnStakingDelegate.

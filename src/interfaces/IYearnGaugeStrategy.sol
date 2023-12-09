@@ -11,4 +11,7 @@ interface IYearnGaugeStrategy is IStrategy {
     function yearnStakingDelegate() external view returns (address);
     function setHarvestSwapParams(CurveRouterSwapper.CurveSwapParams memory _curveSwapParams) external;
     function setMaxTotalAssets(uint256 _maxTotalAssets) external;
+    //// events ////
+
+    event UserBalanceUpdate(address indexed sender, address indexed gauge, uint256 userGaugeBalance);
 }
