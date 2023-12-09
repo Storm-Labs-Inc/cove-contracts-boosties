@@ -54,23 +54,23 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     mapping(address target => bool) private _blockedTargets;
 
     // Variables
-    address public treasury;
     bool public shouldPerpetuallyLock;
-    address public swapAndLock;
+    address internal _treasury;
+    address internal _swapAndLock;
 
     /* ========== CONSTRUCTOR ========== */
     /**
      * @dev Initializes the contract by setting up roles and initializing state variables.
      * @param gaugeRewardReceiverImpl Address of the GaugeRewardReceiver implementation.
-     * @param _treasury Address of the treasury.
+     * @param treasury_ Address of the treasury.
      * @param admin Address of the admin.
      * @param manager Address of the manager.
      */
-    constructor(address gaugeRewardReceiverImpl, address _treasury, address admin, address manager) {
+    constructor(address gaugeRewardReceiverImpl, address treasury_, address admin, address manager) {
         // Checks
         // Check for zero addresses
         if (
-            gaugeRewardReceiverImpl == address(0) || _treasury == address(0) || admin == address(0)
+            gaugeRewardReceiverImpl == address(0) || treasury_ == address(0) || admin == address(0)
                 || manager == address(0)
         ) {
             revert Errors.ZeroAddress();
@@ -78,7 +78,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
         // Effects
         // Set storage variables
-        treasury = _treasury;
+        _treasury = treasury_;
         shouldPerpetuallyLock = true;
         _GAUGE_REWARD_RECEIVER_IMPL = gaugeRewardReceiverImpl;
         _blockedTargets[_YFI] = true;
@@ -108,6 +108,14 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     function veYfi() external pure returns (address) {
         return _VE_YFI;
+    }
+
+    function treasury() external view returns (address) {
+        return _treasury;
+    }
+
+    function swapAndLock() external view returns (address) {
+        return _swapAndLock;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -181,7 +189,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        IERC20(_D_YFI).safeTransfer(treasury, IERC20(_D_YFI).balanceOf(address(this)));
+        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
     }
 
     /**
@@ -194,7 +202,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IYfiRewardPool(_YFI_REWARD_POOL).claim();
-        IERC20(_YFI).safeTransfer(treasury, IERC20(_YFI).balanceOf(address(this)));
+        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
     }
 
     /**
@@ -204,7 +212,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function harvest(address gauge) external returns (uint256) {
         // Checks
-        address swapAndLock_ = swapAndLock;
+        address swapAndLock_ = _swapAndLock;
         if (swapAndLock_ == address(0)) {
             revert Errors.SwapAndLockNotSet();
         }
@@ -213,7 +221,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Interactions
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, _treasury, gaugeRewardSplit[gauge]);
     }
 
     /**
@@ -245,7 +253,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ZeroAddress();
         }
         // Effects
-        treasury = treasury_;
+        _treasury = treasury_;
     }
 
     /**
@@ -257,7 +265,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (swapAndLock_ == address(0)) {
             revert Errors.ZeroAddress();
         }
-        swapAndLock = swapAndLock_;
+        _swapAndLock = swapAndLock_;
     }
 
     /**
