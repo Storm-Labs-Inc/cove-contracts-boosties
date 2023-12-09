@@ -374,15 +374,15 @@ contract YearnGaugeStrategy_Test is BaseTest {
 
     function testFuzz_setHarvestSwapParams_revertWhen_CallerIsNotManagement(address caller) public {
         vm.assume(caller != manager);
-        vm.assume(caller != address(0));
+        vm.assume(caller != admin);
         vm.expectRevert("!management");
         vm.prank(caller);
         yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
     }
 
-    function test_emergencyWithdraw_revertWhen_nonManager_buh(address caller) public {
+    function test_emergencyWithdraw_revertWhen_nonManager(address caller) public {
         vm.assume(caller != manager);
-        vm.assume(caller != address(0));
+        vm.assume(caller != admin);
         vm.prank(caller);
         vm.expectRevert("!emergency authorized");
         yearnGaugeStrategy.emergencyWithdraw(1e18);

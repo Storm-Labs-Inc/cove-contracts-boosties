@@ -62,26 +62,23 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
         //// wrapped strategy ////
         {
-            yearnGaugeStrategy = setUpWrappedStrategy(
-                "Yearn Gauge Strategy", gauge, address(yearnStakingDelegate), MAINNET_DYFI, MAINNET_CURVE_ROUTER
-            );
+            yearnGaugeStrategy =
+                setUpWrappedStrategy("Yearn Gauge Strategy", gauge, address(yearnStakingDelegate), MAINNET_CURVE_ROUTER);
             vm.startPrank(tpManagement);
             // setting CurveRouterSwapper params for harvest rewards swapping
             CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
             // [token_from, pool, token_to, pool, ...]
-            curveSwapParams.route[0] = MAINNET_DYFI;
-            curveSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
-            curveSwapParams.route[2] = MAINNET_WETH;
-            curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
-            curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL; // expect the lp token back
+            curveSwapParams.route[0] = MAINNET_ETH;
+            curveSwapParams.route[1] = MAINNET_WETH_YETH_POOL;
+            curveSwapParams.route[2] = MAINNET_WETH_YETH_POOL; // expect the lp token back
 
             // i, j, swap_type, pool_type, n_coins
-            curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2]; // dYFI -> wETH
             // wETH -> weth/yeth pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
-            curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
+            curveSwapParams.swapParams[0] = [uint256(0), 0, 4, 1, 2];
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
             yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
+            yearnGaugeStrategy.setFlashLoanProvider(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
             vm.stopPrank();
         }
 
