@@ -53,7 +53,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
             // setting CurveRouterSwapper params for harvest rewards swapping
             CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
             // [token_from, pool, token_to, pool, ...]
-            curveSwapParams.route[0] = MAINNET_ETH;
+            curveSwapParams.route[0] = MAINNET_WETH;
             curveSwapParams.route[1] = MAINNET_WETH_YETH_POOL;
             curveSwapParams.route[2] = MAINNET_WETH_YETH_POOL; // expect the lp token back
 
@@ -277,7 +277,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         vm.startPrank(tpManagement);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
         // Set route to include a token index that does not exist in the given pools
-        curveSwapParams.route[0] = MAINNET_ETH;
+        curveSwapParams.route[0] = MAINNET_WETH;
         curveSwapParams.route[1] = MAINNET_WETH_YETH_POOL;
         curveSwapParams.route[2] = MAINNET_WETH_YETH_POOL;
 

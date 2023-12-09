@@ -104,7 +104,7 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
             IERC20(rewardToken()).safeTransfer(swapAndLock, swapAndLockAmount);
         }
 
-        return userAmount;
+        return totalRewardsAmount;
     }
     // slither-disable-end reentrancy-no-eth
 }

@@ -86,7 +86,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
             IYearnGaugeStrategy(address(new YearnGaugeStrategy(gauge, address(yearnStakingDelegate), curveRouter)));
         yearnGaugeStrategy.setPerformanceFeeRecipient(treasury);
         yearnGaugeStrategy.setKeeper(keeper);
-        yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(MAINNET_ETH, vaultAsset));
+        yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(MAINNET_WETH, vaultAsset));
         yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
         yearnGaugeStrategy.setFlashLoanProvider(flashLoanProvider);
         vm.stopPrank();
@@ -374,7 +374,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
 
     function testFuzz_setHarvestSwapParams_revertWhen_CallerIsNotManagement(address caller) public {
         vm.assume(caller != manager);
-        vm.assume(caller != admin);
+        vm.assume(caller != address(0));
         vm.expectRevert("!management");
         vm.prank(caller);
         yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
@@ -383,6 +383,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
     function test_emergencyWithdraw_revertWhen_nonManager(address caller) public {
         vm.assume(caller != manager);
         vm.assume(caller != admin);
+        vm.assume(caller != address(0));
         vm.prank(caller);
         vm.expectRevert("!emergency authorized");
         yearnGaugeStrategy.emergencyWithdraw(1e18);

@@ -68,7 +68,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // setting CurveRouterSwapper params for harvest rewards swapping
             CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
             // [token_from, pool, token_to, pool, ...]
-            curveSwapParams.route[0] = MAINNET_ETH;
+            curveSwapParams.route[0] = MAINNET_WETH;
             curveSwapParams.route[1] = MAINNET_WETH_YETH_POOL;
             curveSwapParams.route[2] = MAINNET_WETH_YETH_POOL; // expect the lp token back
 

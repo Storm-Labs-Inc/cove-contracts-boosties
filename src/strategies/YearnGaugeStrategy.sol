@@ -48,13 +48,14 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         YearnGaugeStrategyBase(asset_, yearnStakingDelegate_)
     {
         IERC20(yfi).forceApprove(_ETH_YFI_POOL, type(uint256).max);
+        _approveTokenForSwap(_WETH);
     }
 
     /// @notice Sets the parameters for the Curve swap used in the harvest function
     /// @param curveSwapParams The parameters for the Curve swap
     function setHarvestSwapParams(CurveSwapParams memory curveSwapParams) external virtual onlyManagement {
         // Checks (includes external view calls)
-        _validateSwapParams(curveSwapParams, _ETH, vaultAsset);
+        _validateSwapParams(curveSwapParams, _WETH, vaultAsset);
 
         // Effects
         _harvestSwapParams = curveSwapParams;
@@ -110,8 +111,8 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         if (dYFIBalance > 0) {
             // This is a dangerous swap call that will get sandwiched if sent to a public network
             // Must be sent to a private network or use a minAmount derived from a price oracle
-            uint256 receivedEth = _convertDYfiToEth(dYFIBalance);
-            uint256 receivedBaseTokens = _swapWithEth(_harvestSwapParams, receivedEth, 0, address(this));
+            uint256 receivedWeth = _convertDYfiToWeth(dYFIBalance);
+            uint256 receivedBaseTokens = _swap(_harvestSwapParams, receivedWeth, 0, address(this));
             uint256 receivedVaultTokens = IERC4626(vault).deposit(receivedBaseTokens, address(this));
             uint256 receivedGaugeTokens = IERC4626(address(asset)).deposit(receivedVaultTokens, address(this));
 
@@ -149,11 +150,11 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         if (ethAmount < returnAmount) {
             revert Errors.InsufficientFlashLoanPayment();
         }
-        IWETH(_WETH).deposit{ value: returnAmount }();
+        IWETH(_WETH).deposit{ value: address(this).balance }();
         IERC20(_WETH).safeTransfer(msg.sender, returnAmount);
     }
 
-    function _convertDYfiToEth(uint256 dYfiAmount) internal returns (uint256) {
+    function _convertDYfiToWeth(uint256 dYfiAmount) internal returns (uint256) {
         address flashloanProvider_ = flashloanProvider;
         if (flashloanProvider_ == address(0)) {
             revert Errors.FlashloanProviderNotSet();
@@ -166,8 +167,8 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         amounts[0] = ethRequired;
         // Flashloan ETH required for redemption
         IFlashLoanProvider(flashloanProvider_).flashLoan(this, tokens, amounts, abi.encode(dYfiAmount));
-        // Return ETH balance
-        return address(this).balance;
+        // Return WETH balance
+        return IERC20(_WETH).balanceOf(address(this));
     }
 
     function setFlashLoanProvider(address flashloanProvider_) external onlyManagement {

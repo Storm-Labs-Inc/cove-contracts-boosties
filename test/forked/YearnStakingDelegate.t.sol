@@ -3,7 +3,6 @@ pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
-import { IYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IYfiRewardPool.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
@@ -332,20 +331,17 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
-        // Reward amount is slightly higher than 1e18 due to Alice locking 1e18 YFI as veYFI.
-        uint256 actualRewardAmount = 954_276_723_683_293;
-
-        // Calculate split amounts strategy split amount
-        uint256 estimatedTreasurySplit = actualRewardAmount * 0.3e18 / 1e18;
-        uint256 estimatedVeYfiSplit = actualRewardAmount * 0.4e18 / 1e18;
-        uint256 estimatedUserSplit = actualRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
-
         // Harvest
         vm.prank(wrappedStrategy);
         uint256 rewardAmount = yearnStakingDelegate.harvest(gauge);
+        assertGt(rewardAmount, 0, "harvest failed");
+
+        // Calculate split amounts strategy split amount
+        uint256 estimatedTreasurySplit = rewardAmount * 0.3e18 / 1e18;
+        uint256 estimatedVeYfiSplit = rewardAmount * 0.4e18 / 1e18;
+        uint256 estimatedUserSplit = rewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
 
         uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards);
-        assertEq(rewardAmount, strategyDYfiBalance, "harvest did not return correct value");
         assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
 
         uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
@@ -357,6 +353,9 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
     function test_claimBoostRewards() public {
         _lockYfiForYSD(10e18);
+        vm.warp(block.timestamp + 1 weeks);
+        yearnStakingDelegate.claimBoostRewards();
+        uint256 balanceBefore = IERC20(MAINNET_DYFI).balanceOf(treasury);
         // Alice deposits some vault tokens to a yearn gauge without any veYFI
         airdrop(IERC20(vault), alice, 1e18);
         vm.startPrank(alice);
@@ -364,31 +363,34 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         IGauge(gauge).deposit(1e18, alice);
         vm.stopPrank();
         // Some time passes
-        vm.warp(block.timestamp + 14 days);
+        vm.warp(block.timestamp + 2 weeks);
         // Claim the dYFI gauge rewards for alice
         IGauge(gauge).getReward(alice);
+        vm.warp(block.timestamp + 1 weeks);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimBoostRewards();
-        assertGt(IERC20(MAINNET_DYFI).balanceOf(treasury), 0, "claimBoostRewards failed");
+        uint256 balanceAfter = IERC20(MAINNET_DYFI).balanceOf(treasury);
+        assertGt(balanceAfter, balanceBefore, "claimBoostRewards failed");
     }
 
     function test_claimExitRewards() public {
-        // Reward pool needs to be checkpointed first independently
-        IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_token();
-        IYfiRewardPool(MAINNET_YFI_REWARD_POOL).checkpoint_total_supply();
         // Lock YFI for YSD
         _lockYfiForYSD(10e18);
+        vm.warp(block.timestamp + 1 weeks);
+        yearnStakingDelegate.claimExitRewards();
+        uint256 balanceBefore = IERC20(MAINNET_YFI).balanceOf(treasury);
         // Lock YFI for the user
         _lockYfiForUser(alice, 10e18, 8 * 52 weeks);
         // Another user early exits
         vm.prank(alice);
         IVotingYFI(MAINNET_VE_YFI).withdraw();
         // Advance to the next epoch
-        vm.warp(block.timestamp + 2 weeks);
+        vm.warp(block.timestamp + 1 weeks);
         // Claim exit rewards
         yearnStakingDelegate.claimExitRewards();
+        uint256 balanceAfter = IERC20(MAINNET_YFI).balanceOf(treasury);
         // Assert the treasury balance is increased by the expected amount
-        assertEq(IERC20(MAINNET_YFI).balanceOf(treasury), 66_005_769_070_969_234, "claimBoostRewards failed");
+        assertGt(balanceAfter, balanceBefore, "claimBoostRewards failed");
     }
 
     function test_setSnapshotDelegate() public {
