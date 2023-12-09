@@ -435,14 +435,14 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function logStratInfo(address strategy) public view {
-        IYearnGaugeStrategy wrappedYearnV3Strategy = IYearnGaugeStrategy(strategy);
+        IYearnGaugeStrategy yearnGaugeStrategy = IYearnGaugeStrategy(strategy);
         console.log("****************************************");
-        console.log("price per share: ", wrappedYearnV3Strategy.pricePerShare());
-        console.log("total assets: ", wrappedYearnV3Strategy.totalAssets());
-        console.log("total supply: ", wrappedYearnV3Strategy.totalSupply());
-        console.log("total debt: ", wrappedYearnV3Strategy.totalDebt());
-        console.log("balance of test executor: ", wrappedYearnV3Strategy.balanceOf(address(this)));
-        console.log("strategy USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(wrappedYearnV3Strategy)));
+        console.log("price per share: ", yearnGaugeStrategy.pricePerShare());
+        console.log("total assets: ", yearnGaugeStrategy.totalAssets());
+        console.log("total supply: ", yearnGaugeStrategy.totalSupply());
+        console.log("total debt: ", yearnGaugeStrategy.totalDebt());
+        console.log("balance of test executor: ", yearnGaugeStrategy.balanceOf(address(this)));
+        console.log("strategy USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(yearnGaugeStrategy)));
     }
 
     function logVaultInfo(string memory name) public view {
