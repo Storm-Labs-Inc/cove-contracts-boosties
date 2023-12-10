@@ -302,7 +302,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
         assertEq(yearnGaugeStrategy.balanceOf(treasury), 0, "treasury should have 0 profit");
     }
 
-    function testFuzz_report_revertWhen_FlashloanProviderNotSet(uint256 amount) public {
+    function testFuzz_report_revertWhen_FlashLoanProviderNotSet(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
         uint256 profitedVaultAssetAmount = 1e18;

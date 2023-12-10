@@ -156,7 +156,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     function _convertDYfiToWeth(uint256 dYfiAmount) internal returns (uint256) {
         address flashloanProvider_ = flashloanProvider;
         if (flashloanProvider_ == address(0)) {
-            revert Errors.FlashloanProviderNotSet();
+            revert Errors.FlashLoanProviderNotSet();
         }
         // Determine ETH required for redemption
         uint256 ethRequired = _ethRequiredForRedemption(dYfiAmount);
