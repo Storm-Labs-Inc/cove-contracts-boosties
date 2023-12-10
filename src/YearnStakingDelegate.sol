@@ -140,8 +140,8 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // Effects
         uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
         balanceOf[msg.sender][gauge] = newBalance;
-        emit Withdraw(msg.sender, gauge, amount);
         // Interactions
+        emit Withdraw(msg.sender, gauge, amount);
         _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }
@@ -374,10 +374,10 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         gaugeRewardReceivers[gauge] = receiver;
         _blockedTargets[receiver] = true;
         // Interactions
+        emit GaugeRewardsSet(gauge, stakingDelegateRewards, receiver);
         GaugeRewardReceiver(receiver).initialize();
         IGauge(gauge).setRecipient(receiver);
         StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
-        emit GaugeRewardsSet(gauge, stakingDelegateRewards, receiver);
     }
 
     /// @notice Set perpetual lock status
