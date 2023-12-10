@@ -67,16 +67,19 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
     /**
      * @notice Calculates the expected amount of ETH the caller will receive for redeeming dYFI for YFI for the given
      * users and amounts.
+     * @dev This assumes flash loan fee of 0.
      * @param dYfiAmount total dYFI amount that should be redeemed for YFI.
      */
     function expectedMassRedeemReward(uint256 dYfiAmount) external view returns (uint256) {
         if (dYfiAmount == 0) {
             return 0;
         }
+        // The ETH required for redemption will be flash loaned from Balancer
         uint256 ethRequired = _getEthRequired(dYfiAmount);
-        uint256 totalYfiRequired = (dYfiAmount - ethRequired * (1e18 + slippage) / _getLatestPrice());
-        uint256 yfiToSwap = dYfiAmount - totalYfiRequired;
+        uint256 yfiToDistribute = (dYfiAmount - ethRequired * (1e18 + slippage) / _getLatestPrice());
+        uint256 yfiToSwap = dYfiAmount - yfiToDistribute;
         uint256 minDy = ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).get_dy(1, 0, yfiToSwap);
+        // Return surplus ETH
         return minDy - ethRequired;
     }
 
@@ -108,20 +111,22 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
         // Determine ETH required for redemption
         uint256 ethRequired = _getEthRequired(totalDYfiAmount);
         // Calculate total YFI that should be sent to dYFI holders
-        uint256 totalYfiRequired = (totalDYfiAmount - ethRequired * (1e18 + slippage) / _getLatestPrice());
+        uint256 yfiToDistribute = (totalDYfiAmount - ethRequired * (1e18 + slippage) / _getLatestPrice());
         // Construct flash loan parameters
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = IERC20(_WETH);
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = ethRequired;
         // Flashloan ETH required for redemption. After the flash loan, this contract will have
-        // YFI to distribute to dYFI holders and some ETH to pay back the caller.
+        // YFI to distribute to dYFI holders and some ETH to reward the caller.
         IFlashLoanProvider(_FLASH_LOAN_PROVIDER).flashLoan(
-            this, tokens, amounts, abi.encode(totalDYfiAmount, totalYfiRequired)
+            this, tokens, amounts, abi.encode(totalDYfiAmount, yfiToDistribute)
         );
-        // Distribute YFI to dYFI holders
+        // Distribute YFI to dYFI holders proportionally to their dYFI amounts
+        // If for any reason, the flashLoan call resulted in less YFI than yfiToDistribute, the following
+        // distribution would revert on a transfer call.
         for (uint256 i = 0; i < dYfiHolders.length; i++) {
-            uint256 yfiAmount = dYfiAmounts[i] * totalYfiRequired * 1e18 / totalDYfiAmount / 1e18;
+            uint256 yfiAmount = dYfiAmounts[i] * yfiToDistribute * 1e18 / totalDYfiAmount / 1e18;
             emit DYfiRedeemed(dYfiHolders[i], dYfiAmounts[i], yfiAmount);
             IERC20(_YFI).safeTransfer(dYfiHolders[i], yfiAmount);
         }
@@ -158,17 +163,19 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
         // Calculate ETH payment to the flash loan provider
         uint256 flashLoanPayment = amounts[0] + feeAmounts[0];
         // Decode userData
-        (uint256 totalDYfiAmount, uint256 totalYfiRequired) = abi.decode(userData, (uint256, uint256));
+        (uint256 totalDYfiAmount, uint256 yfiToDistribute) = abi.decode(userData, (uint256, uint256));
         // Redeem all dYFI for YFI
         uint256 redeemedYfiAmount = IRedemption(_REDEMPTION).redeem{ value: amounts[0] }(totalDYfiAmount);
-        uint256 yfiToSwap = redeemedYfiAmount - totalYfiRequired;
-        // Swap YFI for ETH. Expect to receive at least flashLoanPayment
-        uint256 ethAmount = ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).exchange(1, 0, yfiToSwap, flashLoanPayment, true);
-        // Pay back the flash loan
-        if (ethAmount < flashLoanPayment) {
-            revert Errors.InsufficientFlashLoanPayment();
-        }
+        // Calculate amount of YFI to swap for ETH for the flash loan payment and the caller reward
+        uint256 yfiToSwap = redeemedYfiAmount - yfiToDistribute;
+        // Swap YFI for ETH. Require at least flashLoanPayment ETH to be received from the swap.
+        // Any surplus ETH will be reserved for the caller of massRedeem.
+        ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).exchange(1, 0, yfiToSwap, flashLoanPayment, true);
+        // On correct behavior of the curve pool, the swap should result in at least flashLoanPayment ETH
+        // If the swap behaved incorrectly and returned less than flashLoanPayment ETH, then the WETH deposit
+        // call would fail with out of funds error.
         IWETH(_WETH).deposit{ value: flashLoanPayment }();
+        // Pay back the flash loan
         IERC20(_WETH).safeTransfer(msg.sender, flashLoanPayment);
     }
 
