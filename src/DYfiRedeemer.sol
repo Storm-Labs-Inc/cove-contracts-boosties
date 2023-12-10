@@ -172,6 +172,10 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
         IERC20(_WETH).safeTransfer(msg.sender, flashLoanPayment);
     }
 
+    function getLatestPrice() external view returns (uint256) {
+        return _getLatestPrice();
+    }
+
     /// @dev Returns ETH per 1 YFI in 1e18 precision
     function _getLatestPrice() internal view returns (uint256) {
         // slither-disable-next-line unused-return

@@ -217,4 +217,10 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
         dYfiRedeemer.receiveFlashLoan(new IERC20[](1), new uint256[](1), fees, "");
     }
+
+    function test_getLatestPrice_revertWhen_PriceFeedOutdated() public {
+        vm.warp(block.timestamp + 3600);
+        vm.expectRevert(abi.encodeWithSelector(Errors.PriceFeedOutdated.selector));
+        dYfiRedeemer.getLatestPrice();
+    }
 }
