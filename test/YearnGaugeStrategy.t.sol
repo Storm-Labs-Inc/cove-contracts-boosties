@@ -13,6 +13,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { MockYearnStakingDelegate } from "./mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "./mocks/MockStakingDelegateRewards.sol";
 import { MockCurveRouter } from "test/mocks/MockCurveRouter.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { ERC4626Mock } from "@openzeppelin/contracts/mocks/ERC4626Mock.sol";
@@ -92,6 +93,12 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.stopPrank();
     }
 
+    function _setFlashLoanProvider(address provider) internal {
+        vm.startPrank(manager);
+        yearnGaugeStrategy.setFlashLoanProvider(provider);
+        vm.stopPrank();
+    }
+
     function _depositFromUser(address from, uint256 amount) internal {
         airdrop(IERC20(vaultAsset), from, amount);
         vm.startPrank(from);
@@ -155,6 +162,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_stakingRewardsProfit(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
         uint256 profitedVaultAssetAmount = 1e18;
@@ -197,6 +205,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_stakingRewardsProfitMultipleUsers(uint256 amount0, uint256 amount1) public {
+        _setFlashLoanProvider(flashLoanProvider);
+
         // first deposit will always be a large amount
         uint256 initialDeposit = 10e18;
         vm.assume(amount0 < type(uint128).max && amount1 < type(uint128).max);
@@ -263,6 +273,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_noProfits(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
@@ -289,6 +300,25 @@ contract YearnGaugeStrategy_Test is BaseTest {
         assertEq(profit, 0, "profit should be 0");
         assertEq(loss, 0, "loss should be 0");
         assertEq(yearnGaugeStrategy.balanceOf(treasury), 0, "treasury should have 0 profit");
+    }
+
+    function testFuzz_report_revertWhen_FlashloanProviderNotSet(uint256 amount) public {
+        vm.assume(amount != 0);
+        vm.assume(amount < type(uint128).max);
+        uint256 profitedVaultAssetAmount = 1e18;
+
+        _depositFromUser(alice, amount);
+
+        // Send rewards to stakingDelegateRewards which will be claimed on report()
+        airdrop(IERC20(dYfi), stakingDelegateRewards, 1e18);
+        // The strategy will swap dYFI to vaultAsset using the CurveRouter
+        // Then the strategy will deposit vaultAsset into the vault, and into the gauge
+        airdrop(IERC20(vaultAsset), curveRouter, profitedVaultAssetAmount);
+
+        // manager calls report on the wrapped strategy
+        vm.prank(manager);
+        vm.expectRevert(abi.encodeWithSelector(Errors.FlashLoanProviderNotSet.selector));
+        yearnGaugeStrategy.report();
     }
 
     function testFuzz_withdraw_passWhen_DuringShutdown(uint256 amount) public {
@@ -328,6 +358,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_DuringShutdown(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
+
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
         // Assume the exchange rate from vaultAsset to vault to gauge tokens is 1:1:1
@@ -380,6 +412,12 @@ contract YearnGaugeStrategy_Test is BaseTest {
         yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
     }
 
+    function test_setFlashLoanProvider_revertWhen_ZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        vm.prank(manager);
+        yearnGaugeStrategy.setFlashLoanProvider(address(0));
+    }
+
     function test_emergencyWithdraw_revertWhen_nonManager(address caller) public {
         vm.assume(caller != manager);
         vm.assume(caller != admin);
@@ -390,6 +428,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_emergencyWithdraw(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 

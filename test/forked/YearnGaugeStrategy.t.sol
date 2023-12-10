@@ -34,9 +34,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         alice = createUser("alice");
         manager = createUser("manager");
         vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
-        vm.label(address(vault), "wethyethPoolVault");
         gauge = MAINNET_WETH_YETH_POOL_GAUGE;
-        vm.label(gauge, "wethyethPoolGauge");
 
         // Deploy Mock Contracts
         mockYearnStakingDelegate = new MockYearnStakingDelegate();
