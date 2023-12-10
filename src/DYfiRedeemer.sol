@@ -77,8 +77,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         }
         // The ETH required for redemption will be flash loaned from Balancer
         uint256 ethRequired = _getEthRequired(dYfiAmount);
-        uint256 yfiToDistribute = (dYfiAmount - ethRequired * (1e18 + slippage) / _getLatestPrice());
-        uint256 yfiToSwap = dYfiAmount - yfiToDistribute;
+        uint256 yfiToSwap = ethRequired * (1e18 + slippage) / _getLatestPrice();
         uint256 minDy = ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).get_dy(1, 0, yfiToSwap);
         // Return surplus ETH
         return minDy - ethRequired;
@@ -118,8 +117,10 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         }
         // Determine ETH required for redemption
         uint256 ethRequired = _getEthRequired(totalDYfiAmount);
+        // Calculate amount of YFI to swap based on the slippage and ETH required for redemption
+        uint256 yfiToSwap = ethRequired * (1e18 + slippage) / _getLatestPrice();
         // Calculate total YFI that should be sent to dYFI holders
-        uint256 yfiToDistribute = (totalDYfiAmount - ethRequired * (1e18 + slippage) / _getLatestPrice());
+        uint256 yfiToDistribute = totalDYfiAmount - yfiToSwap;
         // Construct flash loan parameters
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = IERC20(_WETH);
@@ -128,13 +129,13 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Flashloan ETH required for redemption. After the flash loan, this contract will have
         // YFI to distribute to dYFI holders and some ETH to reward the caller.
         IFlashLoanProvider(_FLASH_LOAN_PROVIDER).flashLoan(
-            this, tokens, amounts, abi.encode(totalDYfiAmount, yfiToDistribute)
+            this, tokens, amounts, abi.encode(totalDYfiAmount, yfiToSwap)
         );
         // Distribute YFI to dYFI holders proportionally to their dYFI amounts
         // If for any reason, the flashLoan call resulted in less YFI than yfiToDistribute, the following
         // distribution would revert on a transfer call.
         for (uint256 i = 0; i < dYfiHolders.length; i++) {
-            uint256 yfiAmount = dYfiAmounts[i] * yfiToDistribute * 1e18 / totalDYfiAmount / 1e18;
+            uint256 yfiAmount = yfiToDistribute * dYfiAmounts[i] / totalDYfiAmount;
             emit DYfiRedeemed(dYfiHolders[i], dYfiAmounts[i], yfiAmount);
             IERC20(_YFI).safeTransfer(dYfiHolders[i], yfiAmount);
         }
@@ -171,13 +172,15 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Calculate ETH payment to the flash loan provider
         uint256 flashLoanPayment = amounts[0] + feeAmounts[0];
         // Decode userData
-        (uint256 totalDYfiAmount, uint256 yfiToDistribute) = abi.decode(userData, (uint256, uint256));
+        (uint256 totalDYfiAmount, uint256 yfiToSwap) = abi.decode(userData, (uint256, uint256));
         // Redeem all dYFI for YFI
-        uint256 redeemedYfiAmount = IRedemption(_REDEMPTION).redeem{ value: amounts[0] }(totalDYfiAmount);
+        // Assume that the redemption contract will return the correct amount of YFI
+        // slither-disable-next-line unused-return
+        IRedemption(_REDEMPTION).redeem{ value: amounts[0] }(totalDYfiAmount);
         // Calculate amount of YFI to swap for ETH for the flash loan payment and the caller reward
-        uint256 yfiToSwap = redeemedYfiAmount - yfiToDistribute;
         // Swap YFI for ETH. Require at least flashLoanPayment ETH to be received from the swap.
         // Any surplus ETH will be reserved for the caller of massRedeem.
+        // slither-disable-next-line unused-return
         ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).exchange(1, 0, yfiToSwap, flashLoanPayment, true);
         // On correct behavior of the curve pool, the swap should result in at least flashLoanPayment ETH
         // If the swap behaved incorrectly and returned less than flashLoanPayment ETH, then the WETH deposit
@@ -187,6 +190,9 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         IERC20(_WETH).safeTransfer(msg.sender, flashLoanPayment);
     }
 
+    /**
+     * @notice Returns the latest ETH per 1 YFI from the Chainlink price feed.
+     */
     function getLatestPrice() external view returns (uint256) {
         return _getLatestPrice();
     }
@@ -220,6 +226,9 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         emit SlippageSet(slippage_);
     }
 
+    /**
+     * @notice Kills the contract. Only the admin can call this function.
+     */
     function kill() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
