@@ -159,7 +159,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
     function testFuzz_harvest_passWhen_RewardRateZero(uint256 amount) public {
         vm.assume(amount != 0);
-        vm.assume(amount < 17_425); // Small deposits do not accrue enough rewards to harvest
+        vm.assume(amount < 1.7e4); // Small deposits do not accrue enough rewards to harvest
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -178,8 +178,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_harvest_revertWhen_RewardRateTooLow(uint256 amount) public {
-        vm.assume(amount >= 17_425);
-        vm.assume(amount < 1.1e10); // Small deposits do not accrue enough rewards to harvest
+        vm.assume(amount >= 1.8e4);
+        vm.assume(amount < 1e10); // Small deposits do not accrue enough rewards to harvest
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
