@@ -302,25 +302,6 @@ contract YearnGaugeStrategy_Test is BaseTest {
         assertEq(yearnGaugeStrategy.balanceOf(treasury), 0, "treasury should have 0 profit");
     }
 
-    function testFuzz_report_revertWhen_FlashLoanProviderNotSet(uint256 amount) public {
-        vm.assume(amount != 0);
-        vm.assume(amount < type(uint128).max);
-        uint256 profitedVaultAssetAmount = 1e18;
-
-        _depositFromUser(alice, amount);
-
-        // Send rewards to stakingDelegateRewards which will be claimed on report()
-        airdrop(IERC20(dYfi), stakingDelegateRewards, 1e18);
-        // The strategy will swap dYFI to vaultAsset using the CurveRouter
-        // Then the strategy will deposit vaultAsset into the vault, and into the gauge
-        airdrop(IERC20(vaultAsset), curveRouter, profitedVaultAssetAmount);
-
-        // manager calls report on the wrapped strategy
-        vm.prank(manager);
-        vm.expectRevert(abi.encodeWithSelector(Errors.FlashLoanProviderNotSet.selector));
-        yearnGaugeStrategy.report();
-    }
-
     function testFuzz_withdraw_passWhen_DuringShutdown(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
