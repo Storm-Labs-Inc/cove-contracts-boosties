@@ -79,6 +79,9 @@ library Errors {
     error TimeToleranceNotInRange(uint128 timeTolerance);
 
     error TokenNotFoundInPool(address token);
+    error InvalidTokensReceived();
+    error InsufficientFlashLoanPayment();
+    error FlashLoanProviderNotSet();
 
     /// CURVE TWO ASSET POOL YEARN GAUGE STRATEGY ///
     error InvalidDepositToken();

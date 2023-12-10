@@ -3,5 +3,6 @@ ignore:
   - "script"
   - "generated"
   - "src/helper/**/*"
+  - "src/deps/*"
   - "src/deps/**/*"
   - "src/interfaces/deps/**/*"

@@ -58,7 +58,7 @@ contract YearnV3BaseTest is BaseTest {
     function setUp() public virtual override {
         // Fork ethereum mainnet at block 18386375 for consistent testing and to cache RPC calls
         // https://etherscan.io/block/18429780
-        forkNetworkAt("mainnet", 18_429_780);
+        forkNetworkAt("mainnet", 18_748_116);
         super.setUp();
 
         _createYearnRelatedAddresses();
@@ -220,7 +220,7 @@ contract YearnV3BaseTest is BaseTest {
         dYfiToYfiParams.route[0] = MAINNET_DYFI;
         dYfiToYfiParams.route[1] = MAINNET_DYFI_ETH_POOL;
         dYfiToYfiParams.route[2] = MAINNET_ETH;
-        dYfiToYfiParams.route[3] = MAINNET_YFI_ETH_POOL;
+        dYfiToYfiParams.route[3] = MAINNET_ETH_YFI_POOL;
         dYfiToYfiParams.route[4] = MAINNET_YFI;
 
         dYfiToYfiParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];
@@ -397,7 +397,6 @@ contract YearnV3BaseTest is BaseTest {
         string memory name,
         address _asset,
         address _yearnStakingDelegateAddress,
-        address _dYFIAddress,
         address _curveRouterAddress
     )
         public
@@ -405,9 +404,7 @@ contract YearnV3BaseTest is BaseTest {
     {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IYearnGaugeStrategy _wrappedStrategy = IYearnGaugeStrategy(
-            address(
-                new YearnGaugeStrategy(address(_asset), _yearnStakingDelegateAddress, _dYFIAddress, _curveRouterAddress)
-            )
+            address(new YearnGaugeStrategy(address(_asset), _yearnStakingDelegateAddress, _curveRouterAddress))
         );
         // set keeper
         _wrappedStrategy.setKeeper(tpKeeper);

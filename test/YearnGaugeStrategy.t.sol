@@ -13,11 +13,15 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { MockYearnStakingDelegate } from "./mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "./mocks/MockStakingDelegateRewards.sol";
 import { MockCurveRouter } from "test/mocks/MockCurveRouter.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { ERC4626Mock } from "@openzeppelin/contracts/mocks/ERC4626Mock.sol";
 import { MockGauge } from "test/mocks/MockGauge.sol";
-
+import { MockFlashLoanProvider } from "test/mocks/MockFlashLoanProvider.sol";
+import { MockCurveTwoAssetPool } from "test/mocks/MockCurveTwoAssetPool.sol";
+import { WETH } from "src/deps/WETH.sol";
+import { MockRedemption } from "test/mocks/MockRedemption.sol";
 import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
 
 contract YearnGaugeStrategy_Test is BaseTest {
@@ -27,10 +31,14 @@ contract YearnGaugeStrategy_Test is BaseTest {
     IYearnStakingDelegate public yearnStakingDelegate;
     address public stakingDelegateRewards;
     address public dYfi;
+    address public yfi;
+    address public weth;
     address public vaultAsset;
     address public vault;
     address public gauge;
     address public curveRouter;
+    address public flashLoanProvider;
+    address public redemption;
 
     // Addresses
     address public admin;
@@ -52,6 +60,14 @@ contract YearnGaugeStrategy_Test is BaseTest {
         // Deploy mock contracts
         dYfi = MAINNET_DYFI;
         vm.etch(dYfi, address(new ERC20Mock()).code);
+        yfi = MAINNET_YFI;
+        vm.etch(yfi, address(new ERC20Mock()).code);
+        weth = MAINNET_WETH;
+        vm.etch(weth, address(new WETH()).code);
+        redemption = MAINNET_DYFI_REDEMPTION;
+        vm.etch(redemption, address(new MockRedemption()).code);
+        vm.etch(MAINNET_ETH_YFI_POOL, address(new MockCurveTwoAssetPool()).code);
+        MockCurveTwoAssetPool(MAINNET_ETH_YFI_POOL).setCoins([weth, yfi]);
         vm.etch(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, address(new TokenizedStrategy()).code);
         _deployVaultFactoryAt(yearnAdmin, MAINNET_VAULT_FACTORY);
         vaultAsset = address(new ERC20Mock());
@@ -61,18 +77,25 @@ contract YearnGaugeStrategy_Test is BaseTest {
         gauge = address(new MockGauge(vault));
         vm.label(gauge, "gauge");
         curveRouter = address(new MockCurveRouter());
+        flashLoanProvider = address(new MockFlashLoanProvider());
         yearnStakingDelegate = IYearnStakingDelegate(address(new MockYearnStakingDelegate()));
         stakingDelegateRewards = address(new MockStakingDelegateRewards(dYfi));
         MockYearnStakingDelegate(address(yearnStakingDelegate)).setGaugeStakingRewards(stakingDelegateRewards);
 
         vm.startPrank(manager);
-        yearnGaugeStrategy = IYearnGaugeStrategy(
-            address(new YearnGaugeStrategy(gauge, address(yearnStakingDelegate), dYfi, curveRouter))
-        );
+        yearnGaugeStrategy =
+            IYearnGaugeStrategy(address(new YearnGaugeStrategy(gauge, address(yearnStakingDelegate), curveRouter)));
         yearnGaugeStrategy.setPerformanceFeeRecipient(treasury);
         yearnGaugeStrategy.setKeeper(keeper);
-        yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
+        yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(MAINNET_WETH, vaultAsset));
         yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
+        yearnGaugeStrategy.setFlashLoanProvider(flashLoanProvider);
+        vm.stopPrank();
+    }
+
+    function _setFlashLoanProvider(address provider) internal {
+        vm.startPrank(manager);
+        yearnGaugeStrategy.setFlashLoanProvider(provider);
         vm.stopPrank();
     }
 
@@ -139,6 +162,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_stakingRewardsProfit(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
         uint256 profitedVaultAssetAmount = 1e18;
@@ -181,6 +205,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_stakingRewardsProfitMultipleUsers(uint256 amount0, uint256 amount1) public {
+        _setFlashLoanProvider(flashLoanProvider);
+
         // first deposit will always be a large amount
         uint256 initialDeposit = 10e18;
         vm.assume(amount0 < type(uint128).max && amount1 < type(uint128).max);
@@ -247,6 +273,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_noProfits(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
@@ -312,6 +339,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_DuringShutdown(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
+
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
         // Assume the exchange rate from vaultAsset to vault to gauge tokens is 1:1:1
@@ -358,20 +387,29 @@ contract YearnGaugeStrategy_Test is BaseTest {
 
     function testFuzz_setHarvestSwapParams_revertWhen_CallerIsNotManagement(address caller) public {
         vm.assume(caller != manager);
+        vm.assume(caller != address(0));
         vm.expectRevert("!management");
         vm.prank(caller);
         yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
     }
 
-    function test_emergencyWithdraw_revertWhen_nonManager_buh(address caller) public {
+    function test_setFlashLoanProvider_revertWhen_ZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        vm.prank(manager);
+        yearnGaugeStrategy.setFlashLoanProvider(address(0));
+    }
+
+    function test_emergencyWithdraw_revertWhen_nonManager(address caller) public {
         vm.assume(caller != manager);
         vm.assume(caller != admin);
+        vm.assume(caller != address(0));
         vm.prank(caller);
         vm.expectRevert("!emergency authorized");
         yearnGaugeStrategy.emergencyWithdraw(1e18);
     }
 
     function testFuzz_emergencyWithdraw(uint256 amount) public {
+        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 

@@ -32,10 +32,15 @@ contract Constants is CommonBase {
     address public constant MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION = 0xDFC8cD9F2f2d306b7C0d109F005DF661E14f4ff2;
     address public constant MAINNET_WETH_YETH_POOL_VAULT = 0x58900d761Ae3765B75DDFc235c1536B527F25d8F;
     address public constant MAINNET_WETH_YETH_POOL_GAUGE = 0x81d93531720d86f0491DeE7D03f30b3b5aC24e59;
+    address public constant MAINNET_DYFI_REDEMPTION = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;
+    address public constant MAINNET_YFI_ETH_PRICE_FEED = 0x3EbEACa272Ce4f60E800f6C5EE678f50D2882fd4;
 
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
     address public constant MAINNET_CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
+
+    // Balanccer
+    address public constant MAINNET_BALANCER_FLASH_LOAN_PROVIDER = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 
     // Curve Pools
     /// @dev pool type 1, [DAI, USDC, USDT]
@@ -47,7 +52,7 @@ contract Constants is CommonBase {
     /// @dev pool type 3, [USDT, WBTC, WETH]
     address public constant MAINNET_TRI_CRYPTO_2 = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
     /// @dev pool type 2, [ETH/WETH, YFI]
-    address public constant MAINNET_YFI_ETH_POOL = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
+    address public constant MAINNET_ETH_YFI_POOL = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
     /// @dev pool type 1, [FRAX, USDC]
     address public constant MAINNET_FRAX_USDC_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     /// @dev pool type 1, [WETH, YETH]
@@ -74,6 +79,7 @@ contract Constants is CommonBase {
         vm.label(MAINNET_VAULT_BLUEPRINT, "VAULT_BLUEPRINT");
         vm.label(MAINNET_WETH_YETH_POOL_VAULT, "YETH_POOL_VAULT");
         vm.label(MAINNET_WETH_YETH_POOL_GAUGE, "YETH_POOL_GAUGE");
+        vm.label(MAINNET_DYFI_REDEMPTION, "DYFI_REDEMPTION");
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");
@@ -82,7 +88,7 @@ contract Constants is CommonBase {
         vm.label(MAINNET_DYFI_ETH_POOL, "DYFI_ETH_POOL");
         vm.label(MAINNET_TRI_CRYPTO_USDC, "TRI_CRYPTO_USDC");
         vm.label(MAINNET_TRI_CRYPTO_2, "TRI_CRYPTO_2");
-        vm.label(MAINNET_YFI_ETH_POOL, "YFI_ETH_POOL");
+        vm.label(MAINNET_ETH_YFI_POOL, "YFI_ETH_POOL");
         vm.label(MAINNET_FRAX_USDC_POOL, "FRAX_USDC_POOL");
         vm.label(MAINNET_WETH_YETH_POOL, "ETH_WETH_YETH_POOL");
     }

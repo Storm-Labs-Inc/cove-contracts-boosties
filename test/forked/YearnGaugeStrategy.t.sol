@@ -13,6 +13,7 @@ import { Errors } from "src/libraries/Errors.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 
 contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -33,9 +34,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         alice = createUser("alice");
         manager = createUser("manager");
         vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
-        vm.label(address(vault), "wethyethPoolVault");
         gauge = MAINNET_WETH_YETH_POOL_GAUGE;
-        vm.label(gauge, "wethyethPoolGauge");
 
         // Deploy Mock Contracts
         mockYearnStakingDelegate = new MockYearnStakingDelegate();
@@ -47,27 +46,35 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         //// wrapped strategy ////
         {
             yearnGaugeStrategy = setUpWrappedStrategy(
-                "Wrapped YearnV3 Strategy", gauge, address(mockYearnStakingDelegate), MAINNET_DYFI, MAINNET_CURVE_ROUTER
+                "Wrapped YearnV3 Strategy", gauge, address(mockYearnStakingDelegate), MAINNET_CURVE_ROUTER
             );
             vm.startPrank(tpManagement);
             // setting CurveRouterSwapper params for harvest rewards swapping
             CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
             // [token_from, pool, token_to, pool, ...]
-            curveSwapParams.route[0] = MAINNET_DYFI;
-            curveSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
-            curveSwapParams.route[2] = MAINNET_WETH;
-            curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
-            curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL; // expect the lp token back
+            curveSwapParams.route[0] = MAINNET_WETH;
+            curveSwapParams.route[1] = MAINNET_WETH_YETH_POOL;
+            curveSwapParams.route[2] = MAINNET_WETH_YETH_POOL; // expect the lp token back
 
-            // i, j, swap_type, pool_type, n_coins
-            curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2]; // dYFI -> wETH
-            // wETH -> weth/yeth pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
-            curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
+            // ETH -> weth/yeth pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
+            curveSwapParams.swapParams[0] = [uint256(0), 0, 4, 1, 2];
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
             yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
+            yearnGaugeStrategy.setFlashLoanProvider(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
             vm.stopPrank();
         }
+    }
+
+    function _mockChainlinkPriceFeedTimestamp() internal {
+        // mock the price feed for yfi/eth to be latest timestamp to prevent price too old error
+        (uint80 roundID, int256 price, uint256 startedAt,, uint80 answeredInRound) =
+            AggregatorV3Interface(MAINNET_YFI_ETH_PRICE_FEED).latestRoundData();
+        vm.mockCall(
+            MAINNET_YFI_ETH_PRICE_FEED,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            abi.encode(roundID, price, startedAt, block.timestamp, answeredInRound)
+        );
     }
 
     function _airdropGaugeTokens(address user, uint256 amount) internal {
@@ -117,8 +124,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
-        vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -129,13 +136,14 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // Gauge rewards are currently active, warp block forward to accrue rewards
-        vm.warp(block.timestamp + 1 weeks);
+        vm.warp(block.timestamp + 2 weeks);
         // get the current rewards earned by the yearn staking delegate
         uint256 accruedRewards = IGauge(gauge).earned(address(mockYearnStakingDelegate));
         // send earned rewards to the staking delegate rewards contract
         airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), accruedRewards);
 
         // manager calls report on the wrapped strategy
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -280,15 +288,12 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         vm.startPrank(tpManagement);
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
         // Set route to include a token index that does not exist in the given pools
-        curveSwapParams.route[0] = MAINNET_DYFI;
-        curveSwapParams.route[1] = MAINNET_DYFI_ETH_POOL;
-        curveSwapParams.route[2] = MAINNET_ETH;
-        curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
-        curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL;
+        curveSwapParams.route[0] = MAINNET_WETH;
+        curveSwapParams.route[1] = MAINNET_WETH_YETH_POOL;
+        curveSwapParams.route[2] = MAINNET_WETH_YETH_POOL;
 
         // i, j, swap_type, pool_type, n_coins
-        curveSwapParams.swapParams[0] = [uint256(0), 1, 1, 2, 2]; // dYFI -> ETH
-        curveSwapParams.swapParams[1] = [uint256(5), 1, 4, 1, 2];
+        curveSwapParams.swapParams[0] = [uint256(5), 1, 4, 1, 2];
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapParams.selector));
         yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
     }

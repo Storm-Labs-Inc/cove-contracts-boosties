@@ -37,6 +37,7 @@ interface ICurveRouter {
         uint256 expected
     )
         external
+        payable
         returns (uint256);
 
     /**
@@ -60,6 +61,7 @@ interface ICurveRouter {
         address receiver
     )
         external
+        payable
         returns (uint256);
 
     /**
@@ -79,6 +81,7 @@ interface ICurveRouter {
         address[5] calldata pools
     )
         external
+        payable
         returns (uint256);
 
     function get_dy(
