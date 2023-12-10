@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-interface IChainLinkOracle {
+interface AggregatorV3Interface {
     function latestRoundData()
         external
         view

@@ -13,6 +13,7 @@ import { Errors } from "src/libraries/Errors.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
+import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 
 contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -67,6 +68,17 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         }
     }
 
+    function _mockChainlinkPriceFeedTimestamp() internal {
+        // mock the price feed for yfi/eth to be latest timestamp to prevent price too old error
+        (uint80 roundID, int256 price, uint256 startedAt,, uint80 answeredInRound) =
+            AggregatorV3Interface(MAINNET_YFI_ETH_PRICE_FEED).latestRoundData();
+        vm.mockCall(
+            MAINNET_YFI_ETH_PRICE_FEED,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            abi.encode(roundID, price, startedAt, block.timestamp, answeredInRound)
+        );
+    }
+
     function _airdropGaugeTokens(address user, uint256 amount) internal {
         airdrop(ERC20(address(vault)), user, amount);
         vm.startPrank(user);
@@ -114,8 +126,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
-        vm.assume(amount > 1e6); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -126,13 +138,14 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // Gauge rewards are currently active, warp block forward to accrue rewards
-        vm.warp(block.timestamp + 1 weeks);
+        vm.warp(block.timestamp + 2 weeks);
         // get the current rewards earned by the yearn staking delegate
         uint256 accruedRewards = IGauge(gauge).earned(address(mockYearnStakingDelegate));
         // send earned rewards to the staking delegate rewards contract
         airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), accruedRewards);
 
         // manager calls report on the wrapped strategy
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");

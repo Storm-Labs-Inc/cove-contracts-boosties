@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 import { CommonBase } from "forge-std/Base.sol";
+import { IWETH } from "src/interfaces/deps/IWETH.sol";
 
 contract MockCurveTwoAssetPool is CommonBase, StdCheats {
     address[2] public coins;
@@ -29,9 +30,15 @@ contract MockCurveTwoAssetPool is CommonBase, StdCheats {
         } else {
             IERC20(coins[i]).transferFrom(msg.sender, address(this), dx);
         }
-        if (coins[j] == _WETH && useEth) {
-            vm.deal({ account: address(this), newBalance: minOut });
-            payable(msg.sender).transfer(minOut);
+        if (coins[j] == _WETH) {
+            if (useEth) {
+                vm.deal({ account: address(this), newBalance: minOut });
+                payable(msg.sender).transfer(minOut);
+            } else {
+                vm.deal({ account: address(this), newBalance: minOut });
+                IWETH(_WETH).deposit{ value: minOut }();
+                IERC20(_WETH).transfer(msg.sender, minOut);
+            }
         } else {
             deal(coins[j], address(this), minOut, true);
             IERC20(coins[j]).transfer(msg.sender, minOut);

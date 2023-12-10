@@ -33,6 +33,7 @@ contract Constants is CommonBase {
     address public constant MAINNET_WETH_YETH_POOL_VAULT = 0x58900d761Ae3765B75DDFc235c1536B527F25d8F;
     address public constant MAINNET_WETH_YETH_POOL_GAUGE = 0x81d93531720d86f0491DeE7D03f30b3b5aC24e59;
     address public constant MAINNET_DYFI_REDEMPTION = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;
+    address public constant MAINNET_YFI_ETH_PRICE_FEED = 0x3EbEACa272Ce4f60E800f6C5EE678f50D2882fd4;
 
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;

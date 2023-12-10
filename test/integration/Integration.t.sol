@@ -8,11 +8,12 @@ import { IYearnGaugeStrategy } from "src/interfaces/IYearnGaugeStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-// import { Errors } from "src/libraries/Errors.sol";
+import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
+import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 
 contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -36,9 +37,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         alice = createUser("alice");
         treasury = createUser("treasury");
         vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
-        vm.label(address(vault), "wethyethPoolVault");
         gauge = MAINNET_WETH_YETH_POOL_GAUGE;
-        vm.label(gauge, "wethyethPoolGauge");
         rewardDistributor = createUser("rewardDistributor");
 
         // Deploy Contracts
@@ -87,6 +86,17 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         IERC20(MAINNET_YFI).approve(MAINNET_VE_YFI, type(uint256).max);
         IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), type(uint256).max);
         vm.stopPrank();
+    }
+
+    /// @dev Mock the price feed for yfi/eth to be latest timestamp to prevent price too old error
+    function _mockChainlinkPriceFeedTimestamp() internal {
+        (uint80 roundID, int256 price, uint256 startedAt,, uint80 answeredInRound) =
+            AggregatorV3Interface(MAINNET_YFI_ETH_PRICE_FEED).latestRoundData();
+        vm.mockCall(
+            MAINNET_YFI_ETH_PRICE_FEED,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            abi.encode(roundID, price, startedAt, block.timestamp, answeredInRound)
+        );
     }
 
     // Need a special function to airdrop to the gauge since it relies on totalSupply for calculation
@@ -147,9 +157,9 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
     }
 
-    function testFuzz_report_staking_rewards_profit(uint256 amount) public {
-        vm.assume(amount > 1e10); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+    function testFuzz_harvest_passWhen_RewardRateZero(uint256 amount) public {
+        vm.assume(amount != 0);
+        vm.assume(amount < 17_425); // Small deposits do not accrue enough rewards to harvest
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -160,7 +170,48 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // Gauge rewards are currently active, warp block forward to accrue rewards
-        vm.warp(block.timestamp + 11 weeks);
+        vm.warp(block.timestamp + 2 weeks);
+
+        // yearn staking delegate harvests available rewards
+        vm.prank(admin);
+        assertEq(yearnStakingDelegate.harvest(gauge), 0);
+    }
+
+    function testFuzz_harvest_revertWhen_RewardRateTooLow(uint256 amount) public {
+        vm.assume(amount >= 17_425);
+        vm.assume(amount < 1.1e10); // Small deposits do not accrue enough rewards to harvest
+
+        // deposit into strategy happens
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
+        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
+        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
+        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
+        assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
+
+        // Gauge rewards are currently active, warp block forward to accrue rewards
+        vm.warp(block.timestamp + 2 weeks);
+
+        // yearn staking delegate harvests available rewards
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(Errors.RewardRateTooLow.selector));
+        yearnStakingDelegate.harvest(gauge);
+    }
+
+    function testFuzz_report_staking_rewards_profit(uint256 amount) public {
+        vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
+
+        // deposit into strategy happens
+        mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
+        uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
+        uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
+        assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
+        assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
+
+        // Gauge rewards are currently active, warp block forward to accrue rewards
+        vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
         vm.prank(admin);
@@ -171,6 +222,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(stakingDelegateperiodFinish);
 
         // manager calls report on the wrapped strategy
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -179,6 +231,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         yearnGaugeStrategy.report();
 
@@ -210,21 +263,19 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // Gauge rewards are currently active, warp block forward to accrue rewards
-        vm.warp(block.timestamp + 11 weeks);
+        vm.warp(block.timestamp + 2 weeks);
 
-        // total reward claimed from the gauge
-        uint256 actualRewardAmount = 947_304_334_852_313;
-        // Calculate split amounts strategy split amount
-        uint256 estimatedTreasurySplit = actualRewardAmount * 0.3e18 / 1e18;
-        uint256 estimatedVeYfiSplit = actualRewardAmount * 0.4e18 / 1e18;
-        uint256 estimatedUserSplit = actualRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
-
+        _mockChainlinkPriceFeedTimestamp();
         // yearn staking delegate harvests available rewards
         vm.prank(admin);
-        uint256 userRewardAmount = yearnStakingDelegate.harvest(gauge);
+        uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
+
+        // Calculate split amounts strategy split amount
+        uint256 estimatedTreasurySplit = totalRewardAmount * 0.3e18 / 1e18;
+        uint256 estimatedVeYfiSplit = totalRewardAmount * 0.4e18 / 1e18;
+        uint256 estimatedUserSplit = totalRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
 
         uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(address(stakingDelegateRewards));
-        assertEq(userRewardAmount, strategyDYfiBalance, "harvest did not return correct value");
         assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
 
         uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
@@ -238,6 +289,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(stakingDelegateperiodFinish);
 
         // manager calls report on the wrapped strategy
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -246,6 +298,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         yearnGaugeStrategy.report();
 
@@ -305,8 +358,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_withdraw_duringShutdownReport(uint256 amount) public {
-        vm.assume(amount > 1e10); // Minimum deposit size is required to farm dYFI emission
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        vm.assume(amount > 1e16); // Minimum deposit size is required to farm dYFI emission
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -317,7 +370,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(beforePreviewRedeem, amount, "preview redeem should return deposit amount");
 
         // Gauge rewards are currently active, warp block forward to accrue rewards
-        vm.warp(block.timestamp + 11 weeks);
+        vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
         vm.prank(admin);
@@ -335,6 +388,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report on the wrapped strategy
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -374,16 +428,16 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
         // yearn staking delegate harvests available rewards
         vm.prank(admin);
-        uint256 rewardAmount = yearnStakingDelegate.harvest(gauge);
-        assertGt(rewardAmount, 0, "harvest failed");
+        uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
+        assertGt(totalRewardAmount, 0, "harvest failed");
         vm.prank(bob);
         IGauge(gauge).getReward(bob);
         uint256 nonBoostedRewardAmount = IERC20(MAINNET_DYFI).balanceOf(bob);
         assertGt(nonBoostedRewardAmount, 0, "harvest failed");
-        assertGt(rewardAmount, nonBoostedRewardAmount, "veYfi boost failed");
+        assertGt(totalRewardAmount, nonBoostedRewardAmount, "veYfi boost failed");
         // Check that the vault has received the rewards
         assertEq(
-            rewardAmount,
+            totalRewardAmount,
             IERC20(MAINNET_DYFI).balanceOf(address(stakingDelegateRewards)),
             "harvest did not return correct value"
         );
@@ -402,7 +456,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 beforeTotalAssets = gaugeStrategy.totalAssets();
         uint256 beforeDeployedAssets = yearnStakingDelegate.balanceOf(address(gaugeStrategy), gauge);
         // Gauge rewards are currently active, warp block forward to accrue rewards
-        vm.warp(block.timestamp + 11 weeks);
+        vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
         vm.prank(admin);
@@ -413,6 +467,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(stakingDelegateperiodFinish);
 
         // manager calls report on the wrapped strategy
+        _mockChainlinkPriceFeedTimestamp();
+
         vm.prank(tpManagement);
         (uint256 profit,) = gaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -431,6 +487,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         );
 
         // manager calls report
+        _mockChainlinkPriceFeedTimestamp();
         vm.prank(tpManagement);
         gaugeStrategy.report();
 

@@ -144,13 +144,12 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         IWETH(_WETH).withdraw(amounts[0]);
         uint256 returnAmount = amounts[0] + feeAmounts[0];
         uint256 yfiAmount = _redeem(abi.decode(userData, (uint256)), amounts[0]);
-        // Swap YFI for ETH
-        uint256 ethAmount = ICurveTwoAssetPool(_ETH_YFI_POOL).exchange(1, 0, yfiAmount, returnAmount, true);
+        // Swap YFI for WETH
+        uint256 wethAmount = ICurveTwoAssetPool(_ETH_YFI_POOL).exchange(1, 0, yfiAmount, returnAmount, false);
         // Pay back the flash loan
-        if (ethAmount < returnAmount) {
+        if (wethAmount < returnAmount) {
             revert Errors.InsufficientFlashLoanPayment();
         }
-        IWETH(_WETH).deposit{ value: address(this).balance }();
         IERC20(_WETH).safeTransfer(msg.sender, returnAmount);
     }
 

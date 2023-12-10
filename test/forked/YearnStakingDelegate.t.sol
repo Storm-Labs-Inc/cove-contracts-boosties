@@ -273,11 +273,13 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         // Harvest
         vm.prank(wrappedStrategy);
-        uint256 rewardAmount = yearnStakingDelegate.harvest(gauge);
+        uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
 
         // Check that the vault has received the rewards
         assertEq(
-            rewardAmount, IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), "harvest did not return correct value"
+            totalRewardAmount,
+            IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards),
+            "harvest did not return correct value"
         );
         assertGt(IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), 0, "harvest failed");
     }
@@ -292,16 +294,18 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
-        uint256 rewardAmount = yearnStakingDelegate.harvest(gauge);
-        assertGt(rewardAmount, 0, "harvest failed");
+        uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
+        assertGt(totalRewardAmount, 0, "harvest failed");
         vm.prank(bob);
         IGauge(gauge).getReward(bob);
         uint256 nonBoostedRewardAmount = IERC20(MAINNET_DYFI).balanceOf(bob);
         assertGt(nonBoostedRewardAmount, 0, "harvest failed");
-        assertGt(rewardAmount, nonBoostedRewardAmount, "veYfi boost failed");
+        assertGt(totalRewardAmount, nonBoostedRewardAmount, "veYfi boost failed");
         // Check that the vault has received the rewards
         assertEq(
-            rewardAmount, IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), "harvest did not return correct value"
+            totalRewardAmount,
+            IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards),
+            "harvest did not return correct value"
         );
     }
 
@@ -313,12 +317,14 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 14 days);
 
         // Harvest
-        uint256 rewardAmount = yearnStakingDelegate.harvest(gauge);
+        uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
 
         // Check that the StakingDelegateRewards contract has received the rewards
         // expect to be close to 100% of the rewards
         assertEq(
-            rewardAmount, IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), "harvest did not return correct value"
+            totalRewardAmount,
+            IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards),
+            "harvest did not return correct value"
         );
         assertGt(IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards), 0, "harvest failed");
     }
@@ -333,13 +339,13 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         // Harvest
         vm.prank(wrappedStrategy);
-        uint256 rewardAmount = yearnStakingDelegate.harvest(gauge);
-        assertGt(rewardAmount, 0, "harvest failed");
+        uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
+        assertGt(totalRewardAmount, 0, "harvest failed");
 
         // Calculate split amounts strategy split amount
-        uint256 estimatedTreasurySplit = rewardAmount * 0.3e18 / 1e18;
-        uint256 estimatedVeYfiSplit = rewardAmount * 0.4e18 / 1e18;
-        uint256 estimatedUserSplit = rewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
+        uint256 estimatedTreasurySplit = totalRewardAmount * 0.3e18 / 1e18;
+        uint256 estimatedVeYfiSplit = totalRewardAmount * 0.4e18 / 1e18;
+        uint256 estimatedUserSplit = totalRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
 
         uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards);
         assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
