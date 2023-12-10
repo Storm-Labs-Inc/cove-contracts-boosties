@@ -18,17 +18,15 @@ import { Errors } from "src/libraries/Errors.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { ERC4626Mock } from "@openzeppelin/contracts/mocks/ERC4626Mock.sol";
 import { MockGauge } from "test/mocks/MockGauge.sol";
-import { MockFlashLoanProvider } from "test/mocks/MockFlashLoanProvider.sol";
-import { MockCurveTwoAssetPool } from "test/mocks/MockCurveTwoAssetPool.sol";
-import { WETH } from "src/deps/WETH.sol";
-import { MockRedemption } from "test/mocks/MockRedemption.sol";
 import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
+import { MockDYfiRedeemer } from "test/mocks/MockDYfiRedeemer.sol";
 
 contract YearnGaugeStrategy_Test is BaseTest {
     using SafeERC20 for IERC20;
 
     IYearnGaugeStrategy public yearnGaugeStrategy;
     IYearnStakingDelegate public yearnStakingDelegate;
+    MockDYfiRedeemer public mockDYfiRedeemer;
     address public stakingDelegateRewards;
     address public dYfi;
     address public yfi;
@@ -37,8 +35,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
     address public vault;
     address public gauge;
     address public curveRouter;
-    address public flashLoanProvider;
-    address public redemption;
+    // address public flashLoanProvider;
+    // address public redemption;
 
     // Addresses
     address public admin;
@@ -47,6 +45,9 @@ contract YearnGaugeStrategy_Test is BaseTest {
     address public manager;
     address public treasury;
     address public keeper;
+
+    // Events TODO: remove for interface
+    event DYfiRedeemerSet(address oldDYfiRedeemer, address newDYfiRedeemer);
 
     function setUp() public override {
         super.setUp();
@@ -62,12 +63,6 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.etch(dYfi, address(new ERC20Mock()).code);
         yfi = MAINNET_YFI;
         vm.etch(yfi, address(new ERC20Mock()).code);
-        weth = MAINNET_WETH;
-        vm.etch(weth, address(new WETH()).code);
-        redemption = MAINNET_DYFI_REDEMPTION;
-        vm.etch(redemption, address(new MockRedemption()).code);
-        vm.etch(MAINNET_ETH_YFI_POOL, address(new MockCurveTwoAssetPool()).code);
-        MockCurveTwoAssetPool(MAINNET_ETH_YFI_POOL).setCoins([weth, yfi]);
         vm.etch(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, address(new TokenizedStrategy()).code);
         _deployVaultFactoryAt(yearnAdmin, MAINNET_VAULT_FACTORY);
         vaultAsset = address(new ERC20Mock());
@@ -76,8 +71,10 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.label(vault, "vault");
         gauge = address(new MockGauge(vault));
         vm.label(gauge, "gauge");
+        mockDYfiRedeemer = new MockDYfiRedeemer();
+        vm.label(address(mockDYfiRedeemer), "mockDYfiRedeemer");
         curveRouter = address(new MockCurveRouter());
-        flashLoanProvider = address(new MockFlashLoanProvider());
+        vm.label(curveRouter, "curveRouter");
         yearnStakingDelegate = IYearnStakingDelegate(address(new MockYearnStakingDelegate()));
         stakingDelegateRewards = address(new MockStakingDelegateRewards(dYfi));
         MockYearnStakingDelegate(address(yearnStakingDelegate)).setGaugeStakingRewards(stakingDelegateRewards);
@@ -87,15 +84,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
             IYearnGaugeStrategy(address(new YearnGaugeStrategy(gauge, address(yearnStakingDelegate), curveRouter)));
         yearnGaugeStrategy.setPerformanceFeeRecipient(treasury);
         yearnGaugeStrategy.setKeeper(keeper);
-        yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(MAINNET_WETH, vaultAsset));
+        yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(MAINNET_YFI, vaultAsset));
         yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
-        yearnGaugeStrategy.setFlashLoanProvider(flashLoanProvider);
-        vm.stopPrank();
-    }
-
-    function _setFlashLoanProvider(address provider) internal {
-        vm.startPrank(manager);
-        yearnGaugeStrategy.setFlashLoanProvider(provider);
         vm.stopPrank();
     }
 
@@ -109,6 +99,14 @@ contract YearnGaugeStrategy_Test is BaseTest {
         IERC20(gauge).approve(address(yearnGaugeStrategy), amount);
         yearnGaugeStrategy.deposit(amount, from);
         vm.stopPrank();
+    }
+
+    function _massRedeemStrategyDYfi() internal {
+        address[] memory holders = new address[](1);
+        holders[0] = address(yearnGaugeStrategy);
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = IERC20(dYfi).balanceOf(address(yearnGaugeStrategy));
+        mockDYfiRedeemer.massRedeem(holders, amounts);
     }
 
     function testFuzz_deposit(uint256 amount) public {
@@ -162,11 +160,12 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_stakingRewardsProfit(uint256 amount) public {
-        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
         uint256 profitedVaultAssetAmount = 1e18;
 
+        vm.prank(manager);
+        yearnGaugeStrategy.setDYfiRedeemer(address(mockDYfiRedeemer));
         _depositFromUser(alice, amount);
         uint256 shares = yearnGaugeStrategy.balanceOf(alice);
         uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
@@ -184,7 +183,20 @@ contract YearnGaugeStrategy_Test is BaseTest {
 
         // manager calls report on the wrapped strategy
         vm.prank(manager);
+        yearnGaugeStrategy.report();
+        assertEq(
+            IERC20(dYfi).balanceOf(address(yearnGaugeStrategy)),
+            profitedVaultAssetAmount,
+            "dYfi rewards should be received"
+        );
+
+        // Call massRedeem() to swap recieved DYfi for Yfi
+        _massRedeemStrategyDYfi();
+
+        // call report on strategy again to deposit newly opbtained Yfi into strategy to record profit
+        vm.prank(manager);
         (uint256 profit,) = yearnGaugeStrategy.report();
+
         assertEq(profit, profitedVaultAssetAmount, "profit should match newly minted gauge tokens");
 
         // warp blocks forward to profit locking is finished
@@ -205,14 +217,15 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_stakingRewardsProfitMultipleUsers(uint256 amount0, uint256 amount1) public {
-        _setFlashLoanProvider(flashLoanProvider);
-
         // first deposit will always be a large amount
         uint256 initialDeposit = 10e18;
         vm.assume(amount0 < type(uint128).max && amount1 < type(uint128).max);
         uint256 profitedVaultAssetAmount = 1e8;
         address bob = createUser("bob");
         address charlie = createUser("charlie");
+
+        vm.prank(manager);
+        yearnGaugeStrategy.setDYfiRedeemer(address(mockDYfiRedeemer));
 
         _depositFromUser(alice, initialDeposit);
         uint256 shares = yearnGaugeStrategy.balanceOf(alice);
@@ -228,6 +241,13 @@ contract YearnGaugeStrategy_Test is BaseTest {
         // The strategy will swap dYFI to vaultAsset using the CurveRouter
         // Then the strategy will deposit vaultAsset into the vault, and into the gauge
         airdrop(IERC20(vaultAsset), curveRouter, profitedVaultAssetAmount);
+
+        // manager calls report on the wrapped strategy, this will receive dYfi rewards
+        vm.prank(manager);
+        yearnGaugeStrategy.report();
+        assertEq(IERC20(dYfi).balanceOf(address(yearnGaugeStrategy)), 1e18, "dYfi rewards should be received");
+        // Call massRedeem() to swap recieved DYfi for Yfi
+        _massRedeemStrategyDYfi();
 
         // manager calls report on the wrapped strategy
         vm.prank(manager);
@@ -273,7 +293,6 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_noProfits(uint256 amount) public {
-        _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 
@@ -339,10 +358,10 @@ contract YearnGaugeStrategy_Test is BaseTest {
     }
 
     function testFuzz_report_passWhen_DuringShutdown(uint256 amount) public {
-        _setFlashLoanProvider(flashLoanProvider);
-
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
+        vm.prank(manager);
+        yearnGaugeStrategy.setDYfiRedeemer(address(mockDYfiRedeemer));
         // Assume the exchange rate from vaultAsset to vault to gauge tokens is 1:1:1
         uint256 profitedVaultAssetAmount = 1e18;
 
@@ -366,9 +385,21 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.prank(manager);
         yearnGaugeStrategy.shutdownStrategy();
 
-        // manager calls report on the wrapped strategy
+        // manager calls report on the wrapped strategy, this will receive dYfi rewards
+        vm.prank(manager);
+        yearnGaugeStrategy.report();
+        assertEq(
+            IERC20(dYfi).balanceOf(address(yearnGaugeStrategy)),
+            profitedVaultAssetAmount,
+            "dYfi rewards should be received"
+        );
+        // Call massRedeem() to swap recieved DYfi for Yfi
+        _massRedeemStrategyDYfi();
+
+        // call report on strategy again to deposit newly opbtained Yfi into strategy to record profit
         vm.prank(manager);
         (uint256 profit,) = yearnGaugeStrategy.report();
+
         assertEq(profit, profitedVaultAssetAmount, "profit should match newly minted gauge tokens");
 
         // warp blocks forward to profit locking is finished
@@ -393,10 +424,10 @@ contract YearnGaugeStrategy_Test is BaseTest {
         yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(dYfi, vaultAsset));
     }
 
-    function test_setFlashLoanProvider_revertWhen_ZeroAddress() public {
+    function test_setdYfiRedeemer_revertWhen_ZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         vm.prank(manager);
-        yearnGaugeStrategy.setFlashLoanProvider(address(0));
+        yearnGaugeStrategy.setDYfiRedeemer(address(0));
     }
 
     function test_emergencyWithdraw_revertWhen_nonManager(address caller) public {
@@ -408,8 +439,56 @@ contract YearnGaugeStrategy_Test is BaseTest {
         yearnGaugeStrategy.emergencyWithdraw(1e18);
     }
 
+    function testFuzz_setDYfiRedeemer(address a) public {
+        vm.assume(a != address(0));
+
+        vm.expectEmit();
+        emit DYfiRedeemerSet(address(0), a);
+        vm.prank(manager);
+        yearnGaugeStrategy.setDYfiRedeemer(a);
+        assertEq(yearnGaugeStrategy.dYfiRedeemer(), a);
+        assertEq(IERC20(dYfi).allowance(address(yearnGaugeStrategy), a), type(uint256).max);
+    }
+
+    function testFuzz_setDYfiRedeemer_passWhen_Replacing(address a, address b) public {
+        vm.assume(a != address(0));
+        vm.assume(b != address(0));
+        vm.assume(a != b);
+
+        vm.expectEmit();
+        emit DYfiRedeemerSet(address(0), a);
+        vm.prank(manager);
+        yearnGaugeStrategy.setDYfiRedeemer(a);
+        assertEq(yearnGaugeStrategy.dYfiRedeemer(), a);
+        assertEq(IERC20(dYfi).allowance(address(yearnGaugeStrategy), a), type(uint256).max);
+        assertEq(IERC20(dYfi).allowance(address(yearnGaugeStrategy), b), 0);
+
+        vm.expectEmit();
+        emit DYfiRedeemerSet(a, b);
+        vm.prank(manager);
+        yearnGaugeStrategy.setDYfiRedeemer(b);
+        assertEq(yearnGaugeStrategy.dYfiRedeemer(), b);
+        assertEq(IERC20(dYfi).allowance(address(yearnGaugeStrategy), a), 0);
+        assertEq(IERC20(dYfi).allowance(address(yearnGaugeStrategy), b), type(uint256).max);
+    }
+
+    function test_setDYfiRedeemer_revertWhen_ZeroAddress() public {
+        vm.prank(manager);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        yearnGaugeStrategy.setDYfiRedeemer(address(0));
+    }
+
+    function testFuzz_setDYfiRedeemer_revertWhen_SameAddress(address a) public {
+        vm.assume(a != address(0));
+        vm.startPrank(manager);
+        yearnGaugeStrategy.setDYfiRedeemer(a);
+        vm.expectRevert(abi.encodeWithSelector(Errors.SameAddress.selector));
+        yearnGaugeStrategy.setDYfiRedeemer(a);
+        vm.stopPrank();
+    }
+
     function testFuzz_emergencyWithdraw(uint256 amount) public {
-        _setFlashLoanProvider(flashLoanProvider);
+        // _setFlashLoanProvider(flashLoanProvider);
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
 

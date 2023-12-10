@@ -77,7 +77,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
             yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
-            yearnGaugeStrategy.setFlashLoanProvider(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
+            // TODO: full functionality removed in later pr
+            // yearnGaugeStrategy.setFlashLoanProvider(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
             vm.stopPrank();
         }
 

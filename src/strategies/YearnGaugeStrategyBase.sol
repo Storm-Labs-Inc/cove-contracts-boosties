@@ -7,7 +7,6 @@ import { Errors } from "src/libraries/Errors.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol";
-import { IRedemption } from "src/interfaces/deps/yearn/veYFI/IRedemption.sol";
 
 /// @title YearnGaugeStrategyBase
 /// @notice Abstract base contract for Yearn gauge strategies, handling deposits and withdrawals to the
@@ -22,8 +21,6 @@ abstract contract YearnGaugeStrategyBase {
     address public constant dYfi = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     /// @notice Address of the YFI token
     address public constant yfi = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
-    /// @notice Address of the dYFI redemption contract
-    address public constant redemption = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;
     // solhint-enable const-name-snakecase
 
     // Immutable storage variables
@@ -66,7 +63,6 @@ abstract contract YearnGaugeStrategyBase {
         IERC20(asset_).forceApprove(yearnStakingDelegate_, type(uint256).max);
         IERC20(vaultAsset_).forceApprove(vault_, type(uint256).max);
         IERC20(vault_).forceApprove(asset_, type(uint256).max);
-        IERC20(dYfi).forceApprove(redemption, type(uint256).max);
     }
 
     /**
@@ -86,22 +82,5 @@ abstract contract YearnGaugeStrategyBase {
     function _withdrawFromYSD(address asset, uint256 amount) internal virtual {
         // Withdraw gauge from YSD which transfers to msg.sender
         IYearnStakingDelegate(yearnStakingDelegate).withdraw(asset, amount);
-    }
-
-    /**
-     * Internal function to redeem dYFI for YFI.
-     * @param dYfiAmount The amount of dYFI to redeem.
-     */
-    function _redeem(uint256 dYfiAmount, uint256 ethAmount) internal virtual returns (uint256) {
-        // Redeem dYFI for YFI
-        return IRedemption(redemption).redeem{ value: ethAmount }(dYfiAmount);
-    }
-
-    /**
-     * @dev Internal function to read how much ETH is required to redeem dYFI.
-     * @param dYfiAmount The amount of dYFI to redeem.
-     */
-    function _ethRequiredForRedemption(uint256 dYfiAmount) internal view virtual returns (uint256) {
-        return IRedemption(redemption).eth_required(dYfiAmount);
     }
 }
