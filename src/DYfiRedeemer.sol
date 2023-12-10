@@ -52,6 +52,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     /**
      * @notice Returns the minimum amount of YFI that should be redeemed for a given amount of dYFI
      * @param dYfiAmount The amount of dYFI to redeem
+     * @return The minimum amount of YFI that should be redeemed for a given amount of dYFI
      */
     function minYfiRedeem(uint256 dYfiAmount) external view returns (uint256) {
         return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + _MAX_SLIPPAGE) / _getLatestPrice();
@@ -60,6 +61,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     /**
      * @notice Returns the expected amount of YFI that should be redeemed for a given amount of dYFI
      * @param dYfiAmount The amount of dYFI to redeem
+     * @return The expected amount of YFI that should be redeemed for a given amount of dYFI
      */
     function currentYfiRedeem(uint256 dYfiAmount) external view returns (uint256) {
         return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + slippage) / _getLatestPrice();
@@ -70,6 +72,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
      * users and amounts.
      * @dev This assumes flash loan fee of 0.
      * @param dYfiAmount total dYFI amount that should be redeemed for YFI.
+     * @return The expected amount of ETH the caller will receive for redeeming dYFI for YFI.
      */
     function expectedMassRedeemReward(uint256 dYfiAmount) external view returns (uint256) {
         if (dYfiAmount == 0) {
@@ -191,7 +194,8 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     }
 
     /**
-     * @notice Returns the latest ETH per 1 YFI from the Chainlink price feed.
+     * @notice Returns the latest YFI/ETH from the Chainlink price feed.
+     * @return The latest ETH per 1 YFI from the Chainlink price feed.
      */
     function getLatestPrice() external view returns (uint256) {
         return _getLatestPrice();
