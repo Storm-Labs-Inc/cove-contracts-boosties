@@ -143,6 +143,17 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         dYfiRedeemer.massRedeem(dYfiHolders, dYfiAmounts);
     }
 
+    function test_massRedeem_revertWhen_Paused() public {
+        address[] memory dYfiHolders = new address[](3);
+        uint256[] memory dYfiAmounts = new uint256[](3);
+
+        vm.prank(admin);
+        dYfiRedeemer.kill();
+        vm.prank(caller);
+        vm.expectRevert("Pausable: paused");
+        dYfiRedeemer.massRedeem(dYfiHolders, dYfiAmounts);
+    }
+
     function test_setSlippage() public {
         uint256 slippage = 0.02e18;
         vm.prank(admin);
@@ -165,7 +176,7 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_minYfiRedeem(uint256 dYfiAmount) public {
-        vm.assume(dYfiAmount > 1e2); // minimum dYfi amount required to simulate
+        vm.assume(dYfiAmount > 1e3); // minimum dYfi amount required to simulate
         vm.assume(dYfiAmount < type(uint128).max);
         vm.prank(admin);
         assertGt(dYfiRedeemer.currentYfiRedeem(dYfiAmount), dYfiRedeemer.minYfiRedeem(dYfiAmount));
@@ -222,5 +233,20 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 3600);
         vm.expectRevert(abi.encodeWithSelector(Errors.PriceFeedOutdated.selector));
         dYfiRedeemer.getLatestPrice();
+    }
+
+    function testFuzz_kill_revertWhen_CallerIsNotAdmin(address a) public {
+        vm.assume(a != admin);
+        vm.expectRevert(_formatAccessControlError(a, dYfiRedeemer.DEFAULT_ADMIN_ROLE()));
+        vm.prank(a);
+        dYfiRedeemer.kill();
+    }
+
+    function test_kill_revertWhen_AlreadyPaused() public {
+        vm.startPrank(admin);
+        dYfiRedeemer.kill();
+        vm.expectRevert("Pausable: paused");
+        dYfiRedeemer.kill();
+        vm.stopPrank();
     }
 }

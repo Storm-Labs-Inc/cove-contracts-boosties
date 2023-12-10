@@ -11,6 +11,7 @@ import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool
 import { IWETH } from "src/interfaces/deps/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { IDYfiRedeemer } from "src/interfaces/IDYfiRedeemer.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
  * @title DYfiRedeemer
@@ -23,7 +24,7 @@ import { IDYfiRedeemer } from "src/interfaces/IDYfiRedeemer.sol";
  * the minimum amount of YFI that should be redeemed for their dYFI. The minimum amount of YFI at a given time can be
  * calculated using the `minYfiRedeem(uint256 dYfiAmount)` function.
  */
-contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
+contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     address private constant _REDEMPTION = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;
@@ -93,7 +94,14 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
      * @param dYfiHolders list of addresses that hold dYFI and have approved this contract to spend their dYFI
      * @param dYfiAmounts list of dYFI amounts that should be redeemed for YFI from the corresponding dYFI holder
      */
-    function massRedeem(address[] calldata dYfiHolders, uint256[] calldata dYfiAmounts) external nonReentrant {
+    function massRedeem(
+        address[] calldata dYfiHolders,
+        uint256[] calldata dYfiAmounts
+    )
+        external
+        nonReentrant
+        whenNotPaused
+    {
         if (dYfiHolders.length != dYfiAmounts.length) {
             revert Errors.InvalidArrayLength();
         }
@@ -210,6 +218,10 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
         }
         slippage = slippage_;
         emit SlippageSet(slippage_);
+    }
+
+    function kill() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
     }
 
     /// @dev Allows this contract to receive ETH
