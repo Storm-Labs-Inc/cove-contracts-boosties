@@ -9,6 +9,7 @@ import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
 
 contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
     DYfiRedeemer public dYfiRedeemer;
+    uint256 public constant MAX_SLIPPAGE = 0.05e18;
 
     // Users
     address public alice;
@@ -150,7 +151,7 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_setSlippage_revertWhen_SlippageTooHigh(uint256 slippage) public {
-        vm.assume(slippage >= 0.05e18);
+        vm.assume(slippage > MAX_SLIPPAGE);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.SlippageTooHigh.selector));
         dYfiRedeemer.setSlippage(slippage);
@@ -161,5 +162,59 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         vm.expectRevert(_formatAccessControlError(a, dYfiRedeemer.DEFAULT_ADMIN_ROLE()));
         vm.prank(a);
         dYfiRedeemer.setSlippage(0.02e18);
+    }
+
+    function testFuzz_minYfiRedeem(uint256 dYfiAmount) public {
+        vm.assume(dYfiAmount > 1e2); // minimum dYfi amount required to simulate
+        vm.assume(dYfiAmount < type(uint128).max);
+        vm.prank(admin);
+        assertGt(dYfiRedeemer.currentYfiRedeem(dYfiAmount), dYfiRedeemer.minYfiRedeem(dYfiAmount));
+    }
+
+    function test_expectedMassRedeemReward_ReturnsZeroOnZeroTotalDYfi() public {
+        assertEq(dYfiRedeemer.expectedMassRedeemReward(0), 0);
+    }
+
+    function testFuzz_receiveFlashLoan_revertWhen_NotAuthorized(address a) public {
+        vm.assume(a != MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
+        vm.prank(a);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector));
+        dYfiRedeemer.receiveFlashLoan(new IERC20[](0), new uint256[](0), new uint256[](0), "");
+    }
+
+    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived(address t) public {
+        vm.assume(t != MAINNET_WETH);
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = IERC20(t);
+        vm.prank(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
+        dYfiRedeemer.receiveFlashLoan(tokens, new uint256[](tokens.length), new uint256[](tokens.length), "");
+    }
+
+    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidTokensArrayLength(uint256 l) public {
+        vm.assume(l != 1);
+        vm.assume(l < 2000);
+        IERC20[] memory tokens = new IERC20[](l);
+        vm.prank(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
+        dYfiRedeemer.receiveFlashLoan(tokens, new uint256[](1), new uint256[](1), "");
+    }
+
+    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidAmountsArrayLength(uint256 l) public {
+        vm.assume(l != 1);
+        vm.assume(l < 2000);
+        uint256[] memory amounts = new uint256[](l);
+        vm.prank(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
+        dYfiRedeemer.receiveFlashLoan(new IERC20[](1), amounts, new uint256[](1), "");
+    }
+
+    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidFeesArrayLength(uint256 l) public {
+        vm.assume(l != 1);
+        vm.assume(l < 2000);
+        uint256[] memory fees = new uint256[](l);
+        vm.prank(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
+        dYfiRedeemer.receiveFlashLoan(new IERC20[](1), new uint256[](1), fees, "");
     }
 }

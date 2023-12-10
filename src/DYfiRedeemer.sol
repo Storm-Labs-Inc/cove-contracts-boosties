@@ -150,7 +150,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
         if (msg.sender != _FLASH_LOAN_PROVIDER) {
             revert Errors.NotAuthorized();
         }
-        if (tokens.length != 1 || tokens[0] != IERC20(_WETH)) {
+        if (tokens.length != 1 || amounts.length != 1 || feeAmounts.length != 1 || tokens[0] != IERC20(_WETH)) {
             revert Errors.InvalidTokensReceived();
         }
         // Acquire ETH from flash loan
