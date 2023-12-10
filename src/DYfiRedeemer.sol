@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { IFlashLoanRecipient } from "src/interfaces/deps/balancer/IFlashLoanRecipient.sol";
 import { IFlashLoanProvider } from "src/interfaces/deps/balancer/IFlashLoanProvider.sol";
 import { IRedemption } from "src/interfaces/deps/yearn/veYFI/IRedemption.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -11,6 +10,7 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 import { IWETH } from "src/interfaces/deps/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IDYfiRedeemer } from "src/interfaces/IDYfiRedeemer.sol";
 
 /**
  * @title DYfiRedeemer
@@ -23,7 +23,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
  * the minimum amount of YFI that should be redeemed for their dYFI. The minimum amount of YFI at a given time can be
  * calculated using the `minYfiRedeem(uint256 dYfiAmount)` function.
  */
-contract DYfiRedeemer is IFlashLoanRecipient, AccessControl, ReentrancyGuard {
+contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address private constant _REDEMPTION = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;
@@ -38,10 +38,6 @@ contract DYfiRedeemer is IFlashLoanRecipient, AccessControl, ReentrancyGuard {
 
     /// @notice The slippage that should be applied to the redemption process
     uint256 public slippage;
-
-    event SlippageSet(uint256 slippage);
-    event DYfiRedeemed(address indexed dYfiHolder, uint256 dYfiAmount, uint256 yfiAmount);
-    event CallerReward(address indexed caller, uint256 amount);
 
     constructor() {
         // Effects
@@ -123,10 +119,6 @@ contract DYfiRedeemer is IFlashLoanRecipient, AccessControl, ReentrancyGuard {
         IFlashLoanProvider(_FLASH_LOAN_PROVIDER).flashLoan(
             this, tokens, amounts, abi.encode(totalDYfiAmount, totalYfiRequired)
         );
-        // Check that we redeemed enough YFI
-        if (IERC20(_YFI).balanceOf(address(this)) < totalYfiRequired) {
-            revert Errors.InsufficientYfiBalance();
-        }
         // Distribute YFI to dYFI holders
         for (uint256 i = 0; i < dYfiHolders.length; i++) {
             uint256 yfiAmount = dYfiAmounts[i] * totalYfiRequired * 1e18 / totalDYfiAmount / 1e18;
