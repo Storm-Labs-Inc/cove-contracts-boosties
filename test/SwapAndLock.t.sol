@@ -5,14 +5,12 @@ import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { ISwapAndLock, ISwapAndLockEvents } from "src/interfaces/ISwapAndLock.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
-import { MockCurveRouter } from "test/mocks/MockCurveRouter.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
 contract SwapAndLock_Test is BaseTest, ISwapAndLockEvents {
     address public yearnStakingDelegate;
-    address public curveRouter;
     address public swapAndLock;
     address public admin;
     address public yfi;
@@ -30,72 +28,66 @@ contract SwapAndLock_Test is BaseTest, ISwapAndLockEvents {
 
         // Deploy mock contracts to be called in SwapAndLock
         yearnStakingDelegate = address(new MockYearnStakingDelegate());
-        curveRouter = address(new MockCurveRouter());
 
         // Deploy SwapAndLock
         vm.startPrank(admin);
-        swapAndLock = address(new SwapAndLock(curveRouter, yearnStakingDelegate));
-        ISwapAndLock(swapAndLock).grantRole(ISwapAndLock(swapAndLock).MANAGER_ROLE(), admin);
+        swapAndLock = address(new SwapAndLock(yearnStakingDelegate));
         vm.stopPrank();
     }
 
-    function _setRouterParams() internal {
-        vm.prank(admin);
-        ISwapAndLock(swapAndLock).setRouterParams(generateMockCurveSwapParams({ fromToken: dYfi, toToken: yfi }));
-    }
-
-    function test_swapDYfiToVeYfi() public {
-        _setRouterParams();
-
-        uint256 dYfiAmount = 20e18;
+    function test_lockYfi() public {
         uint256 yfiAmount = 10e18;
-        airdrop(IERC20(dYfi), swapAndLock, dYfiAmount);
-        airdrop(IERC20(yfi), curveRouter, yfiAmount);
-
-        vm.expectEmit();
-        emit ISwapAndLockEvents.SwapAndLocked(dYfiAmount, yfiAmount, yfiAmount);
+        airdrop(IERC20(yfi), swapAndLock, yfiAmount);
         vm.prank(admin);
-        ISwapAndLock(swapAndLock).swapDYfiToVeYfi(0);
-        assertEq(IERC20(dYfi).balanceOf(address(swapAndLock)), 0);
+        ISwapAndLock(swapAndLock).lockYfi();
         assertEq(IERC20(yfi).balanceOf(address(swapAndLock)), 0);
     }
 
-    function test_swapDYfiToVeYfi_revertWhen_NotAuthorized() public {
-        _setRouterParams();
-        address alice = createUser("alice");
-        vm.expectRevert(_formatAccessControlError(alice, ISwapAndLock(swapAndLock).MANAGER_ROLE()));
-        vm.prank(alice);
-        ISwapAndLock(swapAndLock).swapDYfiToVeYfi(0);
-    }
-
-    function test_swapDYfiToVeYfi_revertWhen_NoDYfiToSwap() public {
-        _setRouterParams();
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NoDYfiToSwap.selector));
-        ISwapAndLock(swapAndLock).swapDYfiToVeYfi(0);
-    }
-
-    function testFuzz_swapDYfiToVeYfi(uint256 dYfiAmount, uint256 yfiAmount) public {
-        vm.assume(dYfiAmount > 0);
-        vm.assume(yfiAmount > 0);
-
-        _setRouterParams();
-        airdrop(IERC20(dYfi), swapAndLock, dYfiAmount);
-        airdrop(IERC20(yfi), curveRouter, yfiAmount);
+    function testFuzz_setDYfiRedeemer(address a) public {
+        vm.assume(a != address(0));
 
         vm.expectEmit();
-        emit ISwapAndLockEvents.SwapAndLocked(dYfiAmount, yfiAmount, yfiAmount);
+        emit DYfiRedeemerSet(address(0), a);
         vm.prank(admin);
-        ISwapAndLock(swapAndLock).swapDYfiToVeYfi(0);
-        assertEq(IERC20(dYfi).balanceOf(address(swapAndLock)), 0);
-        assertEq(IERC20(yfi).balanceOf(address(swapAndLock)), 0);
+        ISwapAndLock(swapAndLock).setDYfiRedeemer(a);
+        assertEq(ISwapAndLock(swapAndLock).dYfiRedeemer(), a);
+        assertEq(IERC20(dYfi).allowance(swapAndLock, a), type(uint256).max);
     }
 
-    function testFuzz_swapDYfiToVeYfi_revertWhen_NotAuthorized(address caller) public {
-        _setRouterParams();
-        vm.assume(caller != admin);
-        vm.expectRevert(_formatAccessControlError(caller, ISwapAndLock(swapAndLock).MANAGER_ROLE()));
-        vm.prank(caller);
-        ISwapAndLock(swapAndLock).swapDYfiToVeYfi(0);
+    function testFuzz_setDYfiRedeemer_passWhen_Replacing(address a, address b) public {
+        vm.assume(a != address(0));
+        vm.assume(b != address(0));
+        vm.assume(a != b);
+
+        vm.expectEmit();
+        emit DYfiRedeemerSet(address(0), a);
+        vm.prank(admin);
+        ISwapAndLock(swapAndLock).setDYfiRedeemer(a);
+        assertEq(ISwapAndLock(swapAndLock).dYfiRedeemer(), a);
+        assertEq(IERC20(dYfi).allowance(swapAndLock, a), type(uint256).max);
+        assertEq(IERC20(dYfi).allowance(swapAndLock, b), 0);
+
+        vm.expectEmit();
+        emit DYfiRedeemerSet(a, b);
+        vm.prank(admin);
+        ISwapAndLock(swapAndLock).setDYfiRedeemer(b);
+        assertEq(ISwapAndLock(swapAndLock).dYfiRedeemer(), b);
+        assertEq(IERC20(dYfi).allowance(swapAndLock, a), 0);
+        assertEq(IERC20(dYfi).allowance(swapAndLock, b), type(uint256).max);
+    }
+
+    function test_setDYfiRedeemer_revertWhen_ZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        ISwapAndLock(swapAndLock).setDYfiRedeemer(address(0));
+    }
+
+    function testFuzz_setDYfiRedeemer_revertWhen_SameAddress(address a) public {
+        vm.assume(a != address(0));
+        vm.startPrank(admin);
+        ISwapAndLock(swapAndLock).setDYfiRedeemer(a);
+        vm.expectRevert(abi.encodeWithSelector(Errors.SameAddress.selector));
+        ISwapAndLock(swapAndLock).setDYfiRedeemer(a);
+        vm.stopPrank();
     }
 }

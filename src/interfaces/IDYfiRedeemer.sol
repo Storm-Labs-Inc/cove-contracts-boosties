@@ -12,5 +12,5 @@ interface IDYfiRedeemer is IFlashLoanRecipient, IAccessControl, IDYfiRedeemerEve
     function currentYfiRedeem(uint256 dYfiAmount) external view returns (uint256);
     function expectedMassRedeemReward(uint256 dYfiAmount) external view returns (uint256);
     function massRedeem(address[] calldata accounts, uint256[] calldata dYfiAmounts) external;
-    function setSlippage(uint256 slippage) external;
+    function setSlippage(uint256 slippage_) external;
 }

@@ -57,8 +57,6 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    // TODO(Trail of Bits): PTAL at how to fix this reentrancy
-    // slither-disable-start reentrancy-no-eth
     /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
     /// @param swapAndLock Address of the SwapAndLock contract.
     /// @param treasury Address of the treasury to receive a portion of the rewards.
@@ -106,5 +104,4 @@ contract GaugeRewardReceiver is Clone, ReentrancyGuardUpgradeable {
 
         return totalRewardsAmount;
     }
-    // slither-disable-end reentrancy-no-eth
 }

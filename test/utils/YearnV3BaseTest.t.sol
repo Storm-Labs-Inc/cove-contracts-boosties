@@ -11,9 +11,9 @@ import { Errors } from "src/libraries/Errors.sol";
 
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
+import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
 
 import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
 import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
@@ -204,30 +204,18 @@ contract YearnV3BaseTest is BaseTest {
         return gaugeRewardReceiverImplementation;
     }
 
-    function setUpSwapAndLock(
-        address owner,
-        address curveRouter,
-        address yearnStakingDelegate
-    )
-        public
-        returns (address)
-    {
-        vm.startPrank(owner);
-        address swapAndLock = address(new SwapAndLock(curveRouter, yearnStakingDelegate));
+    function setUpSwapAndLock(address owner, address yearnStakingDelegate) public returns (address) {
+        vm.prank(owner);
+        address swapAndLock = address(new SwapAndLock(yearnStakingDelegate));
         vm.label(swapAndLock, "SwapAndLock");
-        CurveRouterSwapper.CurveSwapParams memory dYfiToYfiParams;
-        // [token_from, pool, token_to, pool, ...]
-        dYfiToYfiParams.route[0] = MAINNET_DYFI;
-        dYfiToYfiParams.route[1] = MAINNET_DYFI_ETH_POOL;
-        dYfiToYfiParams.route[2] = MAINNET_ETH;
-        dYfiToYfiParams.route[3] = MAINNET_ETH_YFI_POOL;
-        dYfiToYfiParams.route[4] = MAINNET_YFI;
-
-        dYfiToYfiParams.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        dYfiToYfiParams.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-        SwapAndLock(swapAndLock).setRouterParams(dYfiToYfiParams);
-        vm.stopPrank();
         return swapAndLock;
+    }
+
+    function setUpDYfiRedeemer(address owner) public returns (address) {
+        vm.prank(owner);
+        address dYfiRedeemer = address(new DYfiRedeemer());
+        vm.label(dYfiRedeemer, "DYfiRedeemer");
+        return dYfiRedeemer;
     }
 
     /// @notice Deploy YearnStakingDelegate with known mainnet addresses
