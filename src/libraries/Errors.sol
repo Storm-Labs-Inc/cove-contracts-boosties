@@ -109,6 +109,12 @@ library Errors {
 
     error NotAuthorized();
 
+    /// DYFI REDEEMER ///
+    error InvalidArrayLength();
+    error PriceFeedOutdated();
+    error InsufficientYfiBalance();
+    error NoDYfiToRedeem();
+
     /// TESTING ///
 
     error TakeAwayNotEnoughBalance();
