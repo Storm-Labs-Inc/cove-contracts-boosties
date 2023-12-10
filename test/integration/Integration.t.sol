@@ -51,7 +51,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             vm.label(yearnStakingDelegate.gaugeRewardReceivers(gauge), "gaugeRewardReceiver");
             stakingDelegateRewards =
                 StakingDelegateRewards(setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate)));
-            swapAndLock = SwapAndLock(setUpSwapAndLock(admin, MAINNET_CURVE_ROUTER, address(yearnStakingDelegate)));
+            swapAndLock = SwapAndLock(setUpSwapAndLock(admin, address(yearnStakingDelegate)));
             vm.startPrank(admin);
             // sets gauge as reward and a 100% split to the strategy
             yearnStakingDelegate.addGaugeRewards(gauge, address(stakingDelegateRewards));

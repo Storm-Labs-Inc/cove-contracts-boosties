@@ -2,110 +2,60 @@
 pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
-import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { IDYfiRedeemer } from "src/interfaces/IDYfiRedeemer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
-import { Errors } from "src/libraries/Errors.sol";
 
 contract SwapAndLock_ForkedTest is YearnV3BaseTest {
     address public yearnStakingDelegate;
     address public swapAndLock;
+    address public dYfiRedeemer;
+
+    address public redeemCaller;
 
     function setUp() public override {
         super.setUp();
+        redeemCaller = createUser("redeemCaller");
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
         yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin);
-        swapAndLock = setUpSwapAndLock(admin, MAINNET_CURVE_ROUTER, yearnStakingDelegate);
+        swapAndLock = setUpSwapAndLock(admin, yearnStakingDelegate);
+        dYfiRedeemer = setUpDYfiRedeemer(admin);
         vm.startPrank(admin);
         IYearnStakingDelegate(yearnStakingDelegate).setSwapAndLock(swapAndLock);
-        ISwapAndLock(swapAndLock).grantRole(ISwapAndLock(swapAndLock).MANAGER_ROLE(), admin);
         vm.stopPrank();
     }
 
-    function test_swapDYfiToVeYfi() public {
-        uint256 dYfiAmount = 20e18;
-        airdrop(IERC20(MAINNET_DYFI), swapAndLock, dYfiAmount);
-        // Calculate expected YFI amount after swapping through curve pools
-        // dYFI -> WETH then WETH -> YFI
-        uint256 wethAmount = ICurveTwoAssetPool(MAINNET_DYFI_ETH_POOL).get_dy(0, 1, dYfiAmount);
-        uint256 yfiAmount = ICurveTwoAssetPool(MAINNET_ETH_YFI_POOL).get_dy(0, 1, wethAmount);
+    function _setDYfiRedeemer(address redeemer) internal {
+        vm.startPrank(admin);
+        ISwapAndLock(swapAndLock).setDYfiRedeemer(redeemer);
+        vm.stopPrank();
+    }
 
-        vm.prank(admin);
-        ISwapAndLock(swapAndLock).swapDYfiToVeYfi(yfiAmount);
+    function test_lockYfi() public {
+        _setDYfiRedeemer(dYfiRedeemer);
+        uint256 dYfiAmount = 10e18;
+        airdrop(IERC20(MAINNET_DYFI), swapAndLock, dYfiAmount);
+
+        address[] memory accounts = new address[](1);
+        accounts[0] = swapAndLock;
+        uint256[] memory dYfiAmounts = new uint256[](1);
+        dYfiAmounts[0] = dYfiAmount;
+        vm.prank(redeemCaller);
+        IDYfiRedeemer(dYfiRedeemer).massRedeem(accounts, dYfiAmounts);
+        uint256 yfiAmount = IERC20(MAINNET_YFI).balanceOf(swapAndLock);
+        assertGt(yfiAmount, 0, "dYfi was not redeemed for YFI");
 
         // Check for the new veYFI balance
-        IVotingYFI.LockedBalance memory lockedBalance = IVotingYFI(MAINNET_VE_YFI).locked(address(yearnStakingDelegate));
-        assertApproxEqRel(
-            lockedBalance.amount, yfiAmount, 0.001e18, "swapDYfiToVeYfi failed: locked amount is incorrect"
-        );
+        vm.prank(admin);
+        IVotingYFI.LockedBalance memory lockedBalance = ISwapAndLock(swapAndLock).lockYfi();
+        assertApproxEqRel(lockedBalance.amount, yfiAmount, 0.001e18, "lockYfi failed: locked amount is incorrect");
         assertApproxEqRel(
             lockedBalance.end,
             block.timestamp + 4 * 365 days + 4 weeks,
             0.001e18,
-            "swapDYfiToVeYfi failed: locked end timestamp is incorrect"
+            "lockYfi failed: locked end timestamp is incorrect"
         );
-    }
-
-    function test_swapDYfiToVeYfi_revertWhen_NoDYfiToSwap() public {
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NoDYfiToSwap.selector));
-        ISwapAndLock(swapAndLock).swapDYfiToVeYfi(0);
-    }
-
-    function test_setRouterParams_revertWhen_EmptyPaths() public {
-        vm.startPrank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, MAINNET_DYFI, address(0)));
-        ISwapAndLock(swapAndLock).setRouterParams(params);
-    }
-
-    function test_setRouterParams_revertWhen_InvalidFromToken() public {
-        vm.startPrank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        // Set from token to be USDC instead of dYFI
-        params.route[0] = MAINNET_USDC;
-        params.route[1] = MAINNET_TRI_CRYPTO_USDC;
-        params.route[2] = MAINNET_ETH;
-        params.route[3] = MAINNET_ETH_YFI_POOL;
-        params.route[4] = MAINNET_YFI;
-
-        params.swapParams[0] = [uint256(0), 2, 1, 2, 2];
-        params.swapParams[1] = [uint256(0), 1, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidFromToken.selector, MAINNET_DYFI, MAINNET_USDC));
-        ISwapAndLock(swapAndLock).setRouterParams(params);
-    }
-
-    function test_setRouterParams_revertWhen_InvalidToToken() public {
-        vm.prank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        params.route[0] = MAINNET_DYFI;
-        params.route[1] = MAINNET_DYFI_ETH_POOL;
-        params.route[2] = MAINNET_ETH;
-        params.route[3] = MAINNET_TRI_CRYPTO_USDC;
-        params.route[4] = MAINNET_USDC;
-
-        params.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        params.swapParams[1] = [uint256(2), 0, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidToToken.selector, MAINNET_YFI, MAINNET_USDC));
-        ISwapAndLock(swapAndLock).setRouterParams(params);
-    }
-
-    function test_setRouterParams_revertWhen_InvalidCoinIndex() public {
-        vm.startPrank(admin);
-        CurveRouterSwapper.CurveSwapParams memory params;
-        // Set route to include a token index that does not exist in the given pools
-        params.route[0] = MAINNET_DYFI;
-        params.route[1] = MAINNET_DYFI_ETH_POOL;
-        params.route[2] = MAINNET_WETH;
-        params.route[3] = MAINNET_ETH_YFI_POOL;
-        params.route[4] = MAINNET_YFI;
-
-        params.swapParams[0] = [uint256(0), 1, 1, 2, 2];
-        params.swapParams[1] = [uint256(5), 1, 1, 2, 2];
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSwapParams.selector));
-        ISwapAndLock(swapAndLock).setRouterParams(params);
     }
 }

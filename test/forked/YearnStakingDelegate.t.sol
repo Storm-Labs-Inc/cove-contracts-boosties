@@ -53,7 +53,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
         yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, manager);
         stakingDelegateRewards = setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate));
-        swapAndLock = setUpSwapAndLock(admin, MAINNET_CURVE_ROUTER, address(yearnStakingDelegate));
+        swapAndLock = setUpSwapAndLock(admin, address(yearnStakingDelegate));
 
         // Setup approvals for YFI spending
         vm.startPrank(alice);

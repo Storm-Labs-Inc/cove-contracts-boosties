@@ -93,7 +93,7 @@ library Errors {
     error InvalidSwapParams();
 
     /// SWAP AND LOCK ///
-    error NoDYfiToSwap();
+    error SameAddress();
 
     //// COVEYFI ////
 
