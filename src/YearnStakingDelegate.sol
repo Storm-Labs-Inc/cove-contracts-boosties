@@ -371,7 +371,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         gaugeRewardReceivers[gauge] = receiver;
         _blockedTargets[receiver] = true;
         // Interactions
-        GaugeRewardReceiver(receiver).initialize();
+        GaugeRewardReceiver(receiver).initialize(msg.sender);
         IGauge(gauge).setRecipient(receiver);
         StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
     }
