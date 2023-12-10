@@ -171,7 +171,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         _mockChainlinkPriceFeedTimestamp();
-        // Call massRedeem() to swap recieved DYfi for Yfi
+        // Call massRedeem() to swap received DYfi for Yfi
         _massRedeemStrategyDYfi();
 
         // manager calls report on the wrapped strategy
@@ -289,7 +289,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         _mockChainlinkPriceFeedTimestamp();
-        // Call massRedeem() to swap recieved DYfi for Yfi
+        // Call massRedeem() to swap received DYfi for Yfi
         _massRedeemStrategyDYfi();
 
         // manager calls report on the wrapped strategy

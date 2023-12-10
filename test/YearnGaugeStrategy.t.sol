@@ -190,7 +190,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
             "dYfi rewards should be received"
         );
 
-        // Call massRedeem() to swap recieved DYfi for Yfi
+        // Call massRedeem() to swap received DYfi for Yfi
         _massRedeemStrategyDYfi();
 
         // call report on strategy again to deposit newly opbtained Yfi into strategy to record profit
@@ -246,7 +246,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.prank(manager);
         yearnGaugeStrategy.report();
         assertEq(IERC20(dYfi).balanceOf(address(yearnGaugeStrategy)), 1e18, "dYfi rewards should be received");
-        // Call massRedeem() to swap recieved DYfi for Yfi
+        // Call massRedeem() to swap received DYfi for Yfi
         _massRedeemStrategyDYfi();
 
         // manager calls report on the wrapped strategy
@@ -393,7 +393,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
             profitedVaultAssetAmount,
             "dYfi rewards should be received"
         );
-        // Call massRedeem() to swap recieved DYfi for Yfi
+        // Call massRedeem() to swap received DYfi for Yfi
         _massRedeemStrategyDYfi();
 
         // call report on strategy again to deposit newly opbtained Yfi into strategy to record profit

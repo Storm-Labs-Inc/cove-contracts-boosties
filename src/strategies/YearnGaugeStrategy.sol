@@ -101,7 +101,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         // Transfers unlocked dYfi rewards to this contract
         address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(address(asset));
         IStakingDelegateRewards(stakingDelegateRewards).getReward(address(asset));
-        // Check for any dYfi that has beed redeemed for Yfi
+        // Check for any dYfi that has been redeemed for Yfi
         uint256 yfiBalance = IERC20(yfi).balanceOf(address(this));
         // If dfi has been redeemed for Yfi, swap it for vault asset and deploy it to the strategy
         if (yfiBalance > 0) {
