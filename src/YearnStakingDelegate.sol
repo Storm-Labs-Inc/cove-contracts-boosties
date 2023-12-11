@@ -418,6 +418,10 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
     }
 
+    /**
+     * @dev Internal function to set the perpetual lock status.
+     * @param shouldPerpetuallyLock_ True for max lock.
+     */
     function _setPerpetualLock(bool shouldPerpetuallyLock_) internal {
         shouldPerpetuallyLock = shouldPerpetuallyLock_;
         emit PerpetualLockSet(shouldPerpetuallyLock_);
