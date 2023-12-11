@@ -6,19 +6,21 @@ import { Errors } from "src/libraries/Errors.sol";
 import { ICurveRouter } from "src/interfaces/deps/curve/ICurveRouter.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-/// @title Curve Router Library
-/// @notice Contains helper methods for interacting with Curve Router.
-/// @dev Curve router is deployed on these networks at 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D
-/// - Ethereum
-/// - Optimism
-/// - Gnosis
-/// - Polygon
-/// - Fantom
-/// - Kava
-/// - Arbitrum
-/// - Avalanche
-/// - Base at 0xd6681e74eEA20d196c15038C580f721EF2aB6320
-/// https://github.com/curvefi/curve-router-ng/tree/master
+/**
+ * @title Curve Router Library
+ * @notice Contains helper methods for interacting with Curve Router.
+ * @dev Curve router is deployed on these networks at 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D
+ * - Ethereum
+ * - Optimism
+ * - Gnosis
+ * - Polygon
+ * - Fantom
+ * - Kava
+ * - Arbitrum
+ * - Avalanche
+ * - Base at 0xd6681e74eEA20d196c15038C580f721EF2aB6320
+ * https://github.com/curvefi/curve-router-ng/tree/master
+ */
 contract CurveRouterSwapper {
     using SafeERC20 for IERC20;
 

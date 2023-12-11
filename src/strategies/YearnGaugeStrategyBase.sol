@@ -8,9 +8,11 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol";
 
-/// @title YearnGaugeStrategyBase
-/// @notice Abstract base contract for Yearn gauge strategies, handling deposits and withdrawals to the
-/// YearnStakingDelegate.
+/**
+ * @title YearnGaugeStrategyBase
+ * @notice Abstract base contract for Yearn gauge strategies, handling deposits and withdrawals to the
+ * YearnStakingDelegate.
+ */
 abstract contract YearnGaugeStrategyBase {
     // Libraries
     using SafeERC20 for IERC20;
