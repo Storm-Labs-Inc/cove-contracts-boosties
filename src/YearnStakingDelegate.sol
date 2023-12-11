@@ -225,6 +225,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /**
      * @notice Set the reward split percentages
+     * @param gauge address of the gauge token
      * @param treasuryPct percentage of rewards to treasury
      * @param userPct percentage of rewards to user
      * @param veYfiPct percentage of rewards to veYFI
