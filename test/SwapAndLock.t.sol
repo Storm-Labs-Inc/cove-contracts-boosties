@@ -2,19 +2,21 @@
 pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
-import { ISwapAndLock, ISwapAndLockEvents } from "src/interfaces/ISwapAndLock.sol";
+import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract SwapAndLock_Test is BaseTest, ISwapAndLockEvents {
+contract SwapAndLock_Test is BaseTest {
     address public yearnStakingDelegate;
     address public swapAndLock;
     address public admin;
     address public yfi;
     address public dYfi;
+
+    event DYfiRedeemerSet(address oldRedeemer, address newRedeemer);
 
     function setUp() public override {
         super.setUp();

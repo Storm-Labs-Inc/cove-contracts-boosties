@@ -30,9 +30,9 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
     address private immutable _YEARN_STAKING_DELEGATE;
 
     /// @notice Address of the DYfiRedeemer contract.
-    address public dYfiRedeemer;
+    address private _dYfiRedeemer;
 
-    /* ========== CONSTRUCTOR ========== */
+    event DYfiRedeemerSet(address oldRedeemer, address newRedeemer);
 
     /**
      * @notice Constructs the SwapAndLock contract.
@@ -68,17 +68,25 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
         if (newDYfiRedeemer == address(0)) {
             revert Errors.ZeroAddress();
         }
-        address currentDYfiRedeemer = dYfiRedeemer;
+        address currentDYfiRedeemer = _dYfiRedeemer;
         if (newDYfiRedeemer == currentDYfiRedeemer) {
             revert Errors.SameAddress();
         }
         // Effects
-        dYfiRedeemer = newDYfiRedeemer;
+        _dYfiRedeemer = newDYfiRedeemer;
         // Interactions
         emit DYfiRedeemerSet(currentDYfiRedeemer, newDYfiRedeemer);
         if (currentDYfiRedeemer != address(0)) {
             IERC20(_D_YFI).forceApprove(currentDYfiRedeemer, 0);
         }
         IERC20(_D_YFI).forceApprove(newDYfiRedeemer, type(uint256).max);
+    }
+
+    /**
+     * @notice Get the address of the dYFI redeemer contract.
+     * @return The address of the dYFI redeemer contract.
+     */
+    function dYfiRedeemer() external view returns (address) {
+        return _dYfiRedeemer;
     }
 }

@@ -28,7 +28,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     // Constants
     // slither-disable-start naming-convention
-    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
@@ -46,25 +46,34 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     mapping(address gauge => address) public gaugeRewardReceivers;
     mapping(address vault => RewardSplit) public gaugeRewardSplit;
     mapping(address user => mapping(address token => uint256)) public balanceOf;
-    mapping(address target => bool) private _blockedTargets;
+    mapping(address target => bool) public blockedTargets;
 
     // Variables
-    address public treasury;
-    bool public shouldPerpetuallyLock;
-    address public swapAndLock;
+    address private _treasury;
+    bool private _shouldPerpetuallyLock;
+    address private _swapAndLock;
+
+    event LockYfi(address indexed sender, uint256 amount);
+    event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
+    event PerpetualLockSet(bool shouldLock);
+    event GaugeRewardSplitSet(address indexed gauge, RewardSplit split);
+    event SwapAndLockSet(address swapAndLockContract);
+    event TreasurySet(address newTreasury);
+    event Deposit(address indexed sender, address indexed gauge, uint256 amount);
+    event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
 
     /**
      * @dev Initializes the contract by setting up roles and initializing state variables.
      * @param gaugeRewardReceiverImpl Address of the GaugeRewardReceiver implementation.
-     * @param _treasury Address of the treasury.
+     * @param treasury_ Address of the treasury.
      * @param admin Address of the admin.
      * @param manager Address of the manager.
      */
-    constructor(address gaugeRewardReceiverImpl, address _treasury, address admin, address manager) {
+    constructor(address gaugeRewardReceiverImpl, address treasury_, address admin, address manager) {
         // Checks
         // Check for zero addresses
         if (
-            gaugeRewardReceiverImpl == address(0) || _treasury == address(0) || admin == address(0)
+            gaugeRewardReceiverImpl == address(0) || treasury_ == address(0) || admin == address(0)
                 || manager == address(0)
         ) {
             revert Errors.ZeroAddress();
@@ -72,19 +81,19 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
         // Effects
         // Set storage variables
-        _setTreasury(_treasury);
+        _setTreasury(treasury_);
         _setPerpetualLock(true);
         _GAUGE_REWARD_RECEIVER_IMPL = gaugeRewardReceiverImpl;
-        _blockedTargets[_YFI] = true;
-        _blockedTargets[_D_YFI] = true;
-        _blockedTargets[_VE_YFI] = true;
-        _blockedTargets[_YFI_REWARD_POOL] = true;
-        _blockedTargets[_DYFI_REWARD_POOL] = true;
-        _blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
-        _blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
+        blockedTargets[_YFI] = true;
+        blockedTargets[_D_YFI] = true;
+        blockedTargets[_VE_YFI] = true;
+        blockedTargets[_YFI_REWARD_POOL] = true;
+        blockedTargets[_DYFI_REWARD_POOL] = true;
+        blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
+        blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(MANAGER_ROLE, admin);
-        _grantRole(MANAGER_ROLE, manager);
+        _grantRole(_MANAGER_ROLE, admin);
+        _grantRole(_MANAGER_ROLE, manager);
 
         // Interactions
         // Max approve YFI to veYFI so we can lock it later
@@ -140,8 +149,8 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function harvest(address gauge) external returns (uint256) {
         // Checks
-        address swapAndLock_ = swapAndLock;
-        if (swapAndLock_ == address(0)) {
+        address swapAndLockContract = _swapAndLock;
+        if (swapAndLockContract == address(0)) {
             revert Errors.SwapAndLockNotSet();
         }
         address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
@@ -149,7 +158,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Interactions
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLockContract, _treasury, gaugeRewardSplit[gauge]);
     }
 
     /**
@@ -162,7 +171,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        IERC20(_D_YFI).safeTransfer(treasury, IERC20(_D_YFI).balanceOf(address(this)));
+        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
     }
 
     /**
@@ -175,7 +184,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IYfiRewardPool(_YFI_REWARD_POOL).claim();
-        IERC20(_YFI).safeTransfer(treasury, IERC20(_YFI).balanceOf(address(this)));
+        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
     }
 
     /**
@@ -188,7 +197,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (amount == 0) {
             revert Errors.ZeroAmount();
         }
-        if (!shouldPerpetuallyLock) {
+        if (!_shouldPerpetuallyLock) {
             revert Errors.PerpetualLockDisabled();
         }
         // Interactions
@@ -201,7 +210,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @notice Set treasury address. This address will receive a portion of the rewards
      * @param treasury_ address to receive rewards
      */
-    function setTreasury(address treasury_) external onlyRole(MANAGER_ROLE) {
+    function setTreasury(address treasury_) external onlyRole(_MANAGER_ROLE) {
         // Checks
         if (treasury_ == address(0)) {
             revert Errors.ZeroAddress();
@@ -212,15 +221,15 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /**
      * @notice Sets the address for the SwapAndLock contract.
-     * @param swapAndLock_ Address of the SwapAndLock contract.
+     * @param newSwapAndLock Address of the SwapAndLock contract.
      */
-    function setSwapAndLock(address swapAndLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSwapAndLock(address newSwapAndLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
-        if (swapAndLock_ == address(0)) {
+        if (newSwapAndLock == address(0)) {
             revert Errors.ZeroAddress();
         }
-        swapAndLock = swapAndLock_;
-        emit SwapAndLockSet(swapAndLock_);
+        _swapAndLock = newSwapAndLock;
+        emit SwapAndLockSet(newSwapAndLock);
     }
 
     /**
@@ -231,7 +240,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param veYfiPct percentage of rewards to veYFI
      * @dev Sum of percentages must equal to 1e18
      */
-    function setRewardSplit(
+    function setGaugeRewardSplit(
         address gauge,
         uint80 treasuryPct,
         uint80 userPct,
@@ -240,7 +249,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
+        _setGaugeRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
     }
 
     /**
@@ -278,7 +287,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.GaugeRewardsAlreadyAdded();
         }
         // Effects
-        _setRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
+        _setGaugeRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
         // Effects & Interactions
         _setGaugeRewards(gauge, stakingDelegateRewards);
     }
@@ -313,10 +322,10 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /**
      * @notice Set perpetual lock status
-     * @param shouldPerpetuallyLock_ if true, lock YFI for 4 years after each harvest
+     * @param lock if true, lock YFI for 4 years after each harvest
      */
-    function setPerpetualLock(bool shouldPerpetuallyLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setPerpetualLock(shouldPerpetuallyLock_);
+    function setPerpetualLock(bool lock) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setPerpetualLock(lock);
     }
 
     /**
@@ -325,7 +334,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function earlyUnlock(address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
-        if (shouldPerpetuallyLock) {
+        if (_shouldPerpetuallyLock) {
             revert Errors.PerpetualLockEnabled();
         }
         // Interactions
@@ -344,7 +353,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function execute(
         address target,
-        bytes memory data,
+        bytes calldata data,
         uint256 value
     )
         external
@@ -353,7 +362,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         returns (bytes memory)
     {
         // Checks
-        if (_blockedTargets[target]) {
+        if (blockedTargets[target]) {
             revert Errors.ExecutionNotAllowed();
         }
         // Interactions
@@ -367,6 +376,30 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ExecutionFailed();
         }
         return result;
+    }
+
+    /**
+     * @notice Get the address of the treasury
+     * @return The address of the treasury
+     */
+    function treasury() external view returns (address) {
+        return _treasury;
+    }
+
+    /**
+     * @notice Get the address of the SwapAndLock contract
+     * @return The address of the SwapAndLock contract
+     */
+    function swapAndLock() external view returns (address) {
+        return _swapAndLock;
+    }
+
+    /**
+     * @notice Get the perpetual lock status
+     * @return True if perpetual lock is enabled
+     */
+    function shouldPerpetuallyLock() external view returns (bool) {
+        return _shouldPerpetuallyLock;
     }
 
     /**
@@ -394,7 +427,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     function _setTreasury(address treasury_) internal {
-        treasury = treasury_;
+        _treasury = treasury_;
         emit TreasurySet(treasury_);
     }
 
@@ -405,12 +438,12 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function _setGaugeRewards(address gauge, address stakingDelegateRewards) internal {
         gaugeStakingRewards[gauge] = stakingDelegateRewards;
-        _blockedTargets[gauge] = true;
-        _blockedTargets[stakingDelegateRewards] = true;
+        blockedTargets[gauge] = true;
+        blockedTargets[stakingDelegateRewards] = true;
         address receiver =
             _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
         gaugeRewardReceivers[gauge] = receiver;
-        _blockedTargets[receiver] = true;
+        blockedTargets[receiver] = true;
         // Interactions
         emit GaugeRewardsSet(gauge, stakingDelegateRewards, receiver);
         GaugeRewardReceiver(receiver).initialize(msg.sender);
@@ -420,11 +453,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /**
      * @dev Internal function to set the perpetual lock status.
-     * @param shouldPerpetuallyLock_ True for max lock.
+     * @param lock True for max lock.
      */
-    function _setPerpetualLock(bool shouldPerpetuallyLock_) internal {
-        shouldPerpetuallyLock = shouldPerpetuallyLock_;
-        emit PerpetualLockSet(shouldPerpetuallyLock_);
+    function _setPerpetualLock(bool lock) internal {
+        _shouldPerpetuallyLock = lock;
+        emit PerpetualLockSet(lock);
     }
 
     /**
@@ -434,7 +467,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param userPct Percentage of rewards to the user.
      * @param lockPct Percentage of rewards to lock in veYFI.
      */
-    function _setRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
+    function _setGaugeRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
         if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
             revert Errors.InvalidRewardSplit();
         }

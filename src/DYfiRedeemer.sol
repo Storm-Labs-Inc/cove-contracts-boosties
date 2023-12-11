@@ -38,12 +38,12 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     uint256 private constant _DEFAULT_SLIPPAGE = 0.01e18;
 
     /// @notice The slippage that should be applied to the redemption process
-    uint256 public slippage;
+    uint256 private _slippage;
 
     constructor() {
         // Effects
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        slippage = _DEFAULT_SLIPPAGE;
+        _slippage = _DEFAULT_SLIPPAGE;
         // Intefactions
         IERC20(_YFI).forceApprove(_ETH_YFI_CURVE_POOL, type(uint256).max);
         IERC20(_DYFI).forceApprove(_REDEMPTION, type(uint256).max);
@@ -87,7 +87,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Determine ETH required for redemption
         uint256 ethRequired = _getEthRequired(totalDYfiAmount);
         // Calculate amount of YFI to swap based on the slippage and ETH required for redemption
-        uint256 yfiToSwap = ethRequired * (1e18 + slippage) / _getLatestPrice();
+        uint256 yfiToSwap = ethRequired * (1e18 + _slippage) / _getLatestPrice();
         // Calculate total YFI that should be sent to dYFI holders
         uint256 yfiToDistribute = totalDYfiAmount - yfiToSwap;
         // Construct flash loan parameters
@@ -123,10 +123,10 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
      * @param userData additional data with no specified format.
      */
     function receiveFlashLoan(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        uint256[] memory feeAmounts,
-        bytes memory userData
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        uint256[] calldata feeAmounts,
+        bytes calldata userData
     )
         external
     {
@@ -169,8 +169,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         if (slippage_ > _MAX_SLIPPAGE) {
             revert Errors.SlippageTooHigh();
         }
-        slippage = slippage_;
-        emit SlippageSet(slippage_);
+        _setSlippage(slippage_);
     }
 
     /**
@@ -195,7 +194,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
      * @return The expected amount of YFI that should be redeemed for a given amount of dYFI
      */
     function currentYfiRedeem(uint256 dYfiAmount) external view returns (uint256) {
-        return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + slippage) / _getLatestPrice();
+        return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + _slippage) / _getLatestPrice();
     }
 
     /**
@@ -211,7 +210,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         }
         // The ETH required for redemption will be flash loaned from Balancer
         uint256 ethRequired = _getEthRequired(dYfiAmount);
-        uint256 yfiToSwap = ethRequired * (1e18 + slippage) / _getLatestPrice();
+        uint256 yfiToSwap = ethRequired * (1e18 + _slippage) / _getLatestPrice();
         uint256 minDy = ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).get_dy(1, 0, yfiToSwap);
         // Return surplus ETH
         return minDy - ethRequired;
@@ -223,6 +222,23 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
      */
     function getLatestPrice() external view returns (uint256) {
         return _getLatestPrice();
+    }
+
+    /**
+     * @notice Get the slippage that should be applied to DYFI -> YFI redeems.
+     * @return The slippage in 1e18 precision.
+     */
+    function slippage() external view returns (uint256) {
+        return _slippage;
+    }
+
+    /**
+     * @dev Internal function to set the slippage that should be applied to DYFI -> YFI redeems.
+     * @param slippage_ The new slippage to use for YFI swaps.
+     */
+    function _setSlippage(uint256 slippage_) internal {
+        _slippage = slippage_;
+        emit SlippageSet(slippage_);
     }
 
     /// @dev Returns ETH per 1 YFI in 1e18 precision

@@ -11,7 +11,7 @@ contract MockCurveRouterSwapper is CurveRouterSwapper {
     }
 
     function swap(
-        CurveSwapParams memory curveSwapParams,
+        CurveSwapParams calldata curveSwapParams,
         uint256 amount,
         uint256 expected,
         address receiver
@@ -23,7 +23,7 @@ contract MockCurveRouterSwapper is CurveRouterSwapper {
     }
 
     function validateSwapParams(
-        CurveSwapParams memory curveSwapParams,
+        CurveSwapParams calldata curveSwapParams,
         address fromToken,
         address toToken
     )

@@ -23,10 +23,10 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     CurveSwapParams internal _harvestSwapParams;
 
     /// @notice Maximum total assets that the strategy can manage
-    uint256 public maxTotalAssets;
+    uint256 private _maxTotalAssets;
 
-    /// @notice Address of the contract that will be redeeming dYFI
-    address public dYfiRedeemer;
+    /// @notice Address of the contract that will be redeeming dYFI for YFI for this strategy
+    address private _dYfiRedeemer;
 
     //// events ////
     event DYfiRedeemerSet(address oldDYfiRedeemer, address newDYfiRedeemer);
@@ -46,7 +46,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         CurveRouterSwapper(curveRouter_)
         YearnGaugeStrategyBase(asset_, yearnStakingDelegate_)
     {
-        _approveTokenForSwap(yfi);
+        _approveTokenForSwap(_YFI);
     }
 
     /**
@@ -55,7 +55,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      */
     function setHarvestSwapParams(CurveSwapParams calldata curveSwapParams) external onlyManagement {
         // Checks (includes external view calls)
-        _validateSwapParams(curveSwapParams, yfi, vaultAsset);
+        _validateSwapParams(curveSwapParams, _YFI, _VAULT_ASSET);
 
         // Effects
         _harvestSwapParams = curveSwapParams;
@@ -63,10 +63,10 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
 
     /**
      * @notice Sets the maximum total assets the strategy can manage
-     * @param maxTotalAssets_ The maximum total assets
+     * @param newMaxTotalAssets The maximum total assets
      */
-    function setMaxTotalAssets(uint256 maxTotalAssets_) external onlyManagement {
-        maxTotalAssets = maxTotalAssets_;
+    function setMaxTotalAssets(uint256 newMaxTotalAssets) external onlyManagement {
+        _maxTotalAssets = newMaxTotalAssets;
     }
 
     /**
@@ -78,18 +78,34 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         if (newDYfiRedeemer == address(0)) {
             revert Errors.ZeroAddress();
         }
-        address currentDYfiRedeemer = dYfiRedeemer;
+        address currentDYfiRedeemer = _dYfiRedeemer;
         if (newDYfiRedeemer == currentDYfiRedeemer) {
             revert Errors.SameAddress();
         }
         // Effects
-        dYfiRedeemer = newDYfiRedeemer;
+        _dYfiRedeemer = newDYfiRedeemer;
         // Interactions
         emit DYfiRedeemerSet(currentDYfiRedeemer, newDYfiRedeemer);
         if (currentDYfiRedeemer != address(0)) {
-            IERC20(dYfi).forceApprove(currentDYfiRedeemer, 0);
+            IERC20(_DYFI).forceApprove(currentDYfiRedeemer, 0);
         }
-        IERC20(dYfi).forceApprove(newDYfiRedeemer, type(uint256).max);
+        IERC20(_DYFI).forceApprove(newDYfiRedeemer, type(uint256).max);
+    }
+
+    /**
+     * @notice Get the max total assets the strategy can manage
+     * @return The maximum total assets
+     */
+    function maxTotalAssets() external view returns (uint256) {
+        return _maxTotalAssets;
+    }
+
+    /**
+     * @notice Get the address of the contract that will be redeeming dYFI from this strategy
+     * @return The address of the dYFI redeemer contract
+     */
+    function dYfiRedeemer() external view returns (address) {
+        return _dYfiRedeemer;
     }
 
     /**
@@ -98,12 +114,12 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      */
     function availableDepositLimit(address) public view override returns (uint256) {
         uint256 currentTotalAssets = TokenizedStrategy.totalAssets();
-        uint256 maxTotalAssets_ = maxTotalAssets;
-        if (currentTotalAssets >= maxTotalAssets_) {
+        uint256 currentMaxTotalAssets = _maxTotalAssets;
+        if (currentTotalAssets >= currentMaxTotalAssets) {
             return 0;
         }
         unchecked {
-            return maxTotalAssets_ - currentTotalAssets;
+            return currentMaxTotalAssets - currentTotalAssets;
         }
     }
 
@@ -139,16 +155,17 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      */
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Transfers unlocked dYfi rewards to this contract
-        address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(address(asset));
+        address stakingDelegateRewards =
+            IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).gaugeStakingRewards(address(asset));
         IStakingDelegateRewards(stakingDelegateRewards).getReward(address(asset));
         // Check for any dYfi that has been redeemed for Yfi
-        uint256 yfiBalance = IERC20(yfi).balanceOf(address(this));
+        uint256 yfiBalance = IERC20(_YFI).balanceOf(address(this));
         // If dfi has been redeemed for Yfi, swap it for vault asset and deploy it to the strategy
         if (yfiBalance > 0) {
             // This is a dangerous swap call that will get sandwiched if sent to a public network
             // Must be sent to a private network or use a minAmount derived from a price oracle
             uint256 receivedBaseTokens = _swap(_harvestSwapParams, yfiBalance, 0, address(this));
-            uint256 receivedVaultTokens = IERC4626(vault).deposit(receivedBaseTokens, address(this));
+            uint256 receivedVaultTokens = IERC4626(_VAULT).deposit(receivedBaseTokens, address(this));
             uint256 receivedGaugeTokens = IERC4626(address(asset)).deposit(receivedVaultTokens, address(this));
 
             // If the strategy is not shutdown, deploy the funds
@@ -159,6 +176,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         }
         // Return the total idle assets and the deployed assets
         return IERC20(asset).balanceOf(address(this))
-            + IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), address(asset));
+            + IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).balanceOf(address(this), address(asset));
     }
 }

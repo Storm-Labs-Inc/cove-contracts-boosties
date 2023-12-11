@@ -16,9 +16,9 @@ import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateReward
 import { MockVotingYFI } from "test/mocks/MockVotingYFI.sol";
 import { MockRewardPool } from "test/mocks/MockRewardPool.sol";
 import { MockTarget } from "test/mocks/MockTarget.sol";
-import { IYearnStakingDelegateEvents } from "src/interfaces/IYearnStakingDelegateEvents.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
-contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
+contract YearnStakingDelegate_Test is BaseTest {
     using SafeERC20 for IERC20;
 
     YearnStakingDelegate public yearnStakingDelegate;
@@ -45,6 +45,15 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
     address public alice;
     address public manager;
     address public treasury;
+
+    event LockYfi(address indexed sender, uint256 amount);
+    event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
+    event PerpetualLockSet(bool shouldLock);
+    event GaugeRewardSplitSet(address indexed gauge, IYearnStakingDelegate.RewardSplit split);
+    event SwapAndLockSet(address swapAndLockContract);
+    event TreasurySet(address newTreasury);
+    event Deposit(address indexed sender, address indexed gauge, uint256 amount);
+    event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
 
     function setUp() public override {
         super.setUp();
@@ -107,9 +116,9 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
     }
 
-    function _setRewardSplit(address gauge, uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
+    function _setGaugeRewardSplit(address gauge, uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) internal {
         vm.prank(admin);
-        yearnStakingDelegate.setRewardSplit(gauge, treasurySplit, strategySplit, veYfiSplit);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, userSplit, lockSplit);
     }
 
     function _lockYfiForYSD(address from, uint256 amount) internal {
@@ -145,14 +154,13 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
         assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
-        (uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) =
-            yearnStakingDelegate.gaugeRewardSplit(anyGauge);
+        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(anyGauge);
         assertEq(treasurySplit, 0);
-        assertEq(strategySplit, 0);
-        assertEq(veYfiSplit, 0);
+        assertEq(userSplit, 0);
+        assertEq(lockSplit, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), manager));
-        assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.MANAGER_ROLE(), noManagerRole));
+        assertTrue(yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), manager));
+        assertTrue(!yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), noManagerRole));
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
         // Check for approvals
@@ -343,26 +351,25 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         vm.stopPrank();
     }
 
-    function testFuzz_setRewardSplit(uint80 a, uint80 b) public {
+    function testFuzz_setGaugeRewardSplit(uint80 a, uint80 b) public {
         // Workaround for vm.assume max tries
         vm.assume(uint256(a) + b <= 1e18);
         uint80 c = 1e18 - a - b;
         vm.expectEmit();
-        emit GaugeRewardSplitSet(testGauge, IYearnStakingDelegateEvents.RewardSplit(a, b, c));
+        emit GaugeRewardSplitSet(testGauge, IYearnStakingDelegate.RewardSplit(a, b, c));
         vm.prank(admin);
-        yearnStakingDelegate.setRewardSplit(testGauge, a, b, c);
-        (uint80 treasurySplit, uint80 strategySplit, uint80 lockSplit) =
-            yearnStakingDelegate.gaugeRewardSplit(testGauge);
-        assertEq(treasurySplit, a, "setRewardSplit failed, treasury split is incorrect");
-        assertEq(strategySplit, b, "setRewardSplit failed, strategy split is incorrect");
-        assertEq(lockSplit, c, "setRewardSplit failed, lock split is incorrect");
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c);
+        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(testGauge);
+        assertEq(treasurySplit, a, "setGaugeRewardSplit failed, treasury split is incorrect");
+        assertEq(userSplit, b, "setGaugeRewardSplit failed, user split is incorrect");
+        assertEq(lockSplit, c, "setGaugeRewardSplit failed, lock split is incorrect");
     }
 
-    function testFuzz_setRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {
+    function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {
         vm.assume(uint256(a) + b + c != 1e18);
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
-        yearnStakingDelegate.setRewardSplit(testGauge, a, b, c);
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c);
         vm.stopPrank();
     }
 
