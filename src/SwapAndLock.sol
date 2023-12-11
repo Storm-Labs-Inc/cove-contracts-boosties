@@ -32,7 +32,7 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
     /// @notice Address of the DYfiRedeemer contract.
     address private _dYfiRedeemer;
 
-    /* ========== CONSTRUCTOR ========== */
+    event DYfiRedeemerSet(address oldRedeemer, address newRedeemer);
 
     /**
      * @notice Constructs the SwapAndLock contract.
@@ -82,6 +82,10 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
         IERC20(_D_YFI).forceApprove(newDYfiRedeemer, type(uint256).max);
     }
 
+    /**
+     * @notice Get the address of the dYFI redeemer contract.
+     * @return The address of the dYFI redeemer contract.
+     */
     function dYfiRedeemer() external view returns (address) {
         return _dYfiRedeemer;
     }
