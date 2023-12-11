@@ -41,8 +41,7 @@ abstract contract YearnGaugeStrategyBase {
      */
     constructor(address asset_, address yearnStakingDelegate_) {
         address vault_ = IERC4626(asset_).asset();
-        // slither-disable-next-line uninitialized-local
-        address vaultAsset_;
+        address vaultAsset_ = address(0);
         try IERC4626(vault_).asset() returns (address returnedVaultAsset) {
             vaultAsset_ = returnedVaultAsset;
         } catch {

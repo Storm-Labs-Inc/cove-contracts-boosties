@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.18;
 
-import { BaseStrategy } from "@tokenized-strategy/BaseStrategy.sol";
+import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { IStakingDelegateRewards } from "src/interfaces/deps/yearn/veYFI/IStakingDelegateRewards.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -23,9 +23,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
 
     /// @notice Address of the contract that will be redeeming dYFI
     address public dYfiRedeemer;
-
-    /// @dev Address of WETH
-    address internal constant _WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     //// events ////
     event DYfiRedeemerSet(address oldDYfiRedeemer, address newDYfiRedeemer);
@@ -64,7 +61,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
 
     /// @notice Calculates the available deposit limit for the strategy
     /// @return The strategy's available deposit limit
-    function availableDepositLimit(address) public view virtual override returns (uint256) {
+    function availableDepositLimit(address) public view override returns (uint256) {
         uint256 currentTotalAssets = TokenizedStrategy.totalAssets();
         uint256 maxTotalAssets_ = maxTotalAssets;
         if (currentTotalAssets >= maxTotalAssets_) {
@@ -122,7 +119,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
             + IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), address(asset));
     }
 
-    function setDYfiRedeemer(address newDYfiRedeemer) external virtual onlyManagement {
+    function setDYfiRedeemer(address newDYfiRedeemer) external onlyManagement {
         // Checks
         if (newDYfiRedeemer == address(0)) {
             revert Errors.ZeroAddress();
