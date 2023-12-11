@@ -12,59 +12,39 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/
 import { Errors } from "src/libraries/Errors.sol";
 import { IYearnStakingDelegateEvents } from "src/interfaces/IYearnStakingDelegateEvents.sol";
 
-/// @title GaugeRewardReceiver
-/// @notice Contract to receive rewards from a Yearn gauge and distribute them according to specified splits.
-/// @dev Inherits from Clone and ReentrancyGuardUpgradeable for creating clones acts and preventing reentrancy attacks.
+/**
+ * @title GaugeRewardReceiver
+ * @notice Contract to receive rewards from a Yearn gauge and distribute them according to specified splits.
+ * @dev Inherits from Clone and ReentrancyGuardUpgradeable for creating clones acts and preventing reentrancy attacks.
+ */
 contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     // Libraries
     using SafeERC20 for IERC20;
 
-    /// @dev Initializes the contract by disabling initializers from the Clone pattern.
+    /**
+     * @notice Initializes the contract by disabling initializers from the Clone pattern.
+     */
     constructor() {
         _disableInitializers();
     }
 
-    /* ========== INITIALIZER ========== */
-    /// @notice Initializes the GaugeRewardReceiver contract.
-    function initialize(address owner_) public initializer {
+    /**
+     * @notice Initializes the GaugeRewardReceiver contract.
+     * @param owner_ The address of the owner of the contract.
+     */
+    function initialize(address owner_) external initializer {
         __ReentrancyGuard_init();
         _transferOwnership(owner_);
         IERC20(rewardToken()).forceApprove(stakingDelegateRewards(), type(uint256).max);
     }
 
-    /* ========== VIEWS ========== */
-
-    /// @notice Gets the address of the staking delegate from the contract's immutable arguments.
-    /// @return The address of the staking delegate.
-    function stakingDelegate() public pure returns (address) {
-        return _getArgAddress(0);
-    }
-
-    /// @notice Gets the address of the gauge from the contract's immutable arguments.
-    /// @return The address of the gauge.
-    function gauge() public pure returns (address) {
-        return _getArgAddress(20);
-    }
-
-    /// @notice Gets the address of the reward token from the contract's immutable arguments.
-    /// @return The address of the reward token.
-    function rewardToken() public pure returns (address) {
-        return _getArgAddress(40);
-    }
-
-    /// @notice Gets the address of the staking delegate rewards contract from the contract's immutable arguments.
-    /// @return The address of the staking delegate rewards contract.
-    function stakingDelegateRewards() public pure returns (address) {
-        return _getArgAddress(60);
-    }
-
-    /* ========== RESTRICTED FUNCTIONS ========== */
-
-    /// @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
-    /// @param swapAndLock Address of the SwapAndLock contract.
-    /// @param treasury Address of the treasury to receive a portion of the rewards.
-    /// @param rewardSplit Struct containing the split percentages for lock, treasury, and user rewards.
-    /// @return userRewardsAmount The amount of rewards harvested for the user.
+    /**
+     * @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
+     * @param swapAndLock Address of the SwapAndLock contract.
+     * @param treasury Address of the treasury to receive a portion of the rewards.
+     * @param rewardSplit Struct containing the split percentages for lock, treasury, and user rewards.
+     * @return userRewardsAmount The amount of rewards harvested for the user.
+     */
     function harvest(
         address swapAndLock,
         address treasury,
@@ -119,5 +99,37 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ow
             revert Errors.CannotRescueRewardToken();
         }
         _rescue(token, to, amount);
+    }
+
+    /**
+     * @notice Gets the address of the staking delegate from the contract's immutable arguments.
+     * @return The address of the staking delegate.
+     */
+    function stakingDelegate() public pure returns (address) {
+        return _getArgAddress(0);
+    }
+
+    /**
+     * @notice Gets the address of the gauge from the contract's immutable arguments.
+     * @return The address of the gauge.
+     */
+    function gauge() public pure returns (address) {
+        return _getArgAddress(20);
+    }
+
+    /**
+     * @notice Gets the address of the reward token from the contract's immutable arguments.
+     * @return The address of the reward token.
+     */
+    function rewardToken() public pure returns (address) {
+        return _getArgAddress(40);
+    }
+
+    /**
+     * @notice Gets the address of the staking delegate rewards contract from the contract's immutable arguments.
+     * @return The address of the staking delegate rewards contract.
+     */
+    function stakingDelegateRewards() public pure returns (address) {
+        return _getArgAddress(60);
     }
 }

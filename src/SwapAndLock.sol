@@ -52,12 +52,12 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
 
     /**
      * @notice Locks YFI in the YearnStakingDelegate contract.
+     * @return The total amount of YFI locked and the end timestamp of the lock after the lock operation.
      */
     function lockYfi() external returns (IVotingYFI.LockedBalance memory) {
         return IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(IERC20(_YFI).balanceOf(address(this)));
     }
 
-    /* ========== RESTRICTED FUNCTIONS ========== */
     /**
      * @notice Sets the address of the DYfiRedeemer contract and approves it to spend dYFI. If the redeemer was already
      * set, the approval is removed from the old redeemer.

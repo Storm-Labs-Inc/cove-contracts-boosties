@@ -16,9 +16,11 @@ import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
-/// @title YearnStakingDelegate
-/// @notice Contract for staking tokens, managing rewards, and delegating voting power.
-/// @dev Inherits from IYearnStakingDelegate, AccessControl, ReentrancyGuard, and Rescuable.
+/**
+ * @title YearnStakingDelegate
+ * @notice Contract for staking yearn gauge tokens, managing rewards, and delegating voting power.
+ * @dev Inherits from IYearnStakingDelegate, AccessControl, ReentrancyGuard, and Rescuable.
+ */
 contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
@@ -51,7 +53,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     bool public shouldPerpetuallyLock;
     address public swapAndLock;
 
-    /* ========== CONSTRUCTOR ========== */
     /**
      * @dev Initializes the contract by setting up roles and initializing state variables.
      * @param gaugeRewardReceiverImpl Address of the GaugeRewardReceiver implementation.
@@ -90,20 +91,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         IERC20(_YFI).forceApprove(_VE_YFI, type(uint256).max);
     }
 
-    /* ========== VIEWS ========== */
-    function yfi() external pure returns (address) {
-        return _YFI;
-    }
-
-    function dYfi() external pure returns (address) {
-        return _D_YFI;
-    }
-
-    function veYfi() external pure returns (address) {
-        return _VE_YFI;
-    }
-
-    /* ========== MUTATIVE FUNCTIONS ========== */
     /**
      * @notice Deposits tokens into a gauge.
      * @param gauge Address of the gauge to deposit into.
@@ -147,23 +134,22 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @dev Internal function to checkpoint a user's balance for a gauge.
-     * @param stakingDelegateReward Address of the StakingDelegateRewards contract.
-     * @param gauge Address of the gauge.
-     * @param user Address of the user.
-     * @param userBalance New balance of the user for the gauge.
+     * @notice Harvests rewards from a gauge and distributes them.
+     * @param gauge Address of the gauge to harvest from.
+     * @return The amount of rewards harvested.
      */
-    function _checkpointUserBalance(
-        address stakingDelegateReward,
-        address gauge,
-        address user,
-        uint256 userBalance
-    )
-        internal
-    {
-        // In case of error, we don't want to block the entire tx so we try-catch
-        // solhint-disable-next-line no-empty-blocks
-        try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
+    function harvest(address gauge) external returns (uint256) {
+        // Checks
+        address swapAndLock_ = swapAndLock;
+        if (swapAndLock_ == address(0)) {
+            revert Errors.SwapAndLockNotSet();
+        }
+        address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
+        if (gaugeRewardReceiver == address(0)) {
+            revert Errors.GaugeRewardsNotYetAdded();
+        }
+        // Interactions
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
     }
 
     /**
@@ -193,25 +179,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @notice Harvests rewards from a gauge and distributes them.
-     * @param gauge Address of the gauge to harvest from.
-     * @return The amount of rewards harvested.
-     */
-    function harvest(address gauge) external returns (uint256) {
-        // Checks
-        address swapAndLock_ = swapAndLock;
-        if (swapAndLock_ == address(0)) {
-            revert Errors.SwapAndLockNotSet();
-        }
-        address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
-        if (gaugeRewardReceiver == address(0)) {
-            revert Errors.GaugeRewardsNotYetAdded();
-        }
-        // Interactions
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLock_, treasury, gaugeRewardSplit[gauge]);
-    }
-
-    /**
      * @notice Locks YFI tokens in the veYFI contract.
      * @param amount Amount of YFI tokens to lock.
      * @return The locked balance information.
@@ -230,10 +197,10 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
     }
 
-    /* ========== RESTRICTED FUNCTIONS ========== */
-
-    /// @notice Set treasury address. This address will receive a portion of the rewards
-    /// @param treasury_ address to receive rewards
+    /**
+     * @notice Set treasury address. This address will receive a portion of the rewards
+     * @param treasury_ address to receive rewards
+     */
     function setTreasury(address treasury_) external onlyRole(MANAGER_ROLE) {
         // Checks
         if (treasury_ == address(0)) {
@@ -241,11 +208,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         }
         // Effects
         _setTreasury(treasury_);
-    }
-
-    function _setTreasury(address treasury_) internal {
-        treasury = treasury_;
-        emit TreasurySet(treasury_);
     }
 
     /**
@@ -262,26 +224,12 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @dev Internal function to set the reward split for a gauge.
-     * @param gauge Address of the gauge.
-     * @param treasuryPct Percentage of rewards to the treasury.
-     * @param userPct Percentage of rewards to the user.
-     * @param lockPct Percentage of rewards to lock in veYFI.
+     * @notice Set the reward split percentages
+     * @param treasuryPct percentage of rewards to treasury
+     * @param userPct percentage of rewards to user
+     * @param veYfiPct percentage of rewards to veYFI
+     * @dev Sum of percentages must equal to 1e18
      */
-    function _setRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
-        if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
-            revert Errors.InvalidRewardSplit();
-        }
-        RewardSplit memory newRewardSplit = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
-        gaugeRewardSplit[gauge] = newRewardSplit;
-        emit GaugeRewardSplitSet(gauge, newRewardSplit);
-    }
-
-    /// @notice Set the reward split percentages
-    /// @param treasuryPct percentage of rewards to treasury
-    /// @param userPct percentage of rewards to user
-    /// @param veYfiPct percentage of rewards to veYFI
-    /// @dev Sum of percentages must equal to 1e18
     function setRewardSplit(
         address gauge,
         uint80 treasuryPct,
@@ -294,9 +242,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         _setRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
     }
 
-    /// Delegates voting power to a given address
-    /// @param id name of the space in snapshot to apply delegation. For yearn it is "veyfi.eth"
-    /// @param delegate address to delegate voting power to
+    /**
+     * @notice Delegates voting power to a given address
+     * @param id name of the space in snapshot to apply delegation. For yearn it is "veyfi.eth"
+     * @param delegate address to delegate voting power to
+     */
     function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (delegate == address(0)) {
@@ -361,37 +311,17 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @dev Internal function to set gauge rewards and reward receiver.
-     * @param gauge Address of the gauge.
-     * @param stakingDelegateRewards Address of the StakingDelegateRewards contract.
+     * @notice Set perpetual lock status
+     * @param shouldPerpetuallyLock_ if true, lock YFI for 4 years after each harvest
      */
-    function _setGaugeRewards(address gauge, address stakingDelegateRewards) internal {
-        gaugeStakingRewards[gauge] = stakingDelegateRewards;
-        _blockedTargets[gauge] = true;
-        _blockedTargets[stakingDelegateRewards] = true;
-        address receiver =
-            _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
-        gaugeRewardReceivers[gauge] = receiver;
-        _blockedTargets[receiver] = true;
-        // Interactions
-        emit GaugeRewardsSet(gauge, stakingDelegateRewards, receiver);
-        GaugeRewardReceiver(receiver).initialize(msg.sender);
-        IGauge(gauge).setRecipient(receiver);
-        StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
-    }
-
-    /// @notice Set perpetual lock status
-    /// @param shouldPerpetuallyLock_ if true, lock YFI for 4 years after each harvest
     function setPerpetualLock(bool shouldPerpetuallyLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setPerpetualLock(shouldPerpetuallyLock_);
     }
 
-    function _setPerpetualLock(bool shouldPerpetuallyLock_) internal {
-        shouldPerpetuallyLock = shouldPerpetuallyLock_;
-        emit PerpetualLockSet(shouldPerpetuallyLock_);
-    }
-
-    /// @notice early unlock veYFI
+    /**
+     * @notice early unlock veYFI
+     * @param to address to receive the unlocked YFI
+     */
     function earlyUnlock(address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (shouldPerpetuallyLock) {
@@ -436,5 +366,95 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ExecutionFailed();
         }
         return result;
+    }
+
+    /**
+     * @notice Get the address of the YFI token
+     * @return The address of the YFI token
+     */
+    function yfi() external pure returns (address) {
+        return _YFI;
+    }
+
+    /**
+     * @notice Get the address of the dYFI token
+     * @return The address of the dYFI token
+     */
+    function dYfi() external pure returns (address) {
+        return _D_YFI;
+    }
+
+    /**
+     * @notice Get the address of the veYFI token
+     * @return The address of the veYFI token
+     */
+    function veYfi() external pure returns (address) {
+        return _VE_YFI;
+    }
+
+    function _setTreasury(address treasury_) internal {
+        treasury = treasury_;
+        emit TreasurySet(treasury_);
+    }
+
+    /**
+     * @dev Internal function to set gauge rewards and reward receiver.
+     * @param gauge Address of the gauge.
+     * @param stakingDelegateRewards Address of the StakingDelegateRewards contract.
+     */
+    function _setGaugeRewards(address gauge, address stakingDelegateRewards) internal {
+        gaugeStakingRewards[gauge] = stakingDelegateRewards;
+        _blockedTargets[gauge] = true;
+        _blockedTargets[stakingDelegateRewards] = true;
+        address receiver =
+            _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
+        gaugeRewardReceivers[gauge] = receiver;
+        _blockedTargets[receiver] = true;
+        // Interactions
+        emit GaugeRewardsSet(gauge, stakingDelegateRewards, receiver);
+        GaugeRewardReceiver(receiver).initialize(msg.sender);
+        IGauge(gauge).setRecipient(receiver);
+        StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
+    }
+
+    function _setPerpetualLock(bool shouldPerpetuallyLock_) internal {
+        shouldPerpetuallyLock = shouldPerpetuallyLock_;
+        emit PerpetualLockSet(shouldPerpetuallyLock_);
+    }
+
+    /**
+     * @dev Internal function to set the reward split for a gauge.
+     * @param gauge Address of the gauge.
+     * @param treasuryPct Percentage of rewards to the treasury.
+     * @param userPct Percentage of rewards to the user.
+     * @param lockPct Percentage of rewards to lock in veYFI.
+     */
+    function _setRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
+        if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
+            revert Errors.InvalidRewardSplit();
+        }
+        RewardSplit memory newRewardSplit = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
+        gaugeRewardSplit[gauge] = newRewardSplit;
+        emit GaugeRewardSplitSet(gauge, newRewardSplit);
+    }
+
+    /**
+     * @dev Internal function to checkpoint a user's balance for a gauge.
+     * @param stakingDelegateReward Address of the StakingDelegateRewards contract.
+     * @param gauge Address of the gauge.
+     * @param user Address of the user.
+     * @param userBalance New balance of the user for the gauge.
+     */
+    function _checkpointUserBalance(
+        address stakingDelegateReward,
+        address gauge,
+        address user,
+        uint256 userBalance
+    )
+        internal
+    {
+        // In case of error, we don't want to block the entire tx so we try-catch
+        // solhint-disable-next-line no-empty-blocks
+        try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
     }
 }

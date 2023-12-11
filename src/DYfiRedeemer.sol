@@ -49,42 +49,8 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         IERC20(_DYFI).forceApprove(_REDEMPTION, type(uint256).max);
     }
 
-    /**
-     * @notice Returns the minimum amount of YFI that should be redeemed for a given amount of dYFI
-     * @param dYfiAmount The amount of dYFI to redeem
-     * @return The minimum amount of YFI that should be redeemed for a given amount of dYFI
-     */
-    function minYfiRedeem(uint256 dYfiAmount) external view returns (uint256) {
-        return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + _MAX_SLIPPAGE) / _getLatestPrice();
-    }
-
-    /**
-     * @notice Returns the expected amount of YFI that should be redeemed for a given amount of dYFI
-     * @param dYfiAmount The amount of dYFI to redeem
-     * @return The expected amount of YFI that should be redeemed for a given amount of dYFI
-     */
-    function currentYfiRedeem(uint256 dYfiAmount) external view returns (uint256) {
-        return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + slippage) / _getLatestPrice();
-    }
-
-    /**
-     * @notice Calculates the expected amount of ETH the caller will receive for redeeming dYFI for YFI for the given
-     * users and amounts.
-     * @dev This assumes flash loan fee of 0.
-     * @param dYfiAmount total dYFI amount that should be redeemed for YFI.
-     * @return The expected amount of ETH the caller will receive for redeeming dYFI for YFI.
-     */
-    function expectedMassRedeemReward(uint256 dYfiAmount) external view returns (uint256) {
-        if (dYfiAmount == 0) {
-            return 0;
-        }
-        // The ETH required for redemption will be flash loaned from Balancer
-        uint256 ethRequired = _getEthRequired(dYfiAmount);
-        uint256 yfiToSwap = ethRequired * (1e18 + slippage) / _getLatestPrice();
-        uint256 minDy = ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).get_dy(1, 0, yfiToSwap);
-        // Return surplus ETH
-        return minDy - ethRequired;
-    }
+    /// @dev Allows this contract to receive ETH
+    receive() external payable { }
 
     /**
      * @notice Redeems dYFI for YFI for multiple dYFI holders in a single transaction. Any extra ETH will be sent to the
@@ -194,29 +160,6 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     }
 
     /**
-     * @notice Returns the latest YFI/ETH from the Chainlink price feed.
-     * @return The latest ETH per 1 YFI from the Chainlink price feed.
-     */
-    function getLatestPrice() external view returns (uint256) {
-        return _getLatestPrice();
-    }
-
-    /// @dev Returns ETH per 1 YFI in 1e18 precision
-    function _getLatestPrice() internal view returns (uint256) {
-        // slither-disable-next-line unused-return
-        (, int256 price,, uint256 timeStamp,) = AggregatorV3Interface(_YFI_ETH_PRICE_FEED).latestRoundData();
-        // slither-disable-next-line timestamp
-        if (timeStamp + 3600 < block.timestamp) {
-            revert Errors.PriceFeedOutdated();
-        }
-        return uint256(price);
-    }
-
-    function _getEthRequired(uint256 dYfiAmount) internal view returns (uint256) {
-        return IRedemption(_REDEMPTION).eth_required(dYfiAmount) * 997 / 1000 + 1;
-    }
-
-    /**
      * @notice Sets the slippage that should be applied to DYFI -> YFI redeems.
      * @dev The slippage is applied to the YFI/ETH price. For example, if the slippage is 0.01e18,
      * then the YFI/ETH price will be multiplied by 1.01.
@@ -237,6 +180,64 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         _pause();
     }
 
-    /// @dev Allows this contract to receive ETH
-    receive() external payable { }
+    /**
+     * @notice Returns the minimum amount of YFI that should be redeemed for a given amount of dYFI
+     * @param dYfiAmount The amount of dYFI to redeem
+     * @return The minimum amount of YFI that should be redeemed for a given amount of dYFI
+     */
+    function minYfiRedeem(uint256 dYfiAmount) external view returns (uint256) {
+        return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + _MAX_SLIPPAGE) / _getLatestPrice();
+    }
+
+    /**
+     * @notice Returns the expected amount of YFI that should be redeemed for a given amount of dYFI
+     * @param dYfiAmount The amount of dYFI to redeem
+     * @return The expected amount of YFI that should be redeemed for a given amount of dYFI
+     */
+    function currentYfiRedeem(uint256 dYfiAmount) external view returns (uint256) {
+        return dYfiAmount - _getEthRequired(dYfiAmount) * (1e18 + slippage) / _getLatestPrice();
+    }
+
+    /**
+     * @notice Calculates the expected amount of ETH the caller will receive for redeeming dYFI for YFI for the given
+     * users and amounts.
+     * @dev This assumes flash loan fee of 0.
+     * @param dYfiAmount total dYFI amount that should be redeemed for YFI.
+     * @return The expected amount of ETH the caller will receive for redeeming dYFI for YFI.
+     */
+    function expectedMassRedeemReward(uint256 dYfiAmount) external view returns (uint256) {
+        if (dYfiAmount == 0) {
+            return 0;
+        }
+        // The ETH required for redemption will be flash loaned from Balancer
+        uint256 ethRequired = _getEthRequired(dYfiAmount);
+        uint256 yfiToSwap = ethRequired * (1e18 + slippage) / _getLatestPrice();
+        uint256 minDy = ICurveTwoAssetPool(_ETH_YFI_CURVE_POOL).get_dy(1, 0, yfiToSwap);
+        // Return surplus ETH
+        return minDy - ethRequired;
+    }
+
+    /**
+     * @notice Returns the latest YFI/ETH from the Chainlink price feed.
+     * @return The latest ETH per 1 YFI from the Chainlink price feed.
+     */
+    function getLatestPrice() external view returns (uint256) {
+        return _getLatestPrice();
+    }
+
+    /// @dev Returns ETH per 1 YFI in 1e18 precision
+    function _getLatestPrice() internal view returns (uint256) {
+        // slither-disable-next-line unused-return
+        (, int256 price,, uint256 timeStamp,) = AggregatorV3Interface(_YFI_ETH_PRICE_FEED).latestRoundData();
+        // slither-disable-next-line timestamp
+        if (timeStamp + 3600 < block.timestamp) {
+            revert Errors.PriceFeedOutdated();
+        }
+        return uint256(price);
+    }
+
+    /// @dev Returns the ETH required for redemption in 1e18 precision
+    function _getEthRequired(uint256 dYfiAmount) internal view returns (uint256) {
+        return IRedemption(_REDEMPTION).eth_required(dYfiAmount) * 997 / 1000 + 1;
+    }
 }

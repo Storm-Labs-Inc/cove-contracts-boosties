@@ -5,15 +5,21 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
+/**
+ * @title Rescuable
+ * @notice Allows the inheriting contract to rescue ERC20 tokens that are sent to it by mistake.
+ */
 contract Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
 
-    /// @notice Rescue any ERC20 tokens that are stuck in this contract
-    /// @dev The inheriting contract that calls this function should specify required access controls
-    /// @param token address of the ERC20 token to rescue. Use zero address for ETH
-    /// @param to address to send the tokens to
-    /// @param balance amount of tokens to rescue. Use zero to rescue all
+    /**
+     * @dev Rescue any ERC20 tokens that are stuck in this contract.
+     * The inheriting contract that calls this function should specify required access controls
+     * @param token address of the ERC20 token to rescue. Use zero address for ETH
+     * @param to address to send the tokens to
+     * @param balance amount of tokens to rescue. Use zero to rescue all
+     */
     function _rescue(IERC20 token, address to, uint256 balance) internal {
         if (address(token) == address(0)) {
             // for ether
