@@ -98,7 +98,7 @@ contract CurveRouterSwapper {
             revert Errors.InvalidFromToken(fromToken, curveSwapParams.route[0]);
         }
         // Check if toToken is in the route
-        address toTokenInRoute;
+        address toTokenInRoute = address(0);
         for (uint256 i = 0; i < curveSwapParams.route.length; i++) {
             if (curveSwapParams.route[i] == address(0)) {
                 break;
