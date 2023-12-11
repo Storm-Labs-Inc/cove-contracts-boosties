@@ -27,6 +27,7 @@ abstract contract YearnGaugeStrategyBase {
 
     // Immutable storage variables
     // solhint-disable immutable-vars-naming
+    // slither-disable-start naming-convention
     /// @notice Address of the YearnStakingDelegate contract
     address internal immutable _YEARN_STAKING_DELEGATE;
     /// @notice Address of the vault's underlying asset
@@ -34,6 +35,7 @@ abstract contract YearnGaugeStrategyBase {
     /// @notice Address of the Yearn vault
     address internal immutable _VAULT;
     // solhint-enable immutable-vars-naming
+    // slither-disable-end naming-convention
 
     /**
      * @dev Sets the initial configuration of the strategy and approves the maximum amount of tokens to the
