@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
+import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 interface IYearnGaugeStrategy is IStrategy {
