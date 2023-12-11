@@ -109,6 +109,36 @@ contract YearnGaugeStrategy_Test is BaseTest {
         mockDYfiRedeemer.massRedeem(holders, amounts);
     }
 
+    function test_constructor() public {
+        address underlyingVault = IERC4626(gauge).asset();
+        assertEq(yearnGaugeStrategy.vault(), underlyingVault, "gauge address not set correctly");
+        assertEq(
+            yearnGaugeStrategy.vaultAsset(), IERC4626(underlyingVault).asset(), "vault asset address not set correctly"
+        );
+        assertEq(
+            yearnGaugeStrategy.yearnStakingDelegate(),
+            address(yearnStakingDelegate),
+            "yearnStakingDelegate not set correctly"
+        );
+    }
+
+    function testFuzz_setMaxTotalAssets(uint256 newMaxTotalAssets) public {
+        vm.prank(manager);
+        yearnGaugeStrategy.setMaxTotalAssets(newMaxTotalAssets);
+        assertEq(
+            yearnGaugeStrategy.maxTotalAssets(),
+            newMaxTotalAssets,
+            "setMaxTotalAssets did not set the new max total assets correctly"
+        );
+    }
+
+    function testFuzz_setMaxTotalAssets_revert_when_non_manager(address caller, uint256 newMaxTotalAssets) public {
+        vm.prank(caller);
+        vm.assume(caller != manager);
+        vm.expectRevert("!management");
+        yearnGaugeStrategy.setMaxTotalAssets(newMaxTotalAssets);
+    }
+
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
