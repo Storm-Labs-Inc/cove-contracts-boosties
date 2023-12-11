@@ -26,7 +26,6 @@ contract CurveRouterSwapper {
     // solhint-disable-next-line var-name-mixedcase
     // slither-disable-next-line naming-convention
     address private immutable _CURVE_ROUTER;
-    address internal constant _ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /// @notice Struct to store parameters for a Curve swap
     struct CurveSwapParams {
@@ -73,7 +72,7 @@ contract CurveRouterSwapper {
         internal
         returns (uint256)
     {
-        return ICurveRouter(_CURVE_ROUTER).exchange{ value: curveSwapParams.route[0] == _ETH ? amount : 0 }(
+        return ICurveRouter(_CURVE_ROUTER).exchange(
             curveSwapParams.route, curveSwapParams.swapParams, amount, expected, curveSwapParams.pools, receiver
         );
     }
@@ -109,9 +108,11 @@ contract CurveRouterSwapper {
         }
         // Note that this does not check whether supplied token exists in the pool since the
         // get_dy function only relies on the indexes on swaps instead of addresses.
-        uint256 swapAmount = fromToken == _ETH ? 1 ether : 10 ** IERC20Metadata(fromToken).decimals();
         try ICurveRouter(_CURVE_ROUTER).get_dy(
-            curveSwapParams.route, curveSwapParams.swapParams, swapAmount, curveSwapParams.pools
+            curveSwapParams.route,
+            curveSwapParams.swapParams,
+            10 ** IERC20Metadata(fromToken).decimals(),
+            curveSwapParams.pools
         ) returns (uint256 expected) {
             if (expected == 0) {
                 revert Errors.ExpectedAmountZero();
