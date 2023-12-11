@@ -9,7 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract SwapAndLock_Test is BaseTest, ISwapAndLockEvents {
+contract SwapAndLock_Test is BaseTest {
     address public yearnStakingDelegate;
     address public swapAndLock;
     address public admin;
