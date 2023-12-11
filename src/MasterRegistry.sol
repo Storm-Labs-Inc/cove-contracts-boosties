@@ -13,7 +13,7 @@ import { Errors } from "./libraries/Errors.sol";
  */
 contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     /// @notice Role responsible for adding registries.
-    bytes32 public constant PROTOCOL_MANAGER_ROLE = keccak256("PROTOCOL_MANAGER_ROLE");
+    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     //slither-disable-next-line uninitialized-state
     mapping(bytes32 => address[]) private _registryMap;
@@ -37,18 +37,11 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
 
     constructor(address admin) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(PROTOCOL_MANAGER_ROLE, msg.sender);
+        _grantRole(_MANAGER_ROLE, msg.sender);
     }
 
     /// @inheritdoc IMasterRegistry
-    function addRegistry(
-        bytes32 registryName,
-        address registryAddress
-    )
-        external
-        override
-        onlyRole(PROTOCOL_MANAGER_ROLE)
-    {
+    function addRegistry(bytes32 registryName, address registryAddress) external override onlyRole(_MANAGER_ROLE) {
         // Check for empty values.
         if (registryName == 0) revert Errors.NameEmpty();
         if (registryAddress == address(0)) revert Errors.AddressEmpty();
@@ -68,14 +61,7 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
     }
 
     /// @inheritdoc IMasterRegistry
-    function updateRegistry(
-        bytes32 registryName,
-        address registryAddress
-    )
-        external
-        override
-        onlyRole(PROTOCOL_MANAGER_ROLE)
-    {
+    function updateRegistry(bytes32 registryName, address registryAddress) external override onlyRole(_MANAGER_ROLE) {
         // Check for empty values.
         if (registryName == 0) revert Errors.NameEmpty();
         if (registryAddress == address(0)) revert Errors.AddressEmpty();

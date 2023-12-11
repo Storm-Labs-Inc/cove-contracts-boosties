@@ -19,53 +19,29 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
 
+    address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
     // Immutable storage variables
     // slither-disable-start naming-convention
-    address internal immutable _YFI;
-    address internal immutable _YEARN_STAKING_DELEGATE;
+    address private immutable _YEARN_STAKING_DELEGATE;
     // slither-disable-end naming-convention
 
     /**
-     * @param _yfi The address of the YFI token contract.
      * @param _yearnStakingDelegate The address of the YearnStakingDelegate contract.
      */
-    constructor(
-        address _yfi,
-        address _yearnStakingDelegate
-    )
-        ERC20("Cove YFI", "coveYFI")
-        ERC20Permit("Cove YFI")
-        Ownable()
-    {
+    constructor(address _yearnStakingDelegate) ERC20("Cove YFI", "coveYFI") ERC20Permit("Cove YFI") Ownable() {
         // Checks
         // Check for zero addresses
-        if (_yfi == address(0) || _yearnStakingDelegate == address(0)) {
+        if (_yearnStakingDelegate == address(0)) {
             revert Errors.ZeroAddress();
         }
 
         // Effects
         // Set storage variables
-        _YFI = _yfi;
         _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
 
         // Interactions
         // Max approve YFI for the yearn staking delegate
-        IERC20(_yfi).forceApprove(_yearnStakingDelegate, type(uint256).max);
-    }
-
-    /**
-     * @notice Hook that is called before any transfer of tokens including minting and burning.
-     * @dev Overridden to restrict transfers while the contract is paused, except for minting.
-     * @param from The address the tokens are being transferred from.
-     * @param to The address the tokens are being transferred to.
-     * @param value The amount of tokens being transferred.
-     */
-    function _beforeTokenTransfer(address from, address to, uint256 value) internal virtual override {
-        // Only allow minting by allowing transfers from the 0x0 address
-        if (paused() && from != address(0x0)) {
-            revert Errors.OnlyMintingEnabled();
-        }
-        super._beforeTokenTransfer(from, to, value);
+        IERC20(_YFI).forceApprove(_yearnStakingDelegate, type(uint256).max);
     }
 
     /**
@@ -75,7 +51,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      *      Emits a `Transfer` event from the zero address to the sender, indicating minting of coveYFI tokens.
      * @param balance The amount of YFI tokens to deposit and stake. Must be greater than zero to succeed.
      */
-    function deposit(uint256 balance) public {
+    function deposit(uint256 balance) external {
         address sender = _msgSender();
 
         // Checks
@@ -98,7 +74,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @notice Pauses all token transfers, mints, and burns within the contract.
      * @dev Can only be called by the contract owner. Emits a Paused event.
      */
-    function pause() public onlyOwner {
+    function pause() external onlyOwner {
         _pause();
     }
 
@@ -106,7 +82,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @notice Unpauses all token transfers, mints, and burns within the contract.
      * @dev Can only be called by the contract owner. Emits an Unpaused event.
      */
-    function unpause() public onlyOwner {
+    function unpause() external onlyOwner {
         _unpause();
     }
 
@@ -123,20 +99,35 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     }
 
     /**
-     * @notice Returns the address of the YFI token contract.
-     * @dev Provides a way to access the YFI token address used by the contract.
-     * @return The address of the YFI token contract.
-     */
-    function yfi() external view returns (address) {
-        return _YFI;
-    }
-
-    /**
      * @notice Returns the address of the YearnStakingDelegate contract.
      * @dev Provides a way to access the YearnStakingDelegate address used by the contract.
      * @return The address of the YearnStakingDelegate contract.
      */
     function yearnStakingDelegate() external view returns (address) {
         return _YEARN_STAKING_DELEGATE;
+    }
+
+    /**
+     * @notice Returns the address of the YFI token contract.
+     * @dev Provides a way to access the YFI token address used by the contract.
+     * @return The address of the YFI token contract.
+     */
+    function yfi() external pure returns (address) {
+        return _YFI;
+    }
+
+    /**
+     * @notice Hook that is called before any transfer of tokens including minting and burning.
+     * @dev Overridden to restrict transfers while the contract is paused, except for minting.
+     * @param from The address the tokens are being transferred from.
+     * @param to The address the tokens are being transferred to.
+     * @param value The amount of tokens being transferred.
+     */
+    function _beforeTokenTransfer(address from, address to, uint256 value) internal virtual override {
+        // Only allow minting by allowing transfers from the 0x0 address
+        if (paused() && from != address(0x0)) {
+            revert Errors.OnlyMintingEnabled();
+        }
+        super._beforeTokenTransfer(from, to, value);
     }
 }

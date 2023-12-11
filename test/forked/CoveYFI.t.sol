@@ -23,7 +23,7 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin);
 
         vm.prank(admin);
-        coveYFI = new CoveYFI(MAINNET_YFI, yearnStakingDelegate);
+        coveYFI = new CoveYFI(yearnStakingDelegate);
     }
 
     function testFuzz_constructor(address noAdminAddress) public {

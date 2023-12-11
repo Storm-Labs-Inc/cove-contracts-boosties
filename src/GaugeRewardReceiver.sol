@@ -10,7 +10,7 @@ import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/O
 import { Rescuable } from "src/Rescuable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import { Errors } from "src/libraries/Errors.sol";
-import { IYearnStakingDelegateEvents } from "src/interfaces/IYearnStakingDelegateEvents.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
 /**
  * @title GaugeRewardReceiver
@@ -48,7 +48,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ow
     function harvest(
         address swapAndLock,
         address treasury,
-        IYearnStakingDelegateEvents.RewardSplit memory rewardSplit
+        IYearnStakingDelegate.RewardSplit calldata rewardSplit
     )
         external
         nonReentrant

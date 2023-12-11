@@ -17,7 +17,7 @@ contract MasterRegistry_Test is BaseTest {
         vm.startPrank(users["admin"]);
         masterRegistry = new MasterRegistry(users["admin"]);
         adminRole = masterRegistry.DEFAULT_ADMIN_ROLE();
-        managerRole = masterRegistry.PROTOCOL_MANAGER_ROLE();
+        managerRole = keccak256("MANAGER_ROLE");
     }
 
     function test_init() public view {

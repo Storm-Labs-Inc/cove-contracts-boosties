@@ -7,6 +7,6 @@ import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
 
 interface ISwapAndLock is ISwapAndLockEvents, IAccessControl {
     function lockYfi() external returns (IVotingYFI.LockedBalance memory);
-    function setDYfiRedeemer(address dYfiRedeemer_) external;
+    function setDYfiRedeemer(address newDYfiRedeemer) external;
     function dYfiRedeemer() external view returns (address);
 }

@@ -20,9 +20,9 @@ abstract contract YearnGaugeStrategyBase {
     // Constant storage variables
     // solhint-disable const-name-snakecase
     /// @notice Address of the dYFI token
-    address public constant dYfi = 0x41252E8691e964f7DE35156B68493bAb6797a275;
+    address internal constant _DYFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     /// @notice Address of the YFI token
-    address public constant yfi = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    address internal constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
     // solhint-enable const-name-snakecase
 
     // Immutable storage variables
