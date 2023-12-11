@@ -14,6 +14,7 @@ import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
+import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
 
 contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -22,6 +23,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     YearnStakingDelegate public yearnStakingDelegate;
     StakingDelegateRewards public stakingDelegateRewards;
     SwapAndLock public swapAndLock;
+    DYfiRedeemer public dYfiRedeemer;
     IVault public vault;
 
     // Addresses
@@ -57,6 +59,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             yearnStakingDelegate.addGaugeRewards(gauge, address(stakingDelegateRewards));
             yearnStakingDelegate.setSwapAndLock(address(swapAndLock));
             vm.stopPrank();
+            dYfiRedeemer = new DYfiRedeemer();
+            vm.label(address(dYfiRedeemer), "dYfiRedeemer");
         }
 
         //// wrapped strategy ////
@@ -67,17 +71,20 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // setting CurveRouterSwapper params for harvest rewards swapping
             CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
             // [token_from, pool, token_to, pool, ...]
-            curveSwapParams.route[0] = MAINNET_WETH;
-            curveSwapParams.route[1] = MAINNET_WETH_YETH_POOL;
-            curveSwapParams.route[2] = MAINNET_WETH_YETH_POOL; // expect the lp token back
+            curveSwapParams.route[0] = MAINNET_YFI;
+            curveSwapParams.route[1] = MAINNET_ETH_YFI_POOL;
+            curveSwapParams.route[2] = MAINNET_WETH;
+            curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
+            curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL; // expect the lp token back
 
             // i, j, swap_type, pool_type, n_coins
-            // wETH -> weth/yeth pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
-            curveSwapParams.swapParams[0] = [uint256(0), 0, 4, 1, 2];
+            // YFI -> WETH
+            curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+            // ETH -> weth/yeth pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
+            curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
             yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
-            yearnGaugeStrategy.setFlashLoanProvider(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
             vm.stopPrank();
         }
 
@@ -97,6 +104,15 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
             abi.encode(roundID, price, startedAt, block.timestamp, answeredInRound)
         );
+    }
+
+    /// @dev redeems all dYFI held by the strategy for YFI
+    function _massRedeemStrategyDYfi() internal {
+        address[] memory holders = new address[](1);
+        holders[0] = address(yearnGaugeStrategy);
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy));
+        dYfiRedeemer.massRedeem(holders, amounts);
     }
 
     // Need a special function to airdrop to the gauge since it relies on totalSupply for calculation
@@ -202,6 +218,9 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
 
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
+
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
         uint256 shares = yearnGaugeStrategy.balanceOf(alice);
@@ -222,7 +241,16 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(stakingDelegateperiodFinish);
 
         // manager calls report on the wrapped strategy
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.report();
+        assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
+
+        // manager calls report on the wrapped strategy
         _mockChainlinkPriceFeedTimestamp();
+
+        // Call massRedeem() to swap received DYfi for Yfi
+        _massRedeemStrategyDYfi();
+
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -253,6 +281,9 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 amount = 10e18;
         // Set the reward split for treasury and swap and lock
         _setRewardSplit(0.3e18, 0.3e18, 0.4e18);
+
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -289,7 +320,16 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(stakingDelegateperiodFinish);
 
         // manager calls report on the wrapped strategy
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.report();
+        assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
+
+        // manager calls report on the wrapped strategy
         _mockChainlinkPriceFeedTimestamp();
+
+        // Call massRedeem() to swap received DYfi for Yfi
+        _massRedeemStrategyDYfi();
+
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -361,6 +401,9 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.assume(amount > 1e16); // Minimum deposit size is required to farm dYFI emission
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
 
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
+
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
         uint256 shares = yearnGaugeStrategy.balanceOf(alice);
@@ -388,7 +431,16 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
         // manager calls report on the wrapped strategy
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.report();
+        assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
+
+        // manager calls report on the wrapped strategy
         _mockChainlinkPriceFeedTimestamp();
+
+        // Call massRedeem() to swap received DYfi for Yfi
+        _massRedeemStrategyDYfi();
+
         vm.prank(tpManagement);
         (uint256 profit,) = yearnGaugeStrategy.report();
         assertGt(profit, 0, "profit should be greater than 0");
@@ -451,6 +503,9 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         address bob = createUser("bob");
         address charlie = createUser("charlie");
 
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
+
         // deposit into strategy happens
         mintAndDepositIntoStrategy(gaugeStrategy, alice, initialDeposit, gauge);
         uint256 beforeTotalAssets = gaugeStrategy.totalAssets();
@@ -467,7 +522,15 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(stakingDelegateperiodFinish);
 
         // manager calls report on the wrapped strategy
+        vm.prank(tpManagement);
+        yearnGaugeStrategy.report();
+        assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
+
+        // manager calls report on the wrapped strategy
         _mockChainlinkPriceFeedTimestamp();
+
+        // Call massRedeem() to swap received DYfi for Yfi
+        _massRedeemStrategyDYfi();
 
         vm.prank(tpManagement);
         (uint256 profit,) = gaugeStrategy.report();
@@ -511,4 +574,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             "all assets should be deployed"
         );
     }
+
+    // receive function for testing flashloans
+    receive() external payable { }
 }
