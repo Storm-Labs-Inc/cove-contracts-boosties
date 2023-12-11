@@ -24,13 +24,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     using SafeERC20 for IERC20;
     using ClonesWithImmutableArgs for address;
 
-    // Struct definitions
-    struct RewardSplit {
-        uint80 treasury;
-        uint80 user;
-        uint80 lock;
-    }
-
     // Constants
     // slither-disable-start naming-convention
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
@@ -78,8 +71,8 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
         // Effects
         // Set storage variables
-        treasury = _treasury;
-        shouldPerpetuallyLock = true;
+        _setTreasury(_treasury);
+        _setPerpetualLock(true);
         _GAUGE_REWARD_RECEIVER_IMPL = gaugeRewardReceiverImpl;
         _blockedTargets[_YFI] = true;
         _blockedTargets[_D_YFI] = true;
@@ -129,6 +122,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         uint256 newBalance = balanceOf[msg.sender][gauge] + amount;
         balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
+        emit Deposit(msg.sender, gauge, amount);
         _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -147,6 +141,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
         balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
+        emit Withdraw(msg.sender, gauge, amount);
         _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }
@@ -245,7 +240,12 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ZeroAddress();
         }
         // Effects
+        _setTreasury(treasury_);
+    }
+
+    function _setTreasury(address treasury_) internal {
         treasury = treasury_;
+        emit TreasurySet(treasury_);
     }
 
     /**
@@ -258,6 +258,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ZeroAddress();
         }
         swapAndLock = swapAndLock_;
+        emit SwapAndLockSet(swapAndLock_);
     }
 
     /**
@@ -271,7 +272,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
-        gaugeRewardSplit[gauge] = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
+        RewardSplit memory newRewardSplit = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
+        gaugeRewardSplit[gauge] = newRewardSplit;
+        emit GaugeRewardSplitSet(gauge, newRewardSplit);
     }
 
     /// @notice Set the reward split percentages
@@ -371,6 +374,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         gaugeRewardReceivers[gauge] = receiver;
         _blockedTargets[receiver] = true;
         // Interactions
+        emit GaugeRewardsSet(gauge, stakingDelegateRewards, receiver);
         GaugeRewardReceiver(receiver).initialize(msg.sender);
         IGauge(gauge).setRecipient(receiver);
         StakingDelegateRewards(stakingDelegateRewards).addStakingToken(gauge, receiver);
@@ -379,7 +383,12 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     /// @notice Set perpetual lock status
     /// @param shouldPerpetuallyLock_ if true, lock YFI for 4 years after each harvest
     function setPerpetualLock(bool shouldPerpetuallyLock_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setPerpetualLock(shouldPerpetuallyLock_);
+    }
+
+    function _setPerpetualLock(bool shouldPerpetuallyLock_) internal {
         shouldPerpetuallyLock = shouldPerpetuallyLock_;
+        emit PerpetualLockSet(shouldPerpetuallyLock_);
     }
 
     /// @notice early unlock veYFI

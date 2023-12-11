@@ -2,7 +2,6 @@
 pragma solidity ^0.8.18;
 
 import { Clone } from "lib/clones-with-immutable-args/src/Clone.sol";
-import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,6 +10,7 @@ import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/O
 import { Rescuable } from "src/Rescuable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { IYearnStakingDelegateEvents } from "src/interfaces/IYearnStakingDelegateEvents.sol";
 
 /// @title GaugeRewardReceiver
 /// @notice Contract to receive rewards from a Yearn gauge and distribute them according to specified splits.
@@ -68,7 +68,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ow
     function harvest(
         address swapAndLock,
         address treasury,
-        YearnStakingDelegate.RewardSplit memory rewardSplit
+        IYearnStakingDelegateEvents.RewardSplit memory rewardSplit
     )
         external
         nonReentrant

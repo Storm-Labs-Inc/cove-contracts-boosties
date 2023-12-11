@@ -4,12 +4,12 @@ pragma solidity ^0.8.18;
 import { BaseTest } from "./utils/BaseTest.t.sol";
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
-import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { MockGauge } from "./mocks/MockGauge.sol";
 import { MockStakingDelegateRewards } from "./mocks/MockStakingDelegateRewards.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IYearnStakingDelegateEvents } from "src/interfaces/IYearnStakingDelegateEvents.sol";
 
 contract GaugeRewardReceiver_Test is BaseTest {
     using ClonesWithImmutableArgs for address;
@@ -90,7 +90,8 @@ contract GaugeRewardReceiver_Test is BaseTest {
         GaugeRewardReceiver(gaugeRewardReceiver).initialize(admin);
 
         uint256 totalRewardAmount = 100e18;
-        YearnStakingDelegate.RewardSplit memory rewardSplit = YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17);
+        IYearnStakingDelegateEvents.RewardSplit memory rewardSplit =
+            IYearnStakingDelegateEvents.RewardSplit(1e17, 2e17, 7e17);
         ERC20Mock(rewardToken).mint(gauge, totalRewardAmount);
         vm.prank(STAKING_DELEGATE);
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(SWAP_AND_LOCK, TREASURY, rewardSplit);
@@ -116,7 +117,7 @@ contract GaugeRewardReceiver_Test is BaseTest {
         ERC20Mock(rewardToken).mint(gauge, amount);
         vm.prank(STAKING_DELEGATE);
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(treasurySplit, strategySplit, lockSplit)
+            SWAP_AND_LOCK, TREASURY, IYearnStakingDelegateEvents.RewardSplit(treasurySplit, strategySplit, lockSplit)
         );
 
         uint256 expectedTreasuryAmount = treasurySplit * amount / 1e18;
@@ -135,7 +136,7 @@ contract GaugeRewardReceiver_Test is BaseTest {
 
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector));
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17)
+            SWAP_AND_LOCK, TREASURY, IYearnStakingDelegateEvents.RewardSplit(1e17, 2e17, 7e17)
         );
     }
 
@@ -146,7 +147,7 @@ contract GaugeRewardReceiver_Test is BaseTest {
         vm.prank(STAKING_DELEGATE);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(1e17, 2e17, 8e17)
+            SWAP_AND_LOCK, TREASURY, IYearnStakingDelegateEvents.RewardSplit(1e17, 2e17, 8e17)
         );
     }
 
@@ -156,7 +157,7 @@ contract GaugeRewardReceiver_Test is BaseTest {
 
         vm.prank(STAKING_DELEGATE);
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            SWAP_AND_LOCK, TREASURY, YearnStakingDelegate.RewardSplit(1e17, 2e17, 7e17)
+            SWAP_AND_LOCK, TREASURY, IYearnStakingDelegateEvents.RewardSplit(1e17, 2e17, 7e17)
         );
 
         assertEq(IERC20(rewardToken).balanceOf(TREASURY), 0);
