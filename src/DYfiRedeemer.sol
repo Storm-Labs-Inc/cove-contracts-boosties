@@ -225,7 +225,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     }
 
     /**
-     * @notice Gets the slippage that should be applied to DYFI -> YFI redeems.
+     * @notice Get the slippage that should be applied to DYFI -> YFI redeems.
      * @return The slippage in 1e18 precision.
      */
     function slippage() external view returns (uint256) {

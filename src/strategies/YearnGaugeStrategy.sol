@@ -55,7 +55,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      */
     function setHarvestSwapParams(CurveSwapParams calldata curveSwapParams) external onlyManagement {
         // Checks (includes external view calls)
-        _validateSwapParams(curveSwapParams, _YFI, vaultAsset);
+        _validateSwapParams(curveSwapParams, _YFI, _VAULT_ASSET);
 
         // Effects
         _harvestSwapParams = curveSwapParams;
@@ -155,7 +155,8 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      */
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
         // Transfers unlocked dYfi rewards to this contract
-        address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(address(asset));
+        address stakingDelegateRewards =
+            IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).gaugeStakingRewards(address(asset));
         IStakingDelegateRewards(stakingDelegateRewards).getReward(address(asset));
         // Check for any dYfi that has been redeemed for Yfi
         uint256 yfiBalance = IERC20(_YFI).balanceOf(address(this));
@@ -164,7 +165,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
             // This is a dangerous swap call that will get sandwiched if sent to a public network
             // Must be sent to a private network or use a minAmount derived from a price oracle
             uint256 receivedBaseTokens = _swap(_harvestSwapParams, yfiBalance, 0, address(this));
-            uint256 receivedVaultTokens = IERC4626(vault).deposit(receivedBaseTokens, address(this));
+            uint256 receivedVaultTokens = IERC4626(_VAULT).deposit(receivedBaseTokens, address(this));
             uint256 receivedGaugeTokens = IERC4626(address(asset)).deposit(receivedVaultTokens, address(this));
 
             // If the strategy is not shutdown, deploy the funds
@@ -175,6 +176,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         }
         // Return the total idle assets and the deployed assets
         return IERC20(asset).balanceOf(address(this))
-            + IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), address(asset));
+            + IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).balanceOf(address(this), address(asset));
     }
 }

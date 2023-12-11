@@ -25,16 +25,16 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     // slither-disable-end naming-convention
 
     // State variables
-    mapping(address => uint256) public periodFinish;
-    mapping(address => uint256) public rewardRate;
-    mapping(address => uint256) public rewardsDuration;
-    mapping(address => uint256) public lastUpdateTime;
-    mapping(address => uint256) public rewardPerTokenStored;
-    mapping(address => mapping(address => uint256)) public userRewardPerTokenPaid;
-    mapping(address => mapping(address => uint256)) public rewards;
-    mapping(address => address) public rewardDistributors;
-    mapping(address => uint256) public totalSupply;
-    mapping(address => mapping(address => uint256)) public balanceOf;
+    mapping(address => uint256) private _periodFinish;
+    mapping(address => uint256) private _rewardRate;
+    mapping(address => uint256) private _rewardsDuration;
+    mapping(address => uint256) private _lastUpdateTime;
+    mapping(address => uint256) private _rewardPerTokenStored;
+    mapping(address => mapping(address => uint256)) private _userRewardPerTokenPaid;
+    mapping(address => mapping(address => uint256)) private _rewards;
+    mapping(address => address) private _rewardDistributors;
+    mapping(address => uint256) private _totalSupply;
+    mapping(address => mapping(address => uint256)) private _balances;
 
     // Events
     event RewardAdded(address indexed stakingToken, uint256 reward);
@@ -84,30 +84,30 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @param reward The amount of the new reward.
      */
     function notifyRewardAmount(address stakingToken, uint256 reward) external nonReentrant {
-        if (msg.sender != rewardDistributors[stakingToken]) {
+        if (msg.sender != _rewardDistributors[stakingToken]) {
             revert Errors.OnlyRewardDistributorCanNotifyRewardAmount();
         }
         _updateReward(address(0), stakingToken);
 
-        uint256 periodFinish_ = periodFinish[stakingToken];
-        uint256 rewardDuration_ = rewardsDuration[stakingToken];
+        uint256 storedPeriodFinish = _periodFinish[stakingToken];
+        uint256 storedRewardDuration = _rewardsDuration[stakingToken];
         uint256 newRewardRate = 0;
         // slither-disable-next-line timestamp
-        if (block.timestamp >= periodFinish_) {
-            newRewardRate = reward / rewardDuration_;
+        if (block.timestamp >= storedPeriodFinish) {
+            newRewardRate = reward / storedRewardDuration;
         } else {
-            uint256 remaining = periodFinish_ - block.timestamp;
-            uint256 leftover = remaining * rewardRate[stakingToken];
-            newRewardRate = (reward + leftover) / rewardDuration_;
+            uint256 remaining = storedPeriodFinish - block.timestamp;
+            uint256 leftover = remaining * _rewardRate[stakingToken];
+            newRewardRate = (reward + leftover) / storedRewardDuration;
         }
         // If reward < duration, newRewardRate will be 0, causing dust to be left in the contract
         // slither-disable-next-line incorrect-equality
         if (newRewardRate == 0) {
             revert Errors.RewardRateTooLow();
         }
-        rewardRate[stakingToken] = newRewardRate;
-        lastUpdateTime[stakingToken] = block.timestamp;
-        periodFinish[stakingToken] = block.timestamp + (rewardDuration_);
+        _rewardRate[stakingToken] = newRewardRate;
+        _lastUpdateTime[stakingToken] = block.timestamp;
+        _periodFinish[stakingToken] = block.timestamp + storedRewardDuration;
         IERC20(_REWARDS_TOKEN).safeTransferFrom(msg.sender, address(this), reward);
         emit RewardAdded(stakingToken, reward);
     }
@@ -123,9 +123,9 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
             revert Errors.OnlyStakingDelegateCanUpdateUserBalance();
         }
         _updateReward(user, stakingToken);
-        uint256 currentUserBalance = balanceOf[user][stakingToken];
-        balanceOf[user][stakingToken] = totalAmount;
-        totalSupply[stakingToken] = totalSupply[stakingToken] - currentUserBalance + totalAmount;
+        uint256 currentUserBalance = _balances[user][stakingToken];
+        _balances[user][stakingToken] = totalAmount;
+        _totalSupply[stakingToken] = _totalSupply[stakingToken] - currentUserBalance + totalAmount;
         emit UserBalanceUpdated(user, stakingToken, totalAmount);
     }
 
@@ -138,11 +138,11 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         if (msg.sender != _STAKING_DELEGATE) {
             revert Errors.OnlyStakingDelegateCanAddStakingToken();
         }
-        if (rewardDistributors[stakingToken] != address(0)) {
+        if (_rewardDistributors[stakingToken] != address(0)) {
             revert Errors.StakingTokenAlreadyAdded();
         }
-        rewardDistributors[stakingToken] = rewardDistributioner;
-        rewardsDuration[stakingToken] = _DEFAULT_DURATION;
+        _rewardDistributors[stakingToken] = rewardDistributioner;
+        _rewardsDuration[stakingToken] = _DEFAULT_DURATION;
         emit StakingTokenAdded(stakingToken, rewardDistributioner);
         emit RewardsDurationUpdated(stakingToken, _DEFAULT_DURATION);
     }
@@ -150,15 +150,21 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     /**
      * @notice Sets the duration of the rewards period for a given staking token.
      * @param stakingToken The address of the staking token to set the rewards duration for.
-     * @param rewardsDuration_ The new duration of the rewards period.
+     * @param newRewardsDuration The new duration of the rewards period.
      */
-    function setRewardsDuration(address stakingToken, uint256 rewardsDuration_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRewardsDuration(
+        address stakingToken,
+        uint256 newRewardsDuration
+    )
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         // slither-disable-next-line timestamp
-        if (block.timestamp <= periodFinish[stakingToken]) {
+        if (block.timestamp <= _periodFinish[stakingToken]) {
             revert Errors.PreviousRewardsPeriodNotCompleted();
         }
-        rewardsDuration[stakingToken] = rewardsDuration_;
-        emit RewardsDurationUpdated(stakingToken, rewardsDuration_);
+        _rewardsDuration[stakingToken] = newRewardsDuration;
+        emit RewardsDurationUpdated(stakingToken, newRewardsDuration);
     }
 
     /**
@@ -176,7 +182,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (tokenAddress == _REWARDS_TOKEN || rewardDistributors[tokenAddress] != address(0)) {
+        if (tokenAddress == _REWARDS_TOKEN || _rewardDistributors[tokenAddress] != address(0)) {
             revert Errors.RescueNotAllowed();
         }
         emit Recovered(tokenAddress, tokenAmount);
@@ -184,13 +190,105 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     }
 
     /**
+     * @notice Get the timestamp of the end of the rewards period for a given staking token.
+     * @param stakingToken The address of the staking token.
+     * @return The timestamp of the end of the rewards period.
+     */
+    function periodFinish(address stakingToken) external view returns (uint256) {
+        return _periodFinish[stakingToken];
+    }
+
+    /**
+     * @notice Gets the reward rate for a given staking token.
+     * @param stakingToken The address of the staking token.
+     * @return The reward rate of the given staking token.
+     */
+    function rewardRate(address stakingToken) external view returns (uint256) {
+        return _rewardRate[stakingToken];
+    }
+
+    /**
+     * @notice Gets the rewards duration for a given staking token.
+     * @param stakingToken The address of the staking token.
+     * @return The rewards duration of the given staking token.
+     */
+    function rewardsDuration(address stakingToken) external view returns (uint256) {
+        return _rewardsDuration[stakingToken];
+    }
+
+    /**
+     * @notice Gets the last update time for a given staking token.
+     * @param stakingToken The address of the staking token.
+     * @return The last update time of the given staking token.
+     */
+    function lastUpdateTime(address stakingToken) external view returns (uint256) {
+        return _lastUpdateTime[stakingToken];
+    }
+
+    /**
+     * @notice Gets the stored reward per token for a given staking token.
+     * @param stakingToken The address of the staking token.
+     * @return The stored reward per token of the given staking token.
+     */
+    function rewardPerTokenStored(address stakingToken) external view returns (uint256) {
+        return _rewardPerTokenStored[stakingToken];
+    }
+
+    /**
+     * @notice Gets the user's reward per token paid for a given staking token.
+     * @param user The address of the user.
+     * @param stakingToken The address of the staking token.
+     * @return The reward per token paid to the user for the given staking token.
+     */
+    function userRewardPerTokenPaid(address user, address stakingToken) external view returns (uint256) {
+        return _userRewardPerTokenPaid[user][stakingToken];
+    }
+
+    /**
+     * @notice Gets the stored pending rewards for a user for a given staking token.
+     * @param user The address of the user.
+     * @param stakingToken The address of the staking token.
+     * @return The stored pending rewards of the user for the given staking token.
+     */
+    function rewards(address user, address stakingToken) external view returns (uint256) {
+        return _rewards[user][stakingToken];
+    }
+
+    /**
+     * @notice Gets the reward distributor for a given staking token.
+     * @param stakingToken The address of the staking token.
+     * @return The address of the reward distributor for the given staking token.
+     */
+    function rewardDistributors(address stakingToken) external view returns (address) {
+        return _rewardDistributors[stakingToken];
+    }
+
+    /**
+     * @notice Gets the total checkedpoint amount of the given staking token.
+     * @param stakingToken The address of the staking token.
+     * @return The total checkpointed amount of the given staking token.
+     */
+    function totalSupply(address stakingToken) external view returns (uint256) {
+        return _totalSupply[stakingToken];
+    }
+
+    /**
+     * @notice Gets the checkpointed balance of a user for a given staking token.
+     * @param user The address of the user.
+     * @param stakingToken The address of the staking token.
+     * @return The checkpointed balance of the user for the given staking token.
+     */
+    function balanceOf(address user, address stakingToken) external view returns (uint256) {
+        return _balances[user][stakingToken];
+    }
+
+    /**
      * @notice Calculates the total reward for a given duration for a staking token.
      * @param stakingToken The address of the staking token.
      * @return The total reward for the given duration.
      */
-
     function getRewardForDuration(address stakingToken) external view returns (uint256) {
-        return rewardRate[stakingToken] * rewardsDuration[stakingToken];
+        return _rewardRate[stakingToken] * _rewardsDuration[stakingToken];
     }
 
     /**
@@ -215,7 +313,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @return The last applicable timestamp for rewards.
      */
     function lastTimeRewardApplicable(address stakingToken) public view returns (uint256) {
-        uint256 finish = periodFinish[stakingToken];
+        uint256 finish = _periodFinish[stakingToken];
         // slither-disable-next-line timestamp
         return block.timestamp < finish ? block.timestamp : finish;
     }
@@ -226,13 +324,13 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @return The accumulated reward per token.
      */
     function rewardPerToken(address stakingToken) public view returns (uint256) {
-        uint256 totalSupply_ = totalSupply[stakingToken];
-        if (totalSupply_ == 0) {
-            return rewardPerTokenStored[stakingToken];
+        uint256 storedTotalSupply = _totalSupply[stakingToken];
+        if (storedTotalSupply == 0) {
+            return _rewardPerTokenStored[stakingToken];
         }
-        return rewardPerTokenStored[stakingToken]
-            + (lastTimeRewardApplicable(stakingToken) - lastUpdateTime[stakingToken]) * rewardRate[stakingToken] * 1e18
-                / totalSupply_;
+        return _rewardPerTokenStored[stakingToken]
+            + (lastTimeRewardApplicable(stakingToken) - _lastUpdateTime[stakingToken]) * _rewardRate[stakingToken] * 1e18
+                / storedTotalSupply;
     }
 
     /**
@@ -242,10 +340,10 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @return The amount of reward earned.
      */
     function earned(address account, address stakingToken) public view returns (uint256) {
-        return rewards[account][stakingToken]
+        return _rewards[account][stakingToken]
             + (
-                balanceOf[account][stakingToken]
-                    * (rewardPerToken(stakingToken) - userRewardPerTokenPaid[account][stakingToken]) / 1e18
+                _balances[account][stakingToken]
+                    * (rewardPerToken(stakingToken) - _userRewardPerTokenPaid[account][stakingToken]) / 1e18
             );
     }
 
@@ -256,9 +354,9 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      */
     function _getReward(address user, address stakingToken) internal {
         _updateReward(user, stakingToken);
-        uint256 reward = rewards[user][stakingToken];
+        uint256 reward = _rewards[user][stakingToken];
         if (reward > 0) {
-            rewards[user][stakingToken] = 0;
+            _rewards[user][stakingToken] = 0;
             IERC20(_REWARDS_TOKEN).safeTransfer(user, reward);
             emit RewardPaid(user, stakingToken, reward);
         }
@@ -270,11 +368,11 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @param stakingToken The address of the staking token.
      */
     function _updateReward(address account, address stakingToken) internal {
-        rewardPerTokenStored[stakingToken] = rewardPerToken(stakingToken);
-        lastUpdateTime[stakingToken] = lastTimeRewardApplicable(stakingToken);
+        _rewardPerTokenStored[stakingToken] = rewardPerToken(stakingToken);
+        _lastUpdateTime[stakingToken] = lastTimeRewardApplicable(stakingToken);
         if (account != address(0)) {
-            rewards[account][stakingToken] = earned(account, stakingToken);
-            userRewardPerTokenPaid[account][stakingToken] = rewardPerTokenStored[stakingToken];
+            _rewards[account][stakingToken] = earned(account, stakingToken);
+            _userRewardPerTokenPaid[account][stakingToken] = _rewardPerTokenStored[stakingToken];
         }
     }
 }

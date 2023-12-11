@@ -28,11 +28,11 @@ abstract contract YearnGaugeStrategyBase {
     // Immutable storage variables
     // solhint-disable immutable-vars-naming
     /// @notice Address of the YearnStakingDelegate contract
-    address public immutable yearnStakingDelegate;
+    address internal immutable _YEARN_STAKING_DELEGATE;
     /// @notice Address of the vault's underlying asset
-    address public immutable vaultAsset;
+    address internal immutable _VAULT_ASSET;
     /// @notice Address of the Yearn vault
-    address public immutable vault;
+    address internal immutable _VAULT;
     // solhint-enable immutable-vars-naming
 
     /**
@@ -56,9 +56,9 @@ abstract contract YearnGaugeStrategyBase {
 
         // Effects
         // Set storage variable values
-        yearnStakingDelegate = yearnStakingDelegate_;
-        vault = vault_;
-        vaultAsset = vaultAsset_;
+        _YEARN_STAKING_DELEGATE = yearnStakingDelegate_;
+        _VAULT = vault_;
+        _VAULT_ASSET = vaultAsset_;
 
         // Interactions
         IERC20(asset_).forceApprove(yearnStakingDelegate_, type(uint256).max);
@@ -67,12 +67,37 @@ abstract contract YearnGaugeStrategyBase {
     }
 
     /**
+     * @notice Get the address of the YearnStakingDelegate.
+     * @return The address of the YearnStakingDelegate.
+     */
+    function yearnStakingDelegate() external view returns (address) {
+        return _YEARN_STAKING_DELEGATE;
+    }
+
+    /**
+     * @notice Get the address of the vault's underlying asset. This is the asset that is deposited into the
+     * vault which then is deposited into the gauge.
+     * @return The address of the vault's underlying asset.
+     */
+    function vaultAsset() external view returns (address) {
+        return _VAULT_ASSET;
+    }
+
+    /**
+     * @notice Get the address of the vault. This is the Yearn vault that the gauge is for.
+     * @return The address of the vault.
+     */
+    function vault() external view returns (address) {
+        return _VAULT;
+    }
+
+    /**
      * @dev Internal function to deposit assets into the YearnStakingDelegate.
      * @param asset The address of the asset to deposit.
      * @param amount The amount of the asset to deposit.
      */
     function _depositToYSD(address asset, uint256 amount) internal virtual {
-        IYearnStakingDelegate(yearnStakingDelegate).deposit(asset, amount);
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).deposit(asset, amount);
     }
 
     /**
@@ -82,6 +107,6 @@ abstract contract YearnGaugeStrategyBase {
      */
     function _withdrawFromYSD(address asset, uint256 amount) internal virtual {
         // Withdraw gauge from YSD which transfers to msg.sender
-        IYearnStakingDelegate(yearnStakingDelegate).withdraw(asset, amount);
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdraw(asset, amount);
     }
 }

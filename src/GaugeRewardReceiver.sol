@@ -102,7 +102,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ow
     }
 
     /**
-     * @notice Gets the address of the staking delegate from the contract's immutable arguments.
+     * @notice Get the address of the staking delegate from the contract's immutable arguments.
      * @return The address of the staking delegate.
      */
     function stakingDelegate() public pure returns (address) {
@@ -110,7 +110,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ow
     }
 
     /**
-     * @notice Gets the address of the gauge from the contract's immutable arguments.
+     * @notice Get the address of the gauge from the contract's immutable arguments.
      * @return The address of the gauge.
      */
     function gauge() public pure returns (address) {
@@ -118,7 +118,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ow
     }
 
     /**
-     * @notice Gets the address of the reward token from the contract's immutable arguments.
+     * @notice Get the address of the reward token from the contract's immutable arguments.
      * @return The address of the reward token.
      */
     function rewardToken() public pure returns (address) {
@@ -126,7 +126,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ow
     }
 
     /**
-     * @notice Gets the address of the staking delegate rewards contract from the contract's immutable arguments.
+     * @notice Get the address of the staking delegate rewards contract from the contract's immutable arguments.
      * @return The address of the staking delegate rewards contract.
      */
     function stakingDelegateRewards() public pure returns (address) {
