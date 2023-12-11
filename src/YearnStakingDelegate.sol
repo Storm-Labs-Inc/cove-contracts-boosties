@@ -42,11 +42,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     // Mappings
     /// @notice Mapping of vault to gauge
-    mapping(address gauge => address) private _gaugeStakingRewards;
-    mapping(address gauge => address) private _gaugeRewardReceivers;
-    mapping(address vault => RewardSplit) private _gaugeRewardSplit;
-    mapping(address user => mapping(address token => uint256)) private _balances;
-    mapping(address target => bool) private _blockedTargets;
+    mapping(address gauge => address) public gaugeStakingRewards;
+    mapping(address gauge => address) public gaugeRewardReceivers;
+    mapping(address vault => RewardSplit) public gaugeRewardSplit;
+    mapping(address user => mapping(address token => uint256)) public balanceOf;
+    mapping(address target => bool) public blockedTargets;
 
     // Variables
     address private _treasury;
@@ -84,13 +84,13 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         _setTreasury(treasury_);
         _setPerpetualLock(true);
         _GAUGE_REWARD_RECEIVER_IMPL = gaugeRewardReceiverImpl;
-        _blockedTargets[_YFI] = true;
-        _blockedTargets[_D_YFI] = true;
-        _blockedTargets[_VE_YFI] = true;
-        _blockedTargets[_YFI_REWARD_POOL] = true;
-        _blockedTargets[_DYFI_REWARD_POOL] = true;
-        _blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
-        _blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
+        blockedTargets[_YFI] = true;
+        blockedTargets[_D_YFI] = true;
+        blockedTargets[_VE_YFI] = true;
+        blockedTargets[_YFI_REWARD_POOL] = true;
+        blockedTargets[_DYFI_REWARD_POOL] = true;
+        blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
+        blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(_MANAGER_ROLE, admin);
         _grantRole(_MANAGER_ROLE, manager);
@@ -110,13 +110,13 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (amount == 0) {
             revert Errors.ZeroAmount();
         }
-        address stakingDelegateReward = _gaugeStakingRewards[gauge];
+        address stakingDelegateReward = gaugeStakingRewards[gauge];
         if (stakingDelegateReward == address(0)) {
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Effects
-        uint256 newBalance = _balances[msg.sender][gauge] + amount;
-        _balances[msg.sender][gauge] = newBalance;
+        uint256 newBalance = balanceOf[msg.sender][gauge] + amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         emit Deposit(msg.sender, gauge, amount);
         _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, newBalance);
@@ -134,11 +134,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ZeroAmount();
         }
         // Effects
-        uint256 newBalance = _balances[msg.sender][gauge] - amount;
-        _balances[msg.sender][gauge] = newBalance;
+        uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         emit Withdraw(msg.sender, gauge, amount);
-        _checkpointUserBalance(_gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
+        _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }
 
@@ -153,13 +153,12 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (swapAndLockContract == address(0)) {
             revert Errors.SwapAndLockNotSet();
         }
-        address gaugeRewardReceiver = _gaugeRewardReceivers[gauge];
+        address gaugeRewardReceiver = gaugeRewardReceivers[gauge];
         if (gaugeRewardReceiver == address(0)) {
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Interactions
-        return
-            GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLockContract, _treasury, _gaugeRewardSplit[gauge]);
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLockContract, _treasury, gaugeRewardSplit[gauge]);
     }
 
     /**
@@ -284,7 +283,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (gauge == address(0) || stakingDelegateRewards == address(0)) {
             revert Errors.ZeroAddress();
         }
-        if (_gaugeStakingRewards[gauge] != address(0)) {
+        if (gaugeStakingRewards[gauge] != address(0)) {
             revert Errors.GaugeRewardsAlreadyAdded();
         }
         // Effects
@@ -310,7 +309,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         if (gauge == address(0) || stakingDelegateRewards == address(0)) {
             revert Errors.ZeroAddress();
         }
-        address previousStakingDelegateRewards = _gaugeStakingRewards[gauge];
+        address previousStakingDelegateRewards = gaugeStakingRewards[gauge];
         if (previousStakingDelegateRewards == address(0)) {
             revert Errors.GaugeRewardsNotYetAdded();
         }
@@ -363,7 +362,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         returns (bytes memory)
     {
         // Checks
-        if (_blockedTargets[target]) {
+        if (blockedTargets[target]) {
             revert Errors.ExecutionNotAllowed();
         }
         // Interactions
@@ -377,51 +376,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.ExecutionFailed();
         }
         return result;
-    }
-
-    /**
-     * @notice Get the address of the gauge staking rewards contract for a given gauge.
-     * @param gauge Address of the gauge.
-     * @return The address of the gauge staking rewards contract associated with the gauge.
-     */
-    function gaugeStakingRewards(address gauge) external view returns (address) {
-        return _gaugeStakingRewards[gauge];
-    }
-
-    /**
-     * @notice Get the address of the gauge reward receiver contract for a given gauge.
-     * @param gauge Address of the gauge.
-     * @return The address of the gauge reward receiver contract associated with the gauge.
-     */
-    function gaugeRewardReceivers(address gauge) external view returns (address) {
-        return _gaugeRewardReceivers[gauge];
-    }
-
-    /**
-     * @notice Get the reward split for a gauge.
-     * @param gauge Address of the gauge.
-     * @return The reward split for the gauge.
-     */
-    function gaugeRewardSplit(address gauge) external view returns (RewardSplit memory) {
-        return _gaugeRewardSplit[gauge];
-    }
-
-    /**
-     * @notice Get the balance of a user for a gauge.
-     * @param user Address of the user.
-     * @param gauge Address of the gauge.
-     * @return The balance of the user for the gauge.
-     */
-    function balanceOf(address user, address gauge) external view returns (uint256) {
-        return _balances[user][gauge];
-    }
-
-    /**
-     * @notice Get the status of a target address for execute call
-     * @return True if the target is blocked from execute calls
-     */
-    function isBlockedTarget(address target) external view returns (bool) {
-        return _blockedTargets[target];
     }
 
     /**
@@ -483,13 +437,13 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param stakingDelegateRewards Address of the StakingDelegateRewards contract.
      */
     function _setGaugeRewards(address gauge, address stakingDelegateRewards) internal {
-        _gaugeStakingRewards[gauge] = stakingDelegateRewards;
-        _blockedTargets[gauge] = true;
-        _blockedTargets[stakingDelegateRewards] = true;
+        gaugeStakingRewards[gauge] = stakingDelegateRewards;
+        blockedTargets[gauge] = true;
+        blockedTargets[stakingDelegateRewards] = true;
         address receiver =
             _GAUGE_REWARD_RECEIVER_IMPL.clone(abi.encodePacked(address(this), gauge, _D_YFI, stakingDelegateRewards));
-        _gaugeRewardReceivers[gauge] = receiver;
-        _blockedTargets[receiver] = true;
+        gaugeRewardReceivers[gauge] = receiver;
+        blockedTargets[receiver] = true;
         // Interactions
         emit GaugeRewardsSet(gauge, stakingDelegateRewards, receiver);
         GaugeRewardReceiver(receiver).initialize(msg.sender);
@@ -518,7 +472,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
             revert Errors.InvalidRewardSplit();
         }
         RewardSplit memory newRewardSplit = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
-        _gaugeRewardSplit[gauge] = newRewardSplit;
+        gaugeRewardSplit[gauge] = newRewardSplit;
         emit GaugeRewardSplitSet(gauge, newRewardSplit);
     }
 

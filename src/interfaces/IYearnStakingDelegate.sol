@@ -20,5 +20,5 @@ interface IYearnStakingDelegate {
     function balanceOf(address user, address gauge) external view returns (uint256);
     function gaugeStakingRewards(address gauge) external view returns (address);
     function gaugeRewardReceivers(address gauge) external view returns (address);
-    function gaugeRewardSplit(address gauge) external view returns (RewardSplit memory);
+    function gaugeRewardSplit(address gauge) external view returns (uint80, uint80, uint80);
 }

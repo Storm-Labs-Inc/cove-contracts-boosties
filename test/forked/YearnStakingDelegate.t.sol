@@ -6,7 +6,7 @@ import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapsho
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
-import { YearnStakingDelegate, IYearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
@@ -124,10 +124,10 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
         assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
-        IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.gaugeRewardSplit(anyGauge);
-        assertEq(rewardSplit.treasury, 0);
-        assertEq(rewardSplit.user, 0);
-        assertEq(rewardSplit.lock, 0);
+        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(anyGauge);
+        assertEq(treasurySplit, 0);
+        assertEq(userSplit, 0);
+        assertEq(lockSplit, 0);
         // Check for roles
         assertTrue(yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), manager));
         assertTrue(!yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), noManagerRole));
@@ -445,10 +445,10 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         uint80 c = 1e18 - a - b;
         vm.prank(admin);
         yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c);
-        IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.gaugeRewardSplit(gauge);
-        assertEq(rewardSplit.treasury, a, "setGaugeRewardSplit failed, treasury split is incorrect");
-        assertEq(rewardSplit.user, b, "setGaugeRewardSplit failed, user split is incorrect");
-        assertEq(rewardSplit.lock, c, "setGaugeRewardSplit failed, lock split is incorrect");
+        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(gauge);
+        assertEq(treasurySplit, a, "setGaugeRewardSplit failed, treasury split is incorrect");
+        assertEq(userSplit, b, "setGaugeRewardSplit failed, user split is incorrect");
+        assertEq(lockSplit, c, "setGaugeRewardSplit failed, lock split is incorrect");
     }
 
     function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {
