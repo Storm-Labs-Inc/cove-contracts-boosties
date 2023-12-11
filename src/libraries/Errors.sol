@@ -108,6 +108,7 @@ library Errors {
     /// GAUGEREWARDRECEIVER ///
 
     error NotAuthorized();
+    error CannotRescueRewardToken();
 
     /// DYFI REDEEMER ///
     error InvalidArrayLength();

@@ -101,6 +101,8 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
     }
 
     function _setSwapAndLock() internal {
+        vm.expectEmit();
+        emit SwapAndLockSet(swapAndLock);
         vm.prank(admin);
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
     }
@@ -128,6 +130,8 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         _airdropGaugeTokens(from, amount);
         vm.startPrank(from);
         IERC20(testGauge).approve(address(yearnStakingDelegate), amount);
+        vm.expectEmit();
+        emit Deposit(from, testGauge, amount);
         yearnStakingDelegate.deposit(testGauge, amount);
         vm.stopPrank();
     }
@@ -176,6 +180,20 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockDisabled.selector));
         yearnStakingDelegate.lockYfi(lockAmount);
+    }
+
+    function test_setPerpetualLock() public {
+        vm.expectEmit();
+        emit PerpetualLockSet(false);
+        vm.prank(admin);
+        yearnStakingDelegate.setPerpetualLock(false);
+        assertTrue(!yearnStakingDelegate.shouldPerpetuallyLock());
+
+        vm.expectEmit();
+        emit PerpetualLockSet(true);
+        vm.prank(admin);
+        yearnStakingDelegate.setPerpetualLock(true);
+        assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
     }
 
     function test_earlyUnlock() public {
@@ -250,6 +268,8 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
 
         // Start withdraw process
         vm.startPrank(alice);
+        vm.expectEmit();
+        emit Withdraw(alice, testGauge, amount);
         yearnStakingDelegate.withdraw(testGauge, amount);
         vm.stopPrank();
 
@@ -295,6 +315,8 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
 
     function testFuzz_setTreasury(address newTreasury) public {
         vm.assume(newTreasury != address(0));
+        vm.expectEmit();
+        emit TreasurySet(newTreasury);
         vm.prank(admin);
         yearnStakingDelegate.setTreasury(newTreasury);
         assertEq(yearnStakingDelegate.treasury(), newTreasury, "setTreasury failed");
@@ -325,6 +347,8 @@ contract YearnStakingDelegate_Test is BaseTest, IYearnStakingDelegateEvents {
         // Workaround for vm.assume max tries
         vm.assume(uint256(a) + b <= 1e18);
         uint80 c = 1e18 - a - b;
+        vm.expectEmit();
+        emit GaugeRewardSplitSet(testGauge, IYearnStakingDelegateEvents.RewardSplit(a, b, c));
         vm.prank(admin);
         yearnStakingDelegate.setRewardSplit(testGauge, a, b, c);
         (uint80 treasurySplit, uint80 strategySplit, uint80 lockSplit) =
