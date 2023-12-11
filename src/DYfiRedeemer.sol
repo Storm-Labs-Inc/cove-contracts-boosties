@@ -44,7 +44,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Effects
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _slippage = _DEFAULT_SLIPPAGE;
-        // Intefactions
+        // Interactions
         IERC20(_YFI).forceApprove(_ETH_YFI_CURVE_POOL, type(uint256).max);
         IERC20(_DYFI).forceApprove(_REDEMPTION, type(uint256).max);
     }
