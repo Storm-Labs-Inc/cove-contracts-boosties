@@ -458,4 +458,26 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c);
         vm.stopPrank();
     }
+
+    function test_rescueYfi() public {
+        // give contract Yfi tokens
+        airdrop(ERC20(MAINNET_YFI), address(yearnStakingDelegate), 1e18);
+        uint256 balanceBefore = IERC20(MAINNET_YFI).balanceOf(treasury);
+        vm.prank(admin);
+        yearnStakingDelegate.rescueYfi();
+        uint256 balanceAfter = IERC20(MAINNET_YFI).balanceOf(treasury);
+        // Assert the treasury balance is increased by the expected amount
+        assertGt(balanceAfter, balanceBefore, "YFI rescue failed");
+    }
+
+    function test_rescueDYFI() public {
+        // give contract dYfi tokens
+        airdrop(ERC20(MAINNET_DYFI), address(yearnStakingDelegate), 1e18);
+        uint256 balanceBefore = IERC20(MAINNET_DYFI).balanceOf(treasury);
+        vm.prank(admin);
+        yearnStakingDelegate.rescueDYfi();
+        uint256 balanceAfter = IERC20(MAINNET_DYFI).balanceOf(treasury);
+        // Assert the treasury balance is increased by the expected amount
+        assertGt(balanceAfter, balanceBefore, "DYFI rescue failed");
+    }
 }

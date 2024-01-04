@@ -171,7 +171,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
+        _rescueDYfi();
     }
 
     /**
@@ -184,7 +184,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IYfiRewardPool(_YFI_REWARD_POOL).claim();
-        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
+        _rescueYfi();
     }
 
     /**
@@ -343,6 +343,22 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
+     * @notice Rescue YFI tokens from the contract
+     * @dev Should only be called if a breaking change occurs to the reward pool contract
+     */
+    function rescueYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueYfi();
+    }
+
+    /**
+     * @notice Rescue dYFI tokens from the contract
+     * @dev Should only be called if a breaking change occurs to the reward pool contract
+     */
+    function rescueDYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueDYfi();
+    }
+
+    /**
      * @notice Execute arbitrary calls from the staking delegate. This function is callable
      * by the admin role for future proofing. Target must not be YFI, dYFI, veYFI, or a known
      * gauge token.
@@ -494,5 +510,21 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // In case of error, we don't want to block the entire tx so we try-catch
         // solhint-disable-next-line no-empty-blocks
         try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
+    }
+
+    /**
+     * @dev Internal function to transfer Yfi held my this contract to the treasury.
+     */
+    function _rescueYfi() internal {
+        // Interactions
+        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
+    }
+
+    /**
+     * @dev Internal function to transfer DYfi held my this contract to the treasury.
+     */
+    function _rescueDYfi() internal {
+        // Interactions
+        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
     }
 }
