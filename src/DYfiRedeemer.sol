@@ -246,10 +246,12 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // slither-disable-next-line unused-return
         (uint80 roundID, int256 price,, uint256 timeStamp, uint80 answeredInRound) =
             AggregatorV3Interface(_YFI_ETH_PRICE_FEED).latestRoundData();
+        // revert if the returned price is 0
         if (price == 0) {
             revert Errors.PriceFeedReturnedZeroPrice();
         }
-        if (roundID != answeredInRound) {
+        // revert if answer was found in a previous round
+        if (roundID > answeredInRound) {
             revert Errors.PriceFeedIncorrectRound();
         }
         // slither-disable-next-line timestamp

@@ -197,8 +197,8 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         vm.etch(MAINNET_YFI_ETH_PRICE_FEED, address(mockOracle).code);
         MockChainLinkOracle oracle = MockChainLinkOracle(MAINNET_YFI_ETH_PRICE_FEED);
         oracle.setPrice(1);
-        oracle.setRoundID(1);
-        oracle.setAnswerInRound(2);
+        oracle.setRoundID(2);
+        oracle.setAnswerInRound(1);
         vm.expectRevert(abi.encodeWithSelector(Errors.PriceFeedIncorrectRound.selector));
         dYfiRedeemer.getLatestPrice();
     }
