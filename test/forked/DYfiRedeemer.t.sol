@@ -6,6 +6,7 @@ import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
 import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
+import { MockChainLinkOracle } from "test/mocks/MockChainLinkOracle.sol";
 
 contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
     DYfiRedeemer public dYfiRedeemer;
@@ -180,6 +181,26 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         vm.assume(dYfiAmount < type(uint128).max);
         vm.prank(admin);
         assertGt(dYfiRedeemer.currentYfiRedeem(dYfiAmount), dYfiRedeemer.minYfiRedeem(dYfiAmount));
+    }
+
+    function test_getLatestPrice_revertWhen_PriceFeedReturnedZeroPrice() public {
+        MockChainLinkOracle mockOracle = new MockChainLinkOracle(0);
+        // etch mock oracle code to _YFI_ETH_PRICE_FEED address
+        vm.etch(MAINNET_YFI_ETH_PRICE_FEED, address(mockOracle).code);
+        vm.expectRevert(abi.encodeWithSelector(Errors.PriceFeedReturnedZeroPrice.selector));
+        dYfiRedeemer.getLatestPrice();
+    }
+
+    function test_getLatestPrice_revertWhen_PriceFeedIncorrectRound() public {
+        MockChainLinkOracle mockOracle = new MockChainLinkOracle(0);
+        // etch mock oracle code to _YFI_ETH_PRICE_FEED address
+        vm.etch(MAINNET_YFI_ETH_PRICE_FEED, address(mockOracle).code);
+        MockChainLinkOracle oracle = MockChainLinkOracle(MAINNET_YFI_ETH_PRICE_FEED);
+        oracle.setPrice(1);
+        oracle.setRoundID(1);
+        oracle.setAnswerInRound(2);
+        vm.expectRevert(abi.encodeWithSelector(Errors.PriceFeedIncorrectRound.selector));
+        dYfiRedeemer.getLatestPrice();
     }
 
     function test_expectedMassRedeemReward_ReturnsZeroOnZeroTotalDYfi() public {
