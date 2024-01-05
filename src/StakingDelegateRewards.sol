@@ -189,7 +189,6 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @param stakingToken The address of the staking token.
      * @return The total reward for the given duration.
      */
-
     function getRewardForDuration(address stakingToken) external view returns (uint256) {
         return rewardRate[stakingToken] * rewardsDuration[stakingToken];
     }
