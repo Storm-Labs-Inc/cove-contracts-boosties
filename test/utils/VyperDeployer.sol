@@ -15,8 +15,8 @@ interface _CheatCodes {
  * and deploys the corresponding Vyper contract, returning the address
  * that the bytecode was deployed to.
  */
-
 contract VyperDeployer {
+    // solhint-disable-next-line private-vars-leading-underscore
     address private constant HEVM_ADDRESS = address(bytes20(uint160(uint256(keccak256("hevm cheat code")))));
 
     /// @notice Initializes cheat codes in order to use ffi to compile Vyper contracts

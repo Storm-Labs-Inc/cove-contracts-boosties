@@ -154,12 +154,6 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @param rewardsDuration_ The new duration of the rewards period.
      */
     function setRewardsDuration(address stakingToken, uint256 rewardsDuration_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (rewardDistributors[stakingToken] == address(0)) {
-            revert Errors.StakingTokenNotAdded();
-        }
-        if (rewardsDuration_ == 0) {
-            revert Errors.RewardDurationCannotBeZero();
-        }
         // slither-disable-next-line timestamp
         if (block.timestamp <= periodFinish[stakingToken]) {
             revert Errors.PreviousRewardsPeriodNotCompleted();
@@ -195,7 +189,6 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @param stakingToken The address of the staking token.
      * @return The total reward for the given duration.
      */
-
     function getRewardForDuration(address stakingToken) external view returns (uint256) {
         return rewardRate[stakingToken] * rewardsDuration[stakingToken];
     }
