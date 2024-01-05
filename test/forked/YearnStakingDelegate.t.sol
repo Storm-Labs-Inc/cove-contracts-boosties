@@ -186,7 +186,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
-        yearnStakingDelegate.earlyUnlock(admin);
+        yearnStakingDelegate.earlyUnlock();
         vm.stopPrank();
 
         assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
@@ -199,7 +199,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
-        yearnStakingDelegate.earlyUnlock(admin);
+        yearnStakingDelegate.earlyUnlock();
         vm.stopPrank();
 
         assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
@@ -210,7 +210,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
-        yearnStakingDelegate.earlyUnlock(admin);
+        yearnStakingDelegate.earlyUnlock();
     }
 
     function testFuzz_deposit(uint256 amount) public {
