@@ -115,6 +115,7 @@ library Errors {
     error PriceFeedOutdated();
     error InsufficientYfiBalance();
     error NoDYfiToRedeem();
+    error CallerRewardEthTransferFailed();
 
     /// TESTING ///
 
