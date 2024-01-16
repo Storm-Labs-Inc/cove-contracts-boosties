@@ -513,7 +513,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @dev Internal function to transfer Yfi held my this contract to the treasury.
+     * @dev Internal function to transfer YFI held by this contract to the treasury.
      */
     function _rescueYfi() internal {
         // Interactions
@@ -521,7 +521,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @dev Internal function to transfer DYfi held my this contract to the treasury.
+     * @dev Internal function to transfer dYFI held by this contract to the treasury.
      */
     function _rescueDYfi() internal {
         // Interactions
