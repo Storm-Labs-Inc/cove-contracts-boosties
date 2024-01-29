@@ -329,17 +329,16 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @notice early unlock veYFI
-     * @param to address to receive the unlocked YFI
+     * @notice early unlock veYFI and send YFI to treasury
      */
-    function earlyUnlock(address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function earlyUnlock() external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (_shouldPerpetuallyLock) {
             revert Errors.PerpetualLockEnabled();
         }
         // Interactions
         IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(_VE_YFI).withdraw();
-        IERC20(_YFI).safeTransfer(to, withdrawn.amount);
+        IERC20(_YFI).safeTransfer(_treasury, withdrawn.amount);
     }
 
     /**
