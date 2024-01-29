@@ -16,6 +16,7 @@ contract StakingDelegateRewards_Test is BaseTest {
 
     address public admin;
     address public alice;
+    address public aliceReceiver;
     address public bob;
     address public rewardDistributor;
 
@@ -25,6 +26,7 @@ contract StakingDelegateRewards_Test is BaseTest {
         super.setUp();
         admin = createUser("admin");
         alice = createUser("alice");
+        aliceReceiver = createUser("aliceReceiver");
         bob = createUser("bob");
         rewardDistributor = createUser("rewardDistributor");
 
@@ -445,6 +447,12 @@ contract StakingDelegateRewards_Test is BaseTest {
         );
     }
 
+    function testFuzz_setRewardReceiver(address receiver) public {
+        vm.prank(alice);
+        stakingDelegateRewards.setRewardReceiver(receiver);
+        assertEq(stakingDelegateRewards.rewardReceiver(alice), receiver);
+    }
+
     function test_getReward() public {
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
@@ -490,6 +498,62 @@ contract StakingDelegateRewards_Test is BaseTest {
         assertEq(
             IERC20(rewardToken).balanceOf(address(stakingDelegateRewards)),
             REWARD_AMOUNT - IERC20(rewardToken).balanceOf(address(alice))
+        );
+    }
+
+    function test_getReward_passWhen_RewardReceiverIsSet() public {
+        vm.prank(alice);
+        stakingDelegateRewards.setRewardReceiver(aliceReceiver);
+
+        vm.prank(yearnStakingDelegate);
+        stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
+
+        assertEq(IERC20(rewardToken).balanceOf(alice), 0);
+        assertEq(IERC20(rewardToken).balanceOf(address(stakingDelegateRewards)), 0);
+
+        airdrop(IERC20(rewardToken), rewardDistributor, REWARD_AMOUNT);
+        vm.startPrank(rewardDistributor);
+        IERC20(rewardToken).approve(address(stakingDelegateRewards), REWARD_AMOUNT);
+        stakingDelegateRewards.notifyRewardAmount(stakingToken, REWARD_AMOUNT);
+        vm.stopPrank();
+
+        uint256 depositAmount = 100e18;
+        uint256 totalSupply = 100e18;
+        vm.prank(yearnStakingDelegate);
+        stakingDelegateRewards.updateUserBalance(alice, stakingToken, depositAmount);
+        stakingDelegateRewards.getReward(alice, stakingToken);
+        assertEq(IERC20(rewardToken).balanceOf(alice), 0);
+        assertEq(IERC20(rewardToken).balanceOf(aliceReceiver), 0);
+        uint256 lastUpdateTime = block.timestamp;
+
+        vm.warp(block.timestamp + 4 days);
+        stakingDelegateRewards.getReward(alice, stakingToken);
+        // Check that receiver got the rewards instead of the user
+        assertEq(
+            IERC20(rewardToken).balanceOf(aliceReceiver),
+            _calculateEarned(depositAmount, totalSupply, REWARD_AMOUNT / 7 days, block.timestamp - lastUpdateTime)
+        );
+        assertEq(IERC20(rewardToken).balanceOf(alice), 0);
+
+        vm.warp(block.timestamp + 3 days);
+        stakingDelegateRewards.getReward(alice, stakingToken);
+        // Check that receiver got the rewards instead of the user
+        assertEq(
+            IERC20(rewardToken).balanceOf(aliceReceiver),
+            _calculateEarned(depositAmount, totalSupply, REWARD_AMOUNT / 7 days, 7 days)
+        );
+        assertEq(IERC20(rewardToken).balanceOf(alice), 0);
+
+        vm.warp(block.timestamp + 10 days);
+        stakingDelegateRewards.getReward(address(alice), stakingToken);
+
+        assertEq(
+            IERC20(rewardToken).balanceOf(aliceReceiver),
+            _calculateEarned(depositAmount, totalSupply, REWARD_AMOUNT / 7 days, 7 days)
+        );
+        assertEq(
+            IERC20(rewardToken).balanceOf(address(stakingDelegateRewards)),
+            REWARD_AMOUNT - IERC20(rewardToken).balanceOf(address(aliceReceiver))
         );
     }
 

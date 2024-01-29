@@ -35,14 +35,16 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     mapping(address => address) public rewardDistributors;
     mapping(address => uint256) public totalSupply;
     mapping(address => mapping(address => uint256)) public balanceOf;
+    mapping(address => address) public rewardReceiver;
 
     // Events
     event RewardAdded(address indexed stakingToken, uint256 reward);
     event StakingTokenAdded(address indexed stakingToken, address rewardDistributioner);
     event UserBalanceUpdated(address indexed user, address indexed stakingToken, uint256 amount);
-    event RewardPaid(address indexed user, address indexed stakingToken, uint256 reward);
+    event RewardPaid(address indexed user, address indexed stakingToken, uint256 reward, address receiver);
     event RewardsDurationUpdated(address indexed stakingToken, uint256 newDuration);
     event Recovered(address token, uint256 amount);
+    event RewardReceiverSet(address indexed user, address receiver);
 
     /**
      * @notice Constructor that sets the rewards token and staking delegate addresses.
@@ -76,6 +78,16 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      */
     function getReward(address user, address stakingToken) external nonReentrant {
         _getReward(user, stakingToken);
+    }
+
+    /**
+     * @notice Sets the reward receiver who will receive your rewards instead.
+     * @dev This can be set to the zero address to receive rewards directly.
+     * @param receiver The address of the reward receiver.
+     */
+    function setRewardReceiver(address receiver) external {
+        rewardReceiver[msg.sender] = receiver;
+        emit RewardReceiverSet(msg.sender, receiver);
     }
 
     /**
@@ -256,7 +268,8 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
     }
 
     /**
-     * @notice Updates the reward state for a given user and staking token.
+     * @notice Updates the reward state for a given user and staking token. If there are any rewards to be paid out,
+     * they are sent to the receiver that was set by the user. (Defaults to the user's address if not set)
      * @param user The address of the user to update rewards for.
      * @param stakingToken The address of the staking token.
      */
@@ -265,8 +278,12 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
         uint256 reward = rewards[user][stakingToken];
         if (reward > 0) {
             rewards[user][stakingToken] = 0;
-            IERC20(_REWARDS_TOKEN).safeTransfer(user, reward);
-            emit RewardPaid(user, stakingToken, reward);
+            address receiver = rewardReceiver[user];
+            if (receiver == address(0)) {
+                receiver = user;
+            }
+            IERC20(_REWARDS_TOKEN).safeTransfer(receiver, reward);
+            emit RewardPaid(user, stakingToken, reward, receiver);
         }
     }
 
