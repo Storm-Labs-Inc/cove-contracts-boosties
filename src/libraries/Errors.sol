@@ -90,6 +90,7 @@ library Errors {
     error PriceFeedIncorrectRound();
     error PriceFeedReturnedZeroPrice();
     error NoDYfiToRedeem();
+    error CallerRewardEthTransferFailed();
 
     /// TESTING ///
 
