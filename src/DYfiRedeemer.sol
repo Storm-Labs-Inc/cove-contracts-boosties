@@ -12,6 +12,7 @@ import { IWETH } from "src/interfaces/deps/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { IDYfiRedeemer } from "src/interfaces/IDYfiRedeemer.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title DYfiRedeemer
@@ -247,7 +248,16 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     /// @dev Returns ETH per 1 YFI in 1e18 precision
     function _getLatestPrice() internal view returns (uint256) {
         // slither-disable-next-line unused-return
-        (, int256 price,, uint256 timeStamp,) = AggregatorV3Interface(_YFI_ETH_PRICE_FEED).latestRoundData();
+        (uint80 roundID, int256 price,, uint256 timeStamp, uint80 answeredInRound) =
+            AggregatorV3Interface(_YFI_ETH_PRICE_FEED).latestRoundData();
+        // revert if the returned price is 0
+        if (price == 0) {
+            revert Errors.PriceFeedReturnedZeroPrice();
+        }
+        // revert if answer was found in a previous round
+        if (roundID > answeredInRound) {
+            revert Errors.PriceFeedIncorrectRound();
+        }
         // slither-disable-next-line timestamp
         if (timeStamp + 3600 < block.timestamp) {
             revert Errors.PriceFeedOutdated();
@@ -255,8 +265,11 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         return uint256(price);
     }
 
-    /// @dev Returns the ETH required for redemption in 1e18 precision
+    /// @dev Returns the minimum ETH required for redemption in 1e18 precision
     function _getEthRequired(uint256 dYfiAmount) internal view returns (uint256) {
-        return IRedemption(_REDEMPTION).eth_required(dYfiAmount) * 997 / 1000 + 1;
+        // Redemption contract returns the ETH required for redemption in 1e18 precision.
+        // The redeem functions allows for a 0.3% slippage so we find the minimum ETH required for redemption
+        // https://github.com/yearn/veYFI/blob/master/contracts/Redemption.vy#L112-L131
+        return Math.mulDiv(IRedemption(_REDEMPTION).eth_required(dYfiAmount), 997, 1000, Math.Rounding.Up);
     }
 }

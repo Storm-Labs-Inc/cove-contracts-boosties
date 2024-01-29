@@ -101,9 +101,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @notice Deposits tokens into a gauge.
-     * @param gauge Address of the gauge to deposit into.
-     * @param amount Amount of tokens to deposit.
+     * @notice Deposits a specified amount of gauge tokens into this staking delegate.
+     * @param gauge The address of the gauge token to deposit.
+     * @param amount The amount of tokens to deposit.
      */
     function deposit(address gauge, uint256 amount) external {
         // Checks
@@ -124,9 +124,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @notice Withdraws tokens from a gauge.
-     * @param gauge Address of the gauge to withdraw from.
-     * @param amount Amount of tokens to withdraw.
+     * @notice Withdraws a specified amount of gauge tokens from this staking delegate.
+     * @param gauge The address of the gauge token to withdraw.
+     * @param amount The amount of tokens to withdraw.
      */
     function withdraw(address gauge, uint256 amount) external {
         // Checks

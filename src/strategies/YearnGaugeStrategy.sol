@@ -118,6 +118,8 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         if (currentTotalAssets >= currentMaxTotalAssets) {
             return 0;
         }
+        // Return the difference between the max total assets and the current total assets, an underflow is not possible
+        // due to the above check
         unchecked {
             return currentMaxTotalAssets - currentTotalAssets;
         }
