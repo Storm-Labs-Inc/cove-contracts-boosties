@@ -52,7 +52,9 @@ library Errors {
     error OnlyStakingDelegateCanAddStakingToken();
     error OnlyRewardDistributorCanNotifyRewardAmount();
     error StakingTokenAlreadyAdded();
+    error StakingTokenNotAdded();
     error RewardRateTooLow();
+    error RewardDurationCannotBeZero();
 
     //// WRAPPED STRATEGY CURVE SWAPPER ////
     error SlippageTooHigh();
@@ -85,6 +87,8 @@ library Errors {
     /// DYFI REDEEMER ///
     error InvalidArrayLength();
     error PriceFeedOutdated();
+    error PriceFeedIncorrectRound();
+    error PriceFeedReturnedZeroPrice();
     error NoDYfiToRedeem();
 
     /// TESTING ///
