@@ -245,7 +245,16 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     /// @dev Returns ETH per 1 YFI in 1e18 precision
     function _getLatestPrice() internal view returns (uint256) {
         // slither-disable-next-line unused-return
-        (, int256 price,, uint256 timeStamp,) = AggregatorV3Interface(_YFI_ETH_PRICE_FEED).latestRoundData();
+        (uint80 roundID, int256 price,, uint256 timeStamp, uint80 answeredInRound) =
+            AggregatorV3Interface(_YFI_ETH_PRICE_FEED).latestRoundData();
+        // revert if the returned price is 0
+        if (price == 0) {
+            revert Errors.PriceFeedReturnedZeroPrice();
+        }
+        // revert if answer was found in a previous round
+        if (roundID > answeredInRound) {
+            revert Errors.PriceFeedIncorrectRound();
+        }
         // slither-disable-next-line timestamp
         if (timeStamp + 3600 < block.timestamp) {
             revert Errors.PriceFeedOutdated();
