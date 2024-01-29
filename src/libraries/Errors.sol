@@ -115,6 +115,8 @@ library Errors {
     /// DYFI REDEEMER ///
     error InvalidArrayLength();
     error PriceFeedOutdated();
+    error PriceFeedIncorrectRound();
+    error PriceFeedReturnedZeroPrice();
     error InsufficientYfiBalance();
     error NoDYfiToRedeem();
 
