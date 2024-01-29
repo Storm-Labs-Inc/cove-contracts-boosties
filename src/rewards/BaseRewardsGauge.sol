@@ -213,7 +213,6 @@ contract BaseRewardsGauge is
         rewardData[_rewardToken].periodFinish = block.timestamp + _WEEK;
     }
 
-    /* solhint-disable code-complexity */
     /**
      * @notice Claim pending rewards and checkpoint rewards for a user
      */
@@ -228,47 +227,57 @@ contract BaseRewardsGauge is
             }
         }
 
-        uint256 rewardCount_ = rewardTokens.length;
-        for (uint256 i = 0; i < rewardCount_; i++) {
+        uint256 rewardCount = rewardTokens.length;
+        for (uint256 i = 0; i < rewardCount; i++) {
             address token = rewardTokens[i];
-            uint256 integral = rewardData[token].integral;
-            {
-                uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
-                uint256 duration = lastUpdate - rewardData[token].lastUpdate;
-                if (duration != 0) {
-                    rewardData[token].lastUpdate = lastUpdate;
-                    if (_totalSupply != 0) {
-                        integral += duration * rewardData[token].rate * 10 ** 18 / _totalSupply;
-                        rewardData[token].integral = integral;
-                    }
-                }
-            }
+            _updateReward(token, _totalSupply);
 
             if (_user != address(0)) {
-                uint256 newClaimable = 0;
-                {
-                    uint256 integralFor = rewardIntegralFor[token][_user];
-                    if (integralFor < integral) {
-                        rewardIntegralFor[token][_user] = integral;
-                        newClaimable = userBalance * (integral - integralFor) / 10 ** 18;
-                    }
-                }
-
-                uint256 claimData_ = claimData[_user][token];
-                uint256 totalClaimable = (claimData_ >> 128) + newClaimable;
-                if (totalClaimable > 0) {
-                    uint256 totalClaimed = claimData_ % (2 ** 128);
-                    if (_claim) {
-                        IERC20(token).safeTransfer(receiver, totalClaimable);
-                        claimData[_user][token] = totalClaimed + totalClaimable;
-                    } else if (newClaimable > 0) {
-                        claimData[_user][token] = totalClaimed + (totalClaimable << 128);
-                    }
-                }
+                _processUserReward(token, _user, userBalance, _claim, receiver);
             }
         }
     }
-    /* solhint-enable code-complexity */
+
+    function _updateReward(address token, uint256 _totalSupply) internal {
+        uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
+        uint256 duration = lastUpdate - rewardData[token].lastUpdate;
+        if (duration > 0 && _totalSupply > 0) {
+            uint256 newIntegral =
+                rewardData[token].integral + (duration * rewardData[token].rate * 10 ** 18 / _totalSupply);
+            rewardData[token].integral = newIntegral;
+            rewardData[token].lastUpdate = lastUpdate;
+        }
+    }
+
+    function _processUserReward(
+        address token,
+        address _user,
+        uint256 userBalance,
+        bool _claim,
+        address receiver
+    )
+        internal
+    {
+        uint256 integral = rewardData[token].integral;
+        uint256 integralFor = rewardIntegralFor[token][_user];
+        uint256 newClaimable = integralFor < integral ? userBalance * (integral - integralFor) / 10 ** 18 : 0;
+        if (newClaimable > 0) {
+            rewardIntegralFor[token][_user] = integral;
+        }
+
+        uint256 claimData_ = claimData[_user][token];
+        uint256 totalClaimable = (claimData_ >> 128) + newClaimable;
+        uint256 totalClaimed = claimData_ % (2 ** 128);
+
+        if (totalClaimable > 0) {
+            if (_claim) {
+                IERC20(token).safeTransfer(receiver, totalClaimable);
+                claimData[_user][token] = totalClaimed + totalClaimable;
+            } else {
+                claimData[_user][token] = totalClaimed + (totalClaimable << 128);
+            }
+        }
+    }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         uint256 totalSupply_ = totalSupply();
