@@ -24,3 +24,9 @@
 [submodule "lib/clones-with-immutable-args"]
 	path = lib/clones-with-immutable-args
 	url = https://github.com/wighawag/clones-with-immutable-args
+[submodule "lib/permit2"]
+	path = lib/permit2
+	url = https://github.com/Uniswap/permit2
+[submodule "lib/Yearn-ERC4626-Router"]
+	path = lib/Yearn-ERC4626-Router
+	url = https://github.com/yearn/Yearn-ERC4626-Router

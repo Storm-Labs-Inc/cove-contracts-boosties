@@ -14,7 +14,7 @@
     "lint": "pnpm run lint:sol && pnpm run prettier:check",
     "lint:fix": "pnpm lint:sol:fix && pnpm run prettier:write",
     "lint:sol": "forge fmt --check && npx solhint \"{script,src}/**/*.sol\" --ignore-path .solhintignore && npx solhint \"{test}/**/*.sol\" --config .solhint.test.json --ignore-path .solhintignore",
-    "lint:sol:fix": "forge fmt && npx solhint --fix \"{script,src}/**/*.sol\" --ignore-path .solhintignore && npx solhint --fix \"{test}/**/*.sol\" --config .solhint.test.json --ignore-path .solhintignore",
+    "lint:sol:fix": "forge fmt && npx solhint --fix --noPrompt \"{script,src}/**/*.sol\" --ignore-path .solhintignore && npx solhint --fix --noPrompt \"{test}/**/*.sol\" --config .solhint.test.json --ignore-path .solhintignore",
     "prettier:check": "npx prettier --check \"**/*.{json,md,yml,yaml}\"",
     "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
   },
