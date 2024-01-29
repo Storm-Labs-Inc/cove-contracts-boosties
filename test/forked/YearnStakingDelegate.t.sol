@@ -186,7 +186,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
-        yearnStakingDelegate.earlyUnlock(admin);
+        yearnStakingDelegate.earlyUnlock();
         vm.stopPrank();
 
         assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
@@ -199,7 +199,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         yearnStakingDelegate.setPerpetualLock(false);
-        yearnStakingDelegate.earlyUnlock(admin);
+        yearnStakingDelegate.earlyUnlock();
         vm.stopPrank();
 
         assertEq(IERC20(MAINNET_VE_YFI).balanceOf(address(yearnStakingDelegate)), 0, "early unlock failed");
@@ -210,7 +210,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
-        yearnStakingDelegate.earlyUnlock(admin);
+        yearnStakingDelegate.earlyUnlock();
     }
 
     function testFuzz_deposit(uint256 amount) public {
@@ -457,5 +457,27 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
         yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c);
         vm.stopPrank();
+    }
+
+    function test_rescueYfi() public {
+        // give contract YFI tokens
+        airdrop(ERC20(MAINNET_YFI), address(yearnStakingDelegate), 1e18);
+        uint256 balanceBefore = IERC20(MAINNET_YFI).balanceOf(treasury);
+        vm.prank(admin);
+        yearnStakingDelegate.rescueYfi();
+        uint256 balanceAfter = IERC20(MAINNET_YFI).balanceOf(treasury);
+        // Assert the treasury balance is increased by the expected amount
+        assertGt(balanceAfter, balanceBefore, "YFI rescue failed");
+    }
+
+    function test_rescueDYfi() public {
+        // give contract dYFI tokens
+        airdrop(ERC20(MAINNET_DYFI), address(yearnStakingDelegate), 1e18);
+        uint256 balanceBefore = IERC20(MAINNET_DYFI).balanceOf(treasury);
+        vm.prank(admin);
+        yearnStakingDelegate.rescueDYfi();
+        uint256 balanceAfter = IERC20(MAINNET_DYFI).balanceOf(treasury);
+        // Assert the treasury balance is increased by the expected amount
+        assertGt(balanceAfter, balanceBefore, "DYFI rescue failed");
     }
 }

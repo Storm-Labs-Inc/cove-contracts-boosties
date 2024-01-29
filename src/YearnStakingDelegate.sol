@@ -101,9 +101,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @notice Deposits tokens into a gauge.
-     * @param gauge Address of the gauge to deposit into.
-     * @param amount Amount of tokens to deposit.
+     * @notice Deposits a specified amount of gauge tokens into this staking delegate.
+     * @param gauge The address of the gauge token to deposit.
+     * @param amount The amount of tokens to deposit.
      */
     function deposit(address gauge, uint256 amount) external {
         // Checks
@@ -124,9 +124,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @notice Withdraws tokens from a gauge.
-     * @param gauge Address of the gauge to withdraw from.
-     * @param amount Amount of tokens to withdraw.
+     * @notice Withdraws a specified amount of gauge tokens from this staking delegate.
+     * @param gauge The address of the gauge token to withdraw.
+     * @param amount The amount of tokens to withdraw.
      */
     function withdraw(address gauge, uint256 amount) external {
         // Checks
@@ -171,7 +171,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
+        _rescueDYfi();
     }
 
     /**
@@ -184,7 +184,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IYfiRewardPool(_YFI_REWARD_POOL).claim();
-        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
+        _rescueYfi();
     }
 
     /**
@@ -329,17 +329,32 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     }
 
     /**
-     * @notice early unlock veYFI
-     * @param to address to receive the unlocked YFI
+     * @notice early unlock veYFI and send YFI to treasury
      */
-    function earlyUnlock(address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function earlyUnlock() external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks
         if (_shouldPerpetuallyLock) {
             revert Errors.PerpetualLockEnabled();
         }
         // Interactions
         IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(_VE_YFI).withdraw();
-        IERC20(_YFI).safeTransfer(to, withdrawn.amount);
+        IERC20(_YFI).safeTransfer(_treasury, withdrawn.amount);
+    }
+
+    /**
+     * @notice Rescue YFI tokens from the contract
+     * @dev Should only be called if a breaking change occurs to the reward pool contract
+     */
+    function rescueYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueYfi();
+    }
+
+    /**
+     * @notice Rescue dYFI tokens from the contract
+     * @dev Should only be called if a breaking change occurs to the reward pool contract
+     */
+    function rescueDYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueDYfi();
     }
 
     /**
@@ -494,5 +509,21 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // In case of error, we don't want to block the entire tx so we try-catch
         // solhint-disable-next-line no-empty-blocks
         try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
+    }
+
+    /**
+     * @dev Internal function to transfer YFI held by this contract to the treasury.
+     */
+    function _rescueYfi() internal {
+        // Interactions
+        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
+    }
+
+    /**
+     * @dev Internal function to transfer dYFI held by this contract to the treasury.
+     */
+    function _rescueDYfi() internal {
+        // Interactions
+        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
     }
 }

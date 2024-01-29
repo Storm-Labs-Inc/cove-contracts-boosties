@@ -276,6 +276,21 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingDelegateRewards.setRewardsDuration(stakingToken, 1 days);
     }
 
+    function test_setRewardDuration_revertWhen_StakingTokenNotAdded() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(Errors.StakingTokenNotAdded.selector));
+        stakingDelegateRewards.setRewardsDuration(stakingToken, 1 days);
+    }
+
+    function test_setRewardDuration_revertWhen_RewardsDurationCannotBeZero() public {
+        vm.prank(yearnStakingDelegate);
+        stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(Errors.RewardDurationCannotBeZero.selector));
+        stakingDelegateRewards.setRewardsDuration(stakingToken, 0);
+    }
+
     function test_getRewardForDuration() public {
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
