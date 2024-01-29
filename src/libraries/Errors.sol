@@ -24,9 +24,6 @@ library Errors {
     /// @notice Thrown when the registry name and version is not found but is expected to be.
     error RegistryNameVersionNotFound(bytes32 name, uint256 version);
 
-    /// @notice Thrown when the caller is not the protocol manager.
-    error CallerNotProtocolManager(address caller);
-
     /// @notice Thrown when a duplicate registry address is found.
     error DuplicateRegistryAddress(address registryAddress);
 
@@ -34,8 +31,6 @@ library Errors {
     error ZeroAddress();
 
     error ZeroAmount();
-
-    error InvalidSwapPath();
 
     error InvalidRewardSplit();
 
@@ -45,10 +40,8 @@ library Errors {
 
     error SwapAndLockNotSet();
 
-    error GetRewardFailed();
     error GaugeRewardsAlreadyAdded();
     error GaugeRewardsNotYetAdded();
-    error CannotRescueUserTokens();
     error ExecutionNotAllowed();
     error ExecutionFailed();
 
@@ -64,29 +57,8 @@ library Errors {
     error RewardDurationCannotBeZero();
 
     //// WRAPPED STRATEGY CURVE SWAPPER ////
-    error OracleOutdated();
-
-    error VaultAssetDiffers();
-
-    error VaultAssetDoesNotDiffer();
-
-    error AssetDoesNotMatchStrategyAsset();
-
     error SlippageTooHigh();
-
-    error OracleNotSet(address asset);
-
-    error SlippageToleranceNotInRange(uint128 slippageTolerance);
-
-    error TimeToleranceNotInRange(uint128 timeTolerance);
-
-    error TokenNotFoundInPool(address token);
     error InvalidTokensReceived();
-    error InsufficientFlashLoanPayment();
-    error FlashLoanProviderNotSet();
-
-    /// CURVE TWO ASSET POOL YEARN GAUGE STRATEGY ///
-    error InvalidDepositToken();
 
     /// CURVE ROUTER SWAPPER ///
     error InvalidFromToken(address intendedFromToken, address actualFromToken);
@@ -107,7 +79,7 @@ library Errors {
     error EthTransferFailed();
     error ZeroTokenTransfer();
 
-    /// GAUGEREWARDRECEIVER ///
+    /// GAUGE REWARD RECEIVER ///
 
     error NotAuthorized();
     error CannotRescueRewardToken();
@@ -117,13 +89,10 @@ library Errors {
     error PriceFeedOutdated();
     error PriceFeedIncorrectRound();
     error PriceFeedReturnedZeroPrice();
-    error InsufficientYfiBalance();
     error NoDYfiToRedeem();
 
     /// TESTING ///
 
     error TakeAwayNotEnoughBalance();
     error StrategyNotAddedToVault();
-    error QueueNewRewardsFailed();
-    error SetAssociatedGaugeFailed();
 }
