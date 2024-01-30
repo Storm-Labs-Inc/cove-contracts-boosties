@@ -227,11 +227,12 @@ contract BaseRewardsGauge is
             }
         }
 
-        uint256 rewardCount = rewardTokens.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
+        for (uint256 i = 0; i < MAX_REWARDS; i++) {
             address token = rewardTokens[i];
+            if (token == address(0)) {
+                break;
+            }
             _updateReward(token, _totalSupply);
-
             if (_user != address(0)) {
                 _processUserReward(token, _user, userBalance, _claim, receiver);
             }
@@ -242,9 +243,7 @@ contract BaseRewardsGauge is
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
         if (duration > 0 && _totalSupply > 0) {
-            uint256 newIntegral =
-                rewardData[token].integral + (duration * rewardData[token].rate * 10 ** 18 / _totalSupply);
-            rewardData[token].integral = newIntegral;
+            rewardData[token].integral += duration * rewardData[token].rate * 10 ** 18 / _totalSupply;
             rewardData[token].lastUpdate = lastUpdate;
         }
     }
