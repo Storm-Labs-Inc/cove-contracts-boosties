@@ -19,9 +19,9 @@ contract RewardForwarder_Test is BaseTest {
         admin = createUser("admin");
         treasury = createUser("treasury");
         // deploy dummy token
-        token = new ERC20("dummy", "DUM");
+        token = new ERC20("dummy", "DUMB");
         vm.label(address(token), "token");
-        // deploy dummy reward recevier
+        // deploy dummy reward receiver
         destination = address(new MockBaseRewardsGauge());
         vm.label(destination, "destination");
         rewardForwarderImplementation = new RewardForwarder();
