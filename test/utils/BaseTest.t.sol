@@ -9,6 +9,7 @@ import { VyperDeployer } from "./VyperDeployer.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
 abstract contract BaseTest is Test, Constants {
     //// VARIABLES ////
@@ -161,5 +162,11 @@ abstract contract BaseTest is Test, Constants {
         vm.label(at, "VaultFactory");
         vm.stopPrank();
         return factory;
+    }
+
+    function _cloneContract(address implementation) internal returns (address) {
+        address clone = Clones.clone(implementation);
+        vm.stopPrank();
+        return clone;
     }
 }
