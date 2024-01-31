@@ -90,7 +90,7 @@ contract YearnV3BaseTest is BaseTest {
 
     /// VE-YFI related functions ///
     function setUpVotingYfiStack() public {
-        gaugeFactory = _deployGaugeFactory(MAINNET_DYFI_GAUGE_IMPLEMENTATION);
+        gaugeFactory = _deployGaugeFactory(MAINNET_DYFI_ETH_GAUGE);
         gaugeRegistry = _deployVeYFIRegistry(admin, gaugeFactory, MAINNET_DYFI_REWARD_POOL);
         _increaseDYfiEthPoolLiquidity(MAINNET_DYFI_ETH_POOL, 10e18);
     }

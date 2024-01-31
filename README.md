@@ -30,8 +30,8 @@ pnpm test
 ## Local mainnet fork
 
 ```sh
-# Run a fork network using anvil
-anvil --rpc-url <fork_network_rpc_url>
+# Fork the mainnet on local network using anvil with the provided script
+pnpm anvil-fork
 ```
 
 Keep this terminal session going to keep the fork network alive.
@@ -39,8 +39,8 @@ Keep this terminal session going to keep the fork network alive.
 Then in another terminal session:
 
 ```sh
-# Deploy contracts to local fork network
-pnpm localDeploy
+# Deploy contracts to local network
+pnpm deploy:local
 ```
 
 - deployments will be in `deployments/<chainId>-fork`
