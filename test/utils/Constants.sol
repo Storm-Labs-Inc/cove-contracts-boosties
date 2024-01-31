@@ -27,7 +27,8 @@ contract Constants is CommonBase {
     address public constant MAINNET_VAULT_FACTORY = 0xE9E8C89c8Fc7E8b8F23425688eb68987231178e5;
     address public constant MAINNET_YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address public constant MAINNET_DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
-    address public constant MAINNET_DYFI_GAUGE_IMPLEMENTATION = 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc;
+    address public constant MAINNET_ETH_YFI_GAUGE = 0x7Fd8Af959B54A677a1D8F92265Bd0714274C56a3;
+    address public constant MAINNET_DYFI_ETH_GAUGE = 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc;
     address public constant MAINNET_VAULT_BLUEPRINT = 0xDE992C652b266AE649FEC8048aFC35954Bee6145;
     address public constant MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION = 0xDFC8cD9F2f2d306b7C0d109F005DF661E14f4ff2;
     address public constant MAINNET_WETH_YETH_POOL_VAULT = 0x58900d761Ae3765B75DDFc235c1536B527F25d8F;
@@ -58,6 +59,9 @@ contract Constants is CommonBase {
     /// @dev pool type 1, [WETH, YETH]
     address public constant MAINNET_WETH_YETH_POOL = 0x69ACcb968B19a53790f43e57558F5E443A91aF22;
 
+    // Uniswap
+    address public constant MAINNET_PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+
     function _labelEthereumAddresses() internal {
         // Tokens
         vm.label(MAINNET_DAI, "DAI");
@@ -75,7 +79,7 @@ contract Constants is CommonBase {
         vm.label(MAINNET_VAULT_FACTORY, "VAULT_FACTORY");
         vm.label(MAINNET_YFI_REWARD_POOL, "YFI_REWARD_POOL");
         vm.label(MAINNET_DYFI_REWARD_POOL, "DYFI_REWARD_POOL");
-        vm.label(MAINNET_DYFI_GAUGE_IMPLEMENTATION, "DYFI_GAUGE_IMPLEMENTATION");
+        vm.label(MAINNET_DYFI_ETH_GAUGE, "MAINNET_DYFI_ETH_GAUGE");
         vm.label(MAINNET_VAULT_BLUEPRINT, "VAULT_BLUEPRINT");
         vm.label(MAINNET_WETH_YETH_POOL_VAULT, "YETH_POOL_VAULT");
         vm.label(MAINNET_WETH_YETH_POOL_GAUGE, "YETH_POOL_GAUGE");

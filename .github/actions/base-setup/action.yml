@@ -32,6 +32,15 @@ runs:
       with:
         version: 8
 
+    - name: Install latest rust nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+
+    - run: rustc --version
+      shell: bash
+
     - name: Install Node.js
       uses: buildjet/setup-node@v3
       with:

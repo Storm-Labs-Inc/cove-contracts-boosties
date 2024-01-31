@@ -30,3 +30,6 @@
 [submodule "lib/Yearn-ERC4626-Router"]
 	path = lib/Yearn-ERC4626-Router
 	url = https://github.com/yearn/Yearn-ERC4626-Router
+[submodule "lib/forge-deploy"]
+	path = lib/forge-deploy
+	url = https://github.com/Abracadabra-money/forge-deploy

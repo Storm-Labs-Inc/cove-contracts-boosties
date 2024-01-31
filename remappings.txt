@@ -3,14 +3,14 @@
 @periphery/=lib/tokenized-strategy-periphery/src/
 tokenized-strategy/=lib/tokenized-strategy/src/
 tokenized-strategy-periphery/=lib/tokenized-strategy-periphery/src/
-vault-periphery/=lib/vault-periphery/contracts
+vault-periphery/=lib/vault-periphery/contracts/
 yearn-vaults-v3/=lib/yearn-vaults-v3/contracts/
 Yearn-ERC4626-Router/=lib/Yearn-ERC4626-Router/src/
 solmate/=lib/permit2/lib/solmate/src/
 permit2/=lib/permit2/src/
 forge-std/=lib/forge-std/src/
 veYFI/=lib/veYFI/contracts/
-forge-deploy/=node_modules/forge-deploy/contracts/
+forge-deploy/=lib/forge-deploy/contracts/
 script/=script/
 src/=src/
 test/=test/
