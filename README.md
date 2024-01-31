@@ -5,20 +5,26 @@
 
 # Installation
 
-Tested with node 18.16.1 and python 3.9.17
+Tested with node 18.16.1, python 3.9.17, and rustc 1.75.0
 
 ```sh
+# Install rustc via rustup
+# https://www.rust-lang.org/tools/install
 # Install python dependencies
 pip install -r requirements.txt
-# Install node dependencies
-pnpm install
 # Install submodules as forge libraries
 forge install
+# Install node dependencies and build dependencies
+pnpm install
+# Build contracts
+pnpm build
 ```
 
 # Compilation
 
 ```sh
+# Build forge-deploy if not already built
+pnpm forge-deploy:build
 # Build contracts
 pnpm build
 # Run tests
