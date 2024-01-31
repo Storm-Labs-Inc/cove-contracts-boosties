@@ -10,6 +10,7 @@ Tested with node 18.16.1, python 3.9.17, and rustc 1.75.0
 ```sh
 # Install rustc via rustup
 # https://www.rust-lang.org/tools/install
+rustup update
 # Install python dependencies
 pip install -r requirements.txt
 # Install submodules as forge libraries
