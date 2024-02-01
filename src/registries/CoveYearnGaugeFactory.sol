@@ -11,6 +11,12 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
 contract CoveYearnGaugeFactory is AccessControl {
+    struct GaugeInfoStored {
+        address coveYearnStrategy;
+        address autoCompoundingGauge;
+        address nonAutoCompoundingGauge;
+    }
+
     struct GaugeInfo {
         /// @dev The address of the yearn vault asset. Usually a curve LP token.
         address yearnVaultAsset;
@@ -39,7 +45,7 @@ contract CoveYearnGaugeFactory is AccessControl {
     address public gaugeAdmin;
 
     address[] public supportedYearnGauges;
-    mapping(address => GaugeInfo) public yearnGaugeInfo;
+    mapping(address => GaugeInfoStored) public yearnGaugeInfoStored;
 
     event CoveGaugesDeployed(
         address yearnGauge, address coveYearnStrategy, address autoCompoundingGauge, address nonAutoCompoundingGauge
@@ -74,7 +80,26 @@ contract CoveYearnGaugeFactory is AccessControl {
         uint256 length = supportedYearnGauges.length;
         GaugeInfo[] memory result = new GaugeInfo[](length);
         for (uint256 i = 0; i < length; i++) {
-            result[i] = yearnGaugeInfo[supportedYearnGauges[i]];
+            address yearnGauge = supportedYearnGauges[i];
+            GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
+            address yearnVault = IERC4626(yearnGauge).asset();
+            address yearnVaultAsset = address(0);
+            bool isYearnVaultV2 = false;
+            try IERC4626(yearnVault).asset() returns (address vaultAsset) {
+                yearnVaultAsset = vaultAsset;
+            } catch {
+                isYearnVaultV2 = true;
+                yearnVaultAsset = IYearnVaultV2(yearnVault).token();
+            }
+            result[i] = GaugeInfo({
+                yearnVaultAsset: yearnVaultAsset,
+                yearnVault: yearnVault,
+                isVaultV2: isYearnVaultV2,
+                yearnGauge: yearnGauge,
+                coveYearnStrategy: stored.coveYearnStrategy,
+                autoCompoundingGauge: stored.autoCompoundingGauge,
+                nonAutoCompoundingGauge: stored.nonAutoCompoundingGauge
+            });
         }
         return result;
     }
@@ -87,7 +112,7 @@ contract CoveYearnGaugeFactory is AccessControl {
         onlyRole(_MANAGER_ROLE)
     {
         // Check if the gauges are already deployed
-        if (yearnGaugeInfo[yearnGauge].yearnGauge != address(0)) {
+        if (yearnGaugeInfoStored[yearnGauge].coveYearnStrategy != address(0)) {
             revert Errors.GaugeAlreadyDeployed();
         }
         // Cache storage vars as memory vars
@@ -145,21 +170,7 @@ contract CoveYearnGaugeFactory is AccessControl {
 
         // Save the gauge info
         supportedYearnGauges.push(yearnGauge);
-        address yearnVault = IERC4626(yearnGauge).asset();
-        address yearnVaultAsset = address(0);
-        bool isYearnVaultV2 = false;
-        try IERC4626(yearnVault).asset() returns (address vaultAsset) {
-            isYearnVaultV2 = false;
-            yearnVaultAsset = vaultAsset;
-        } catch {
-            isYearnVaultV2 = true;
-            yearnVaultAsset = IYearnVaultV2(yearnVault).token();
-        }
-        yearnGaugeInfo[yearnGauge] = GaugeInfo({
-            yearnVaultAsset: yearnVaultAsset,
-            yearnVault: yearnVault,
-            isVaultV2: isYearnVaultV2,
-            yearnGauge: yearnGauge,
+        yearnGaugeInfoStored[yearnGauge] = GaugeInfoStored({
             coveYearnStrategy: coveYearnStrategy,
             autoCompoundingGauge: address(coveStratGauge),
             nonAutoCompoundingGauge: address(coveYsdGauge)
