@@ -183,9 +183,10 @@ contract BaseRewardsGauge_Test is BaseTest {
         );
         // warp forward to the next week when the reward period finishes
         vm.warp(block.timestamp + 1 weeks);
+        uint256 aliceClaimableRewards = baseRewardsGauge.claimableReward(alice, address(dummyRewardToken));
         assertApproxEqAbs(
             rewardAmount,
-            baseRewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            aliceClaimableRewards,
             rewardAmountAdjustment,
             "alice should have claimable rewards equal to the total amount of reward tokens deposited"
         );
@@ -213,6 +214,8 @@ contract BaseRewardsGauge_Test is BaseTest {
             baseRewardsGauge.claimedReward(alice, address(dummyRewardToken)),
             "alice should have claimed rewards equal to the total amount of reward tokens deposited"
         );
+        // check that claimable rewards was correct
+        assertEq(newAliceBalance, aliceClaimableRewards, "claimable rewards should be equal to the claimed amount");
     }
 
     function test_depositRewardToken_revertWhen_unauthorized(address distributor, address user) public {
