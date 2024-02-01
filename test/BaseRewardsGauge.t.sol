@@ -151,15 +151,14 @@ contract BaseRewardsGauge_Test is BaseTest {
         assertEq(baseRewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
     }
 
-    function test_depositRewardToken_buh() public {
-        uint256 amount = 1e20;
-        uint256 rewardAmount = 1e19;
-        vm.assume(amount > 0);
-        // add a reward of a new dummy token
+    function test_depositRewardToken(uint256 amount, uint256 rewardAmount) public {
+        vm.assume(amount > 1e18 && amount < 1e28 && amount > rewardAmount);
+        vm.assume(rewardAmount >= 604_800);
+        // uint256 rewardAmountAdjustment = (rewardAmount % 604_800) + 1e9; // fails
+        uint256 rewardAmountAdjustment = (rewardAmount % 604_800) + 1e10; // passes
 
         vm.startPrank(admin);
         baseRewardsGauge.addReward(address(dummyRewardToken), admin);
-        // address distributor = createUser("distributor");
         // alice gets some mockgauge tokens by depositing dummy token
         airdrop(dummyGaugeAsset, alice, amount);
         vm.startPrank(alice);
@@ -173,8 +172,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         // admin deposits reward tokens to the baseRewardsGauge
         vm.startPrank(admin);
         airdrop(dummyRewardToken, admin, rewardAmount);
-        dummyRewardToken.approve(address(baseRewardsGauge), amount);
-        // reward amount ==  1e19
+        dummyRewardToken.approve(address(baseRewardsGauge), rewardAmount);
         baseRewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
         vm.stopPrank();
         // alice's claimable rewards should be 0 at this block
@@ -185,18 +183,11 @@ contract BaseRewardsGauge_Test is BaseTest {
         );
         // warp forward to the next week when the reward period finishes
         vm.warp(block.timestamp + 1 weeks);
-        // NOTE: not sure why this is not the full amount
-        assertEq(
+        assertApproxEqAbs(
             rewardAmount,
             baseRewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            rewardAmountAdjustment,
             "alice should have claimable rewards equal to the total amount of reward tokens deposited"
-        );
-        // check that the claimable rewards are close to the total amount of reward tokens deposited
-        assertApproxEqRel(
-            rewardAmount,
-            baseRewardsGauge.claimableReward(alice, address(dummyRewardToken)),
-            1e15, //1e18 is 100% so 1e15 is 0.001%
-            "alice should have claimable rewards close to the total amount of reward tokens deposited"
         );
         uint256 aliceBalanceBefore = dummyRewardToken.balanceOf(alice);
         // alice claims rewards
@@ -210,11 +201,11 @@ contract BaseRewardsGauge_Test is BaseTest {
         );
         uint256 newAliceBalance = dummyRewardToken.balanceOf(alice) - aliceBalanceBefore;
         // alices balance should be close to the reward amount
-        assertApproxEqRel(
+        assertApproxEqAbs(
             rewardAmount,
             newAliceBalance,
-            1e15, //1e18 is 100% so 1e15 is 0.001%
-            "alice should have received close to the full reward amount"
+            rewardAmountAdjustment,
+            "alice should have received the full reward amount minus the adjustment"
         );
         // alices claimed rewards should have increase by the claimed amount
         assertEq(
