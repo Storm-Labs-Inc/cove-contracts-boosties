@@ -50,7 +50,7 @@ contract RewardForwarder_Test is BaseTest {
         assertEq(token.allowance(address(rewardForwarder), destination), type(uint256).max);
     }
 
-    function test_setTreasury(address newTreasury) public {
+    function testFuzz_setTreasury(address newTreasury) public {
         vm.assume(newTreasury != address(0) && newTreasury != treasury);
         vm.prank(admin);
         rewardForwarder.setTreasury(newTreasury);
@@ -62,14 +62,14 @@ contract RewardForwarder_Test is BaseTest {
         rewardForwarder.setTreasury(address(1));
     }
 
-    function test_setTreasuryBps(uint256 bps) public {
+    function testFuzz_setTreasuryBps(uint256 bps) public {
         vm.assume(bps <= 10_000);
         vm.prank(admin);
         rewardForwarder.setTreasuryBps(address(token), bps);
         assertEq(rewardForwarder.treasuryBps(address(token)), bps);
     }
 
-    function test_setTreasuryBps_revertWhen_invalidTreasuryBps(uint256 bps) public {
+    function testFuzz_setTreasuryBps_revertWhen_invalidTreasuryBps(uint256 bps) public {
         vm.assume(bps > 10_000);
         vm.expectRevert(abi.encodeWithSelector(RewardForwarder.InvalidTreasuryBps.selector));
         vm.prank(admin);
