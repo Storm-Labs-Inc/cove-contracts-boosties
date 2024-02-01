@@ -226,8 +226,8 @@ contract BaseRewardsGauge is
                 receiver = receiver == address(0) ? _user : receiver;
             }
         }
-
-        for (uint256 i = 0; i < MAX_REWARDS; i++) {
+        // NOTE: changing below as access past the current length reverts on out-of-bounds
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
             address token = rewardTokens[i];
             if (token == address(0)) {
                 break;
