@@ -80,28 +80,31 @@ contract CoveYearnGaugeFactory is AccessControl {
         uint256 length = supportedYearnGauges.length;
         GaugeInfo[] memory result = new GaugeInfo[](length);
         for (uint256 i = 0; i < length; i++) {
-            address yearnGauge = supportedYearnGauges[i];
-            GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
-            address yearnVault = IERC4626(yearnGauge).asset();
-            address yearnVaultAsset = address(0);
-            bool isYearnVaultV2 = false;
-            try IERC4626(yearnVault).asset() returns (address vaultAsset) {
-                yearnVaultAsset = vaultAsset;
-            } catch {
-                isYearnVaultV2 = true;
-                yearnVaultAsset = IYearnVaultV2(yearnVault).token();
-            }
-            result[i] = GaugeInfo({
-                yearnVaultAsset: yearnVaultAsset,
-                yearnVault: yearnVault,
-                isVaultV2: isYearnVaultV2,
-                yearnGauge: yearnGauge,
-                coveYearnStrategy: stored.coveYearnStrategy,
-                autoCompoundingGauge: stored.autoCompoundingGauge,
-                nonAutoCompoundingGauge: stored.nonAutoCompoundingGauge
-            });
+            result[i] = getGaugeInfo(supportedYearnGauges[i]);
         }
         return result;
+    }
+
+    function getGaugeInfo(address yearnGauge) public view returns (GaugeInfo memory) {
+        GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
+        address yearnVault = IERC4626(yearnGauge).asset();
+        address yearnVaultAsset = address(0);
+        bool isYearnVaultV2 = false;
+        try IERC4626(yearnVault).asset() returns (address vaultAsset) {
+            yearnVaultAsset = vaultAsset;
+        } catch {
+            isYearnVaultV2 = true;
+            yearnVaultAsset = IYearnVaultV2(yearnVault).token();
+        }
+        return GaugeInfo({
+            yearnVaultAsset: yearnVaultAsset,
+            yearnVault: yearnVault,
+            isVaultV2: isYearnVaultV2,
+            yearnGauge: yearnGauge,
+            coveYearnStrategy: stored.coveYearnStrategy,
+            autoCompoundingGauge: stored.autoCompoundingGauge,
+            nonAutoCompoundingGauge: stored.nonAutoCompoundingGauge
+        });
     }
 
     function deployCoveGaugesForYearnGauge(
