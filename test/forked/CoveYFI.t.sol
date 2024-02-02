@@ -22,8 +22,7 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
         yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin);
 
-        vm.prank(admin);
-        coveYFI = new CoveYFI(yearnStakingDelegate);
+        coveYFI = new CoveYFI(yearnStakingDelegate, admin);
     }
 
     function testFuzz_constructor(address noAdminAddress) public {

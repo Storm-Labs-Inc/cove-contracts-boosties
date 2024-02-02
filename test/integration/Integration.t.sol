@@ -59,7 +59,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             yearnStakingDelegate.addGaugeRewards(gauge, address(stakingDelegateRewards));
             yearnStakingDelegate.setSwapAndLock(address(swapAndLock));
             vm.stopPrank();
-            dYfiRedeemer = new DYfiRedeemer();
+            dYfiRedeemer = new DYfiRedeemer(admin);
             vm.label(address(dYfiRedeemer), "dYfiRedeemer");
         }
 

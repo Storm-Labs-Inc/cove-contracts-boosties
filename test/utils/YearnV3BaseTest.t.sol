@@ -205,15 +205,13 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function setUpSwapAndLock(address owner, address yearnStakingDelegate) public returns (address) {
-        vm.prank(owner);
-        address swapAndLock = address(new SwapAndLock(yearnStakingDelegate));
+        address swapAndLock = address(new SwapAndLock(yearnStakingDelegate, owner));
         vm.label(swapAndLock, "SwapAndLock");
         return swapAndLock;
     }
 
     function setUpDYfiRedeemer(address owner) public returns (address) {
-        vm.prank(owner);
-        address dYfiRedeemer = address(new DYfiRedeemer());
+        address dYfiRedeemer = address(new DYfiRedeemer(owner));
         vm.label(dYfiRedeemer, "DYfiRedeemer");
         return dYfiRedeemer;
     }

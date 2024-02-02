@@ -38,14 +38,14 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
      * @notice Constructs the SwapAndLock contract.
      * @param yearnStakingDelegate_ Address of the YearnStakingDelegate contract.
      */
-    constructor(address yearnStakingDelegate_) {
+    constructor(address yearnStakingDelegate_, address admin) {
         // Checks
         if (yearnStakingDelegate_ == address(0)) {
             revert Errors.ZeroAddress();
         }
         // Effects
         _YEARN_STAKING_DELEGATE = yearnStakingDelegate_;
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
         // Interactions
         IERC20(_YFI).forceApprove(yearnStakingDelegate_, type(uint256).max);
     }

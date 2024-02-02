@@ -47,8 +47,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         vm.label(address(mockYearnStakingDelegate), "mockYearnStakingDelegate");
         vm.label(address(mockStakingDelegateRewards), "mockStakingDelegateRewards");
         mockYearnStakingDelegate.setGaugeStakingRewards(address(mockStakingDelegateRewards));
-        vm.prank(manager);
-        dYfiRedeemer = new DYfiRedeemer();
+        dYfiRedeemer = new DYfiRedeemer(admin);
         vm.label(address(dYfiRedeemer), "dYfiRedeemer");
 
         //// wrapped strategy ////

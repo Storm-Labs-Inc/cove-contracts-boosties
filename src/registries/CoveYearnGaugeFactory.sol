@@ -52,6 +52,7 @@ contract CoveYearnGaugeFactory is AccessControl {
     );
 
     constructor(
+        address factoryAdmin,
         address ysd,
         address cove_,
         address rewardForwaderImpl,
@@ -68,8 +69,8 @@ contract CoveYearnGaugeFactory is AccessControl {
         _setYsdRewardsGaugeImplementation(ysdRewardsGaugeImpl_);
         _setTreasuryMultisig(treasuryMultisig_);
         _setGaugeAdmin(gaugeAdmin_);
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(_MANAGER_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, factoryAdmin);
+        _grantRole(_MANAGER_ROLE, factoryAdmin);
     }
 
     function numOfSupportedYearnGauges() external view returns (uint256) {
@@ -107,13 +108,12 @@ contract CoveYearnGaugeFactory is AccessControl {
         });
     }
 
-    function deployCoveGaugesForYearnGauge(
-        address yearnGauge,
-        address coveYearnStrategy
-    )
-        external
-        onlyRole(_MANAGER_ROLE)
-    {
+    function deployCoveGauges(address coveYearnStrategy) external onlyRole(_MANAGER_ROLE) {
+        // Sanity check
+        if (coveYearnStrategy == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        address yearnGauge = IERC4626(coveYearnStrategy).asset();
         // Check if the gauges are already deployed
         if (yearnGaugeInfoStored[yearnGauge].coveYearnStrategy != address(0)) {
             revert Errors.GaugeAlreadyDeployed();
