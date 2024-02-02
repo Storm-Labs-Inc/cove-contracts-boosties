@@ -92,6 +92,9 @@ library Errors {
     error NoDYfiToRedeem();
     error CallerRewardEthTransferFailed();
 
+    /// COVE YEARN GAUGE FACTORY ///
+    error GaugeAlreadyDeployed();
+
     /// TESTING ///
 
     error TakeAwayNotEnoughBalance();

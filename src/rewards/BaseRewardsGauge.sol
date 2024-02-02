@@ -80,6 +80,7 @@ contract BaseRewardsGauge is
         __ERC4626_init(IERC20(asset_));
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(_MANAGER_ROLE, msg.sender);
     }
 
     /**
