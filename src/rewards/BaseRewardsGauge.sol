@@ -14,7 +14,6 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/
 import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
-import { console2 as console } from "forge-std/console2.sol";
 
 /**
  * @title BaseRewardsGauge
@@ -245,10 +244,8 @@ contract BaseRewardsGauge is
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
         if (duration > 0 && _totalSupply > 0) {
-            console.log("before update integral: ", rewardData[token].integral);
             rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / _totalSupply;
             rewardData[token].lastUpdate = lastUpdate;
-            console.log("after update integral: ", rewardData[token].integral);
         }
     }
 
