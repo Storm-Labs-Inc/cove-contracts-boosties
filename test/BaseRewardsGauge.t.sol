@@ -571,7 +571,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         uint256 aliceBalanceBefore = dummyRewardToken.balanceOf(alice);
         // alice claims rewards
         vm.prank(alice);
-        // claim rewards without providing a reciever
+        // claim rewards without providing a receiver
         baseRewardsGauge.claimRewards(alice, address(0));
         // alice's claimable rewards should be 0 after claiming
         assertEq(
