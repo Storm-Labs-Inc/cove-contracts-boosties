@@ -12,20 +12,18 @@ contract MasterRegistry_Test is BaseTest {
 
     address public admin;
     address public alice;
-    address public manager;
 
     function setUp() public override {
         super.setUp();
         admin = createUser("admin");
         alice = createUser("alice");
-        manager = createUser("manager");
-        masterRegistry = new MasterRegistry(admin, manager);
+        masterRegistry = new MasterRegistry(admin, address(this));
     }
 
     function test_init() public view {
         assert(masterRegistry.hasRole(adminRole, admin));
         assert(masterRegistry.hasRole(managerRole, admin));
-        assert(masterRegistry.hasRole(managerRole, manager));
+        assert(masterRegistry.hasRole(managerRole, address(this)));
     }
 
     function test_addRegistry_revertWhen_CalledWithEmptyString(address addr) public {
@@ -250,6 +248,7 @@ contract MasterRegistry_Test is BaseTest {
         assert(!masterRegistry.hasRole(managerRole, alice));
 
         // Grant the manager role to the user from the owner
+        vm.prank(admin);
         masterRegistry.grantRole(managerRole, alice);
 
         // Check the user now has the manager role
@@ -261,6 +260,7 @@ contract MasterRegistry_Test is BaseTest {
         assert(!masterRegistry.hasRole(adminRole, alice));
 
         // Grant the admin role to the user from the owner
+        vm.prank(admin);
         masterRegistry.grantRole(adminRole, alice);
 
         // Check the user now has the admin role
@@ -286,12 +286,14 @@ contract MasterRegistry_Test is BaseTest {
         assert(!masterRegistry.hasRole(adminRole, alice));
 
         // Grant the admin role to the user from the owner
+        vm.prank(admin);
         masterRegistry.grantRole(adminRole, alice);
 
         // Check the user now has the admin role
         assert(masterRegistry.hasRole(adminRole, alice));
 
         // Revoke the admin role from the user from the owner
+        vm.prank(admin);
         masterRegistry.revokeRole(adminRole, alice);
 
         // Check the user no longer has the admin role
@@ -303,7 +305,7 @@ contract MasterRegistry_Test is BaseTest {
         assert(!masterRegistry.hasRole(adminRole, alice));
 
         // Grant the admin role to the user from the owner
-
+        vm.prank(admin);
         masterRegistry.grantRole(adminRole, alice);
 
         // Check the user now has the admin role
@@ -323,6 +325,7 @@ contract MasterRegistry_Test is BaseTest {
         assert(masterRegistry.hasRole(managerRole, admin));
 
         // Renouce the manager role from the admin
+        vm.prank(admin);
         masterRegistry.renounceRole(managerRole, admin);
 
         // Check the user no longer has the manager role
@@ -334,6 +337,7 @@ contract MasterRegistry_Test is BaseTest {
         assert(masterRegistry.hasRole(adminRole, admin));
 
         // Renouce the admin role from the admin
+        vm.prank(admin);
         masterRegistry.renounceRole(adminRole, admin);
 
         // Check the user no longer has the admin role
