@@ -7,6 +7,7 @@ contract Constants is CommonBase {
     // Constant uint256 values
     uint40 internal constant _JAN_1_2023 = 1_672_531_200;
     uint256 internal constant _MAX_UINT256 = type(uint256).max;
+    uint256 internal constant _WEEK = 604_800;
 
     // Ethereum mainnet addresses
     // Tokens

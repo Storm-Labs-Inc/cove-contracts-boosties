@@ -4,14 +4,12 @@ pragma solidity ^0.8.18;
 import { BaseTest } from "./utils/BaseTest.t.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { MockGauge } from "./mocks/MockGauge.sol";
 
 contract BaseRewardsGauge_Test is BaseTest {
     BaseRewardsGauge public baseRewardsGaugeImplementation;
     BaseRewardsGauge public baseRewardsGauge;
     ERC20 public dummyGaugeAsset;
     ERC20 public dummyRewardToken;
-    MockGauge public mockGauge;
     address public admin;
     address public treasury;
     address public alice;
@@ -27,31 +25,31 @@ contract BaseRewardsGauge_Test is BaseTest {
         // deploy dummy reward token
         dummyRewardToken = new ERC20("dummyReward", "DUMBR");
         vm.label(address(dummyRewardToken), "dummyRewardToken");
-        // deploy mock yearn gauge token
-        mockGauge = new MockGauge(address(dummyGaugeAsset));
-        vm.label(address(mockGauge), "mockGauge");
+        // deploy base rewards gauge implementation
         baseRewardsGaugeImplementation = new BaseRewardsGauge();
         vm.label(address(baseRewardsGaugeImplementation), "baseRewardsGaugeImplementation");
-        // clone the rewardForwarder
+        // clone the implementation
         baseRewardsGauge = BaseRewardsGauge(_cloneContract(address(baseRewardsGaugeImplementation)));
         vm.label(address(baseRewardsGauge), "baseRewardsGauge");
-        bytes memory empty;
         vm.startPrank(admin);
-        baseRewardsGauge.initialize(address(mockGauge), empty);
+        baseRewardsGauge.initialize(address(dummyGaugeAsset), "");
         // set admin as manager as well
         baseRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), admin);
         vm.stopPrank();
     }
 
     function test_initialize() public {
-        require(baseRewardsGauge.hasRole(baseRewardsGauge.DEFAULT_ADMIN_ROLE(), admin), "admin should have admin role");
+        assertTrue(
+            baseRewardsGauge.hasRole(baseRewardsGauge.DEFAULT_ADMIN_ROLE(), admin), "admin should have admin role"
+        );
     }
 
     function testFuzz_setRewardsReceiver(address desitnation) public {
         vm.assume(desitnation != address(0));
         baseRewardsGauge.setRewardsReceiver(destination);
-        require(
-            baseRewardsGauge.rewardsReceiver(address(this)) == destination,
+        assertEq(
+            baseRewardsGauge.rewardsReceiver(address(this)),
+            destination,
             "destination should be set as rewards receiver"
         );
     }
@@ -62,7 +60,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         vm.prank(admin);
         baseRewardsGauge.addReward(rewardToken, _distributor);
         (address distributor,,,,) = baseRewardsGauge.rewardData(rewardToken);
-        require(distributor == _distributor, "distributor should be set for reward token");
+        assertEq(distributor, _distributor, "distributor should be set for reward token");
     }
 
     function test_addReward_multipleRewards() public {
@@ -71,7 +69,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         for (uint160 i = 0; i < MAX_REWARDS; i++) {
             baseRewardsGauge.addReward(address(i), address(i * 10));
             (address distributor,,,,) = baseRewardsGauge.rewardData(address(i));
-            require(distributor == address(i * 10), "distributor should be set for reward token");
+            assertEq(distributor, address(i * 10), "distributor should be set for reward token");
         }
     }
 
@@ -104,11 +102,11 @@ contract BaseRewardsGauge_Test is BaseTest {
         vm.prank(admin);
         baseRewardsGauge.addReward(rewardToken, _distributor0);
         (address distributor,,,,) = baseRewardsGauge.rewardData(rewardToken);
-        require(distributor == _distributor0, "distributor should be set for reward token");
+        assertEq(distributor, _distributor0, "distributor should be set for reward token");
         vm.prank(_distributor0);
         baseRewardsGauge.setRewardDistributor(rewardToken, _distributor1);
         (address updatedDistributor,,,,) = baseRewardsGauge.rewardData(rewardToken);
-        require(updatedDistributor == _distributor1, "distributor1 should be updated for reward token");
+        assertEq(updatedDistributor, _distributor1, "distributor1 should be updated for reward token");
     }
 
     function testFuzz_setRewardDistributor_revertWhen_unauthorized(address user) public {
@@ -143,30 +141,39 @@ contract BaseRewardsGauge_Test is BaseTest {
         // alice gets some mockgauge tokens by depositing dummy token
         airdrop(dummyGaugeAsset, alice, amount);
         vm.startPrank(alice);
-        dummyGaugeAsset.approve(address(mockGauge), amount);
-        mockGauge.deposit(amount, alice);
-        // alice deposits mockgauge tokens to the baseRewardsGauge
-        mockGauge.approve(address(baseRewardsGauge), mockGauge.balanceOf(alice));
-        baseRewardsGauge.deposit(mockGauge.balanceOf(alice), alice);
+        dummyGaugeAsset.approve(address(baseRewardsGauge), amount);
+        baseRewardsGauge.deposit(amount, alice);
         assertEq(baseRewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
     }
 
-    function test_depositRewardToken(uint256 amount, uint256 rewardAmount) public {
-        vm.assume(amount > 1e18 && amount < 1e28 && amount > rewardAmount);
-        vm.assume(rewardAmount >= 604_800);
-        // uint256 rewardAmountAdjustment = (rewardAmount % 604_800) + 1e9; // fails
-        uint256 rewardAmountAdjustment = (rewardAmount % 604_800) + 1e10; // passes
+    function testFuzz_depositRewardToken(uint256 rewardAmount) public {
+        vm.assume(rewardAmount >= _WEEK);
+
+        airdrop(dummyRewardToken, admin, rewardAmount);
+        vm.startPrank(admin);
+        baseRewardsGauge.addReward(address(dummyRewardToken), admin);
+        dummyRewardToken.approve(address(baseRewardsGauge), rewardAmount);
+        baseRewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
+        (address distributor, uint256 periodFinish, uint256 rate, uint256 lastUpdate, uint256 integral) =
+            baseRewardsGauge.rewardData(address(dummyRewardToken));
+        assertEq(distributor, admin);
+        assertEq(periodFinish, block.timestamp + 1 weeks);
+        assertEq(rate, rewardAmount / _WEEK);
+        assertEq(lastUpdate, block.timestamp);
+        assertEq(integral, 0);
+    }
+
+    function testFuzz_claimRewards(uint256 amount, uint256 rewardAmount) public {
+        vm.assume(amount > 0 && amount < 1e28);
+        vm.assume(rewardAmount >= 1e12 && rewardAmount < type(uint128).max);
 
         vm.startPrank(admin);
         baseRewardsGauge.addReward(address(dummyRewardToken), admin);
         // alice gets some mockgauge tokens by depositing dummy token
         airdrop(dummyGaugeAsset, alice, amount);
         vm.startPrank(alice);
-        dummyGaugeAsset.approve(address(mockGauge), amount);
-        mockGauge.deposit(amount, alice);
-        // alice deposits mockgauge tokens to the baseRewardsGauge
-        mockGauge.approve(address(baseRewardsGauge), mockGauge.balanceOf(alice));
-        baseRewardsGauge.deposit(mockGauge.balanceOf(alice), alice);
+        dummyGaugeAsset.approve(address(baseRewardsGauge), amount);
+        baseRewardsGauge.deposit(amount, alice);
         assertEq(baseRewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
         vm.stopPrank();
         // admin deposits reward tokens to the baseRewardsGauge
@@ -184,10 +191,11 @@ contract BaseRewardsGauge_Test is BaseTest {
         // warp forward to the next week when the reward period finishes
         vm.warp(block.timestamp + 1 weeks);
         uint256 aliceClaimableRewards = baseRewardsGauge.claimableReward(alice, address(dummyRewardToken));
-        assertApproxEqAbs(
+        assertGt(aliceClaimableRewards, 0);
+        assertApproxEqRel(
             rewardAmount,
             aliceClaimableRewards,
-            rewardAmountAdjustment,
+            0.005 * 1e18,
             "alice should have claimable rewards equal to the total amount of reward tokens deposited"
         );
         uint256 aliceBalanceBefore = dummyRewardToken.balanceOf(alice);
@@ -201,21 +209,65 @@ contract BaseRewardsGauge_Test is BaseTest {
             "alice should have 0 claimable rewards after claiming"
         );
         uint256 newAliceBalance = dummyRewardToken.balanceOf(alice) - aliceBalanceBefore;
+        assertGt(newAliceBalance, 0);
         // alices balance should be close to the reward amount
-        assertApproxEqAbs(
-            rewardAmount,
+        assertApproxEqRel(
             newAliceBalance,
-            rewardAmountAdjustment,
+            rewardAmount,
+            0.005 * 1e18,
             "alice should have received the full reward amount minus the adjustment"
         );
+        // check that the integral was updated after claiming
+        (,,,, uint256 integral) = baseRewardsGauge.rewardData(address(dummyRewardToken));
+        assertGt(integral, 0);
         // alices claimed rewards should have increase by the claimed amount
         assertEq(
-            newAliceBalance,
             baseRewardsGauge.claimedReward(alice, address(dummyRewardToken)),
+            newAliceBalance,
             "alice should have claimed rewards equal to the total amount of reward tokens deposited"
         );
         // check that claimable rewards was correct
         assertEq(newAliceBalance, aliceClaimableRewards, "claimable rewards should be equal to the claimed amount");
+    }
+
+    function testFuzz_claimRewards_passWhen_IntegralIsZero(uint256 amount, uint256 rewardAmount) public {
+        // This test is to verify that the users' rewards may be zero if the integral is zero
+        // This happens when the total supply of the gauge is larger than the total rewards by a factor of 1e18
+        vm.assume(amount > 1e28);
+        vm.assume(rewardAmount > _WEEK && rewardAmount < amount / 1e18);
+
+        vm.startPrank(admin);
+        baseRewardsGauge.addReward(address(dummyRewardToken), admin);
+        // alice gets some mockgauge tokens by depositing dummy token
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(baseRewardsGauge), amount);
+        baseRewardsGauge.deposit(amount, alice);
+        assertEq(baseRewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
+        vm.stopPrank();
+        // admin deposits reward tokens to the baseRewardsGauge
+        vm.startPrank(admin);
+        airdrop(dummyRewardToken, admin, rewardAmount);
+        dummyRewardToken.approve(address(baseRewardsGauge), rewardAmount);
+        baseRewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
+        vm.stopPrank();
+        // alice's claimable rewards should be 0 at this block
+        assertEq(
+            baseRewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            0,
+            "alice should have 0 claimable rewards"
+        );
+        // warp forward to the next week when the reward period finishes
+        vm.warp(block.timestamp + 1 weeks);
+        // Due to the difference (> 1e18 multiplier) between the amount and rewardAmount, the claimable rewards
+        // will be zero
+        assertEq(baseRewardsGauge.claimableReward(alice, address(dummyRewardToken)), 0);
+        vm.prank(alice);
+        baseRewardsGauge.claimRewards(alice, alice);
+        // Due to the difference (> 1e18 multiplier) between the amount and rewardAmount, the integral will be zero
+        (,,,, uint256 integral) = baseRewardsGauge.rewardData(address(dummyRewardToken));
+        assertEq(integral, 0);
+        assertEq(dummyRewardToken.balanceOf(alice), 0);
     }
 
     function test_depositRewardToken_revertWhen_unauthorized(address distributor, address user) public {

@@ -14,6 +14,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/
 import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
+import { console2 as console } from "forge-std/console2.sol";
 
 /**
  * @title BaseRewardsGauge
@@ -38,6 +39,7 @@ contract BaseRewardsGauge is
 
     uint256 public constant MAX_REWARDS = 8;
     uint256 private constant _WEEK = 1 weeks;
+    uint256 private constant _PRECISION = 1e18;
     bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     // For tracking external rewards
@@ -111,11 +113,11 @@ contract BaseRewardsGauge is
         if (currentTotalSupply != 0) {
             uint256 lastUpdate = Math.min(block.timestamp, rewardData[_rewardToken].periodFinish);
             uint256 duration = lastUpdate - rewardData[_rewardToken].lastUpdate;
-            integral += (duration * rewardData[_rewardToken].rate * 10 ** 18) / currentTotalSupply;
+            integral += (duration * rewardData[_rewardToken].rate * _PRECISION) / currentTotalSupply;
         }
 
         uint256 integralFor = rewardIntegralFor[_rewardToken][_user];
-        uint256 newClaimable = balanceOf(_user) * (integral - integralFor) / 10 ** 18;
+        uint256 newClaimable = balanceOf(_user) * (integral - integralFor) / _PRECISION;
 
         return (claimData[_user][_rewardToken] >> 128) + newClaimable;
     }
@@ -226,8 +228,8 @@ contract BaseRewardsGauge is
                 receiver = receiver == address(0) ? _user : receiver;
             }
         }
-        // NOTE: changing below as access past the current length reverts on out-of-bounds
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
+        uint256 rewardCount_ = rewardTokens.length;
+        for (uint256 i = 0; i < rewardCount_; i++) {
             address token = rewardTokens[i];
             if (token == address(0)) {
                 break;
@@ -243,8 +245,10 @@ contract BaseRewardsGauge is
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
         if (duration > 0 && _totalSupply > 0) {
-            rewardData[token].integral += duration * rewardData[token].rate * 10 ** 18 / _totalSupply;
+            console.log("before update integral: ", rewardData[token].integral);
+            rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / _totalSupply;
             rewardData[token].lastUpdate = lastUpdate;
+            console.log("after update integral: ", rewardData[token].integral);
         }
     }
 
@@ -259,7 +263,7 @@ contract BaseRewardsGauge is
     {
         uint256 integral = rewardData[token].integral;
         uint256 integralFor = rewardIntegralFor[token][_user];
-        uint256 newClaimable = integralFor < integral ? userBalance * (integral - integralFor) / 10 ** 18 : 0;
+        uint256 newClaimable = integralFor < integral ? userBalance * (integral - integralFor) / _PRECISION : 0;
         if (newClaimable > 0) {
             rewardIntegralFor[token][_user] = integral;
         }
