@@ -45,7 +45,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         );
     }
 
-    function test_initialize_revertWhen_zeroAddress_buh() public {
+    function test_initialize_revertWhen_zeroAddress() public {
         BaseRewardsGauge dummyBaseRewardsGauge =
             BaseRewardsGauge(_cloneContract(address(baseRewardsGaugeImplementation)));
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
@@ -173,6 +173,43 @@ contract BaseRewardsGauge_Test is BaseTest {
         assertEq(rate, rewardAmount / _WEEK);
         assertEq(lastUpdate, block.timestamp);
         assertEq(integral, 0);
+    }
+
+    function testFuzz_depositRewardToken_withPartialRewardRemaining(
+        uint256 rewardAmount0,
+        uint256 rewardAmount1
+    )
+        public
+    {
+        rewardAmount0 = bound(rewardAmount0, _WEEK, type(uint128).max / 2);
+        rewardAmount1 = bound(rewardAmount1, _WEEK * 2, type(uint128).max / 2);
+
+        airdrop(dummyRewardToken, admin, rewardAmount0 + rewardAmount1);
+        vm.startPrank(admin);
+        baseRewardsGauge.addReward(address(dummyRewardToken), admin);
+        dummyRewardToken.approve(address(baseRewardsGauge), rewardAmount0 + rewardAmount1);
+        baseRewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount0);
+        (address distributor, uint256 periodFinish, uint256 rate, uint256 lastUpdate, uint256 integral) =
+            baseRewardsGauge.rewardData(address(dummyRewardToken));
+        assertEq(distributor, admin);
+        assertEq(periodFinish, block.timestamp + 1 weeks);
+        assertEq(rate, rewardAmount0 / _WEEK);
+        assertEq(lastUpdate, block.timestamp);
+        assertEq(integral, 0);
+        // warp to halfway through the reward period
+        vm.warp(block.timestamp + (1 weeks / 2));
+        // deposit another round of rewards
+        baseRewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount1);
+
+        (, uint256 newPeriodFinish, uint256 newRate, uint256 newLastUpdate, uint256 newIntegral) =
+            baseRewardsGauge.rewardData(address(dummyRewardToken));
+        assertEq(newPeriodFinish, block.timestamp + 1 weeks, "periodFinish should be updated");
+        uint256 remainingTime = periodFinish - block.timestamp;
+        uint256 leftoverReward = remainingTime * rate;
+        uint256 expectedNewRate = (leftoverReward + rewardAmount1) / _WEEK;
+        assertEq(newRate, expectedNewRate, "rate should be updated");
+        assertEq(newLastUpdate, block.timestamp, "lastUpdate should be updated");
+        assertEq(newIntegral, 0, "integral should still be 0");
     }
 
     function test_depositRewardToken_revertWhen_unauthorized(address distributor, address user) public {
@@ -494,6 +531,73 @@ contract BaseRewardsGauge_Test is BaseTest {
         // check that the integral was updated after claiming
         (,,,, uint256 integral) = baseRewardsGauge.rewardData(address(dummyRewardToken));
         assertGt(integral, 0);
+    }
+
+    function testFuzz_claimRewards_noReceiverProvided(uint256 amount, uint256 rewardAmount) public {
+        vm.assume(amount > 0 && amount < 1e28);
+        vm.assume(rewardAmount >= 1e12 && rewardAmount < type(uint128).max);
+
+        vm.startPrank(admin);
+        baseRewardsGauge.addReward(address(dummyRewardToken), admin);
+        // alice gets some mockgauge tokens by depositing dummy token
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(baseRewardsGauge), amount);
+        baseRewardsGauge.deposit(amount, alice);
+        assertEq(baseRewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
+        vm.stopPrank();
+        // admin deposits reward tokens to the baseRewardsGauge
+        vm.startPrank(admin);
+        airdrop(dummyRewardToken, admin, rewardAmount);
+        dummyRewardToken.approve(address(baseRewardsGauge), rewardAmount);
+        baseRewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
+        vm.stopPrank();
+        // alice's claimable rewards should be 0 at this block
+        assertEq(
+            0,
+            baseRewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            "alice should have 0 claimable rewards"
+        );
+        // warp forward to the next week when the reward period finishes
+        vm.warp(block.timestamp + 1 weeks);
+        uint256 aliceClaimableRewards = baseRewardsGauge.claimableReward(alice, address(dummyRewardToken));
+        assertGt(aliceClaimableRewards, 0);
+        assertApproxEqRel(
+            rewardAmount,
+            aliceClaimableRewards,
+            0.005 * 1e18,
+            "alice should have claimable rewards equal to the total amount of reward tokens deposited"
+        );
+        uint256 aliceBalanceBefore = dummyRewardToken.balanceOf(alice);
+        // alice claims rewards
+        vm.prank(alice);
+        // claim rewards without providing a reciever
+        baseRewardsGauge.claimRewards(alice, address(0));
+        // alice's claimable rewards should be 0 after claiming
+        assertEq(
+            0,
+            baseRewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            "alice should have 0 claimable rewards after claiming"
+        );
+        uint256 newAliceBalance = dummyRewardToken.balanceOf(alice) - aliceBalanceBefore;
+        // alices balance should be close to the reward amount
+        assertApproxEqRel(
+            newAliceBalance,
+            rewardAmount,
+            0.005 * 1e18,
+            "alice should have received the full reward amount minus the adjustment"
+        );
+        // check that the integral was updated after claiming
+        (,,,, uint256 integral) = baseRewardsGauge.rewardData(address(dummyRewardToken));
+        assertGt(integral, 0);
+        // alices claimed rewards should have increase by the claimed amount
+        assertEq(
+            baseRewardsGauge.claimedReward(alice, address(dummyRewardToken)),
+            newAliceBalance,
+            "alice should have claimed rewards equal to the total amount of reward tokens deposited"
+        );
+        // check that claimable rewards was correct
+        assertEq(newAliceBalance, aliceClaimableRewards, "claimable rewards should be equal to the claimed amount");
     }
 
     function test_claimRewards_revertWhen_claimForAnotherUser() public {
