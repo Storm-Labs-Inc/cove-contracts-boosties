@@ -1,15 +1,17 @@
 #!/bin/sh
 
 # Define the handler function
-cleanup() {
-    echo "\nYou hit Ctrl+C. Cleaning up and exiting..."
+function cleanup {
+    echo "\nExiting..."
+    echo "Cleaning up ./deployments/1-fork/ folder..."
     # Your cleanup commands here
     rm -rf ./deployments/1-fork/*
-    exit 0 # Exit cleanly
 }
-
-# Trap SIGINT (Ctrl+C) and call the cleanup function
-trap cleanup SIGINT
-
+# Trap specific signals and run the cleanup function
+trap cleanup EXIT
+# Clean up before running anvil
+echo "\nCleaning up ./deployments/1-fork/ folder..."
+rm -rf ./deployments/1-fork/*
+# Run anvil
 source .env
-anvil --auto-impersonate --fork-url $MAINNET_RPC_URL --fork-block-number 19122720
+anvil --auto-impersonate --fork-url $MAINNET_RPC_URL --fork-block-number 19122720 --steps-tracing
