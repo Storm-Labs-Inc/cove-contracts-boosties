@@ -7,6 +7,7 @@ contract Constants is CommonBase {
     // Constant uint256 values
     uint40 internal constant _JAN_1_2023 = 1_672_531_200;
     uint256 internal constant _MAX_UINT256 = type(uint256).max;
+    uint256 internal constant _WEEK = 604_800;
 
     // Ethereum mainnet addresses
     // Tokens
@@ -88,8 +89,8 @@ contract Constants is CommonBase {
         vm.label(MAINNET_ETH_YFI_GAUGE, "ETH_YFI_GAUGE");
         vm.label(MAINNET_DYFI_ETH_GAUGE, "DYFI_ETH_GAUGE");
         vm.label(MAINNET_VAULT_BLUEPRINT, "VAULT_BLUEPRINT");
-        vm.label(MAINNET_WETH_YETH_POOL_VAULT, "YETH_POOL_VAULT");
-        vm.label(MAINNET_WETH_YETH_POOL_GAUGE, "YETH_POOL_GAUGE");
+        vm.label(MAINNET_WETH_YETH_POOL_VAULT, "WETH_YETH_POOL_VAULT");
+        vm.label(MAINNET_WETH_YETH_POOL_GAUGE, "WETH_YETH_POOL_GAUGE");
         vm.label(MAINNET_DYFI_REDEMPTION, "DYFI_REDEMPTION");
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");

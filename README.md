@@ -38,7 +38,7 @@ pnpm test
 
 ```sh
 # Fork the mainnet on local network using anvil with the provided script
-pnpm anvil-fork
+pnpm fork:mainnet
 ```
 
 Keep this terminal session going to keep the fork network alive.

@@ -32,9 +32,7 @@ contract SwapAndLock_Test is BaseTest {
         yearnStakingDelegate = address(new MockYearnStakingDelegate());
 
         // Deploy SwapAndLock
-        vm.startPrank(admin);
-        swapAndLock = address(new SwapAndLock(yearnStakingDelegate));
-        vm.stopPrank();
+        swapAndLock = address(new SwapAndLock(yearnStakingDelegate, admin));
     }
 
     function test_lockYfi() public {
