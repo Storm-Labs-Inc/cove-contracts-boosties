@@ -24,8 +24,7 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         bob = createUser("bob");
         charlie = createUser("charlie");
         caller = createUser("caller");
-        vm.prank(admin);
-        dYfiRedeemer = new DYfiRedeemer();
+        dYfiRedeemer = new DYfiRedeemer(admin);
     }
 
     function test_massRedeem() public {

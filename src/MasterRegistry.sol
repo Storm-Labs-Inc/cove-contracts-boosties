@@ -35,9 +35,10 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
      */
     event UpdateRegistry(bytes32 indexed name, address registryAddress, uint256 version);
 
-    constructor(address admin) {
+    constructor(address admin, address manager) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_MANAGER_ROLE, msg.sender);
+        _grantRole(_MANAGER_ROLE, admin);
+        _grantRole(_MANAGER_ROLE, manager);
     }
 
     /// @inheritdoc IMasterRegistry

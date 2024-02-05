@@ -13,6 +13,11 @@ import { MasterRegistry } from "src/MasterRegistry.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
+import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
+import { SwapAndLock } from "src/SwapAndLock.sol";
+import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
+import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Constants } from "test/utils/Constants.sol";
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -26,6 +31,10 @@ contract Deployments is DeployScript, Constants {
     DeployOptions public options;
 
     // Anvil addresses
+    // (0) 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (10000.000000000000000000 ETH)
+    // (1) 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 (10000.000000000000000000 ETH)
+    // (2) 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC (10000.000000000000000000 ETH)
+    // (3) 0x90F79bf6EB2c4f870365E785982E1f101E93b906 (10000.000000000000000000 ETH)
     string public constant MNEMONIC = "test test test test test test test test test test test junk";
     uint256 public senderPK = vm.deriveKey(MNEMONIC, 0);
     address public sender = vm.addr(senderPK);
@@ -36,13 +45,35 @@ contract Deployments is DeployScript, Constants {
     uint256 public managerPK = vm.deriveKey(MNEMONIC, 3);
     address public manager = vm.addr(managerPK);
 
+    address[] public coveYearnStrategies;
+
     function deploy() public {
-        vm.startBroadcast(senderPK);
-
+        _labelEthereumAddresses();
+        vm.label(sender, "sender");
+        vm.label(admin, "admin");
+        vm.label(treasury, "treasury");
+        vm.label(manager, "manager");
         // Deploy Master Registry
-        MasterRegistry masterRegistry = deployer.deploy_MasterRegistry("MasterRegistry", admin);
-
+        deployMasterRegistry();
         // Deploy Yearn Staking Delegate Stack
+        deployYearnStakingDelegateStack();
+        // Deploy Cove Strategies for Yearn Gauges
+        deployCoveStrategies(deployer.getAddress("YearnStakingDelegate"));
+        // Deploy Yearn4626RouterExt
+        deployYearn4626RouterExt();
+        // Deploy Cove Token
+        // TODO: replace MockERC20 with the actual token contract
+        address cove = deployCoveToken();
+        // Deploy CoveYearnGaugeFactory
+        deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), cove);
+        // Deploy RewardsGauge instances
+        deployRewardsGauges();
+        // Register contracts in the Master Registry
+        registerContractsInMasterRegistry();
+    }
+
+    function deployYearnStakingDelegateStack() public {
+        vm.startBroadcast(senderPK);
         address gaugeRewardReceiverImpl =
             address(deployer.deploy_GaugeRewardReceiver("GaugeRewardReceiverImplementation"));
         YearnStakingDelegate ysd = deployer.deploy_YearnStakingDelegate(
@@ -50,45 +81,40 @@ contract Deployments is DeployScript, Constants {
         );
         address stakingDelegateRewards =
             address(deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd)));
-        address swapAndLock = address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd)));
-        deployer.deploy_DYfiRedeemer("DYfiRedeemer");
-        deployer.deploy_CoveYFI("CoveYFI", address(ysd));
-
-        // Deploy Cove Strategies for Yearn Gauges
-        deployCoveStrategies(address(ysd));
-
-        // Deploy Yearn4626RouterExt
-        deployer.deploy_Yearn4626RouterExt("Yearn4626RouterExt", "Yearn4626RouterExt", MAINNET_WETH, MAINNET_PERMIT2);
-
-        // Change settings via the admin address
+        address swapAndLock = address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), admin));
+        deployer.deploy_DYfiRedeemer("DYfiRedeemer", admin);
+        deployer.deploy_CoveYFI("CoveYFI", address(ysd), admin);
         vm.stopBroadcast();
+
+        // Admin transactions
         vm.startBroadcast(adminPK);
+        SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYfiRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
         ysd.setSnapshotDelegate("veyfi.eth", treasury);
+        ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
+        vm.stopBroadcast();
+    }
 
-        // Register contracts in the Master Registry
-        bytes[] memory data = new bytes[](6);
-        data[0] = abi.encodeWithSelector(masterRegistry.grantRole.selector, keccak256("MANAGER_ROLE"), admin);
-        data[1] =
-            abi.encodeWithSelector(masterRegistry.addRegistry.selector, bytes32("YearnStakingDelegate"), address(ysd));
-        data[2] = abi.encodeWithSelector(
-            masterRegistry.addRegistry.selector, bytes32("StakingDelegateRewards"), stakingDelegateRewards
+    function deployYearn4626RouterExt() public returns (address) {
+        vm.startBroadcast(senderPK);
+        address yearn4626RouterExt = address(
+            deployer.deploy_Yearn4626RouterExt(
+                "Yearn4626RouterExt", "Yearn4626RouterExt", MAINNET_WETH, MAINNET_PERMIT2
+            )
         );
-        data[3] = abi.encodeWithSelector(masterRegistry.addRegistry.selector, bytes32("SwapAndLock"), swapAndLock);
-        data[4] = abi.encodeWithSelector(
-            masterRegistry.addRegistry.selector, bytes32("DYfiRedeemer"), deployer.getAddress("DYfiRedeemer")
-        );
-        data[5] = abi.encodeWithSelector(
-            masterRegistry.addRegistry.selector, bytes32("CoveYFI"), deployer.getAddress("CoveYFI")
-        );
-        masterRegistry.multicall(data);
+        vm.stopBroadcast();
+        return yearn4626RouterExt;
     }
 
     function deployCoveStrategies(address ysd) public {
+        vm.startBroadcast(senderPK);
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            "YearnGaugeStrategy-WETHYETH", MAINNET_WETH_YETH_POOL_GAUGE, ysd, MAINNET_CURVE_ROUTER
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_POOL_GAUGE).name()),
+            MAINNET_WETH_YETH_POOL_GAUGE,
+            ysd,
+            MAINNET_CURVE_ROUTER
         );
 
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
@@ -107,6 +133,94 @@ contract Deployments is DeployScript, Constants {
         // set params for harvest rewards swapping
         strategy.setHarvestSwapParams(curveSwapParams);
         strategy.setMaxTotalAssets(type(uint256).max);
+        ITokenizedStrategy(address(strategy)).setPendingManagement(manager);
+        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
+        ITokenizedStrategy(address(strategy)).setKeeper(manager);
+        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
+        vm.stopBroadcast();
+        vm.startBroadcast(managerPK);
+        ITokenizedStrategy(address(strategy)).acceptManagement();
+        vm.stopBroadcast();
+        coveYearnStrategies.push(address(strategy));
+    }
+
+    function deployMasterRegistry() public returns (address) {
+        vm.startBroadcast(senderPK);
+        address masterRegistry = address(deployer.deploy_MasterRegistry("MasterRegistry", admin, manager));
+        vm.stopBroadcast();
+        return masterRegistry;
+    }
+
+    function deployCoveToken() public returns (address) {
+        vm.startBroadcast(senderPK);
+        address cove = address(new ERC20Mock());
+        vm.stopBroadcast();
+        return cove;
+    }
+
+    function deployCoveYearnGaugeFactory(address ysd, address cove) public returns (address) {
+        vm.startBroadcast(senderPK);
+        address rewardForwarderImpl = address(deployer.deploy_RewardForwarder("RewardForwarderImpl"));
+        address baseRewardsGaugeImpl = address(deployer.deploy_BaseRewardsGauge("BaseRewardsGaugeImpl"));
+        address ysdRewardsGaugeImpl = address(deployer.deploy_YSDRewardsGauge("YSDRewardsGaugeImpl"));
+        // Deploy Gauge Factory
+        address factory = address(
+            deployer.deploy_CoveYearnGaugeFactory(
+                "CoveYearnGaugeFactory",
+                admin,
+                ysd,
+                cove,
+                rewardForwarderImpl,
+                baseRewardsGaugeImpl,
+                ysdRewardsGaugeImpl,
+                treasury,
+                admin
+            )
+        );
+        vm.stopBroadcast();
+        return factory;
+    }
+
+    function deployRewardsGauges() public {
+        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
+        vm.startBroadcast(adminPK);
+        for (uint256 i = 0; i < coveYearnStrategies.length; i++) {
+            factory.deployCoveGauges(coveYearnStrategies[i]);
+        }
+        vm.stopBroadcast();
+        factory.getAllGaugeInfo();
+    }
+
+    function registerContractsInMasterRegistry() public {
+        vm.startBroadcast(managerPK);
+        bytes[] memory data = new bytes[](6);
+        data[0] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector,
+            bytes32("YearnStakingDelegate"),
+            deployer.getAddress("YearnStakingDelegate")
+        );
+        data[1] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector,
+            bytes32("StakingDelegateRewards"),
+            deployer.getAddress("StakingDelegateRewards")
+        );
+        data[2] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector, bytes32("SwapAndLock"), deployer.getAddress("SwapAndLock")
+        );
+        data[3] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector, bytes32("DYfiRedeemer"), deployer.getAddress("DYfiRedeemer")
+        );
+        data[4] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector, bytes32("CoveYFI"), deployer.getAddress("CoveYFI")
+        );
+        data[5] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector,
+            bytes32("CoveYearnGaugeFactory"),
+            deployer.getAddress("CoveYearnGaugeFactory")
+        );
+        MasterRegistry masterRegistry = MasterRegistry(deployer.getAddress("MasterRegistry"));
+        masterRegistry.multicall(data);
+        vm.stopBroadcast();
     }
 
     function getCurrentDeployer() external view returns (Deployer) {

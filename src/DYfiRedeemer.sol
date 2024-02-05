@@ -41,9 +41,9 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     /// @notice The slippage that should be applied to the redemption process
     uint256 private _slippage;
 
-    constructor() {
+    constructor(address admin) {
         // Effects
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
         _slippage = _DEFAULT_SLIPPAGE;
         // Interactions
         IERC20(_YFI).forceApprove(_ETH_YFI_CURVE_POOL, type(uint256).max);

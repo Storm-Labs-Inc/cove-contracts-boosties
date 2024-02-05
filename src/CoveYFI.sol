@@ -28,7 +28,14 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     /**
      * @param _yearnStakingDelegate The address of the YearnStakingDelegate contract.
      */
-    constructor(address _yearnStakingDelegate) ERC20("Cove YFI", "coveYFI") ERC20Permit("Cove YFI") Ownable() {
+    constructor(
+        address _yearnStakingDelegate,
+        address admin
+    )
+        ERC20("Cove YFI", "coveYFI")
+        ERC20Permit("Cove YFI")
+        Ownable()
+    {
         // Checks
         // Check for zero addresses
         if (_yearnStakingDelegate == address(0)) {
@@ -38,6 +45,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         // Effects
         // Set storage variables
         _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
+        _transferOwnership(admin);
 
         // Interactions
         // Max approve YFI for the yearn staking delegate
