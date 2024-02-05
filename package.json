@@ -10,8 +10,8 @@
     "test": "forge test -vvv --gas-report",
     "coverage": "forge coverage --report lcov",
     "slither": "forge clean && forge build --skip test script --build-info && slither . --ignore-compile",
-    "anvil-fork": "./bash/start-anvil-fork.sh",
-    "deploy:local": "./bash/deploy-to-local.sh",
+    "fork:mainnet": "./bash/start-anvil-fork.sh",
+    "deploy:local": "pnpm run build && ./bash/deploy-to-local.sh",
     "forge-deploy:clean": "rm -rf deployments/1-fork/*",
     "forge-deploy:build": "cd lib/forge-deploy && cargo build --release && cp target/release/forge-deploy ../../forge-deploy",
     "lint": "pnpm run lint:sol && pnpm run prettier:check",
@@ -38,12 +38,12 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@commitlint/cli": "^17.8.0",
-    "@commitlint/config-conventional": "^17.8.0",
-    "@types/node": "^20.8.7",
-    "husky": "^8.0.3",
-    "lint-staged": "^15.0.1",
-    "prettier": "^3.0.3",
-    "solhint": "^4.0.0"
+    "@commitlint/cli": "^18.6.0",
+    "@commitlint/config-conventional": "^18.6.0",
+    "@types/node": "^20.11.14",
+    "husky": "^9.0.7",
+    "lint-staged": "^15.2.1",
+    "prettier": "^3.2.4",
+    "solhint": "^4.1.1"
   }
 }
