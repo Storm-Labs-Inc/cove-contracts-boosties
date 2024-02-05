@@ -46,10 +46,6 @@ contract RewardForwarder is AccessControlUpgradeable {
         }
     }
 
-    // function rescue(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    //     _rescue(token, to, amount);
-    // }
-
     function setTreasury(address treasury_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setTreasury(treasury_);
     }
