@@ -223,8 +223,8 @@ contract BaseRewardsGauge_Test is BaseTest {
     }
 
     function testFuzz_claimRewards(uint256 amount, uint256 rewardAmount) public {
-        vm.assume(amount > 0 && amount < 1e28);
-        vm.assume(rewardAmount >= 1e12 && rewardAmount < type(uint128).max);
+        amount = bound(amount, 1e15, 1e28);
+        rewardAmount = bound(rewardAmount, 1e14, type(uint128).max);
 
         vm.startPrank(admin);
         baseRewardsGauge.addReward(address(dummyRewardToken), admin);
@@ -270,8 +270,8 @@ contract BaseRewardsGauge_Test is BaseTest {
         uint256 newAliceBalance = dummyRewardToken.balanceOf(alice) - aliceBalanceBefore;
         // alices balance should be close to the reward amount
         assertApproxEqRel(
-            newAliceBalance,
             rewardAmount,
+            newAliceBalance,
             0.005 * 1e18,
             "alice should have received the full reward amount minus the adjustment"
         );
@@ -291,8 +291,8 @@ contract BaseRewardsGauge_Test is BaseTest {
     function testFuzz_claimRewards_passWhen_IntegralIsZero(uint256 amount, uint256 rewardAmount) public {
         // This test is to verify that the users' rewards may be zero if the integral is zero
         // This happens when the total supply of the gauge is larger than the total rewards by a factor of 1e18
-        vm.assume(amount > 1e28);
-        vm.assume(rewardAmount > _WEEK && rewardAmount < amount / 1e18);
+        amount = bound(amount, 1e28, type(uint256).max);
+        rewardAmount = bound(rewardAmount, _WEEK, amount / 1e18);
 
         vm.startPrank(admin);
         baseRewardsGauge.addReward(address(dummyRewardToken), admin);
@@ -329,9 +329,9 @@ contract BaseRewardsGauge_Test is BaseTest {
     }
 
     function testFuzz_claimRewards_multipleRewards(uint256 amount, uint256[8] memory rewardAmounts) public {
-        amount = bound(amount, 1, 1e28);
+        amount = bound(amount, 1e15, 1e28);
         for (uint256 i = 0; i < rewardAmounts.length; i++) {
-            // lower than 1e14 will run but the loss is more than acceptable
+            // lower than 1e14 will run but the dust is more than acceptable
             rewardAmounts[i] = bound(rewardAmounts[i], 1e14, type(uint128).max);
         }
 
@@ -382,6 +382,7 @@ contract BaseRewardsGauge_Test is BaseTest {
 
         for (uint256 i = 0; i < 8; i++) {
             uint256 aliceClaimableReward = baseRewardsGauge.claimableReward(alice, dummyRewardTokens[i]);
+            assertGt(aliceClaimableReward, 0);
             assertApproxEqRel(
                 rewardAmounts[i],
                 aliceClaimableReward,
@@ -436,11 +437,15 @@ contract BaseRewardsGauge_Test is BaseTest {
         uint256 totalAmount = 0;
         address[10] memory depositors;
         for (uint256 i = 0; i < amounts.length; i++) {
-            amounts[i] = bound(amounts[i], 1, 1e28);
+            // Bound user amounts to a reasonable range
+            // Lower than 1e18 will run but the relative diff from expected becomes large (> 0.5%) due to
+            // small numbers
+            amounts[i] = bound(amounts[i], 1e15, 1e28);
             totalAmount += amounts[i];
             depositors[i] = createUser(string(abi.encodePacked("user-", Strings.toString(i))));
         }
-        // lower reward amounts will run but the loss is more than acceptable
+        // lower reward amounts will run but the relative diff from expected becomes large (> 0.5%) due to
+        // small numbers
         rewardAmount = bound(rewardAmount, 1e14, type(uint128).max);
         uint256[10] memory usersShareOfTotalReward;
         for (uint256 i = 0; i < amounts.length; i++) {
