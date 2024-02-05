@@ -53,6 +53,23 @@ abstract contract BaseTest is Test, Constants {
     }
 
     /**
+     * @dev Generates a user and their private key, labels its address, and funds it with test assets.
+     * @param name The name of the user.
+     * @return address payable The address of the user
+     * @return uint256 The private key of the user.
+     */
+    function createUserAndKey(string memory name) public returns (address payable, uint256) {
+        (address user, uint256 key) = makeAddrAndKey(name);
+        if (users[name] != address(0)) {
+            console2.log("User ", name, " already exists");
+            return (payable(user), key);
+        }
+        vm.deal({ account: user, newBalance: 100 ether });
+        users[name] = user;
+        return (payable(user), key);
+    }
+
+    /**
      * @dev Approves a list of contracts to spend the maximum of funds for a user.
      * @param contractAddresses The list of contracts to approve.
      * @param userAddresses The users to approve the contracts for.
