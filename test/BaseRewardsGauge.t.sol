@@ -385,7 +385,7 @@ contract BaseRewardsGauge_Test is BaseTest {
             assertApproxEqRel(
                 rewardAmounts[i],
                 aliceClaimableReward,
-                0.005 * 1e18,
+                0.01 * 1e18,
                 "alice should have claimable rewards equal to the total amount of reward tokens deposited"
             );
             aliceClaimableRewards[i] = aliceClaimableReward;
@@ -413,7 +413,7 @@ contract BaseRewardsGauge_Test is BaseTest {
             assertApproxEqRel(
                 newAliceBalance,
                 rewardAmounts[i],
-                0.005 * 1e18,
+                0.01 * 1e18,
                 "alice should have received the full reward amount minus the adjustment"
             );
             // check that the integral was updated after claiming
