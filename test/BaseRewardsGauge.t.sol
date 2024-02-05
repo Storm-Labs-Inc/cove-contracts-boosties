@@ -490,6 +490,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         for (uint256 i = 0; i < amounts.length; i++) {
             uint256 depositorsClaimableReward =
                 baseRewardsGauge.claimableReward(depositors[i], address(dummyRewardToken));
+            assertGt(depositorsClaimableReward, 0);
             assertApproxEqRel(
                 usersShareOfTotalReward[i],
                 depositorsClaimableReward,
