@@ -5,6 +5,7 @@ import { BaseTest } from "./utils/BaseTest.t.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract BaseRewardsGauge_Test is BaseTest {
     BaseRewardsGauge public baseRewardsGaugeImplementation;
@@ -223,8 +224,8 @@ contract BaseRewardsGauge_Test is BaseTest {
     }
 
     function testFuzz_claimRewards(uint256 amount, uint256 rewardAmount) public {
-        amount = bound(amount, 1e15, 1e28);
-        rewardAmount = bound(rewardAmount, 1e14, type(uint128).max);
+        amount = bound(amount, 1, type(uint128).max);
+        rewardAmount = bound(rewardAmount, Math.max(1e9, amount / 1e15), type(uint128).max);
 
         vm.startPrank(admin);
         baseRewardsGauge.addReward(address(dummyRewardToken), admin);
@@ -329,10 +330,10 @@ contract BaseRewardsGauge_Test is BaseTest {
     }
 
     function testFuzz_claimRewards_multipleRewards(uint256 amount, uint256[8] memory rewardAmounts) public {
-        amount = bound(amount, 1e15, 1e28);
+        amount = bound(amount, 1, type(uint128).max);
         for (uint256 i = 0; i < rewardAmounts.length; i++) {
             // lower than 1e14 will run but the dust is more than acceptable
-            rewardAmounts[i] = bound(rewardAmounts[i], 1e14, type(uint128).max);
+            rewardAmounts[i] = bound(rewardAmounts[i], Math.max(1e9, amount / 1e15), type(uint128).max);
         }
 
         // create 8 reward tokens and airdrop the respective amounts
@@ -433,20 +434,21 @@ contract BaseRewardsGauge_Test is BaseTest {
         }
     }
 
+    /// forge-config: default.fuzz.runs = 20000
     function testFuzz_claimRewards_multipleUsers(uint256[10] memory amounts, uint256 rewardAmount) public {
         uint256 totalAmount = 0;
         address[10] memory depositors;
         for (uint256 i = 0; i < amounts.length; i++) {
-            // Bound user amounts to a reasonable range
-            // Lower than 1e18 will run but the relative diff from expected becomes large (> 0.5%) due to
-            // small numbers
-            amounts[i] = bound(amounts[i], 1e15, 1e28);
-            totalAmount += amounts[i];
             depositors[i] = createUser(string(abi.encodePacked("user-", Strings.toString(i))));
+            // Bound user amounts to a reasonable range
+            // If the difference between the lowest and the total amount is too large, the
+            // claimable rewards will be zero
+            amounts[i] = bound(amounts[i], 1e15, 1e26);
+            totalAmount += amounts[i];
         }
         // lower reward amounts will run but the relative diff from expected becomes large (> 0.5%) due to
         // small numbers
-        rewardAmount = bound(rewardAmount, 1e14, type(uint128).max);
+        rewardAmount = bound(rewardAmount, 1e13, type(uint128).max);
         uint256[10] memory usersShareOfTotalReward;
         for (uint256 i = 0; i < amounts.length; i++) {
             usersShareOfTotalReward[i] = (amounts[i] * rewardAmount) / totalAmount;
@@ -484,6 +486,7 @@ contract BaseRewardsGauge_Test is BaseTest {
 
         // depositors claimableRewards for each reward token
         uint256[10] memory depositorsClaimableRewards;
+        uint256 totalClaimableRewards;
         for (uint256 i = 0; i < amounts.length; i++) {
             uint256 depositorsClaimableReward =
                 baseRewardsGauge.claimableReward(depositors[i], address(dummyRewardToken));
@@ -491,10 +494,17 @@ contract BaseRewardsGauge_Test is BaseTest {
                 usersShareOfTotalReward[i],
                 depositorsClaimableReward,
                 0.005 * 1e18,
-                "user should have claimable rewards equal to the total amount of reward tokens deposited"
+                "user should have claimable rewards equal to their share of the reward amount"
             );
             depositorsClaimableRewards[i] = depositorsClaimableReward;
+            totalClaimableRewards += depositorsClaimableReward;
         }
+        assertApproxEqRel(
+            rewardAmount,
+            totalClaimableRewards,
+            0.005 * 1e18,
+            "total claimable rewards should be equal to the total amount of reward tokens deposited"
+        );
 
         // depositors balance of all tokens before claim rewards
         uint256[10] memory depositorsBalancesBefore;
