@@ -95,6 +95,10 @@ library Errors {
     /// COVE YEARN GAUGE FACTORY ///
     error GaugeAlreadyDeployed();
 
+    /// Yearn4626RouterExt ///
+    error InsufficientShares();
+    error InvalidTo();
+
     /// TESTING ///
 
     error TakeAwayNotEnoughBalance();

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
-import { Yearn4626RouterExt } from "src/Yearn4626RouterExt.sol";
+import { Yearn4626RouterExt, ISignatureTransfer } from "src/Yearn4626RouterExt.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { PeripheryPayments, SelfPermit, Yearn4626RouterBase } from "Yearn-ERC4626-Router/Yearn4626RouterBase.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -82,5 +82,58 @@ contract Router_ForkedTest is BaseTest {
 
         assertEq(IERC20(MAINNET_CURVE_ETH_YFI_LP_TOKEN).balanceOf(user), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user), 949_289_266_142_683_599);
+    }
+
+    function test_pullTokensWithPermit2() public {
+        uint256 depositAmount = 1 ether;
+        // YFI allows for permit2
+        airdrop(IERC20(MAINNET_YFI), user, depositAmount);
+        // max approce permit2
+        vm.prank(user);
+        IERC20(MAINNET_YFI).approve(MAINNET_PERMIT2, _MAX_UINT256);
+
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: MAINNET_YFI, amount: depositAmount }),
+            nonce: 0,
+            deadline: block.timestamp + 100
+        });
+
+        bytes memory signature = _getPermitTransferSignature(
+            permit, address(router), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(router), requestedAmount: depositAmount });
+        vm.prank(user);
+        router.pullTokensWithPermit2(permit, transferDetails, signature);
+        uint256 userBalanceAfter = IERC20(MAINNET_YFI).balanceOf(user);
+        assertEq(userBalanceAfter, 0, "User should have 0 token after transfer");
+        assertEq(IERC20(MAINNET_YFI).balanceOf(address(router)), depositAmount, "Router should have the token");
+    }
+
+    // Below from Permit2.PermitSignature.sol, only added a "to" parameter
+    function _getPermitTransferSignature(
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        address to,
+        uint256 privateKey,
+        bytes32 domainSeparator
+    )
+        internal
+        view
+        returns (bytes memory sig)
+    {
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(PERMIT_TRANSFER_FROM_TYPEHASH, tokenPermissions, to, permit.nonce, permit.deadline)
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        return bytes.concat(r, s, bytes1(v));
     }
 }
