@@ -28,6 +28,7 @@ contract Constants is CommonBase {
     address public constant MAINNET_VAULT_FACTORY = 0xE9E8C89c8Fc7E8b8F23425688eb68987231178e5;
     address public constant MAINNET_YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address public constant MAINNET_DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
+    address public constant MAINNET_ETH_YFI_VAULT_V2 = 0x790a60024bC3aea28385b60480f15a0771f26D09;
     address public constant MAINNET_ETH_YFI_GAUGE = 0x7Fd8Af959B54A677a1D8F92265Bd0714274C56a3;
     address public constant MAINNET_DYFI_ETH_GAUGE = 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc;
     address public constant MAINNET_VAULT_BLUEPRINT = 0xDE992C652b266AE649FEC8048aFC35954Bee6145;
@@ -40,8 +41,9 @@ contract Constants is CommonBase {
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
     address public constant MAINNET_CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
+    address public constant MAINNET_CURVE_ETH_YFI_LP_TOKEN = 0x29059568bB40344487d62f7450E78b8E6C74e0e5;
 
-    // Balanccer
+    // Balancer
     address public constant MAINNET_BALANCER_FLASH_LOAN_PROVIDER = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 
     // Curve Pools
@@ -63,6 +65,9 @@ contract Constants is CommonBase {
     // Uniswap
     address public constant MAINNET_PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
+    // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+
     function _labelEthereumAddresses() internal {
         // Tokens
         vm.label(MAINNET_DAI, "DAI");
@@ -80,7 +85,9 @@ contract Constants is CommonBase {
         vm.label(MAINNET_VAULT_FACTORY, "VAULT_FACTORY");
         vm.label(MAINNET_YFI_REWARD_POOL, "YFI_REWARD_POOL");
         vm.label(MAINNET_DYFI_REWARD_POOL, "DYFI_REWARD_POOL");
-        vm.label(MAINNET_DYFI_ETH_GAUGE, "MAINNET_DYFI_ETH_GAUGE");
+        vm.label(MAINNET_ETH_YFI_VAULT_V2, "ETH_YFI_VAULT_V2");
+        vm.label(MAINNET_ETH_YFI_GAUGE, "ETH_YFI_GAUGE");
+        vm.label(MAINNET_DYFI_ETH_GAUGE, "DYFI_ETH_GAUGE");
         vm.label(MAINNET_VAULT_BLUEPRINT, "VAULT_BLUEPRINT");
         vm.label(MAINNET_WETH_YETH_POOL_VAULT, "WETH_YETH_POOL_VAULT");
         vm.label(MAINNET_WETH_YETH_POOL_GAUGE, "WETH_YETH_POOL_GAUGE");
@@ -88,6 +95,7 @@ contract Constants is CommonBase {
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");
+        vm.label(MAINNET_CURVE_ETH_YFI_LP_TOKEN, "CURVE_ETH_YFI_LP_TOKEN");
         // Curve Pools
         vm.label(MAINNET_CRV3POOL, "CRV3POOL");
         vm.label(MAINNET_DYFI_ETH_POOL, "DYFI_ETH_POOL");
