@@ -111,6 +111,31 @@ contract Router_ForkedTest is BaseTest {
         assertEq(IERC20(MAINNET_YFI).balanceOf(address(router)), depositAmount, "Router should have the token");
     }
 
+    function test_pullTokensWithPermit2_revertWhen_InvalidTo() public {
+        uint256 depositAmount = 1 ether;
+        // YFI allows for permit2
+        airdrop(IERC20(MAINNET_YFI), user, depositAmount);
+        // max approce permit2
+        vm.prank(user);
+        IERC20(MAINNET_YFI).approve(MAINNET_PERMIT2, _MAX_UINT256);
+
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: MAINNET_YFI, amount: depositAmount }),
+            nonce: 0,
+            deadline: block.timestamp + 100
+        });
+
+        bytes memory signature = _getPermitTransferSignature(
+            permit, address(this), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
+        );
+
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: depositAmount });
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.InvalidTo.selector));
+        vm.prank(user);
+        router.pullTokensWithPermit2(permit, transferDetails, signature);
+    }
+
     // Below from Permit2.PermitSignature.sol, only added a "to" parameter
     function _getPermitTransferSignature(
         ISignatureTransfer.PermitTransferFrom memory permit,
