@@ -100,6 +100,10 @@ library Errors {
     error InsufficientBalance();
     error LPTokenAlreadyAdded();
 
+    /// Yearn4626RouterExt ///
+    error InsufficientShares();
+    error InvalidTo();
+
     /// TESTING ///
 
     error TakeAwayNotEnoughBalance();
