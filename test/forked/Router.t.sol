@@ -33,19 +33,8 @@ contract Router_ForkedTest is BaseTest {
         airdrop(IERC20(MAINNET_CURVE_ETH_YFI_LP_TOKEN), user, depositAmount);
 
         // Generate a permit signature
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            userPriv, // user's private key
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01", // EIP-712 encoding
-                    IERC20Permit(MAINNET_CURVE_ETH_YFI_LP_TOKEN).DOMAIN_SEPARATOR(),
-                    // Frontend should use deadline with enough buffer and with the correct nonce
-                    // keccak256(abi.encode(PERMIT_TYPEHASH, user, address(router), depositAmount,
-                    // sourceToken.nonces(user),
-                    // block.timestamp + 100_000))
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(router), depositAmount, 0, block.timestamp))
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
+            MAINNET_CURVE_ETH_YFI_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
         );
 
         bytes[] memory data = new bytes[](6);
@@ -92,19 +81,8 @@ contract Router_ForkedTest is BaseTest {
         airdrop(IERC20(MAINNET_CURVE_ETH_YFI_LP_TOKEN), user, depositAmount);
 
         // Generate a permit signature
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            userPriv, // user's private key
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01", // EIP-712 encoding
-                    IERC20Permit(MAINNET_CURVE_ETH_YFI_LP_TOKEN).DOMAIN_SEPARATOR(),
-                    // Frontend should use deadline with enough buffer and with the correct nonce
-                    // keccak256(abi.encode(PERMIT_TYPEHASH, user, address(router), depositAmount,
-                    // sourceToken.nonces(user),
-                    // block.timestamp + 100_000))
-                    keccak256(abi.encode(PERMIT_TYPEHASH, user, address(router), depositAmount, 0, block.timestamp))
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
+            MAINNET_CURVE_ETH_YFI_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
         );
 
         bytes[] memory data = new bytes[](6);
@@ -155,18 +133,15 @@ contract Router_ForkedTest is BaseTest {
         vm.prank(user);
         IERC20(MAINNET_YFI).approve(MAINNET_PERMIT2, _MAX_UINT256);
 
-        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: MAINNET_YFI, amount: depositAmount }),
-            nonce: 0,
-            deadline: block.timestamp + 100
-        });
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            _getPermit2PermitTransferFrom(MAINNET_YFI, depositAmount, 0, block.timestamp + 100);
 
-        bytes memory signature = _getPermitTransferSignature(
+        bytes memory signature = _getPermit2PermitTransferSignature(
             permit, address(router), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
         );
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            ISignatureTransfer.SignatureTransferDetails({ to: address(router), requestedAmount: depositAmount });
+            _getPerit2SignatureTransferDetails(address(router), depositAmount);
         vm.prank(user);
         router.pullTokensWithPermit2(permit, transferDetails, signature);
         uint256 userBalanceAfter = IERC20(MAINNET_YFI).balanceOf(user);
@@ -182,25 +157,52 @@ contract Router_ForkedTest is BaseTest {
         vm.prank(user);
         IERC20(MAINNET_YFI).approve(MAINNET_PERMIT2, _MAX_UINT256);
 
-        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: MAINNET_YFI, amount: depositAmount }),
-            nonce: 0,
-            deadline: block.timestamp + 100
-        });
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            _getPermit2PermitTransferFrom(MAINNET_YFI, depositAmount, 0, block.timestamp + 100);
 
-        bytes memory signature = _getPermitTransferSignature(
+        bytes memory signature = _getPermit2PermitTransferSignature(
             permit, address(this), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
         );
 
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            ISignatureTransfer.SignatureTransferDetails({ to: address(this), requestedAmount: depositAmount });
+            _getPerit2SignatureTransferDetails(address(this), depositAmount);
         vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.InvalidTo.selector));
         vm.prank(user);
         router.pullTokensWithPermit2(permit, transferDetails, signature);
     }
 
+    /// HELPER FUNCTIONS ///
+    function _generatePermitSignature(
+        address token,
+        address approvalFrom,
+        uint256 approvalFromPrivKey,
+        address approvalTo,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline
+    )
+        internal
+        view
+        returns (uint8 v, bytes32 r, bytes32 s)
+    {
+        (v, r, s) = vm.sign(
+            approvalFromPrivKey, // user's private key
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01", // EIP-712 encoding
+                    IERC20Permit(token).DOMAIN_SEPARATOR(),
+                    // Frontend should use deadline with enough buffer and with the correct nonce
+                    // keccak256(abi.encode(PERMIT_TYPEHASH, user, address(router), depositAmount,
+                    // sourceToken.nonces(user),
+                    // block.timestamp + 100_000))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, approvalFrom, approvalTo, amount, nonce, deadline))
+                )
+            )
+        );
+    }
+
     // Below from Permit2.PermitSignature.sol, only added a "to" parameter
-    function _getPermitTransferSignature(
+    function _getPermit2PermitTransferSignature(
         ISignatureTransfer.PermitTransferFrom memory permit,
         address to,
         uint256 privateKey,
@@ -216,12 +218,40 @@ contract Router_ForkedTest is BaseTest {
                 "\x19\x01",
                 domainSeparator,
                 keccak256(
-                    abi.encode(PERMIT_TRANSFER_FROM_TYPEHASH, tokenPermissions, to, permit.nonce, permit.deadline)
+                    abi.encode(PERMIT2_TRANSFER_FROM_TYPEHASH, tokenPermissions, to, permit.nonce, permit.deadline)
                 )
             )
         );
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         return bytes.concat(r, s, bytes1(v));
+    }
+
+    function _getPermit2PermitTransferFrom(
+        address token,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline
+    )
+        internal
+        view
+        returns (ISignatureTransfer.PermitTransferFrom memory permit)
+    {
+        permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: token, amount: amount }),
+            nonce: nonce,
+            deadline: deadline
+        });
+    }
+
+    function _getPerit2SignatureTransferDetails(
+        address to,
+        uint256 requestedAmount
+    )
+        internal
+        pure
+        returns (ISignatureTransfer.SignatureTransferDetails memory transferDetails)
+    {
+        transferDetails = ISignatureTransfer.SignatureTransferDetails({ to: to, requestedAmount: requestedAmount });
     }
 }
