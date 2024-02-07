@@ -67,6 +67,13 @@ contract Constants is CommonBase {
 
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+    // keccak256("TokenPermissions(address token,uint256 amount)");
+    bytes32 public constant TOKEN_PERMISSIONS_TYPEHASH =
+        0x618358ac3db8dc274f0cd8829da7e234bd48cd73c4a740aede1adec9846d06a1;
+    // keccak256("PermitTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256
+    // deadline)TokenPermissions(address token,uint256 amount)");
+    bytes32 public constant PERMIT2_TRANSFER_FROM_TYPEHASH =
+        0x939c21a48a8dbe3a9a2404a1d46691e4d39f6583d6ec6b35714604c986d80106;
 
     function _labelEthereumAddresses() internal {
         // Tokens
