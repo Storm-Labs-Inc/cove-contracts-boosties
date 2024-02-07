@@ -1,3 +1,6 @@
+// Forked from
+// https://github.com/Uniswap/v3-periphery/blob/5b4b9c603b2f728dade87871af2207ce1edab6b2/contracts/base/SelfPermit.sol
+
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
