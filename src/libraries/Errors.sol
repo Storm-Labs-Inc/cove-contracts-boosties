@@ -95,6 +95,11 @@ library Errors {
     /// COVE YEARN GAUGE FACTORY ///
     error GaugeAlreadyDeployed();
 
+    /// MINICHEF V3 ////
+    error InvalidLPToken();
+    error InsufficientBalance();
+    error LPTokenAlreadyAdded();
+
     /// Yearn4626RouterExt ///
     error InsufficientShares();
     error InvalidTo();

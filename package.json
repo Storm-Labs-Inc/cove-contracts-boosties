@@ -22,7 +22,7 @@
     "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
   },
   "lint-staged": {
-    "{script,src}/**/*.sol": [
+    "{script,src}/!(deps/**/*|interfaces/deps/**/*)/**/*.sol": [
       "forge fmt",
       "npx solhint --fix --noPrompt --config .solhint.json --ignore-path .solhintignore"
     ],
