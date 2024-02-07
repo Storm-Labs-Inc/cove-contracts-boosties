@@ -59,6 +59,7 @@ contract BaseRewardsGauge is
     error InvalidDistributorAddress();
     error RewardAmountTooLow();
     error ZeroAddress();
+    error RewardCannotBeAsset();
 
     constructor() {
         _disableInitializers();
@@ -150,6 +151,12 @@ contract BaseRewardsGauge is
      */
     function addReward(address _rewardToken, address _distributor) external {
         _checkRole(_MANAGER_ROLE);
+        if (_rewardToken == address(0) || _distributor == address(0)) {
+            revert ZeroAddress();
+        }
+        if (_rewardToken == asset()) {
+            revert RewardCannotBeAsset();
+        }
 
         uint256 rewardCount_ = rewardTokens.length;
         if (rewardCount_ >= MAX_REWARDS) {

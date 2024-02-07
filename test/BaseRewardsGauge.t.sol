@@ -108,6 +108,20 @@ contract BaseRewardsGauge_Test is BaseTest {
         baseRewardsGauge.addReward(address(1), address(3));
     }
 
+    function test_addReward_revertsWhen_rewardTokenZeroAddress() public {
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
+        baseRewardsGauge.addReward(address(0), address(1));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
+        baseRewardsGauge.addReward(address(1), address(0));
+    }
+
+    function test_addReward_revertsWhen_rewardTokenIsAsset() public {
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.RewardCannotBeAsset.selector));
+        baseRewardsGauge.addReward(address(dummyGaugeAsset), address(1));
+    }
+
     function testFuzz_setRewardDistributor(address rewardToken, address _distributor0, address _distributor1) public {
         vm.assume(rewardToken != address(0));
         vm.assume(_distributor0 != address(0));
