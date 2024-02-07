@@ -147,7 +147,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     /// @param token The address of the ERC20 token to rescue.
     /// @param to The address to send the rescued tokens to.
     /// @param amount The amount of tokens to rescue.
-    /// @dev Rescue is only allowed when there is a discrepency between balanceOf this and lpSupply.
+    /// @dev Rescue is only allowed when there is a discrepancy between balanceOf this and lpSupply.
     function rescue(IERC20 token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 pidPlusOne = _pidPlusOne[address(token)];
         uint256 availableForRescue = token.balanceOf(address(this));
