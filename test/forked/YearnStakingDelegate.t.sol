@@ -272,8 +272,20 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(IERC20(gauge).balanceOf(address(yearnStakingDelegate)), 0, "withdraw failed");
         // Check the accounting is correct
         assertEq(yearnStakingDelegate.balanceOf(wrappedStrategy, gauge), 0, "withdraw failed");
-        // Check that reciever has received the vault tokens
-        assertEq(IERC20(gauge).balanceOf(alice), amount, "withdraw to reciepent failed");
+        // Check that receiver has received the vault tokens
+        assertEq(IERC20(gauge).balanceOf(alice), amount, "withdraw to recipient failed");
+    }
+
+    function testFuzz_withdraw_toReceiver_revertsWhen_zeroAmount(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        _setGaugeRewards();
+        _depositGaugeTokensToYSD(wrappedStrategy, amount);
+
+        // Start withdraw process
+        vm.startPrank(wrappedStrategy);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
+        yearnStakingDelegate.withdraw(gauge, 0, alice);
     }
 
     function test_harvest_revertWhen_SwapAndLockNotSet() public {

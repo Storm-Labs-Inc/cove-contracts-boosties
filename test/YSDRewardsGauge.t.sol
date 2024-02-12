@@ -103,7 +103,7 @@ contract YSDRewardsGauge_Test is BaseTest {
     }
 
     function testFuzz_withdraw_revertsWhen_noSpenderAllowance(uint256 amount) public {
-        amount = bound(amount, 0, (type(uint256).max - 1) / 2); // avoid overflow in ERC4626._convertToShares
+        amount = bound(amount, 1, (type(uint256).max - 1) / 2); // avoid overflow in ERC4626._convertToShares
         // create bob
         address bob = createUser("bob");
         // alice and bob gets some mockgauge tokens by depositing dummy token
@@ -118,8 +118,8 @@ contract YSDRewardsGauge_Test is BaseTest {
         dummyGaugeAsset.approve(address(rewardsGauge), type(uint256).max);
         rewardsGauge.deposit(amount, bob);
         // bob tries to redeem alice's shares
-        // vm.expectRevert("ERC20: insufficient allowance"); // TODO: not sure what this does not work
-        vm.expectRevert();
-        rewardsGauge.redeem(rewardsGauge.balanceOf(alice), bob, alice);
+        uint256 shares = rewardsGauge.balanceOf(alice);
+        vm.expectRevert("ERC20: insufficient allowance");
+        rewardsGauge.redeem(shares, bob, alice);
     }
 }
