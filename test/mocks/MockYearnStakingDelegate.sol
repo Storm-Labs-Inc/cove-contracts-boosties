@@ -28,6 +28,14 @@ contract MockYearnStakingDelegate {
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }
 
+    function withdraw(address gauge, uint256 amount, address receiver) external {
+        // Effects
+        uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
+        balanceOf[msg.sender][gauge] = newBalance;
+        // Interactions
+        IERC20(gauge).safeTransfer(receiver, amount);
+    }
+
     function gaugeStakingRewards(address) external view returns (address) {
         return _mockgaugeStakingRewards;
     }
@@ -40,5 +48,9 @@ contract MockYearnStakingDelegate {
         // Interactions
         IERC20(_YFI).safeTransferFrom(msg.sender, address(this), amount);
         return IVotingYFI.LockedBalance({ amount: amount, end: 0 });
+    }
+
+    function gaugeStakingRewards() external view returns (address) {
+        return _mockgaugeStakingRewards;
     }
 }

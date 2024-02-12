@@ -4,6 +4,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 
 contract MockStakingDelegateRewards {
     address private immutable _REWARDS_TOKEN;
+    address public receiver;
 
     constructor(address _rewardsToken) {
         _REWARDS_TOKEN = _rewardsToken;
@@ -21,5 +22,9 @@ contract MockStakingDelegateRewards {
             SafeERC20.safeTransfer(IERC20(_REWARDS_TOKEN), msg.sender, toSend);
         }
         return toSend;
+    }
+
+    function setRewardReceiver(address receiver_) external {
+        receiver = receiver_;
     }
 }
