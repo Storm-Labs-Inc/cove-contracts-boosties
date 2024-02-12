@@ -91,6 +91,6 @@ contract YSDRewardsGauge is BaseRewardsGauge {
      * @dev Overried as assets held within the staking delegate contract.
      */
     function totalAssets() public view virtual override returns (uint256) {
-        return IERC20Upgradeable(asset()).balanceOf(address(yearnStakingDelegate));
+        return IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), asset());
     }
 }
