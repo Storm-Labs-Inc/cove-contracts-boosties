@@ -7,6 +7,10 @@ inputs:
   python-version:
     description: "Python version"
     required: true
+  cache-rpc-storage:
+    description: "Cache RPC storage"
+    required: false
+    default: "true"
 
 runs:
   using: "composite"
@@ -60,9 +64,10 @@ runs:
       shell: bash
 
     - name: Install Foundry
-      uses: foundry-rs/foundry-toolchain@v1
+      uses: penandlim/foundry-toolchain@master
       with:
         version: nightly
+        cache: ${{ inputs.cache-rpc-storage == 'true' }}
 
     - name: Install dependencies
       run: pnpm install
