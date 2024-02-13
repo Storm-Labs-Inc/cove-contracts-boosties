@@ -11,6 +11,10 @@ env:
   NODE_VERSION: 18.16.1
   PYTHON_VERSION: 3.9.17
 
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && 'PR' || 'push' }}-${{ github.head_ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     name: Lint
@@ -24,6 +28,7 @@ jobs:
         uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache-rpc-storage: false
       - name: Lint all source files
         run: pnpm run lint
 
@@ -43,6 +48,7 @@ jobs:
         uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache-rpc-storage: false
       - name: Remove script and test files for faster analysis
         run: rm -rf script/* test/*
 
