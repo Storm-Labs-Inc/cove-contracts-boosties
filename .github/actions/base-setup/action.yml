@@ -7,6 +7,10 @@ inputs:
   python-version:
     description: "Python version"
     required: true
+  cache-rpc-storage:
+    description: "Cache RPC storage"
+    required: false
+    default: "true"
 
 runs:
   using: "composite"

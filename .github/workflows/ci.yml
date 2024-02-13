@@ -28,6 +28,7 @@ jobs:
         uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache-rpc-storage: false
       - name: Lint all source files
         run: pnpm run lint
 
@@ -47,6 +48,7 @@ jobs:
         uses: ./.github/actions/base-setup
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache-rpc-storage: false
       - name: Remove script and test files for faster analysis
         run: rm -rf script/* test/*
 
