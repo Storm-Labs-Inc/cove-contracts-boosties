@@ -103,52 +103,52 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     /// @notice Add a new LP to the pool. Can only be called by the owner.
     /// DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     /// @param allocPoint AP of the new pool.
-    /// @param _lpToken Address of the LP ERC-20 token.
-    /// @param _rewarder Address of the rewarder delegate.
+    /// @param lpToken_ Address of the LP ERC-20 token.
+    /// @param rewarder_ Address of the rewarder delegate.
     function add(
         uint256 allocPoint,
-        IERC20 _lpToken,
-        IMiniChefV3Rewarder _rewarder
+        IERC20 lpToken_,
+        IMiniChefV3Rewarder rewarder_
     )
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (_pidPlusOne[address(_lpToken)] != 0) {
+        if (_pidPlusOne[address(lpToken_)] != 0) {
             revert Errors.LPTokenAlreadyAdded();
         }
         totalAllocPoint += allocPoint;
-        lpToken.push(_lpToken);
+        lpToken.push(lpToken_);
         lpSupply.push(0);
-        rewarder.push(_rewarder);
+        rewarder.push(rewarder_);
         _poolInfo.push(
             PoolInfo({ allocPoint: uint64(allocPoint), lastRewardTime: uint64(block.timestamp), accRewardPerShare: 0 })
         );
         uint256 pid = _poolInfo.length - 1;
-        _pidPlusOne[address(_lpToken)] = pid + 1;
-        emit LogPoolAddition(pid, allocPoint, _lpToken, _rewarder);
+        _pidPlusOne[address(lpToken_)] = pid + 1;
+        emit LogPoolAddition(pid, allocPoint, lpToken_, rewarder_);
     }
 
     /// @notice Update the given pool's REWARD_TOKEN allocation point and `IRewarder` contract. Can only be called by
     /// the owner.
-    /// @param _pid The index of the pool. See `_poolInfo`.
-    /// @param _allocPoint New AP of the pool.
-    /// @param _rewarder Address of the rewarder delegate.
-    /// @param overwrite True if _rewarder should be `set`. Otherwise `_rewarder` is ignored.
+    /// @param pid The index of the pool. See `_poolInfo`.
+    /// @param allocPoint New AP of the pool.
+    /// @param rewarder_ Address of the rewarder delegate.
+    /// @param overwrite True if rewarder_ should be `set`. Otherwise `rewarder_` is ignored.
     function set(
-        uint256 _pid,
-        uint256 _allocPoint,
-        IMiniChefV3Rewarder _rewarder,
+        uint256 pid,
+        uint256 allocPoint,
+        IMiniChefV3Rewarder rewarder_,
         bool overwrite
     )
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        totalAllocPoint = totalAllocPoint - _poolInfo[_pid].allocPoint + _allocPoint;
-        _poolInfo[_pid].allocPoint = uint64(_allocPoint);
+        totalAllocPoint = totalAllocPoint - _poolInfo[pid].allocPoint + allocPoint;
+        _poolInfo[pid].allocPoint = uint64(allocPoint);
         if (overwrite) {
-            rewarder[_pid] = _rewarder;
+            rewarder[pid] = rewarder_;
         }
-        emit LogSetPool(_pid, _allocPoint, overwrite ? _rewarder : rewarder[_pid], overwrite);
+        emit LogSetPool(pid, allocPoint, overwrite ? rewarder_ : rewarder[pid], overwrite);
     }
 
     /// @notice Rescue ERC20 tokens from the contract.
@@ -189,14 +189,14 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     }
 
     /// @notice View function to see pending REWARD_TOKEN on frontend.
-    /// @param _pid The index of the pool. See `_poolInfo`.
-    /// @param _user Address of user.
+    /// @param pid The index of the pool. See `_poolInfo`.
+    /// @param user_ Address of user.
     /// @return pending REWARD_TOKEN reward for a given user.
-    function pendingReward(uint256 _pid, address _user) external view returns (uint256 pending) {
-        PoolInfo memory pool = _poolInfo[_pid];
-        UserInfo storage user = _userInfo[_pid][_user];
+    function pendingReward(uint256 pid, address user_) external view returns (uint256 pending) {
+        PoolInfo memory pool = _poolInfo[pid];
+        UserInfo storage user = _userInfo[pid][user_];
         uint256 accRewardPerShare = pool.accRewardPerShare;
-        uint256 lpSupply_ = lpSupply[_pid];
+        uint256 lpSupply_ = lpSupply[pid];
         uint256 totalAllocPoint_ = totalAllocPoint;
         if (block.timestamp > pool.lastRewardTime && lpSupply_ != 0 && totalAllocPoint_ != 0) {
             uint256 time = block.timestamp - pool.lastRewardTime;
@@ -294,9 +294,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
                 availableReward -= rewardAmount;
                 unpaidRewards_ = pendingReward_ - rewardAmount;
             }
-            if (unpaidRewards_ != 0) {
-                user.unpaidRewards += unpaidRewards_;
-            }
+            user.unpaidRewards = unpaidRewards_;
             if (rewardAmount != 0) {
                 REWARD_TOKEN.safeTransfer(to, rewardAmount);
             }

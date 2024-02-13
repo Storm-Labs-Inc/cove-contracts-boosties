@@ -27,8 +27,6 @@ contract MiniChefV3_Test is BaseTest {
         lpToken = new ERC20Mock();
 
         miniChef = new MiniChefV3(IERC20(address(rewardToken)), address(this));
-
-        rewardToken.mint(address(this), 1e24); // 1 million tokens for rewards
     }
 
     function test_constructor() public {
@@ -139,8 +137,10 @@ contract MiniChefV3_Test is BaseTest {
 
     function test_withdrawAndHarvest() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
-        rewardToken.approve(address(miniChef), 10e18);
-        miniChef.commitReward(10e18);
+        uint256 rewardCommitment = 10e18;
+        rewardToken.mint(address(this), rewardCommitment); // 1 million tokens for rewards
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
         miniChef.setRewardPerSecond(1e15);
         uint256 pid = miniChef.poolLength() - 1;
         uint256 amount = 1e18;
@@ -185,13 +185,15 @@ contract MiniChefV3_Test is BaseTest {
     function test_harvest() public {
         miniChef.setRewardPerSecond(1e15);
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
-        rewardToken.approve(address(miniChef), 10e18);
-        miniChef.commitReward(10e18);
+        uint256 rewardCommitment = 10e25;
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
         uint256 pid = miniChef.poolLength() - 1;
         uint256 amount = 1e18;
         lpToken.mint(alice, amount);
-        vm.startPrank(alice);
 
+        vm.startPrank(alice);
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
 
@@ -199,17 +201,74 @@ contract MiniChefV3_Test is BaseTest {
         vm.warp(block.timestamp + 1 days);
 
         uint256 initialRewardBalance = rewardToken.balanceOf(alice);
+        uint256 pendingReward = miniChef.pendingReward(pid, alice);
+        uint256 expectedTotalReward = miniChef.rewardPerSecond() * 1 days;
+        assertEq(pendingReward, expectedTotalReward, "Pending rewards not accrued correctly");
+
         miniChef.harvest(pid, alice);
         uint256 newRewardBalance = rewardToken.balanceOf(alice);
 
-        assertTrue(newRewardBalance > initialRewardBalance, "Rewards not harvested correctly");
+        assertGt(newRewardBalance, initialRewardBalance, "Rewards not harvested correctly");
+        assertEq(newRewardBalance - initialRewardBalance, expectedTotalReward, "Rewards not accrued correctly");
+        assertEq(miniChef.pendingReward(pid, alice), 0, "Pending rewards not set to 0 after harvest");
+    }
+
+    function test_harvest_passWhen_UnpaidRewards() public {
+        miniChef.setRewardPerSecond(1e15);
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 rewardCommitment = 1e18; // Small reward commitment
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+
+        vm.warp(block.timestamp + 1 days);
+        uint256 initialRewardBalance = rewardToken.balanceOf(alice);
+        miniChef.harvest(pid, alice);
+        uint256 newRewardBalance = rewardToken.balanceOf(alice);
+
+        uint256 expectedTotalReward = miniChef.rewardPerSecond() * 1 days;
+
+        assertGt(newRewardBalance, initialRewardBalance, "Rewards not harvested correctly");
+        assertEq(newRewardBalance - initialRewardBalance, rewardCommitment, "Could not harvest partial rewards");
+        assertGt(miniChef.pendingReward(pid, alice), 0, "Pending rewards does not include unpaid rewards");
+        assertEq(
+            miniChef.pendingReward(pid, alice),
+            expectedTotalReward - rewardCommitment,
+            "Pending rewards does not include unpaid rewards"
+        );
+        assertEq(
+            miniChef.getUserInfo(pid, alice).unpaidRewards,
+            expectedTotalReward - rewardCommitment,
+            "Unpaid rewards not updated correctly"
+        );
+
+        vm.stopPrank();
+        rewardToken.mint(address(this), expectedTotalReward);
+        rewardToken.approve(address(miniChef), expectedTotalReward);
+        miniChef.commitReward(expectedTotalReward);
+
+        vm.startPrank(alice);
+        miniChef.harvest(pid, alice);
+        newRewardBalance = rewardToken.balanceOf(alice);
+        assertEq(newRewardBalance - initialRewardBalance, expectedTotalReward, "Rewards not harvested correctly");
+        assertEq(miniChef.pendingReward(pid, alice), 0, "Pending rewards not set to 0 after harvest");
+        assertEq(miniChef.getUserInfo(pid, alice).unpaidRewards, 0, "Unpaid rewards not set to 0 after harvest");
     }
 
     function test_rescue() public {
         miniChef.setRewardPerSecond(1e15);
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
-        rewardToken.approve(address(miniChef), 10e18);
-        miniChef.commitReward(10e18);
+        uint256 rewardCommitment = 10e18;
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
 
         lpToken.mint(address(miniChef), 1e18);
         assertEq(lpToken.balanceOf(address(this)), 0, "LP tokens not rescued correctly");
@@ -217,14 +276,87 @@ contract MiniChefV3_Test is BaseTest {
         assertEq(lpToken.balanceOf(address(this)), 1e18, "LP tokens not rescued correctly");
     }
 
+    function testFuzz_rescue_passWhen_RescueLPToken(uint256 userDepositAmount, uint256 rescueAmount) public {
+        userDepositAmount = bound(userDepositAmount, 1, type(uint256).max - 1);
+        rescueAmount = bound(rescueAmount, 1, type(uint256).max - userDepositAmount);
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+
+        lpToken.mint(alice, userDepositAmount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), userDepositAmount);
+        miniChef.deposit(0, userDepositAmount, alice);
+        vm.stopPrank();
+
+        lpToken.mint(address(miniChef), rescueAmount);
+        miniChef.rescue(lpToken, address(this), rescueAmount);
+        assertEq(lpToken.balanceOf(address(this)), rescueAmount, "LP tokens not rescued correctly");
+        assertEq(lpToken.balanceOf(address(miniChef)), userDepositAmount, "User deposit was affected");
+    }
+
+    function testFuzz_rescue_revertWhen_InsufficientBalance_RewardToken(
+        uint256 rewardCommitment,
+        uint256 rescueAmount
+    )
+        public
+    {
+        rewardCommitment = bound(rewardCommitment, 1, type(uint128).max - 1);
+        rescueAmount = bound(rescueAmount, 1, type(uint256).max - rewardCommitment - 1);
+        miniChef.setRewardPerSecond(1e15);
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
+
+        rewardToken.mint(address(miniChef), rescueAmount);
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        miniChef.rescue(rewardToken, address(this), rescueAmount + 1);
+    }
+
+    function testDuzz_rescue_revertWhen_InsufficientBalance_RewardTokenIsLPToken(
+        uint256 rewardCommitment,
+        uint256 userDepositAmount,
+        uint256 rescueAmount
+    )
+        public
+    {
+        rewardCommitment = bound(rewardCommitment, 1, type(uint128).max);
+        userDepositAmount = bound(userDepositAmount, 1, type(uint128).max);
+        rescueAmount = bound(rescueAmount, 1, type(uint256).max - rewardCommitment - rewardCommitment - 1);
+        miniChef.setRewardPerSecond(1e15);
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
+
+        lpToken.mint(alice, userDepositAmount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), userDepositAmount);
+        miniChef.deposit(0, userDepositAmount, alice);
+        vm.stopPrank();
+
+        rewardToken.mint(address(miniChef), rescueAmount);
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        miniChef.rescue(rewardToken, address(this), rescueAmount + 1);
+    }
+
     function test_rescue_revertWhen_InsufficientBalance() public {
         miniChef.setRewardPerSecond(1e15);
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
-        rewardToken.approve(address(miniChef), 10e18);
-        miniChef.commitReward(10e18);
+        uint256 rewardCommitment = 10e18;
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
 
-        lpToken.mint(address(miniChef), 1e18);
+        rewardToken.mint(address(miniChef), 1e18);
         vm.expectRevert(Errors.InsufficientBalance.selector);
-        miniChef.rescue(lpToken, address(this), 2e18);
+        miniChef.rescue(rewardToken, address(this), 2e18);
+    }
+
+    function test_rescue_passWhen_RandomToken() public {
+        ERC20Mock randomToken = new ERC20Mock();
+        randomToken.mint(address(miniChef), 1e18);
+        miniChef.rescue(IERC20(randomToken), address(this), 1e18);
+        assertEq(randomToken.balanceOf(address(this)), 1e18, "Random token not rescued correctly");
+        assertEq(randomToken.balanceOf(address(miniChef)), 0, "Random token not transferred correctly");
     }
 }
