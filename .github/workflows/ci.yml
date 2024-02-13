@@ -11,6 +11,10 @@ env:
   NODE_VERSION: 18.16.1
   PYTHON_VERSION: 3.9.17
 
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && 'PR' || 'push' }}-${{ github.head_ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     name: Lint
