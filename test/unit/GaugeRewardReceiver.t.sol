@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "./utils/BaseTest.t.sol";
+import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
-import { MockGauge } from "./mocks/MockGauge.sol";
-import { MockStakingDelegateRewards } from "./mocks/MockStakingDelegateRewards.sol";
+import { MockGauge } from "test/mocks/MockGauge.sol";
+import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
