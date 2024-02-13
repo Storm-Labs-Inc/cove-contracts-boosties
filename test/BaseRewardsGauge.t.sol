@@ -70,6 +70,7 @@ contract BaseRewardsGauge_Test is BaseTest {
     function testFuzz_addReward(address rewardToken, address _distributor) public {
         vm.assume(rewardToken != address(0));
         vm.assume(_distributor != address(0));
+        vm.assume(rewardToken != address(dummyGaugeAsset));
         vm.prank(admin);
         baseRewardsGauge.addReward(rewardToken, _distributor);
         (address distributor,,,,) = baseRewardsGauge.rewardData(rewardToken);
@@ -79,7 +80,7 @@ contract BaseRewardsGauge_Test is BaseTest {
     function test_addReward_multipleRewards() public {
         vm.startPrank(admin);
         uint256 MAX_REWARDS = baseRewardsGauge.MAX_REWARDS();
-        for (uint160 i = 0; i < MAX_REWARDS; i++) {
+        for (uint160 i = 1; i <= MAX_REWARDS; i++) {
             baseRewardsGauge.addReward(address(i), address(i * 10));
             (address distributor,,,,) = baseRewardsGauge.rewardData(address(i));
             assertEq(distributor, address(i * 10), "distributor should be set for reward token");
@@ -94,11 +95,11 @@ contract BaseRewardsGauge_Test is BaseTest {
     function test_addReward_revertsWhen_maxRewardsReached() public {
         vm.startPrank(admin);
         uint256 MAX_REWARDS = baseRewardsGauge.MAX_REWARDS();
-        for (uint160 i = 0; i < MAX_REWARDS; i++) {
+        for (uint160 i = 1; i <= MAX_REWARDS; i++) {
             baseRewardsGauge.addReward(address(i), address(i * 10));
         }
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.MaxRewardsReached.selector));
-        baseRewardsGauge.addReward(address(8), address(80));
+        baseRewardsGauge.addReward(address(uint160(MAX_REWARDS + 1)), (address(uint160(MAX_REWARDS + 1) * 10)));
     }
 
     function test_addReward_revertsWhen_rewardTokenAlreadyAdded() public {
@@ -108,8 +109,22 @@ contract BaseRewardsGauge_Test is BaseTest {
         baseRewardsGauge.addReward(address(1), address(3));
     }
 
+    function test_addReward_revertsWhen_rewardTokenZeroAddress() public {
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
+        baseRewardsGauge.addReward(address(0), address(1));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
+        baseRewardsGauge.addReward(address(1), address(0));
+    }
+
+    function test_addReward_revertsWhen_rewardTokenIsAsset() public {
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.RewardCannotBeAsset.selector));
+        baseRewardsGauge.addReward(address(dummyGaugeAsset), address(1));
+    }
+
     function testFuzz_setRewardDistributor(address rewardToken, address _distributor0, address _distributor1) public {
-        vm.assume(rewardToken != address(0));
+        vm.assume(rewardToken != address(0) && rewardToken != address(dummyGaugeAsset));
         vm.assume(_distributor0 != address(0));
         vm.assume(_distributor1 != address(0) && _distributor1 != _distributor0);
         vm.prank(admin);
@@ -434,7 +449,6 @@ contract BaseRewardsGauge_Test is BaseTest {
         }
     }
 
-    /// forge-config: default.fuzz.runs = 20000
     function testFuzz_claimRewards_multipleUsers(uint256[10] memory amounts, uint256 rewardAmount) public {
         uint256 totalAmount = 0;
         address[10] memory depositors;
