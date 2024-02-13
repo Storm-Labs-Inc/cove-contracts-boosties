@@ -124,7 +124,7 @@ contract BaseRewardsGauge_Test is BaseTest {
     }
 
     function testFuzz_setRewardDistributor(address rewardToken, address _distributor0, address _distributor1) public {
-        vm.assume(rewardToken != address(0));
+        vm.assume(rewardToken != address(0) && rewardToken != address(dummyGaugeAsset));
         vm.assume(_distributor0 != address(0));
         vm.assume(_distributor1 != address(0) && _distributor1 != _distributor0);
         vm.prank(admin);
