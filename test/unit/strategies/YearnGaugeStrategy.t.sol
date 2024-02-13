@@ -10,8 +10,8 @@ import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.so
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { MockYearnStakingDelegate } from "./mocks/MockYearnStakingDelegate.sol";
-import { MockStakingDelegateRewards } from "./mocks/MockStakingDelegateRewards.sol";
+import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
+import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
 import { MockCurveRouter } from "test/mocks/MockCurveRouter.sol";
 import { Errors } from "src/libraries/Errors.sol";
 

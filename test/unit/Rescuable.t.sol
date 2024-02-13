@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "./utils/BaseTest.t.sol";
+import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { MockRescuable } from "./mocks/MockRescuable.sol";
-import { MockNonPayable } from "./mocks/MockNonPayable.sol";
+import { MockRescuable } from "test/mocks/MockRescuable.sol";
+import { MockNonPayable } from "test/mocks/MockNonPayable.sol";
 
 contract Rescuable_Test is BaseTest {
     MockRescuable public mockRescuable;
