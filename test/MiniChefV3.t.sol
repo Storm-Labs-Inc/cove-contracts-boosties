@@ -312,7 +312,7 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.rescue(rewardToken, address(this), rescueAmount + 1);
     }
 
-    function testDuzz_rescue_revertWhen_InsufficientBalance_RewardTokenIsLPToken(
+    function testFuzz_rescue_revertWhen_InsufficientBalance_RewardTokenIsLPToken(
         uint256 rewardCommitment,
         uint256 userDepositAmount,
         uint256 rescueAmount
