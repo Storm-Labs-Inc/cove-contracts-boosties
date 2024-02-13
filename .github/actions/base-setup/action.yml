@@ -67,7 +67,7 @@ runs:
       uses: penandlim/foundry-toolchain@master
       with:
         version: nightly
-        cache: ${{ inputs.cache-rpc-storage }}
+        cache: ${{ inputs.cache-rpc-storage == 'true' }}
 
     - name: Install dependencies
       run: pnpm install
