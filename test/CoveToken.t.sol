@@ -81,6 +81,21 @@ contract CoveTokenTest is BaseTest {
         assertFalse(coveToken.paused());
     }
 
+    function test_unpause_anyoneCanTransfer(address user, address user2, uint256 amount) public {
+        vm.assume(user != address(0) && user != owner);
+        vm.assume(user2 != address(0) && user2 != owner);
+        vm.warp(coveToken.anyoneCanUnpauseAfter());
+        amount = bound(amount, 0, 1_000_000_000 ether);
+        vm.prank(user);
+        coveToken.unpause();
+        assertFalse(coveToken.paused());
+        vm.prank(owner);
+        coveToken.transfer(user, amount);
+        vm.prank(user);
+        coveToken.transfer(user2, amount);
+        assertEq(coveToken.balanceOf(user2), amount);
+    }
+
     function test_unpause_revertsWhen_tooEarly() public {
         vm.prank(owner);
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
