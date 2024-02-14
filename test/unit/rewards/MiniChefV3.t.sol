@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "./utils/BaseTest.t.sol";
+import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MiniChefV3 } from "src/rewards/MiniChefV3.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
-import { IMiniChefV3Rewarder } from "./../src/interfaces/rewards/IMiniChefV3Rewarder.sol";
+import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
 contract MiniChefV3_Test is BaseTest {
