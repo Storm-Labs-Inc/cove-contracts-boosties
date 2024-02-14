@@ -128,7 +128,20 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param gauge The address of the gauge token to withdraw.
      * @param amount The amount of tokens to withdraw.
      */
+    function withdraw(address gauge, uint256 amount, address receiver) external {
+        _withdraw(gauge, amount, receiver);
+    }
+
+    /**
+     * @notice Withdraws a specified amount of gauge tokens from this staking delegate.
+     * @param gauge The address of the gauge token to withdraw.
+     * @param amount The amount of tokens to withdraw.
+     */
     function withdraw(address gauge, uint256 amount) external {
+        _withdraw(gauge, amount, msg.sender);
+    }
+
+    function _withdraw(address gauge, uint256 amount, address receiver) internal {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();
@@ -139,7 +152,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // Interactions
         emit Withdraw(msg.sender, gauge, amount);
         _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
-        IERC20(gauge).safeTransfer(msg.sender, amount);
+        IERC20(gauge).safeTransfer(receiver, amount);
     }
 
     /**
