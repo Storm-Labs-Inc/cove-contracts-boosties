@@ -30,7 +30,7 @@ contract CoveTokenTest is BaseTest {
     }
 
     function test_initialize_revertsWhen_mintingAllowedTooEarly() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.MintingAllowedTooEarly.selector));
+        vm.expectRevert(Errors.MintingAllowedTooEarly.selector);
         new CoveToken(owner, block.timestamp - 1);
     }
 
@@ -46,7 +46,7 @@ contract CoveTokenTest is BaseTest {
     function testFuzz_mint_revertsWhen_inflationTooEarly(uint256 amount) public {
         vm.assume(amount > 0);
         vm.warp(coveToken.mintingAllowedAfter() - 1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InflationTooLarge.selector));
+        vm.expectRevert(Errors.InflationTooLarge.selector);
         vm.startPrank(owner);
         coveToken.mint(alice, amount);
     }
@@ -54,7 +54,7 @@ contract CoveTokenTest is BaseTest {
     function tesFuzz_mint_revertsWhen_inflationTooLarge(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, coveToken.availableSupplyToMint() + 1, type(uint256).max);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InflationTooLarge.selector));
+        vm.expectRevert(Errors.InflationTooLarge.selector);
         vm.startPrank(owner);
         coveToken.mint(alice, amount);
     }
@@ -78,22 +78,22 @@ contract CoveTokenTest is BaseTest {
         vm.warp(coveToken.anyoneCanUnpauseAfter());
         vm.startPrank(alice);
         coveToken.unpause();
-        assertEq(coveToken.paused(), false);
+        assertFalse(coveToken.paused());
     }
 
     function test_unpause_revertsWhen_tooEarly() public {
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(Errors.UnpauseTooEarly.selector));
+        vm.expectRevert(Errors.UnpauseTooEarly.selector);
         coveToken.unpause();
         vm.warp(coveToken.ownerCanUnpauseAfter());
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(Errors.UnpauseTooEarly.selector));
+        vm.expectRevert(Errors.UnpauseTooEarly.selector);
         coveToken.unpause();
     }
 
     function test_unpause_revertsWhen_notAdmin() public {
         vm.warp(coveToken.ownerCanUnpauseAfter());
-        vm.expectRevert(abi.encodeWithSelector(Errors.UnpauseTooEarly.selector));
+        vm.expectRevert(Errors.UnpauseTooEarly.selector);
         vm.startPrank(alice);
         coveToken.unpause();
     }
@@ -126,7 +126,7 @@ contract CoveTokenTest is BaseTest {
         assertTrue(!coveToken.allowedTransferee(alice), "Alice should not be allowed to receive transfer");
         vm.prank(owner);
         coveToken.transfer(bob, amount);
-        vm.expectRevert(abi.encodeWithSelector(Errors.TransferNotAllowedYet.selector));
+        vm.expectRevert(Errors.TransferNotAllowedYet.selector);
         vm.prank(bob);
         coveToken.transfer(alice, amount);
     }
@@ -143,7 +143,7 @@ contract CoveTokenTest is BaseTest {
         assertTrue(!coveToken.allowedTransferrer(alice), "User should not be allowed to send transfer");
         coveToken.transfer(alice, amount);
         vm.stopPrank();
-        vm.expectRevert(abi.encodeWithSelector(Errors.TransferNotAllowedYet.selector));
+        vm.expectRevert(Errors.TransferNotAllowedYet.selector);
         vm.prank(alice);
         coveToken.transfer(user, amount);
     }
@@ -179,7 +179,7 @@ contract CoveTokenTest is BaseTest {
         coveToken.mint(user, amount);
         vm.stopPrank();
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(Errors.TransferNotAllowedYet.selector));
+        vm.expectRevert(Errors.TransferNotAllowedYet.selector);
         coveToken.transfer(owner, amount);
     }
 
@@ -200,7 +200,7 @@ contract CoveTokenTest is BaseTest {
         coveToken.removeAllowedTransferrer(user);
         assertTrue(!coveToken.allowedTransferrer(user), "User should not be allowed to transfer");
         coveToken.transfer(user, amount);
-        vm.expectRevert(abi.encodeWithSelector(Errors.TransferNotAllowedYet.selector));
+        vm.expectRevert(Errors.TransferNotAllowedYet.selector);
         vm.stopPrank();
         vm.prank(user);
         coveToken.transfer(alice, amount);
