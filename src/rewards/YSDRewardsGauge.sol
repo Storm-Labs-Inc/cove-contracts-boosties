@@ -74,7 +74,6 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
-
         // If _asset is ERC777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
         // `tokensReceived` hook. On the other hand, the `tokensToSend` hook, that is triggered before the transfer,
         // calls the vault, which is assumed not malicious.
@@ -83,8 +82,15 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         // shares are burned and after the assets are transferred, which is a valid state.
         _burn(owner, shares);
         // TODO: modify staking delegate to allow specifying receiver on withdraw
-        // IYearnStakingDelegate(yearnStakingDelegate).withdraw(asset(), assets, receiver);
+        IYearnStakingDelegate(yearnStakingDelegate).withdraw(asset(), assets, receiver);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    /**
+     * @dev Overried as assets held within the staking delegate contract.
+     */
+    function totalAssets() public view virtual override returns (uint256) {
+        return IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), asset());
     }
 }
