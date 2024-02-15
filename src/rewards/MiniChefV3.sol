@@ -183,7 +183,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
     /// @notice Commits REWARD_TOKEN to the contract for distribution.
     /// @param amount The amount of REWARD_TOKEN to commit.
-    function commitReward(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function commitReward(uint256 amount) external {
         availableReward += amount;
         REWARD_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -301,50 +301,6 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         }
 
         emit Harvest(msg.sender, pid, rewardAmount);
-
-        IMiniChefV3Rewarder _rewarder = rewarder[pid];
-        if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, pendingReward_, user.amount);
-        }
-    }
-
-    /// @notice Withdraw LP tokens from MCV3 and harvest proceeds for transaction sender to `to`.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @param amount LP token amount to withdraw.
-    /// @param to Receiver of the LP tokens and REWARD_TOKEN rewards.
-    function withdrawAndHarvest(uint256 pid, uint256 amount, address to) public {
-        PoolInfo memory pool = updatePool(pid);
-        UserInfo storage user = _userInfo[pid][msg.sender];
-        uint256 accumulatedReward = user.amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
-        uint256 pendingReward_ = accumulatedReward - user.rewardDebt + user.unpaidRewards;
-
-        // Effects
-        user.rewardDebt = accumulatedReward - (amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION);
-        user.amount -= amount;
-        lpSupply[pid] -= amount;
-
-        // Interactions
-        uint256 rewardAmount = 0;
-        if (pendingReward_ != 0) {
-            uint256 availableReward_ = availableReward;
-            uint256 unpaidRewards_ = 0;
-            rewardAmount = pendingReward_ > availableReward_ ? availableReward_ : pendingReward_;
-            /// @dev unchecked is used as the subtraction is guaranteed to not underflow.
-            unchecked {
-                availableReward -= rewardAmount;
-                unpaidRewards_ = pendingReward_ - rewardAmount;
-            }
-            if (unpaidRewards_ != 0) {
-                user.unpaidRewards += unpaidRewards_;
-            }
-            if (rewardAmount != 0) {
-                REWARD_TOKEN.safeTransfer(to, rewardAmount);
-            }
-        }
-        emit Harvest(msg.sender, pid, rewardAmount);
-
-        lpToken[pid].safeTransfer(to, amount);
-        emit Withdraw(msg.sender, pid, amount, to);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
