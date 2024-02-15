@@ -5,6 +5,7 @@ import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20Permit, ERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
+import { Errors } from "src/libraries/Errors.sol";
 
 /**
  * @title CoveToken
@@ -46,17 +47,6 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     /// @dev Emitted when a transferee is disallowed.
     event TransfereeDisallowed(address indexed target);
 
-    /// @dev Error for when a transfer is attempted before it is allowed.
-    error TransferNotAllowedYet();
-    /// @dev Error for when an unpause is attempted too early.
-    error UnpauseTooEarly();
-    /// @dev Error for when the pause period is too long.
-    error PausePeriodTooLong();
-    /// @dev Error for when minting is attempted too early.
-    error MintingAllowedTooEarly();
-    /// @dev Error for when the mint amount exceeds the cap.
-    error InflationTooLarge();
-
     /**
      * @notice Deploys this contract with the initial owner and minting allowed after a specified time.
      * @dev The contract is paused upon deployment and the initial supply is minted to the owner.
@@ -66,7 +56,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     constructor(address owner_, uint256 mintingAllowedAfter_) ERC20Permit("CoveToken") ERC20("CoveToken", "COVE") {
         // Checks
         if (mintingAllowedAfter_ < block.timestamp) {
-            revert MintingAllowedTooEarly();
+            revert Errors.MintingAllowedTooEarly();
         }
         // Effects
         _pause(); // Pause the contract
@@ -87,7 +77,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     function mint(address to, uint256 amount) external {
         _checkRole(_MINTER_ROLE);
         if (amount > availableSupplyToMint()) {
-            revert InflationTooLarge();
+            revert Errors.InflationTooLarge();
         }
         mintingAllowedAfter = block.timestamp + _MIN_MINT_INTERVAL;
         _mint(to, amount);
@@ -99,7 +89,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     function unpause() external whenPaused {
         uint256 unpauseAfter = hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ? ownerCanUnpauseAfter : anyoneCanUnpauseAfter;
         if (block.timestamp < unpauseAfter) {
-            revert UnpauseTooEarly();
+            revert Errors.UnpauseTooEarly();
         }
         _unpause();
     }
@@ -171,7 +161,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
         // Check if the transfer is allowed
         // When paused, only allowed transferrers can transfer and only allowed transferees can receive
         if (paused() && (!allowedTransferrer[from] && !allowedTransferee[to])) {
-            revert TransferNotAllowedYet();
+            revert Errors.TransferNotAllowedYet();
         }
         super._beforeTokenTransfer(from, to, amount);
     }
