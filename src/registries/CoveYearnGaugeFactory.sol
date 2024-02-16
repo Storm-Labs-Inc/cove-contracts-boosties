@@ -160,8 +160,8 @@ contract CoveYearnGaugeFactory is AccessControl {
             // Set the dYFI rewards to be received by the reward forwarder
             coveYsdGauge.setStakingDelegateRewardsReceiver(address(forwarder));
             // Add dYFI and COVE rewards to the non-auto-compounding gauge
-            coveYsdGauge.addReward(_DYFI, address(forwarder));
             coveYsdGauge.addReward(COVE, address(forwarder));
+            coveYsdGauge.addReward(_DYFI, address(forwarder));
             // Replace admin and manager for the non-auto-compounding gauge
             coveYsdGauge.grantRole(DEFAULT_ADMIN_ROLE, gaugeAdmin_);
             coveYsdGauge.grantRole(_MANAGER_ROLE, gaugeAdmin_);
