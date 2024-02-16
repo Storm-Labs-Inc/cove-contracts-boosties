@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// solhint-disable no-console
 pragma solidity >=0.8.18;
 
-import { console2 as console } from "forge-std/console2.sol";
 import { Script } from "forge-std/Script.sol";
 
 contract BaseScript is Script {
     /// @dev Included to enable compilation of the script without a $MNEMONIC environment variable.
-    string internal constant TEST_MNEMONIC = "test test test test test test test test test test test junk";
+    string public constant TEST_MNEMONIC = "test test test test test test test test test test test junk";
 
     /// @dev Needed for the deterministic deployments.
-    bytes32 internal constant ZERO_SALT = bytes32(0);
+    bytes32 public constant ZERO_SALT = bytes32(0);
 
     /// @dev The private key of the transaction broadcaster. Needed for vm.sign().
-    uint256 internal broadcasterPK;
+    uint256 public broadcasterPK;
 
     /// @dev The address of the transaction broadcaster.
-    address internal broadcaster;
+    address public broadcaster;
 
     /// @dev Initializes the transaction broadcaster like this:
     ///
