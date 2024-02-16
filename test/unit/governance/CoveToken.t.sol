@@ -35,11 +35,30 @@ contract CoveToken_Test is BaseTest {
     }
 
     function test_availableSupplyToMint() public {
+        uint256 totalSupply = coveToken.totalSupply();
         assertEq(coveToken.availableSupplyToMint(), 0, "Available supply to mint should be 0 before minting is allowed");
+
         vm.warp(coveToken.mintingAllowedAfter());
         assertEq(
             coveToken.availableSupplyToMint(),
-            1_000_000_000 ether * 600 / 10_000,
+            totalSupply * 600 / 10_000,
+            "Available supply to mint should be 6% of the current supply"
+        );
+        vm.startPrank(owner);
+        coveToken.grantRole(minterRole, owner);
+        coveToken.mint(owner, coveToken.availableSupplyToMint());
+        assertEq(
+            coveToken.totalSupply(),
+            totalSupply + totalSupply * 600 / 10_000,
+            "Total supply should have increased by 6%"
+        );
+        totalSupply = coveToken.totalSupply();
+        assertEq(coveToken.availableSupplyToMint(), 0, "Available supply to mint should be 0 after minting");
+
+        vm.warp(coveToken.mintingAllowedAfter());
+        assertEq(
+            coveToken.availableSupplyToMint(),
+            totalSupply * 600 / 10_000,
             "Available supply to mint should be 6% of the current supply"
         );
     }
