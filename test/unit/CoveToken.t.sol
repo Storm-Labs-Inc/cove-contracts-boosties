@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "./utils/BaseTest.t.sol";
+import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract CoveTokenTest is BaseTest {
+contract CoveToken_Test is BaseTest {
     CoveToken public coveToken;
     address public owner;
     address public alice;
@@ -34,6 +34,16 @@ contract CoveTokenTest is BaseTest {
         new CoveToken(owner, block.timestamp - 1);
     }
 
+    function test_availableSupplyToMint() public {
+        assertEq(coveToken.availableSupplyToMint(), 0, "Available supply to mint should be 0 before minting is allowed");
+        vm.warp(coveToken.mintingAllowedAfter());
+        assertEq(
+            coveToken.availableSupplyToMint(),
+            1_000_000_000 ether * 600 / 10_000,
+            "Available supply to mint should be 6% of the current supply"
+        );
+    }
+
     function testFuzz_mint(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, 0, coveToken.availableSupplyToMint());
@@ -51,7 +61,7 @@ contract CoveTokenTest is BaseTest {
         coveToken.mint(alice, amount);
     }
 
-    function tesFuzz_mint_revertsWhen_inflationTooLarge(uint256 amount) public {
+    function testFuzz_mint_revertsWhen_inflationTooLarge(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, coveToken.availableSupplyToMint() + 1, type(uint256).max);
         vm.expectRevert(Errors.InflationTooLarge.selector);

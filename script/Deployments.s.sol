@@ -45,8 +45,8 @@ contract Deployments is BaseDeployScript, Constants {
         deployYearnStakingDelegateStack();
         // Deploy Yearn4626RouterExt
         deployYearn4626RouterExt();
-        // Deploy Cove Token with mintingAllowedAfter 1 year
-        uint256 mintingAllowedAfter = block.timestamp + 365 days;
+        // Deploy Cove Token with minting allowed after 3 years
+        uint256 mintingAllowedAfter = block.timestamp + 3 * 365 days;
         deployCoveToken(mintingAllowedAfter);
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
