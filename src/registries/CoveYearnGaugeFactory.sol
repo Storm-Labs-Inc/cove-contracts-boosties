@@ -54,17 +54,17 @@ contract CoveYearnGaugeFactory is AccessControl {
     constructor(
         address factoryAdmin,
         address ysd,
-        address cove_,
-        address rewardForwaderImpl,
+        address cove,
+        address rewardForwarderImpl_,
         address baseRewardsGaugeImpl_,
         address ysdRewardsGaugeImpl_,
         address treasuryMultisig_,
         address gaugeAdmin_
     ) {
-        if (ysd == address(0) || cove_ == address(0)) revert Errors.ZeroAddress();
+        if (ysd == address(0) || cove == address(0)) revert Errors.ZeroAddress();
         YEARN_STAKING_DELEGATE = ysd;
-        COVE = cove_;
-        _setRewardForwarderImplementation(rewardForwaderImpl);
+        COVE = cove;
+        _setRewardForwarderImplementation(rewardForwarderImpl_);
         _setBaseRewardsGaugeImplementation(baseRewardsGaugeImpl_);
         _setYsdRewardsGaugeImplementation(ysdRewardsGaugeImpl_);
         _setTreasuryMultisig(treasuryMultisig_);
