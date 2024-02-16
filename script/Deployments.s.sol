@@ -43,8 +43,6 @@ contract Deployments is BaseDeployScript, Constants {
         deployMasterRegistry();
         // Deploy Yearn Staking Delegate Stack
         deployYearnStakingDelegateStack();
-        // Deploy Cove Strategies for Yearn Gauges
-        deployCoveStrategies(deployer.getAddress("YearnStakingDelegate"));
         // Deploy Yearn4626RouterExt
         deployYearn4626RouterExt();
         // Deploy Cove Token with mintingAllowedAfter 1 year
@@ -52,6 +50,8 @@ contract Deployments is BaseDeployScript, Constants {
         deployCoveToken(mintingAllowedAfter);
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
+        // Deploy Cove Strategies for Yearn Gauges
+        deployCoveStrategies(deployer.getAddress("YearnStakingDelegate"));
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
     }
@@ -101,8 +101,7 @@ contract Deployments is BaseDeployScript, Constants {
             string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_POOL_GAUGE).name()),
             MAINNET_WETH_YETH_POOL_GAUGE,
             ysd,
-            MAINNET_CURVE_ROUTER,
-            options
+            MAINNET_CURVE_ROUTER
         );
 
         CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
