@@ -16,7 +16,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     /// @dev Minimum time interval between mints.
     uint256 private constant _MIN_MINT_INTERVAL = 365 days;
     /// @dev Numerator for calculating mint cap.
-    uint256 private constant _MINT_CAP_NUMERATOR = 200;
+    uint256 private constant _MINT_CAP_NUMERATOR = 600;
     /// @dev Denominator for calculating mint cap.
     uint256 private constant _MINT_CAP_DENOMINATOR = 10_000;
     /// @dev Maximum period the contract can be paused.
