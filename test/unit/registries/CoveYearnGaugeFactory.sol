@@ -120,12 +120,12 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
     }
 
-    function test_deployCovegauges_revertWhen_ZeroAddress() public {
+    function test_deployCoveGauges_revertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         factory.deployCoveGauges(address(0));
     }
 
-    function test_deployCovegauges_revertWhen_GaugeAlreadyDeployed() public {
+    function test_deployCoveGauges_revertWhen_GaugeAlreadyDeployed() public {
         factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
         vm.expectRevert(Errors.GaugeAlreadyDeployed.selector);
         factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
