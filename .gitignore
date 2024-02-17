@@ -55,3 +55,8 @@ lcov.info
 /forge-deploy
 
 .python-version
+
+
+crytic-export/
+# echidna corpus
+echidna/echidna-corpus
