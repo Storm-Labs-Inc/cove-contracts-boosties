@@ -56,11 +56,10 @@ jobs:
         run: forge build --build-info
 
       - name: Run Slither
-        uses: crytic/slither-action@v0.3.0
+        uses: crytic/slither-action@v0.3.1
         id: slither
         with:
-          # TODO: re-enable this before audits
-          fail-on: none
+          fail-on: low
           ignore-compile: true
           node-version: ${{ env.NODE_VERSION }}
           slither-args:
