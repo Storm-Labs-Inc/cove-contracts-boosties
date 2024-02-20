@@ -10,7 +10,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @title BaseRewardsGauge_EchidnaTest
 /// @notice Echidna test contract for BaseRewardsGauge
-/// @dev This contract is used to test the aditional properties of BaseRewardsGauge
+/// @dev This contract is used to test the additional properties of BaseRewardsGauge
 ///     along with CryticERC4626PropertyTests.
 contract BaseRewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
     BaseRewardsGauge private _rewardsGauge;
