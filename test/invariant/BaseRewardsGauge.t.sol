@@ -73,7 +73,7 @@ contract BaseRewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
                     "claimRewards() must credit the correct number of reward tokens to the user"
                 );
             }
-        } catch (bytes memory reason) {
+        } catch {
             assertWithMsg(false, "claimRewards() must not revert");
         }
     }

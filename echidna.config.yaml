@@ -1,5 +1,10 @@
+coverage: true
 corpusDir: "echidna/echidna-corpus"
 testMode: assertion
 testLimit: 100000
+codeSize: 0xffffff
 deployer: "0x10000"
 sender: ["0x10000"]
+
+# instruct foundry to compile tests
+cryticArgs: ["--foundry-compile-all"]
