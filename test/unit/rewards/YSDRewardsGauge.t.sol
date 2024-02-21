@@ -63,7 +63,13 @@ contract YSDRewardsGauge_Test is BaseTest {
         );
     }
 
-    function test_initialize_revertWhen_zeroAddress() public {
+    function test_initialize_revertWhen_CallingInheritedInitialize() public {
+        YSDRewardsGauge clone = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
+        vm.expectRevert(YSDRewardsGauge.InvalidInitialization.selector);
+        clone.initialize(address(dummyGaugeAsset));
+    }
+
+    function test_initialize_revertWhen_ZeroAddress() public {
         YSDRewardsGauge clone = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
         clone.initialize(address(dummyGaugeAsset), address(0), address(0xbeef));
