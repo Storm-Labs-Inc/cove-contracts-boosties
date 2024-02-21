@@ -8,6 +8,8 @@ import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
+import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 contract YSDRewardsGauge_Test is BaseTest {
     YSDRewardsGauge public rewardsGaugeImplementation;
@@ -37,7 +39,15 @@ contract YSDRewardsGauge_Test is BaseTest {
         vm.label(address(rewardsGauge), "rewardsGauge");
         vm.prank(admin);
 
-        rewardsGauge.initialize(address(dummyGaugeAsset), abi.encode(address(ysd)));
+        address strategy = createUser("strategy");
+        vm.mockCall(
+            address(strategy),
+            abi.encodeWithSelector(YearnGaugeStrategy.maxTotalAssets.selector),
+            abi.encode(type(uint256).max)
+        );
+        vm.mockCall(address(strategy), abi.encodeWithSelector(IERC4626.totalAssets.selector), abi.encode(0));
+
+        rewardsGauge.initialize(address(dummyGaugeAsset), address(ysd), strategy);
     }
 
     function test_initialize() public {
@@ -54,7 +64,9 @@ contract YSDRewardsGauge_Test is BaseTest {
     function test_initialize_revertWhen_zeroAddress() public {
         YSDRewardsGauge clone = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
-        clone.initialize(address(dummyGaugeAsset), abi.encode(address(0)));
+        clone.initialize(address(dummyGaugeAsset), address(0), address(0xbeef));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
+        clone.initialize(address(dummyGaugeAsset), address(0xbeef), address(0));
     }
 
     function test_setStakingDelegateRewardsReceiver() public {

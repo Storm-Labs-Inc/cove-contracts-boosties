@@ -34,7 +34,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         baseRewardsGauge = BaseRewardsGauge(_cloneContract(address(baseRewardsGaugeImplementation)));
         vm.label(address(baseRewardsGauge), "baseRewardsGauge");
         vm.startPrank(admin);
-        baseRewardsGauge.initialize(address(dummyGaugeAsset), "");
+        baseRewardsGauge.initialize(address(dummyGaugeAsset));
         // set admin as manager as well
         baseRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), admin);
         vm.stopPrank();
@@ -50,7 +50,7 @@ contract BaseRewardsGauge_Test is BaseTest {
         BaseRewardsGauge dummyBaseRewardsGauge =
             BaseRewardsGauge(_cloneContract(address(baseRewardsGaugeImplementation)));
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
-        dummyBaseRewardsGauge.initialize(address(0), "");
+        dummyBaseRewardsGauge.initialize(address(0));
     }
 
     function test_decimals() public {

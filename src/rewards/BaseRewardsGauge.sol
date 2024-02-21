@@ -60,6 +60,7 @@ contract BaseRewardsGauge is
     error RewardAmountTooLow();
     error ZeroAddress();
     error RewardCannotBeAsset();
+    error MaxTotalAssetsExceeded();
 
     constructor() {
         _disableInitializers();
@@ -69,7 +70,7 @@ contract BaseRewardsGauge is
      * @notice Initialize the contract
      * @param asset_ Address of the asset token that will be deposited
      */
-    function initialize(address asset_, bytes calldata /* encodedExtraData */ ) public virtual initializer {
+    function initialize(address asset_) public virtual initializer {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
@@ -82,6 +83,22 @@ contract BaseRewardsGauge is
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(_MANAGER_ROLE, msg.sender);
+    }
+
+    /**
+     * @notice Get the maximum number of assets that can be deposited.
+     * @dev This function should be overridden in derived contracts if the maximum
+     *     number of assets needs to be limited.
+     */
+    function maxTotalAssets() public view virtual returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+        if (totalAssets() + assets > maxTotalAssets()) {
+            revert MaxTotalAssetsExceeded();
+        }
+        super._deposit(caller, receiver, assets, shares);
     }
 
     /**

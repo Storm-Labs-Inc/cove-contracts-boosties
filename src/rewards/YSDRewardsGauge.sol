@@ -3,6 +3,8 @@ pragma solidity ^0.8.18;
 
 import { IYearnStakingDelegate } from "../interfaces/IYearnStakingDelegate.sol";
 import { IStakingDelegateRewards } from "../interfaces/IStakingDelegateRewards.sol";
+import { YearnGaugeStrategy } from "../strategies/YearnGaugeStrategy.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { BaseRewardsGauge } from "./BaseRewardsGauge.sol";
 import {
     SafeERC20Upgradeable,
@@ -17,22 +19,25 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     address public yearnStakingDelegate;
+    address public coveYearnStrategy;
 
     constructor() BaseRewardsGauge() { }
+
+    function initialize(address) public virtual override {
+        revert();
+    }
 
     /**
      * @notice Initialize the contract
      * @param asset_ Address of the asset token that will be deposited
      */
-    function initialize(address asset_, bytes calldata encodedExtraData) public override {
-        super.initialize(asset_, encodedExtraData);
-        // parse extraData as an address
-        address ysd_ = abi.decode(encodedExtraData, (address));
-        if (ysd_ == address(0)) {
+    function initialize(address asset_, address ysd_, address strategy) public virtual /* initializer */ {
+        super.initialize(asset_);
+        if (ysd_ == address(0) || strategy == address(0)) {
             revert ZeroAddress();
         }
         yearnStakingDelegate = ysd_;
-
+        coveYearnStrategy = strategy;
         // approve yearnStakingDelegate to spend asset_
         IERC20Upgradeable(asset()).forceApprove(yearnStakingDelegate, type(uint256).max);
     }
@@ -43,19 +48,22 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         IStakingDelegateRewards(stakingDelegateRewards).setRewardReceiver(receiver);
     }
 
-    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
-        // If _asset is ERC777, `transferFrom` can trigger a reentrancy BEFORE the transfer happens through the
-        // `tokensToSend` hook. On the other hand, the `tokenReceived` hook, that is triggered after the transfer,
-        // calls the vault, which is assumed not malicious.
-        //
-        // Conclusion: we need to do the transfer before we mint so that any reentrancy would happen before the
-        // assets are transferred and before the shares are minted, which is a valid state.
-        // slither-disable-next-line reentrancy-no-eth
-        SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(asset()), caller, address(this), assets);
-        _mint(receiver, shares);
-        IYearnStakingDelegate(yearnStakingDelegate).deposit(asset(), assets);
+    /**
+     * @notice Get the maximum number of assets that can be deposited.
+     */
+    function maxTotalAssets() public view virtual override returns (uint256) {
+        uint256 maxAssets = YearnGaugeStrategy(coveYearnStrategy).maxTotalAssets();
+        uint256 totalAssetsInStrategy = ITokenizedStrategy(coveYearnStrategy).totalAssets();
+        if (totalAssetsInStrategy >= maxAssets) {
+            return 0;
+        } else {
+            return maxAssets - totalAssetsInStrategy;
+        }
+    }
 
-        emit Deposit(caller, receiver, assets, shares);
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+        super._deposit(caller, receiver, assets, shares);
+        IYearnStakingDelegate(yearnStakingDelegate).deposit(asset(), assets);
     }
 
     /**
@@ -69,6 +77,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         uint256 shares
     )
         internal
+        virtual
         override
     {
         if (caller != owner) {
@@ -81,7 +90,6 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         // Conclusion: we need to do the transfer after the burn so that any reentrancy would happen after the
         // shares are burned and after the assets are transferred, which is a valid state.
         _burn(owner, shares);
-        // TODO: modify staking delegate to allow specifying receiver on withdraw
         IYearnStakingDelegate(yearnStakingDelegate).withdraw(asset(), assets, receiver);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
