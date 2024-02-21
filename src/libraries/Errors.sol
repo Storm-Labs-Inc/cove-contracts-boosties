@@ -94,6 +94,7 @@ library Errors {
 
     /// COVE YEARN GAUGE FACTORY ///
     error GaugeAlreadyDeployed();
+    error GaugeNotDeployed();
 
     /// MINICHEF V3 ////
     error InvalidLPToken();

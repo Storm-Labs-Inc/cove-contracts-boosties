@@ -60,22 +60,19 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @param balance The amount of YFI tokens to deposit and stake. Must be greater than zero to succeed.
      */
     function deposit(uint256 balance) external {
-        address sender = _msgSender();
+        _deposit(balance, msg.sender);
+    }
 
-        // Checks
-        if (balance == 0) {
-            revert Errors.ZeroAmount();
+    /**
+     * @notice Deposits YFI tokens into the YearnStakingDelegate contract and mints coveYFI tokens to the receiver.
+     * @param balance The amount of YFI tokens to deposit and stake.
+     * @param receiver The address to mint the coveYFI tokens to.
+     */
+    function deposit(uint256 balance, address receiver) external {
+        if (receiver == address(0)) {
+            receiver = msg.sender;
         }
-
-        // Effects
-        _mint(sender, balance);
-
-        // Interactions
-        IERC20(_YFI).safeTransferFrom(sender, address(this), balance);
-        // lockYfi ultimately calls modify_lock which returns a struct with unnecessary balance information
-        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/VotingYFI.vy#L300
-        // slither-disable-next-line unused-return
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
+        _deposit(balance, receiver);
     }
 
     /**
@@ -122,6 +119,23 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      */
     function yfi() external pure returns (address) {
         return _YFI;
+    }
+
+    function _deposit(uint256 balance, address receiver) internal {
+        // Checks
+        if (balance == 0) {
+            revert Errors.ZeroAmount();
+        }
+
+        // Effects
+        _mint(receiver, balance);
+
+        // Interactions
+        IERC20(_YFI).safeTransferFrom(msg.sender, address(this), balance);
+        // lockYfi ultimately calls modify_lock which returns a struct with unnecessary balance information
+        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/VotingYFI.vy#L300
+        // slither-disable-next-line unused-return
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
     }
 
     /**
