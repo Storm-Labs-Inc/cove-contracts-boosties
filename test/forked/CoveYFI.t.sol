@@ -50,6 +50,26 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
+    function test_deposit_passWhen_ReceiverIsGiven() public {
+        airdrop(ERC20(MAINNET_YFI), admin, 1e18);
+
+        vm.startPrank(admin);
+        IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
+        CoveYFI(coveYFI).deposit(1e18, address(this));
+        assertEq(IERC20(coveYFI).balanceOf(address(this)), 1e18);
+        vm.stopPrank();
+    }
+
+    function test_deposit_passWhen_ReceiverIsZero() public {
+        airdrop(ERC20(MAINNET_YFI), admin, 1e18);
+
+        vm.startPrank(admin);
+        IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
+        CoveYFI(coveYFI).deposit(1e18, address(0));
+        assertEq(IERC20(coveYFI).balanceOf(address(admin)), 1e18);
+        vm.stopPrank();
+    }
+
     function test_deposit_whenPaused() public {
         airdrop(ERC20(MAINNET_YFI), admin, 1e18);
 
