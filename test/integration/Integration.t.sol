@@ -15,6 +15,13 @@ import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
+import { Yearn4626RouterExt, ISignatureTransfer } from "src/Yearn4626RouterExt.sol";
+import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
+import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
+import { CoveYFI } from "src/CoveYFI.sol";
+import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
+import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
+import { PeripheryPayments, SelfPermit, Yearn4626RouterBase } from "Yearn-ERC4626-Router/Yearn4626RouterBase.sol";
 
 contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -25,6 +32,13 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     SwapAndLock public swapAndLock;
     DYfiRedeemer public dYfiRedeemer;
     IVault public vault;
+    Yearn4626RouterExt public router;
+    BaseRewardsGauge public baseRewardsGauge;
+    address public baseRewardForwarder;
+    YSDRewardsGauge public ysdRewardsGauge;
+    address public ysdRewardForwarder;
+    CoveYFI public coveYFI;
+    CoveYearnGaugeFactory public coveYearnGaugeFactory;
 
     // Addresses
     address public alice;
@@ -54,13 +68,17 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             stakingDelegateRewards =
                 StakingDelegateRewards(setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate)));
             swapAndLock = SwapAndLock(setUpSwapAndLock(admin, address(yearnStakingDelegate)));
+            dYfiRedeemer = new DYfiRedeemer(admin);
+            vm.label(address(dYfiRedeemer), "dYfiRedeemer");
+            coveYFI = new CoveYFI(address(yearnStakingDelegate), admin);
+            vm.label(address(coveYFI), "coveYFI");
+            // Admin transactions for setup
             vm.startPrank(admin);
             // sets gauge as reward and a 100% split to the strategy
+            swapAndLock.setDYfiRedeemer(address(dYfiRedeemer));
             yearnStakingDelegate.addGaugeRewards(gauge, address(stakingDelegateRewards));
             yearnStakingDelegate.setSwapAndLock(address(swapAndLock));
             vm.stopPrank();
-            dYfiRedeemer = new DYfiRedeemer(admin);
-            vm.label(address(dYfiRedeemer), "dYfiRedeemer");
         }
 
         //// wrapped strategy ////
@@ -85,8 +103,78 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
             yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
+            // TODO: test below
+            // yearnGaugeStrategy.setPerformanceFeeRecipient(admin);
+            // yearnGaugeStrategy.setKeeper(admin);
+            // yearnGaugeStrategy.setEmergencyAdmin(admin);
             vm.stopPrank();
         }
+
+        /// Yearn4626RouterExt
+        {
+            router = new Yearn4626RouterExt("Yearn-4626-Router", MAINNET_WETH, MAINNET_PERMIT2);
+            vm.label(address(router), "4626Router");
+        }
+
+        // Reward Gauges
+        {
+            vm.startPrank(admin);
+            BaseRewardsGauge baseRewardsGaugeImplementation = new BaseRewardsGauge();
+            YSDRewardsGauge ysdRewardsGaugeImplementation = new YSDRewardsGauge();
+            RewardForwarder rewardForwarderImplementation = new RewardForwarder();
+            coveYearnGaugeFactory = new CoveYearnGaugeFactory(
+                admin,
+                address(yearnStakingDelegate),
+                address(coveYFI),
+                address(rewardForwarderImplementation),
+                address(baseRewardsGaugeImplementation),
+                address(ysdRewardsGaugeImplementation),
+                treasury,
+                admin
+            );
+            vm.label(address(coveYearnGaugeFactory), "coveYearnGaugeFactory");
+            coveYearnGaugeFactory.deployCoveGauges(address(yearnGaugeStrategy));
+            // baseRewardsGauge =
+            //     coveYearnGaugeFactory.yearnGaugeInfoStored(address(yearnGaugeStrategy)).autoCompoundingGauge;
+
+            CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = coveYearnGaugeFactory.getGaugeInfo(address(gauge));
+            baseRewardsGauge = BaseRewardsGauge(gaugeInfo.autoCompoundingGauge);
+            vm.label(address(baseRewardsGauge), "baseRewardsGauge");
+            baseRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
+            (baseRewardForwarder,,,,) = baseRewardsGauge.rewardData(MAINNET_DYFI);
+            vm.label(baseRewardForwarder, "baseRewardForwarder");
+            ysdRewardsGauge = YSDRewardsGauge(gaugeInfo.nonAutoCompoundingGauge);
+            vm.label(address(ysdRewardsGauge), "ysdRewardsGauge");
+            ysdRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
+            (ysdRewardForwarder,,,,) = baseRewardsGauge.rewardData(MAINNET_DYFI);
+            vm.label(ysdRewardForwarder, "ysdRewardForwarder");
+            vm.stopPrank();
+        }
+        // /// BaseRewardsGauge
+        // {
+        //     // deploy base rewards gauge implementation
+        //     BaseRewardsGauge baseRewardsGaugeImplementation = new BaseRewardsGauge();
+        //     vm.label(address(baseRewardsGaugeImplementation), "baseRewardsGaugeImplementation");
+        //     // clone the implementation
+        //     baseRewardsGauge = BaseRewardsGauge(_cloneContract(address(baseRewardsGaugeImplementation)));
+        //     vm.label(address(baseRewardsGauge), "baseRewardsGauge");
+        //     vm.startPrank(tpManagement);
+        //     baseRewardsGauge.initialize(address(MAINNET_WETH_YETH_POOL_GAUGE), "");
+        //     // set admin as manager as well
+        //     baseRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
+        //     vm.stopPrank();
+        // }
+
+        // /// YSDRewardsGauge
+        // {
+        //     YSDRewardsGauge ysdRewardsGaugeImplementation = new YSDRewardsGauge();
+        //     vm.label(address(ysdRewardsGaugeImplementation), "ysdRewardsGaugeImplementation");
+        //     ysdRewardsGauge = YSDRewardsGauge(_cloneContract(address(ysdRewardsGaugeImplementation)));
+        //     vm.label(address(ysdRewardsGauge), "ysdRewardsGauge");
+        //     vm.prank(tpManagement);
+        //     ysdRewardsGauge.initialize(address(MAINNET_WETH_YETH_POOL_GAUGE),
+        // abi.encode(address(yearnStakingDelegate)));
+        // }
 
         // Setup approvals for YFI spending
         vm.startPrank(alice);
@@ -140,7 +228,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.assume(amount < type(uint128).max);
 
         uint256 expectedShares = yearnGaugeStrategy.previewDeposit(amount);
-        // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
         // check for expected changes
         assertEq(yearnGaugeStrategy.balanceOf(alice), expectedShares, "Deposit was not successful");
@@ -151,6 +238,98 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         );
         assertEq(yearnGaugeStrategy.totalSupply(), expectedShares, "totalSupply did not update correctly");
     }
+
+    function testFuzz_deposit_withYSDgauge_stakingRewardsProfit(uint256 amount) public {
+        vm.assume(amount != 0);
+        vm.assume(amount < type(uint128).max);
+        amount = 1e18;
+
+        uint256 expectedShares = yearnGaugeStrategy.previewDeposit(amount);
+        // deposit into strategy happens
+        // deposit into rewards gauge happens
+        airdrop(ERC20(gauge), alice, amount);
+        vm.startPrank(alice);
+        ERC20(gauge).approve(address(ysdRewardsGauge), amount);
+        ysdRewardsGauge.deposit(amount, alice);
+        vm.stopPrank();
+        // check for expected changes
+
+        assertEq(ysdRewardsGauge.balanceOf(alice), amount, "YSD shares not given for deposit");
+        assertEq(
+            yearnStakingDelegate.balanceOf(address(ysdRewardsGauge), gauge),
+            amount,
+            "yearn staking delegate deposit failed"
+        );
+        assertEq(
+            stakingDelegateRewards.balanceOf(address(ysdRewardsGauge), gauge),
+            amount,
+            "staking delegate balance not updated"
+        );
+        // TODO; not sure why total supply wont update
+        assertEq(yearnGaugeStrategy.totalSupply(), expectedShares, "totalSupply did not update correctly");
+    }
+
+    // TODO: find out where permit 2 is going wrong
+    // function testFuzz_deposit_throughRouter_buh(uint256 amount) public {
+    //     // vm.assume(amount != 0);
+    //     // vm.assume(amount < type(uint128).max);
+    //     amount = 1 ether;
+
+    //     (address user, uint256 userPriv) = createUserAndKey("user");
+    //     airdrop(ERC20(address(vault)), user, amount);
+    //     // User makes this approval once for all permit2 interactions
+    //     ERC20(address(vault)).approve(MAINNET_PERMIT2, _MAX_UINT256);
+
+    //     // // Generate a permit signature
+    //     // (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
+    //     //     MAINNET_WETH_YETH_POOL_VAULT, user, userPriv, address(router), amount, 0, block.timestamp
+    //     // );
+
+    //     ISignatureTransfer.PermitTransferFrom memory permit =
+    //         _getPermit2PermitTransferFrom(MAINNET_WETH_YETH_POOL_VAULT, amount, 0, block.timestamp + 100);
+
+    //     ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+    //         _getPerit2SignatureTransferDetails(address(router), amount);
+
+    //     bytes memory signature = _getPermit2PermitTransferSignature(
+    //         permit, address(router), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
+    //     );
+
+    //     bytes[] memory data = new bytes[](2);
+    //     // data[0] = abi.encodeWithSelector(
+    //     //     SelfPermit.selfPermit.selector, MAINNET_WETH_YETH_POOL_VAULT, amount, block.timestamp, v, r, s
+    //     // );
+
+    //     data[0] = abi.encodeWithSelector(
+    //         Yearn4626RouterExt.pullTokensWithPermit2.selector, permit, transferDetails, signature
+    //     );
+    //     data[1] = abi.encodeWithSelector(
+    //         PeripheryPayments.approve.selector, MAINNET_WETH_YETH_POOL_VAULT, MAINNET_WETH_YETH_POOL_GAUGE,
+    // _MAX_UINT256
+    //     );
+    //     data[2] = abi.encodeWithSelector(
+    //         Yearn4626RouterBase.deposit.selector,
+    //         MAINNET_WETH_YETH_POOL_GAUGE,
+    //         amount * 995e16 / 1e18, // account for 0.5% change
+    //         user,
+    //         // Gauges return shares 1:1 with the deposit amount
+    //         amount * 995e16 / 1e18
+    //     );
+    //     vm.prank(user);
+    //     router.multicall(data);
+    //     uint256 newBalance = ERC20(MAINNET_WETH_YETH_POOL_GAUGE).balanceOf(user);
+    //     uint256 expectedShares = yearnGaugeStrategy.previewDeposit(newBalance);
+    //     // deposit into strategy happens
+    //     depositIntoStrategy(yearnGaugeStrategy, user, amount);
+    //     // check for expected changes
+    //     assertEq(yearnGaugeStrategy.balanceOf(user), expectedShares, "Deposit was not successful");
+    //     assertEq(
+    //         yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
+    //         amount,
+    //         "yearn staking delegate deposit failed"
+    //     );
+    //     assertEq(yearnGaugeStrategy.totalSupply(), expectedShares, "totalSupply did not update correctly");
+    // }
 
     function testFuzz_withdraw(uint256 amount) public {
         vm.assume(amount != 0);
@@ -172,6 +351,32 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
         assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
     }
+
+    // function testFuzz_withdraw_withYSDGauge(uint256 amount) public {
+    //     vm.assume(amount != 0);
+    //     vm.assume(amount < type(uint128).max);
+
+    //     uint256 expectedShares = yearnGaugeStrategy.previewDeposit(amount);
+    //     // deposit into rewards gauge happens
+    //     airdrop(ERC20(gauge), alice, amount);
+    //     vm.startPrank(alice);
+    //     ERC20(gauge).approve(address(ysdRewardsGauge), amount);
+    // TODO: wrong gauge?
+    //     ysdRewardsGauge.deposit(amount, alice);
+    //     vm.stopPrank();
+
+    //     vm.startPrank(alice);
+    //     ysdRewardsGauge.redeem(ysdRewardsGauge.balanceOf(alice), alice, alice);
+    //     assertEq(yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge), 0, "depositToGauge failed");
+    //     assertEq(
+    //         yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
+    //         0,
+    //         "yearn staking delegate withdraw failed"
+    //     );
+    //     assertEq(yearnGaugeStrategy.totalSupply(), 0, "totalSupply did not update correctly");
+    //     assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
+    //     assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
+    // }
 
     function testFuzz_harvest_passWhen_RewardRateZero(uint256 amount) public {
         vm.assume(amount != 0);
@@ -214,16 +419,28 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         yearnStakingDelegate.harvest(gauge);
     }
 
-    function testFuzz_report_staking_rewards_profit(uint256 amount) public {
+    function testFuzz_report_staking_rewards_profit_buh(uint256 amount) public {
+        //TODO: ask John, what does the functionaliy of BaseRewardGauge look like?
         vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
         vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
 
         vm.prank(tpManagement);
         yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
 
+        // airdrop(ERC20(address(vault)), alice, amount);
+        // IERC20(address(vault)).approve(address(gauge), amount);
+        // amount = IGauge(gauge).deposit(amount, alice);
+        // // amount = IGauge(gauge).balanceOf(alice);
+        // ERC20(gauge).approve(address(baseRewardsGauge), amount);
+
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
+        vm.startPrank(alice);
         uint256 shares = yearnGaugeStrategy.balanceOf(alice);
+        IERC20(yearnGaugeStrategy).approve(address(baseRewardsGauge), shares);
+        baseRewardsGauge.deposit(shares, alice);
+        vm.stopPrank();
+        // uint256 shares = yearnGaugeStrategy.balanceOf(address(baseRewardsGauge));
         uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
         uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
         assertEq(beforeTotalAssets, amount, "total assets should be equal to deposit amount");
@@ -270,8 +487,10 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             "all assets should be deployed"
         );
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
+        uint256 balance = yearnGaugeStrategy.balanceOf(alice);
         // User withdraws
-        vm.prank(alice);
+        vm.startPrank(alice);
+        baseRewardsGauge.redeem(shares, alice, alice);
         yearnGaugeStrategy.redeem(shares, alice, alice);
         assertGt(IERC20(gauge).balanceOf(alice), amount, "profit not given to user on withdraw");
     }
