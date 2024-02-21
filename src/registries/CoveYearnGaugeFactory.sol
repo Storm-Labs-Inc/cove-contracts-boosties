@@ -88,6 +88,9 @@ contract CoveYearnGaugeFactory is AccessControl {
 
     function getGaugeInfo(address yearnGauge) public view returns (GaugeInfo memory) {
         GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
+        if (stored.coveYearnStrategy == address(0)) {
+            revert Errors.GaugeNotDeployed();
+        }
         address yearnVault = IERC4626(yearnGauge).asset();
         address yearnVaultAsset = address(0);
         bool isYearnVaultV2 = false;
