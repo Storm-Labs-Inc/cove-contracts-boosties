@@ -69,7 +69,7 @@ contract BaseRewardsGauge is
      * @notice Initialize the contract
      * @param asset_ Address of the asset token that will be deposited
      */
-    function initialize(address asset_, bytes calldata /* encodedExtraData */ ) public virtual initializer {
+    function initialize(address asset_) public virtual initializer {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }

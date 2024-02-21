@@ -129,7 +129,7 @@ contract CoveYearnGaugeFactory is AccessControl {
 
         // Deploy and initialize the auto-compounding gauge
         BaseRewardsGauge coveStratGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
-        coveStratGauge.initialize(coveYearnStrategy, "");
+        coveStratGauge.initialize(coveYearnStrategy);
         // Deploy and initialize the reward forwarder for the auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
@@ -150,7 +150,7 @@ contract CoveYearnGaugeFactory is AccessControl {
 
         // Deploy the non-auto-compounding gauge and initialize it
         YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
-        coveYsdGauge.initialize(yearnGauge, abi.encode(YEARN_STAKING_DELEGATE));
+        coveYsdGauge.initialize(yearnGauge, YEARN_STAKING_DELEGATE, coveYearnStrategy);
         // Deploy and initialize the reward forwarder for the non-auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
