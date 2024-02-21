@@ -88,6 +88,10 @@ contract CoveYearnGaugeFactory is AccessControl {
 
     function getGaugeInfo(address yearnGauge) public view returns (GaugeInfo memory) {
         GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
+        address coveYearnStrategy = stored.coveYearnStrategy;
+        if (coveYearnStrategy == address(0)) {
+            revert Errors.GaugeNotDeployed();
+        }
         address yearnVault = IERC4626(yearnGauge).asset();
         address yearnVaultAsset = address(0);
         bool isYearnVaultV2 = false;
@@ -102,7 +106,7 @@ contract CoveYearnGaugeFactory is AccessControl {
             yearnVault: yearnVault,
             isVaultV2: isYearnVaultV2,
             yearnGauge: yearnGauge,
-            coveYearnStrategy: stored.coveYearnStrategy,
+            coveYearnStrategy: coveYearnStrategy,
             autoCompoundingGauge: stored.autoCompoundingGauge,
             nonAutoCompoundingGauge: stored.nonAutoCompoundingGauge
         });
