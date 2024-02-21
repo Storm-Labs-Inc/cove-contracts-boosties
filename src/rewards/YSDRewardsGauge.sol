@@ -21,10 +21,13 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     address public yearnStakingDelegate;
     address public coveYearnStrategy;
 
+    error MaxTotalAssetsExceeded();
+    error InvalidInitialization();
+
     constructor() BaseRewardsGauge() { }
 
     function initialize(address) public virtual override {
-        revert();
+        revert InvalidInitialization();
     }
 
     /**
@@ -51,7 +54,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     /**
      * @notice Get the maximum number of assets that can be deposited.
      */
-    function maxTotalAssets() public view virtual override returns (uint256) {
+    function maxTotalAssets() public view virtual returns (uint256) {
         uint256 maxAssets = YearnGaugeStrategy(coveYearnStrategy).maxTotalAssets();
         uint256 totalAssetsInStrategy = ITokenizedStrategy(coveYearnStrategy).totalAssets();
         if (totalAssetsInStrategy >= maxAssets) {
@@ -62,6 +65,9 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+        if (totalAssets() + assets > maxTotalAssets()) {
+            revert MaxTotalAssetsExceeded();
+        }
         super._deposit(caller, receiver, assets, shares);
         IYearnStakingDelegate(yearnStakingDelegate).deposit(asset(), assets);
     }
