@@ -268,6 +268,7 @@ contract BaseRewardsGauge is
         address receiver
     )
         internal
+        nonReentrant
     {
         uint256 integral = rewardData[token].integral;
         uint256 integralFor = rewardIntegralFor[token][_user];
@@ -282,10 +283,13 @@ contract BaseRewardsGauge is
 
         if (totalClaimable > 0) {
             if (_claim) {
-                IERC20(token).safeTransfer(receiver, totalClaimable);
                 claimData[_user][token] = totalClaimed + totalClaimable;
             } else {
                 claimData[_user][token] = totalClaimed + (totalClaimable << 128);
+            }
+
+            if (_claim) {
+                IERC20(token).safeTransfer(receiver, totalClaimable);
             }
         }
     }

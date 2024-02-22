@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
@@ -10,7 +11,7 @@ import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract CoveYearnGaugeFactory is AccessControl {
+contract CoveYearnGaugeFactory is AccessControl, ReentrancyGuard {
     struct GaugeInfoStored {
         address coveYearnStrategy;
         address autoCompoundingGauge;
@@ -114,7 +115,7 @@ contract CoveYearnGaugeFactory is AccessControl {
     }
     // slither-disable-end calls-loop
 
-    function deployCoveGauges(address coveYearnStrategy) external onlyRole(_MANAGER_ROLE) {
+    function deployCoveGauges(address coveYearnStrategy) external nonReentrant onlyRole(_MANAGER_ROLE) {
         // Sanity check
         if (coveYearnStrategy == address(0)) {
             revert Errors.ZeroAddress();
@@ -132,6 +133,14 @@ contract CoveYearnGaugeFactory is AccessControl {
         // Deploy both gauges
         BaseRewardsGauge coveStratGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
         YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
+
+        // Save the gauge info
+        supportedYearnGauges.push(yearnGauge);
+        yearnGaugeInfoStored[yearnGauge] = GaugeInfoStored({
+            coveYearnStrategy: coveYearnStrategy,
+            autoCompoundingGauge: address(coveStratGauge),
+            nonAutoCompoundingGauge: address(coveYsdGauge)
+        });
 
         // Emit the event
         emit CoveGaugesDeployed(yearnGauge, coveYearnStrategy, address(coveStratGauge), address(coveYsdGauge));
@@ -179,14 +188,6 @@ contract CoveYearnGaugeFactory is AccessControl {
             coveYsdGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
             coveYsdGauge.renounceRole(_MANAGER_ROLE, address(this));
         }
-
-        // Save the gauge info
-        supportedYearnGauges.push(yearnGauge);
-        yearnGaugeInfoStored[yearnGauge] = GaugeInfoStored({
-            coveYearnStrategy: coveYearnStrategy,
-            autoCompoundingGauge: address(coveStratGauge),
-            nonAutoCompoundingGauge: address(coveYsdGauge)
-        });
     }
 
     function setRewardForwarderImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
