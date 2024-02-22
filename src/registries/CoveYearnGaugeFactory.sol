@@ -86,6 +86,7 @@ contract CoveYearnGaugeFactory is AccessControl {
         return result;
     }
 
+    // slither-disable-start calls-loop
     function getGaugeInfo(address yearnGauge) public view returns (GaugeInfo memory) {
         GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
         address coveYearnStrategy = stored.coveYearnStrategy;
@@ -111,6 +112,7 @@ contract CoveYearnGaugeFactory is AccessControl {
             nonAutoCompoundingGauge: stored.nonAutoCompoundingGauge
         });
     }
+    // slither-disable-end calls-loop
 
     function deployCoveGauges(address coveYearnStrategy) external onlyRole(_MANAGER_ROLE) {
         // Sanity check

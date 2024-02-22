@@ -55,6 +55,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      */
     constructor(address owner_, uint256 mintingAllowedAfter_) ERC20Permit("CoveToken") ERC20("CoveToken", "COVE") {
         // Checks
+        // slither-disable-next-line timestamp
         if (mintingAllowedAfter_ < block.timestamp) {
             revert Errors.MintingAllowedTooEarly();
         }
@@ -88,6 +89,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     function unpause() external whenPaused {
         uint256 unpauseAfter =
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ? OWNER_CAN_UNPAUSE_AFTER : ANYONE_CAN_UNPAUSE_AFTER;
+        // slither-disable-next-line timestamp
         if (block.timestamp < unpauseAfter) {
             revert Errors.UnpauseTooEarly();
         }
@@ -131,6 +133,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @return uint256 The amount of supply available for minting.
      */
     function availableSupplyToMint() public view returns (uint256) {
+        // slither-disable-next-line timestamp
         if (block.timestamp < mintingAllowedAfter) {
             return 0;
         }
