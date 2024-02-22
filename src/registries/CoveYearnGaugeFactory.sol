@@ -2,7 +2,6 @@
 pragma solidity ^0.8.18;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
@@ -11,7 +10,7 @@ import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract CoveYearnGaugeFactory is AccessControl, ReentrancyGuard {
+contract CoveYearnGaugeFactory is AccessControl {
     struct GaugeInfoStored {
         address coveYearnStrategy;
         address autoCompoundingGauge;
@@ -115,7 +114,7 @@ contract CoveYearnGaugeFactory is AccessControl, ReentrancyGuard {
     }
     // slither-disable-end calls-loop
 
-    function deployCoveGauges(address coveYearnStrategy) external nonReentrant onlyRole(_MANAGER_ROLE) {
+    function deployCoveGauges(address coveYearnStrategy) external onlyRole(_MANAGER_ROLE) {
         // Sanity check
         if (coveYearnStrategy == address(0)) {
             revert Errors.ZeroAddress();

@@ -268,7 +268,6 @@ contract BaseRewardsGauge is
         address receiver
     )
         internal
-        nonReentrant
     {
         uint256 integral = rewardData[token].integral;
         uint256 integralFor = rewardIntegralFor[token][_user];
