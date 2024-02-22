@@ -69,7 +69,7 @@ contract BaseRewardsGauge is
      * @notice Initialize the contract
      * @param asset_ Address of the asset token that will be deposited
      */
-    function initialize(address asset_, bytes calldata /* encodedExtraData */ ) public virtual initializer {
+    function initialize(address asset_) public virtual initializer {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
@@ -207,6 +207,7 @@ contract BaseRewardsGauge is
 
         uint256 periodFinish = rewardData[_rewardToken].periodFinish;
         uint256 newRate = 0;
+        // slither-disable-next-line timestamp
         if (block.timestamp >= periodFinish) {
             newRate = _amount / _WEEK;
         } else {
@@ -214,7 +215,8 @@ contract BaseRewardsGauge is
             uint256 leftover = remaining * rewardData[_rewardToken].rate;
             newRate = (_amount + leftover) / _WEEK;
         }
-        if (newRate == 0) {
+        // slither-disable-next-line timestamp
+        if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
         rewardData[_rewardToken].rate = newRate;
@@ -251,6 +253,7 @@ contract BaseRewardsGauge is
     function _updateReward(address token, uint256 _totalSupply) internal {
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
+        // slither-disable-next-line timestamp
         if (duration > 0 && _totalSupply > 0) {
             rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / _totalSupply;
             rewardData[token].lastUpdate = lastUpdate;
@@ -278,11 +281,10 @@ contract BaseRewardsGauge is
         uint256 totalClaimed = claimData_ % (2 ** 128);
 
         if (totalClaimable > 0) {
+            claimData[_user][token] = _claim ? totalClaimed + totalClaimable : totalClaimed + (totalClaimable << 128);
+
             if (_claim) {
                 IERC20(token).safeTransfer(receiver, totalClaimable);
-                claimData[_user][token] = totalClaimed + totalClaimable;
-            } else {
-                claimData[_user][token] = totalClaimed + (totalClaimable << 128);
             }
         }
     }

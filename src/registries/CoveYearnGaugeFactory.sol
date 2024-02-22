@@ -86,8 +86,13 @@ contract CoveYearnGaugeFactory is AccessControl {
         return result;
     }
 
+    // slither-disable-start calls-loop
     function getGaugeInfo(address yearnGauge) public view returns (GaugeInfo memory) {
         GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
+        address coveYearnStrategy = stored.coveYearnStrategy;
+        if (coveYearnStrategy == address(0)) {
+            revert Errors.GaugeNotDeployed();
+        }
         address yearnVault = IERC4626(yearnGauge).asset();
         address yearnVaultAsset = address(0);
         bool isYearnVaultV2 = false;
@@ -102,11 +107,12 @@ contract CoveYearnGaugeFactory is AccessControl {
             yearnVault: yearnVault,
             isVaultV2: isYearnVaultV2,
             yearnGauge: yearnGauge,
-            coveYearnStrategy: stored.coveYearnStrategy,
+            coveYearnStrategy: coveYearnStrategy,
             autoCompoundingGauge: stored.autoCompoundingGauge,
             nonAutoCompoundingGauge: stored.nonAutoCompoundingGauge
         });
     }
+    // slither-disable-end calls-loop
 
     function deployCoveGauges(address coveYearnStrategy) external onlyRole(_MANAGER_ROLE) {
         // Sanity check
@@ -123,9 +129,23 @@ contract CoveYearnGaugeFactory is AccessControl {
         address rewardForwarderImpl_ = rewardForwarderImpl;
         address treasuryMultisig_ = treasuryMultisig;
 
-        // Deploy and initialize the auto-compounding gauge
+        // Deploy both gauges
         BaseRewardsGauge coveStratGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
-        coveStratGauge.initialize(coveYearnStrategy, "");
+        YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
+
+        // Save the gauge info
+        supportedYearnGauges.push(yearnGauge);
+        yearnGaugeInfoStored[yearnGauge] = GaugeInfoStored({
+            coveYearnStrategy: coveYearnStrategy,
+            autoCompoundingGauge: address(coveStratGauge),
+            nonAutoCompoundingGauge: address(coveYsdGauge)
+        });
+
+        // Emit the event
+        emit CoveGaugesDeployed(yearnGauge, coveYearnStrategy, address(coveStratGauge), address(coveYsdGauge));
+
+        // Initialize the auto-compounding gauge
+        coveStratGauge.initialize(coveYearnStrategy);
         // Deploy and initialize the reward forwarder for the auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
@@ -144,9 +164,8 @@ contract CoveYearnGaugeFactory is AccessControl {
             coveStratGauge.renounceRole(_MANAGER_ROLE, address(this));
         }
 
-        // Deploy the non-auto-compounding gauge and initialize it
-        YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
-        coveYsdGauge.initialize(yearnGauge, abi.encode(YEARN_STAKING_DELEGATE));
+        // Initialize the non-auto-compounding gauge
+        coveYsdGauge.initialize(yearnGauge, YEARN_STAKING_DELEGATE, coveYearnStrategy);
         // Deploy and initialize the reward forwarder for the non-auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
@@ -168,16 +187,6 @@ contract CoveYearnGaugeFactory is AccessControl {
             coveYsdGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
             coveYsdGauge.renounceRole(_MANAGER_ROLE, address(this));
         }
-        // Emit the event
-        emit CoveGaugesDeployed(yearnGauge, coveYearnStrategy, address(coveStratGauge), address(coveYsdGauge));
-
-        // Save the gauge info
-        supportedYearnGauges.push(yearnGauge);
-        yearnGaugeInfoStored[yearnGauge] = GaugeInfoStored({
-            coveYearnStrategy: coveYearnStrategy,
-            autoCompoundingGauge: address(coveStratGauge),
-            nonAutoCompoundingGauge: address(coveYsdGauge)
-        });
     }
 
     function setRewardForwarderImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {

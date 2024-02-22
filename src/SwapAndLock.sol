@@ -45,7 +45,7 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
         }
         // Effects
         _YEARN_STAKING_DELEGATE = yearnStakingDelegate_;
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
         // Interactions
         IERC20(_YFI).forceApprove(yearnStakingDelegate_, type(uint256).max);
     }

@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "./utils/BaseTest.t.sol";
+import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
+import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 contract YSDRewardsGauge_Test is BaseTest {
     YSDRewardsGauge public rewardsGaugeImplementation;
     YSDRewardsGauge public rewardsGauge;
+    YearnGaugeStrategy public strategy;
     MockYearnStakingDelegate public ysd;
     ERC20 public dummyGaugeAsset;
     ERC20 public dummyRewardToken;
@@ -37,7 +40,16 @@ contract YSDRewardsGauge_Test is BaseTest {
         vm.label(address(rewardsGauge), "rewardsGauge");
         vm.prank(admin);
 
-        rewardsGauge.initialize(address(dummyGaugeAsset), abi.encode(address(ysd)));
+        // Mock YearnGaugeStrategy for establishing max deposit limit
+        strategy = YearnGaugeStrategy(createUser("strategy"));
+        vm.mockCall(
+            address(strategy),
+            abi.encodeWithSelector(YearnGaugeStrategy.maxTotalAssets.selector),
+            abi.encode(type(uint256).max)
+        );
+        vm.mockCall(address(strategy), abi.encodeWithSelector(IERC4626.totalAssets.selector), abi.encode(0));
+
+        rewardsGauge.initialize(address(dummyGaugeAsset), address(ysd), address(strategy));
     }
 
     function test_initialize() public {
@@ -51,10 +63,18 @@ contract YSDRewardsGauge_Test is BaseTest {
         );
     }
 
-    function test_initialize_revertWhen_zeroAddress() public {
+    function test_initialize_revertWhen_CallingInheritedInitialize() public {
+        YSDRewardsGauge clone = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
+        vm.expectRevert(YSDRewardsGauge.InvalidInitialization.selector);
+        clone.initialize(address(dummyGaugeAsset));
+    }
+
+    function test_initialize_revertWhen_ZeroAddress() public {
         YSDRewardsGauge clone = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
-        clone.initialize(address(dummyGaugeAsset), abi.encode(address(0)));
+        clone.initialize(address(dummyGaugeAsset), address(0), address(0xbeef));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
+        clone.initialize(address(dummyGaugeAsset), address(0xbeef), address(0));
     }
 
     function test_setStakingDelegateRewardsReceiver() public {
@@ -86,6 +106,18 @@ contract YSDRewardsGauge_Test is BaseTest {
             dummyGaugeAsset.balanceOf(address(ysd)), rewardsGauge.totalAssets(), "totalAssets reported incorrectly"
         );
         assertEq(rewardsGauge.balanceOf(alice), amount, "shares were not given for deposit");
+    }
+
+    function testFuzz_deposit_revertWhen_MaxTotalAssetsExceeded(uint256 amount) public {
+        vm.assume(amount > 0);
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(rewardsGauge), amount);
+        vm.mockCall(
+            address(strategy), abi.encodeWithSelector(YearnGaugeStrategy.maxTotalAssets.selector), abi.encode(0)
+        );
+        vm.expectRevert(YSDRewardsGauge.MaxTotalAssetsExceeded.selector);
+        rewardsGauge.deposit(amount, alice);
     }
 
     function testFuzz_withdraw(uint256 amount) public {

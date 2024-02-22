@@ -80,7 +80,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
     function pidOfLPToken(IERC20 lpToken_) external view returns (uint256 pid) {
         uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
-        if (pidPlusOne == 0) {
+        // slither-disable-next-line timestamp
+        if (pidPlusOne <= 0) {
             revert Errors.InvalidLPToken();
         }
         unchecked {
@@ -89,6 +90,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     }
 
     function isLPTokenAdded(IERC20 lpToken_) external view returns (bool added) {
+        // slither-disable-next-line timestamp
         added = _pidPlusOne[address(lpToken_)] != 0;
     }
 
@@ -198,10 +200,14 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         uint256 accRewardPerShare = pool.accRewardPerShare;
         uint256 lpSupply_ = lpSupply[pid];
         uint256 totalAllocPoint_ = totalAllocPoint;
+        // slither-disable-next-line timestamp
         if (block.timestamp > pool.lastRewardTime && lpSupply_ != 0 && totalAllocPoint_ != 0) {
             uint256 time = block.timestamp - pool.lastRewardTime;
+            // Explicitly round down when calculating the reward
+            // slither-disable-start divide-before-multiply
             uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
             accRewardPerShare += rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_;
+            // slither-disable-end divide-before-multiply
         }
         pending = (user.amount * accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION) - user.rewardDebt + user.unpaidRewards;
     }
@@ -211,13 +217,17 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     /// @return pool Returns the pool that was updated.
     function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = _poolInfo[pid];
+        // slither-disable-next-line timestamp
         if (block.timestamp > pool.lastRewardTime) {
             uint256 lpSupply_ = lpSupply[pid];
             uint256 totalAllocPoint_ = totalAllocPoint;
             if (lpSupply_ != 0 && totalAllocPoint_ != 0) {
                 uint256 time = block.timestamp - pool.lastRewardTime;
+                // Explicitly round down when calculating the reward
+                // slither-disable-start divide-before-multiply
                 uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
                 pool.accRewardPerShare += uint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
+                // slither-disable-end divide-before-multiply
             }
             pool.lastRewardTime = uint64(block.timestamp);
             _poolInfo[pid] = pool;
@@ -238,9 +248,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         user.rewardDebt += amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
         lpSupply[pid] += amount;
 
+        emit Deposit(msg.sender, pid, amount, to);
+
         // Interactions
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
-        emit Deposit(msg.sender, pid, amount, to);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
@@ -261,9 +272,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         user.amount -= amount;
         lpSupply[pid] -= amount;
 
+        emit Withdraw(msg.sender, pid, amount, to);
+
         // Interactions
         lpToken[pid].safeTransfer(to, amount);
-        emit Withdraw(msg.sender, pid, amount, to);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
@@ -295,12 +307,13 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
                 unpaidRewards_ = pendingReward_ - rewardAmount;
             }
             user.unpaidRewards = unpaidRewards_;
-            if (rewardAmount != 0) {
-                REWARD_TOKEN.safeTransfer(to, rewardAmount);
-            }
         }
 
         emit Harvest(msg.sender, pid, rewardAmount);
+
+        if (pendingReward_ != 0 && rewardAmount != 0) {
+            REWARD_TOKEN.safeTransfer(to, rewardAmount);
+        }
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
@@ -315,6 +328,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         UserInfo storage user = _userInfo[pid][msg.sender];
         uint256 amount = user.amount;
 
+        emit EmergencyWithdraw(msg.sender, pid, amount, to);
+
         // Effects
         user.amount = 0;
         user.rewardDebt = 0;
@@ -324,7 +339,6 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         // Interactions
         // Note: transfer can fail or succeed if `amount` is zero.
         lpToken[pid].safeTransfer(to, amount);
-        emit EmergencyWithdraw(msg.sender, pid, amount, to);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {

@@ -34,8 +34,8 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         assertEq(coveYFI.yfi(), MAINNET_YFI);
         assertEq(coveYFI.yearnStakingDelegate(), yearnStakingDelegate);
         // Check for ownership
-        assertEq(coveYFI.owner(), admin);
-        assertNotEq(coveYFI.owner(), noAdminAddress);
+        assertTrue(coveYFI.hasRole(DEFAULT_ADMIN_ROLE, admin));
+        assertFalse(coveYFI.hasRole(DEFAULT_ADMIN_ROLE, noAdminAddress));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(coveYFI), yearnStakingDelegate), type(uint256).max);
     }
@@ -50,14 +50,22 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_deposit_whenPaused() public {
+    function test_deposit_passWhen_ReceiverIsGiven() public {
         airdrop(ERC20(MAINNET_YFI), admin, 1e18);
 
         vm.startPrank(admin);
-        CoveYFI(coveYFI).pause();
-
         IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
-        CoveYFI(coveYFI).deposit(1e18);
+        CoveYFI(coveYFI).deposit(1e18, address(this));
+        assertEq(IERC20(coveYFI).balanceOf(address(this)), 1e18);
+        vm.stopPrank();
+    }
+
+    function test_deposit_passWhen_ReceiverIsZero() public {
+        airdrop(ERC20(MAINNET_YFI), admin, 1e18);
+
+        vm.startPrank(admin);
+        IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
+        CoveYFI(coveYFI).deposit(1e18, address(0));
         assertEq(IERC20(coveYFI).balanceOf(address(admin)), 1e18);
         vm.stopPrank();
     }
@@ -66,29 +74,6 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
         CoveYFI(coveYFI).deposit(0);
-        vm.stopPrank();
-    }
-
-    function test_pause_unpause() public {
-        airdrop(ERC20(coveYFI), admin, 1e18);
-
-        vm.startPrank(admin);
-        CoveYFI(coveYFI).pause();
-        CoveYFI(coveYFI).unpause();
-
-        ERC20(coveYFI).transfer(bob, 1e18);
-        assertEq(IERC20(coveYFI).balanceOf(address(bob)), 1e18);
-        vm.stopPrank();
-    }
-
-    function test_pause_revertsOnTransfer() public {
-        airdrop(ERC20(coveYFI), admin, 1e18);
-
-        vm.startPrank(admin);
-        CoveYFI(coveYFI).pause();
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.OnlyMintingEnabled.selector));
-        ERC20(coveYFI).transfer(bob, 1e18);
         vm.stopPrank();
     }
 
@@ -102,7 +87,7 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
 
     function test_rescue_revertsOnNonOwner() public {
         vm.prank(bob);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(_formatAccessControlError(bob, DEFAULT_ADMIN_ROLE));
         CoveYFI(coveYFI).rescue(IERC20(address(0)), admin, 1e18);
     }
 }
