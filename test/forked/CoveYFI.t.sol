@@ -70,45 +70,10 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function test_deposit_whenPaused() public {
-        airdrop(ERC20(MAINNET_YFI), admin, 1e18);
-
-        vm.startPrank(admin);
-        CoveYFI(coveYFI).pause();
-
-        IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
-        CoveYFI(coveYFI).deposit(1e18);
-        assertEq(IERC20(coveYFI).balanceOf(address(admin)), 1e18);
-        vm.stopPrank();
-    }
-
     function test_deposit_revertsOnZero() public {
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
         CoveYFI(coveYFI).deposit(0);
-        vm.stopPrank();
-    }
-
-    function test_pause_unpause() public {
-        airdrop(ERC20(coveYFI), admin, 1e18);
-
-        vm.startPrank(admin);
-        CoveYFI(coveYFI).pause();
-        CoveYFI(coveYFI).unpause();
-
-        ERC20(coveYFI).transfer(bob, 1e18);
-        assertEq(IERC20(coveYFI).balanceOf(address(bob)), 1e18);
-        vm.stopPrank();
-    }
-
-    function test_pause_revertsOnTransfer() public {
-        airdrop(ERC20(coveYFI), admin, 1e18);
-
-        vm.startPrank(admin);
-        CoveYFI(coveYFI).pause();
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.OnlyMintingEnabled.selector));
-        ERC20(coveYFI).transfer(bob, 1e18);
         vm.stopPrank();
     }
 
