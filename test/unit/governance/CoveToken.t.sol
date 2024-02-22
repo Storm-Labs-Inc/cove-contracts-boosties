@@ -109,7 +109,7 @@ contract CoveToken_Test is BaseTest {
         assertEq(
             coveToken.ANYONE_CAN_UNPAUSE_AFTER(),
             deployTimestamp + 18 * 4 weeks,
-            "anyoneCanUnpauseAfter should be 18 months after deployment"
+            "ANYONE_CAN_UNPAUSE_AFTER should be 18 months after deployment"
         );
     }
 
@@ -117,7 +117,7 @@ contract CoveToken_Test is BaseTest {
         assertEq(
             coveToken.OWNER_CAN_UNPAUSE_AFTER(),
             deployTimestamp + 6 * 4 weeks,
-            "ownerCanUnpauseAfter should be 6 months after deployment"
+            "OWNER_CAN_UNPAUSE_AFTER should be 6 months after deployment"
         );
     }
 
