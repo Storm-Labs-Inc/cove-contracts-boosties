@@ -58,7 +58,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
             revert Errors.ZeroAddress();
         }
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _REWARDS_TOKEN = rewardsToken_;
         _STAKING_DELEGATE = stakingDelegate_;
     }

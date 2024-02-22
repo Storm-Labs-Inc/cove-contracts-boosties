@@ -5,7 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -15,7 +15,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
  * @notice CoveYFI is a tokenized version of veYFI, commonly referred to as a liquid locker.
  * @dev Extends the ERC-20 standard with permit, pausable, ownable, and rescuable functionality.
  */
-contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
+contract CoveYFI is ERC20Permit, Pausable, AccessControl, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
 
@@ -28,14 +28,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
     /**
      * @param _yearnStakingDelegate The address of the YearnStakingDelegate contract.
      */
-    constructor(
-        address _yearnStakingDelegate,
-        address admin
-    )
-        ERC20("Cove YFI", "coveYFI")
-        ERC20Permit("Cove YFI")
-        Ownable()
-    {
+    constructor(address _yearnStakingDelegate, address admin) ERC20("Cove YFI", "coveYFI") ERC20Permit("Cove YFI") {
         // Checks
         // Check for zero addresses
         if (_yearnStakingDelegate == address(0)) {
@@ -45,7 +38,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         // Effects
         // Set storage variables
         _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
-        _transferOwnership(admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
         // Interactions
         // Max approve YFI for the yearn staking delegate
@@ -79,7 +72,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @notice Pauses all token transfers, mints, and burns within the contract.
      * @dev Can only be called by the contract owner. Emits a Paused event.
      */
-    function pause() external onlyOwner {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
 
@@ -87,7 +80,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @notice Unpauses all token transfers, mints, and burns within the contract.
      * @dev Can only be called by the contract owner. Emits an Unpaused event.
      */
-    function unpause() external onlyOwner {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -99,7 +92,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @param to The recipient address of the rescued tokens.
      * @param balance The amount of tokens to rescue.
      */
-    function rescue(IERC20 token, address to, uint256 balance) external onlyOwner {
+    function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _rescue(token, to, balance);
     }
 

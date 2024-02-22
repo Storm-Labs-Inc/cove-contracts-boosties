@@ -74,8 +74,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @param to The address to mint tokens to.
      * @param amount The amount of tokens to mint.
      */
-    function mint(address to, uint256 amount) external {
-        _checkRole(_MINTER_ROLE);
+    function mint(address to, uint256 amount) external onlyRole(_MINTER_ROLE) {
         if (amount > availableSupplyToMint()) {
             revert Errors.InflationTooLarge();
         }

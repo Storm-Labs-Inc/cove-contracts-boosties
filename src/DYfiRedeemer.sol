@@ -43,7 +43,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
 
     constructor(address admin) {
         // Effects
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _slippage = _DEFAULT_SLIPPAGE;
         // Interactions
         IERC20(_YFI).forceApprove(_ETH_YFI_CURVE_POOL, type(uint256).max);

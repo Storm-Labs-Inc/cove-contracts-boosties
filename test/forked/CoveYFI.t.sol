@@ -34,8 +34,8 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         assertEq(coveYFI.yfi(), MAINNET_YFI);
         assertEq(coveYFI.yearnStakingDelegate(), yearnStakingDelegate);
         // Check for ownership
-        assertEq(coveYFI.owner(), admin);
-        assertNotEq(coveYFI.owner(), noAdminAddress);
+        assertTrue(coveYFI.hasRole(DEFAULT_ADMIN_ROLE, admin));
+        assertFalse(coveYFI.hasRole(DEFAULT_ADMIN_ROLE, noAdminAddress));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(coveYFI), yearnStakingDelegate), type(uint256).max);
     }
@@ -122,7 +122,7 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
 
     function test_rescue_revertsOnNonOwner() public {
         vm.prank(bob);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(_formatAccessControlError(bob, DEFAULT_ADMIN_ROLE));
         CoveYFI(coveYFI).rescue(IERC20(address(0)), admin, 1e18);
     }
 }
