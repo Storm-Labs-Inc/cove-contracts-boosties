@@ -129,8 +129,14 @@ contract CoveYearnGaugeFactory is AccessControl {
         address rewardForwarderImpl_ = rewardForwarderImpl;
         address treasuryMultisig_ = treasuryMultisig;
 
-        // Deploy and initialize the auto-compounding gauge
+        // Deploy both gauges
         BaseRewardsGauge coveStratGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
+        YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
+
+        // Emit the event
+        emit CoveGaugesDeployed(yearnGauge, coveYearnStrategy, address(coveStratGauge), address(coveYsdGauge));
+
+        // Initialize the auto-compounding gauge
         coveStratGauge.initialize(coveYearnStrategy);
         // Deploy and initialize the reward forwarder for the auto-compounding gauge
         {
@@ -150,8 +156,7 @@ contract CoveYearnGaugeFactory is AccessControl {
             coveStratGauge.renounceRole(_MANAGER_ROLE, address(this));
         }
 
-        // Deploy the non-auto-compounding gauge and initialize it
-        YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
+        // Initialize the non-auto-compounding gauge
         coveYsdGauge.initialize(yearnGauge, YEARN_STAKING_DELEGATE, coveYearnStrategy);
         // Deploy and initialize the reward forwarder for the non-auto-compounding gauge
         {
@@ -174,8 +179,6 @@ contract CoveYearnGaugeFactory is AccessControl {
             coveYsdGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
             coveYsdGauge.renounceRole(_MANAGER_ROLE, address(this));
         }
-        // Emit the event
-        emit CoveGaugesDeployed(yearnGauge, coveYearnStrategy, address(coveStratGauge), address(coveYsdGauge));
 
         // Save the gauge info
         supportedYearnGauges.push(yearnGauge);
