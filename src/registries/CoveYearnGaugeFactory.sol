@@ -133,6 +133,14 @@ contract CoveYearnGaugeFactory is AccessControl {
         BaseRewardsGauge coveStratGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
         YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
 
+        // Save the gauge info
+        supportedYearnGauges.push(yearnGauge);
+        yearnGaugeInfoStored[yearnGauge] = GaugeInfoStored({
+            coveYearnStrategy: coveYearnStrategy,
+            autoCompoundingGauge: address(coveStratGauge),
+            nonAutoCompoundingGauge: address(coveYsdGauge)
+        });
+
         // Emit the event
         emit CoveGaugesDeployed(yearnGauge, coveYearnStrategy, address(coveStratGauge), address(coveYsdGauge));
 
@@ -179,14 +187,6 @@ contract CoveYearnGaugeFactory is AccessControl {
             coveYsdGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
             coveYsdGauge.renounceRole(_MANAGER_ROLE, address(this));
         }
-
-        // Save the gauge info
-        supportedYearnGauges.push(yearnGauge);
-        yearnGaugeInfoStored[yearnGauge] = GaugeInfoStored({
-            coveYearnStrategy: coveYearnStrategy,
-            autoCompoundingGauge: address(coveStratGauge),
-            nonAutoCompoundingGauge: address(coveYsdGauge)
-        });
     }
 
     function setRewardForwarderImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
