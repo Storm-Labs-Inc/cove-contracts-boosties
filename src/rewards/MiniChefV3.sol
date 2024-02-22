@@ -80,6 +80,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
     function pidOfLPToken(IERC20 lpToken_) external view returns (uint256 pid) {
         uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
+        // slither-disable-next-line timestamp
         if (pidPlusOne <= 0) {
             revert Errors.InvalidLPToken();
         }
@@ -89,6 +90,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     }
 
     function isLPTokenAdded(IERC20 lpToken_) external view returns (bool added) {
+        // slither-disable-next-line timestamp
         added = _pidPlusOne[address(lpToken_)] != 0;
     }
 
@@ -198,6 +200,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         uint256 accRewardPerShare = pool.accRewardPerShare;
         uint256 lpSupply_ = lpSupply[pid];
         uint256 totalAllocPoint_ = totalAllocPoint;
+        // slither-disable-next-line timestamp
         if (block.timestamp > pool.lastRewardTime && lpSupply_ != 0 && totalAllocPoint_ != 0) {
             uint256 time = block.timestamp - pool.lastRewardTime;
             uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
@@ -211,6 +214,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     /// @return pool Returns the pool that was updated.
     function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = _poolInfo[pid];
+        // slither-disable-next-line timestamp
         if (block.timestamp > pool.lastRewardTime) {
             uint256 lpSupply_ = lpSupply[pid];
             uint256 totalAllocPoint_ = totalAllocPoint;

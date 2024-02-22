@@ -95,10 +95,12 @@ contract CoveYearnGaugeFactory is AccessControl {
         address yearnVault = IERC4626(yearnGauge).asset();
         address yearnVaultAsset = address(0);
         bool isYearnVaultV2 = false;
+        // slither-disable-next-line calls-loop
         try IERC4626(yearnVault).asset() returns (address vaultAsset) {
             yearnVaultAsset = vaultAsset;
         } catch {
             isYearnVaultV2 = true;
+            // slither-disable-next-line calls-loop
             yearnVaultAsset = IYearnVaultV2(yearnVault).token();
         }
         return GaugeInfo({
