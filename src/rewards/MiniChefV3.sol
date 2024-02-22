@@ -238,9 +238,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         user.rewardDebt += amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
         lpSupply[pid] += amount;
 
+        emit Deposit(msg.sender, pid, amount, to);
+
         // Interactions
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
-        emit Deposit(msg.sender, pid, amount, to);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
@@ -261,9 +262,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         user.amount -= amount;
         lpSupply[pid] -= amount;
 
+        emit Withdraw(msg.sender, pid, amount, to);
+
         // Interactions
         lpToken[pid].safeTransfer(to, amount);
-        emit Withdraw(msg.sender, pid, amount, to);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
@@ -295,12 +297,13 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
                 unpaidRewards_ = pendingReward_ - rewardAmount;
             }
             user.unpaidRewards = unpaidRewards_;
-            if (rewardAmount != 0) {
-                REWARD_TOKEN.safeTransfer(to, rewardAmount);
-            }
         }
 
         emit Harvest(msg.sender, pid, rewardAmount);
+
+        if (pendingReward_ != 0 && rewardAmount != 0) {
+            REWARD_TOKEN.safeTransfer(to, rewardAmount);
+        }
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
@@ -315,6 +318,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         UserInfo storage user = _userInfo[pid][msg.sender];
         uint256 amount = user.amount;
 
+        emit EmergencyWithdraw(msg.sender, pid, amount, to);
+
         // Effects
         user.amount = 0;
         user.rewardDebt = 0;
@@ -324,7 +329,6 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         // Interactions
         // Note: transfer can fail or succeed if `amount` is zero.
         lpToken[pid].safeTransfer(to, amount);
-        emit EmergencyWithdraw(msg.sender, pid, amount, to);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
