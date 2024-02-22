@@ -311,6 +311,7 @@ contract YearnV3BaseTest is BaseTest {
         console.log("price per share: ", yearnGaugeStrategy.pricePerShare());
         console.log("total assets: ", yearnGaugeStrategy.totalAssets());
         console.log("total supply: ", yearnGaugeStrategy.totalSupply());
+        console.log("total debt: ", yearnGaugeStrategy.totalDebt());
         console.log("balance of test executor: ", yearnGaugeStrategy.balanceOf(address(this)));
         console.log("strategy USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(yearnGaugeStrategy)));
     }
@@ -323,6 +324,7 @@ contract YearnV3BaseTest is BaseTest {
             deployedVault.strategies(deployedStrategies["Wrapped YearnV3 Strategy"]).current_debt
         );
         console.log("vault USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(deployedVault)));
+        console.log("vault total debt: ", deployedVault.totalDebt());
         console.log("vault total idle assets: ", deployedVault.totalIdle());
     }
 
