@@ -11,12 +11,14 @@ contract CoveToken_Test is BaseTest {
     address public alice;
     address public bob;
     bytes32 public minterRole = keccak256("MINTER_ROLE");
+    uint256 public deployTimestamp;
 
     function setUp() public override {
         owner = createUser("Owner");
         alice = createUser("Alice");
         bob = createUser("Bob");
         coveToken = new CoveToken(owner, block.timestamp + 365 days);
+        deployTimestamp = block.timestamp;
         vm.prank(owner);
         coveToken.grantRole(minterRole, owner);
     }
@@ -101,6 +103,22 @@ contract CoveToken_Test is BaseTest {
         vm.startPrank(owner);
         coveToken.unpause();
         assertEq(coveToken.paused(), false, "Contract should be unpaused");
+    }
+
+    function test_anyoneCanUnpauseAfter() public {
+        assertEq(
+            coveToken.ANYONE_CAN_UNPAUSE_AFTER(),
+            deployTimestamp + 18 * 4 weeks,
+            "ANYONE_CAN_UNPAUSE_AFTER should be 18 months after deployment"
+        );
+    }
+
+    function test_ownerCanUnpauseAfter() public {
+        assertEq(
+            coveToken.OWNER_CAN_UNPAUSE_AFTER(),
+            deployTimestamp + 6 * 4 weeks,
+            "OWNER_CAN_UNPAUSE_AFTER should be 6 months after deployment"
+        );
     }
 
     function test_unpause_anyone() public {
