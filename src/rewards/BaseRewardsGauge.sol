@@ -207,6 +207,7 @@ contract BaseRewardsGauge is
 
         uint256 periodFinish = rewardData[_rewardToken].periodFinish;
         uint256 newRate = 0;
+        // slither-disable-next-line timestamp
         if (block.timestamp >= periodFinish) {
             newRate = _amount / _WEEK;
         } else {
@@ -214,6 +215,7 @@ contract BaseRewardsGauge is
             uint256 leftover = remaining * rewardData[_rewardToken].rate;
             newRate = (_amount + leftover) / _WEEK;
         }
+        // slither-disable-next-line timestamp
         if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
@@ -251,6 +253,7 @@ contract BaseRewardsGauge is
     function _updateReward(address token, uint256 _totalSupply) internal {
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
+        // slither-disable-next-line timestamp
         if (duration > 0 && _totalSupply > 0) {
             rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / _totalSupply;
             rewardData[token].lastUpdate = lastUpdate;
