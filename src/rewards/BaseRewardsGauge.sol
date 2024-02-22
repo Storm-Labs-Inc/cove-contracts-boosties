@@ -67,18 +67,18 @@ contract BaseRewardsGauge is
 
     /**
      * @notice Initialize the contract
-     * @param asset_ Address of the asset token that will be deposited
+     * @param asset Address of the asset token that will be deposited
      */
-    function initialize(address asset_) public virtual initializer {
-        if (asset_ == address(0)) {
+    function initialize(address asset) public virtual initializer {
+        if (asset == address(0)) {
             revert ZeroAddress();
         }
-        string memory name_ = string.concat(IERC20Metadata(asset_).name(), " Cove Rewards Gauge");
-        string memory symbol_ = string.concat(IERC20Metadata(asset_).symbol(), "-gauge");
+        string memory name = string.concat(IERC20Metadata(asset).name(), " Cove Rewards Gauge");
+        string memory symbol = string.concat(IERC20Metadata(asset).symbol(), "-gauge");
 
-        __ERC20_init(name_, symbol_);
-        __ERC20Permit_init(name_);
-        __ERC4626_init(IERC20(asset_));
+        __ERC20_init(name, symbol);
+        __ERC20Permit_init(name);
+        __ERC4626_init(IERC20(asset));
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(_MANAGER_ROLE, msg.sender);
@@ -94,33 +94,33 @@ contract BaseRewardsGauge is
 
     /**
      * @notice Get the number of already-claimed reward tokens for a user
-     * @param _addr Account to get reward amount for
-     * @param _token Token to get reward amount for
+     * @param addr Account to get reward amount for
+     * @param token Token to get reward amount for
      * @return uint256 Total amount of `_token` already claimed by `_addr`
      */
-    function claimedReward(address _addr, address _token) external view returns (uint256) {
-        return claimData[_addr][_token] % (2 ** 128);
+    function claimedReward(address addr, address token) external view returns (uint256) {
+        return claimData[addr][token] % (2 ** 128);
     }
 
     /**
      * @notice Get the number of claimable reward tokens for a user
-     * @param _user Account to get reward amount for
-     * @param _rewardToken Token to get reward amount for
+     * @param user Account to get reward amount for
+     * @param rewardToken Token to get reward amount for
      * @return uint256 Claimable reward token amount
      */
-    function claimableReward(address _user, address _rewardToken) external view returns (uint256) {
-        uint256 integral = rewardData[_rewardToken].integral;
+    function claimableReward(address user, address rewardToken) external view returns (uint256) {
+        uint256 integral = rewardData[rewardToken].integral;
         uint256 currentTotalSupply = totalSupply();
         if (currentTotalSupply != 0) {
-            uint256 lastUpdate = Math.min(block.timestamp, rewardData[_rewardToken].periodFinish);
-            uint256 duration = lastUpdate - rewardData[_rewardToken].lastUpdate;
-            integral += (duration * rewardData[_rewardToken].rate * _PRECISION) / currentTotalSupply;
+            uint256 lastUpdate = Math.min(block.timestamp, rewardData[rewardToken].periodFinish);
+            uint256 duration = lastUpdate - rewardData[rewardToken].lastUpdate;
+            integral += (duration * rewardData[rewardToken].rate * _PRECISION) / currentTotalSupply;
         }
 
-        uint256 integralFor = rewardIntegralFor[_rewardToken][_user];
-        uint256 newClaimable = balanceOf(_user) * (integral - integralFor) / _PRECISION;
+        uint256 integralFor = rewardIntegralFor[rewardToken][user];
+        uint256 newClaimable = balanceOf(user) * (integral - integralFor) / _PRECISION;
 
-        return (claimData[_user][_rewardToken] >> 128) + newClaimable;
+        return (claimData[user][rewardToken] >> 128) + newClaimable;
     }
 
     /**
@@ -133,152 +133,152 @@ contract BaseRewardsGauge is
     }
 
     /**
-     * @notice Claim available reward tokens for `_addr`
-     * @param _addr Address to claim for
+     * @notice Claim available reward tokens for `addr`
+     * @param addr Address to claim for
      * @param receiver Address to transfer rewards to - if set to
      *                 address(0), uses the default reward receiver
      *                 for the caller
      */
-    function claimRewards(address _addr, address receiver) external nonReentrant {
-        if (receiver != address(0) && _addr != msg.sender) {
+    function claimRewards(address addr, address receiver) external nonReentrant {
+        if (receiver != address(0) && addr != msg.sender) {
             revert CannotRedirectForAnotherUser();
         }
-        _checkpointRewards(_addr, totalSupply(), true, receiver);
+        _checkpointRewards(addr, totalSupply(), true, receiver);
     }
 
     /**
      * @notice Set the active reward contract
      */
-    function addReward(address _rewardToken, address _distributor) external {
+    function addReward(address rewardToken, address distributor) external {
         _checkRole(_MANAGER_ROLE);
-        if (_rewardToken == address(0) || _distributor == address(0)) {
+        if (rewardToken == address(0) || distributor == address(0)) {
             revert ZeroAddress();
         }
-        if (_rewardToken == asset()) {
+        if (rewardToken == asset()) {
             revert RewardCannotBeAsset();
         }
 
-        uint256 rewardCount_ = rewardTokens.length;
-        if (rewardCount_ >= MAX_REWARDS) {
+        uint256 rewardCount = rewardTokens.length;
+        if (rewardCount >= MAX_REWARDS) {
             revert MaxRewardsReached();
         }
-        if (rewardData[_rewardToken].distributor != address(0)) {
+        if (rewardData[rewardToken].distributor != address(0)) {
             revert RewardTokenAlreadyAdded();
         }
 
-        rewardData[_rewardToken].distributor = _distributor;
-        rewardTokens.push(_rewardToken);
+        rewardData[rewardToken].distributor = distributor;
+        rewardTokens.push(rewardToken);
     }
 
     /**
      * @notice Set the reward distributor for a reward token. Only the current distributor or an address with the
      * manager role can call this.
-     * @param _rewardToken address of the reward token
-     * @param _distributor address of the distributor contract
+     * @param rewardToken address of the reward token
+     * @param distributor address of the distributor contract
      */
-    function setRewardDistributor(address _rewardToken, address _distributor) external {
-        address currentDistributor = rewardData[_rewardToken].distributor;
+    function setRewardDistributor(address rewardToken, address distributor) external {
+        address currentDistributor = rewardData[rewardToken].distributor;
         if (!(msg.sender == currentDistributor || hasRole(_MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
         if (currentDistributor == address(0)) {
             revert DistributorNotSet();
         }
-        if (_distributor == address(0)) {
+        if (distributor == address(0)) {
             revert InvalidDistributorAddress();
         }
 
-        rewardData[_rewardToken].distributor = _distributor;
+        rewardData[rewardToken].distributor = distributor;
     }
 
     /**
      * @notice Deposit reward tokens into the gauge. Only the distributor or an address with the manager role can call
      * this.
-     * @param _rewardToken address of the reward token
-     * @param _amount amount of reward tokens to deposit
+     * @param rewardToken address of the reward token
+     * @param amount amount of reward tokens to deposit
      */
-    function depositRewardToken(address _rewardToken, uint256 _amount) external nonReentrant {
-        if (msg.sender != rewardData[_rewardToken].distributor) {
+    function depositRewardToken(address rewardToken, uint256 amount) external nonReentrant {
+        if (msg.sender != rewardData[rewardToken].distributor) {
             revert Unauthorized();
         }
 
         _checkpointRewards(address(0), totalSupply(), false, address(0));
-        IERC20(_rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 periodFinish = rewardData[_rewardToken].periodFinish;
+        uint256 periodFinish = rewardData[rewardToken].periodFinish;
         uint256 newRate = 0;
         // slither-disable-next-line timestamp
         if (block.timestamp >= periodFinish) {
-            newRate = _amount / _WEEK;
+            newRate = amount / _WEEK;
         } else {
             uint256 remaining = periodFinish - block.timestamp;
-            uint256 leftover = remaining * rewardData[_rewardToken].rate;
-            newRate = (_amount + leftover) / _WEEK;
+            uint256 leftover = remaining * rewardData[rewardToken].rate;
+            newRate = (amount + leftover) / _WEEK;
         }
         // slither-disable-next-line timestamp
         if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
-        rewardData[_rewardToken].rate = newRate;
-        rewardData[_rewardToken].lastUpdate = block.timestamp;
-        rewardData[_rewardToken].periodFinish = block.timestamp + _WEEK;
+        rewardData[rewardToken].rate = newRate;
+        rewardData[rewardToken].lastUpdate = block.timestamp;
+        rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
     }
 
     /**
      * @notice Claim pending rewards and checkpoint rewards for a user
      */
-    function _checkpointRewards(address _user, uint256 _totalSupply, bool _claim, address receiver) internal {
+    function _checkpointRewards(address user, uint256 totalSupply, bool claim, address receiver) internal {
         uint256 userBalance = 0;
-        if (_user != address(0)) {
-            userBalance = balanceOf(_user);
-            if (_claim && receiver == address(0)) {
+        if (user != address(0)) {
+            userBalance = balanceOf(user);
+            if (claim && receiver == address(0)) {
                 // if receiver is not explicitly declared, check if a default receiver is set
-                receiver = rewardsReceiver[_user];
-                receiver = receiver == address(0) ? _user : receiver;
+                receiver = rewardsReceiver[user];
+                receiver = receiver == address(0) ? user : receiver;
             }
         }
-        uint256 rewardCount_ = rewardTokens.length;
-        for (uint256 i = 0; i < rewardCount_; i++) {
+        uint256 rewardCount = rewardTokens.length;
+        for (uint256 i = 0; i < rewardCount; i++) {
             address token = rewardTokens[i];
             if (token == address(0)) {
                 break;
             }
-            _updateReward(token, _totalSupply);
-            if (_user != address(0)) {
-                _processUserReward(token, _user, userBalance, _claim, receiver);
+            _updateReward(token, totalSupply);
+            if (user != address(0)) {
+                _processUserReward(token, user, userBalance, claim, receiver);
             }
         }
     }
 
-    function _updateReward(address token, uint256 _totalSupply) internal {
+    function _updateReward(address token, uint256 totalSupply) internal {
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
         // slither-disable-next-line timestamp
-        if (duration > 0 && _totalSupply > 0) {
-            rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / _totalSupply;
+        if (duration > 0 && totalSupply > 0) {
+            rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / totalSupply;
             rewardData[token].lastUpdate = lastUpdate;
         }
     }
 
     function _processUserReward(
         address token,
-        address _user,
+        address user,
         uint256 userBalance,
-        bool _claim,
+        bool claim,
         address receiver
     )
         internal
     {
         uint256 integral = rewardData[token].integral;
-        uint256 integralFor = rewardIntegralFor[token][_user];
+        uint256 integralFor = rewardIntegralFor[token][user];
         uint256 newClaimable = integralFor < integral ? userBalance * (integral - integralFor) / _PRECISION : 0;
         if (newClaimable > 0) {
-            rewardIntegralFor[token][_user] = integral;
+            rewardIntegralFor[token][user] = integral;
         }
 
-        uint256 claimData_ = claimData[_user][token];
-        uint256 totalClaimable = (claimData_ >> 128) + newClaimable;
-        uint256 totalClaimed = claimData_ % (2 ** 128);
+        uint256 data = claimData[user][token];
+        uint256 totalClaimable = (data >> 128) + newClaimable;
+        uint256 totalClaimed = data % (2 ** 128);
 
         if (totalClaimable > 0) {
             claimData[_user][token] = _claim ? totalClaimed + totalClaimable : totalClaimed + (totalClaimable << 128);
@@ -290,9 +290,9 @@ contract BaseRewardsGauge is
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        uint256 totalSupply_ = totalSupply();
-        _checkpointRewards(from, totalSupply_, false, address(0));
-        _checkpointRewards(to, totalSupply_, false, address(0));
+        uint256 totalSupply = totalSupply();
+        _checkpointRewards(from, totalSupply, false, address(0));
+        _checkpointRewards(to, totalSupply, false, address(0));
         super._beforeTokenTransfer(from, to, amount);
     }
 }
