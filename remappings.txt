@@ -1,9 +1,6 @@
 @openzeppelin/=lib/openzeppelin-contracts/
 @openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/
-@periphery/=lib/tokenized-strategy-periphery/src/
 tokenized-strategy/=lib/tokenized-strategy/src/
-tokenized-strategy-periphery/=lib/tokenized-strategy-periphery/src/
-vault-periphery/=lib/vault-periphery/contracts/
 yearn-vaults-v3/=lib/yearn-vaults-v3/contracts/
 Yearn-ERC4626-Router/=lib/Yearn-ERC4626-Router/src/
 solmate/=lib/permit2/lib/solmate/src/

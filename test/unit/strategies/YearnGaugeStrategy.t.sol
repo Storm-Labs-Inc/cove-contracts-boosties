@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
-import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
+import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { IYearnGaugeStrategy } from "src/interfaces/IYearnGaugeStrategy.sol";
@@ -63,7 +63,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.etch(dYfi, address(new ERC20Mock()).code);
         yfi = MAINNET_YFI;
         vm.etch(yfi, address(new ERC20Mock()).code);
-        vm.etch(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, address(new TokenizedStrategy()).code);
+        vm.etch(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, address(new TokenizedStrategy(MAINNET_VAULT_FACTORY)).code);
         _deployVaultFactoryAt(yearnAdmin, MAINNET_VAULT_FACTORY);
         vaultAsset = address(new ERC20Mock());
         vm.label(vaultAsset, "vaultAsset");

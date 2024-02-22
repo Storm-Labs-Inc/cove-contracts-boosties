@@ -15,16 +15,12 @@ import { SwapAndLock } from "src/SwapAndLock.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
 
-import { ReleaseRegistry } from "vault-periphery/registry/ReleaseRegistry.sol";
-import { RegistryFactory } from "vault-periphery/registry/RegistryFactory.sol";
-import { Registry } from "vault-periphery/registry/Registry.sol";
-
 import { GaugeFactory } from "src/deps/yearn/veYFI/GaugeFactory.sol";
 import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
 
 // Interfaces
 import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
-import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
+import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
 import { IYearnGaugeStrategy } from "src/interfaces/IYearnGaugeStrategy.sol";
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 
@@ -69,7 +65,6 @@ contract YearnV3BaseTest is BaseTest {
         admin = createUser("admin");
 
         setUpVotingYfiStack();
-        setUpYfiRegistry();
     }
 
     function _createYearnRelatedAddresses() internal {
@@ -155,34 +150,6 @@ contract YearnV3BaseTest is BaseTest {
         return address(new VeRegistry(MAINNET_VE_YFI, MAINNET_YFI, _gaugeFactory, veYFIRewardPool));
     }
 
-    /// YFI registry related functions ///
-    function setUpYfiRegistry() public {
-        yearnReleaseRegistry = _deployYearnReleaseRegistry(admin);
-        yearnRegistryFactory = _deployYearnRegistryFactory(admin, yearnReleaseRegistry);
-        yearnRegistry = RegistryFactory(yearnRegistryFactory).createNewRegistry("TEST_REGISTRY", admin);
-
-        address blueprint = vyperDeployer.deployBlueprint("lib/yearn-vaults-v3/contracts/", "VaultV3");
-        bytes memory args = abi.encode("Vault V3 Factory 3.0.0", blueprint, admin);
-        address factory = vyperDeployer.deployContract("lib/yearn-vaults-v3/contracts/", "VaultFactory", args);
-
-        vm.prank(admin);
-        ReleaseRegistry(yearnReleaseRegistry).newRelease(factory);
-    }
-
-    function _deployYearnReleaseRegistry(address owner) internal returns (address) {
-        vm.prank(owner);
-        address registryAddr = address(new ReleaseRegistry(owner));
-        vm.label(registryAddr, "ReleaseRegistry");
-        return registryAddr;
-    }
-
-    function _deployYearnRegistryFactory(address owner, address releaseRegistry) internal returns (address) {
-        vm.prank(owner);
-        address factoryAddr = address(new RegistryFactory(releaseRegistry));
-        vm.label(factoryAddr, "RegistryFactory");
-        return factoryAddr;
-    }
-
     function setUpStakingDelegateRewards(
         address owner,
         address rewardToken,
@@ -236,76 +203,6 @@ contract YearnV3BaseTest is BaseTest {
         vm.label(address(yearnStakingDelegate), "YearnStakingDelegate");
         vm.stopPrank();
         return address(yearnStakingDelegate);
-    }
-
-    function _deployVaultV3ViaRegistry(string memory vaultName, address asset) internal returns (address) {
-        vm.prank(admin);
-        address vault = Registry(yearnRegistry).newEndorsedVault(asset, vaultName, "tsVault", management, 10 days, 0);
-
-        vm.prank(management);
-        // Give the vault manager all the roles
-        IVault(vault).set_role(vaultManagement, 8191);
-
-        // Set deposit limit to max
-        vm.prank(vaultManagement);
-        IVault(vault).set_deposit_limit(type(uint256).max);
-
-        // Label the vault
-        deployedVaults[vaultName] = vault;
-        vm.label(vault, vaultName);
-
-        return vault;
-    }
-
-    /// @notice Deploy a vault with given strategies. Uses vyper deployer to deploy v3 vault
-    /// strategies can be dummy ones or real ones
-    /// This is intended to spawn a vault that we have control over.
-    function deployVaultV3(
-        string memory vaultName,
-        address asset,
-        address[] memory strategies
-    )
-        public
-        returns (address)
-    {
-        address vault = _deployVaultV3ViaRegistry(vaultName, asset);
-
-        // Add strategies to vault
-        for (uint256 i = 0; i < strategies.length; i++) {
-            addStrategyToVault(IVault(vault), IStrategy(strategies[i]));
-        }
-
-        return vault;
-    }
-
-    /// @notice Deploy a vault with a mock strategy, owned by yearn addresses
-    /// @param vaultName name of vault
-    /// @param asset address of asset
-    /// @return vault address of vault
-    /// @return strategy address of mock strategy
-    function deployVaultV3WithMockStrategy(
-        string memory vaultName,
-        address asset
-    )
-        public
-        returns (address vault, address strategy)
-    {
-        // Deploy mock strategy
-        IStrategy _strategy = IStrategy(address(new MockStrategy(asset)));
-        // set keeper
-        _strategy.setKeeper(keeper);
-        // set treasury
-        _strategy.setPerformanceFeeRecipient(performanceFeeRecipient);
-        // set management of the strategy
-        _strategy.setPendingManagement(management);
-        // Accept management.
-        vm.prank(management);
-        _strategy.acceptManagement();
-
-        vault = _deployVaultV3ViaRegistry(vaultName, asset);
-        addStrategyToVault(IVault(vault), _strategy);
-
-        return (vault, address(_strategy));
     }
 
     /// @notice Increase strategy value by airdropping asset into strategy and harvesting
@@ -373,8 +270,6 @@ contract YearnV3BaseTest is BaseTest {
         deployedStrategies[name] = address(_strategy);
         vm.label(address(_strategy), name);
 
-        endorseStrategy(address(_strategy));
-
         return _strategy;
     }
 
@@ -407,14 +302,7 @@ contract YearnV3BaseTest is BaseTest {
         deployedStrategies[name] = address(_wrappedStrategy);
         vm.label(address(_wrappedStrategy), name);
 
-        endorseStrategy(address(_wrappedStrategy));
-
         return _wrappedStrategy;
-    }
-
-    function endorseStrategy(address strategy) public {
-        vm.prank(admin);
-        Registry(yearnRegistry).endorseSingleStrategyVault(strategy);
     }
 
     function logStratInfo(address strategy) public view {
@@ -423,7 +311,6 @@ contract YearnV3BaseTest is BaseTest {
         console.log("price per share: ", yearnGaugeStrategy.pricePerShare());
         console.log("total assets: ", yearnGaugeStrategy.totalAssets());
         console.log("total supply: ", yearnGaugeStrategy.totalSupply());
-        console.log("total debt: ", yearnGaugeStrategy.totalDebt());
         console.log("balance of test executor: ", yearnGaugeStrategy.balanceOf(address(this)));
         console.log("strategy USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(yearnGaugeStrategy)));
     }
@@ -436,7 +323,6 @@ contract YearnV3BaseTest is BaseTest {
             deployedVault.strategies(deployedStrategies["Wrapped YearnV3 Strategy"]).current_debt
         );
         console.log("vault USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(deployedVault)));
-        console.log("vault total debt: ", deployedVault.totalDebt());
         console.log("vault total idle assets: ", deployedVault.totalIdle());
     }
 
