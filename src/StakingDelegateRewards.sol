@@ -114,8 +114,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
             newRewardRate = (reward + leftover) / rewardDuration_;
         }
         // If reward < duration, newRewardRate will be 0, causing dust to be left in the contract
-        // slither-disable-next-line incorrect-equality
-        if (newRewardRate == 0) {
+        if (newRewardRate <= 0) {
             revert Errors.RewardRateTooLow();
         }
         rewardRate[stakingToken] = newRewardRate;
