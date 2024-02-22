@@ -232,31 +232,29 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
     }
 
-    // function testFuzz_withdraw_withYSDGauge(uint256 amount) public {
-    //     vm.assume(amount != 0);
-    //     vm.assume(amount < type(uint128).max);
+    function testFuzz_withdraw_withYSDGauge(uint256 amount) public {
+        vm.assume(amount != 0);
+        vm.assume(amount < type(uint128).max);
 
-    //     uint256 expectedShares = yearnGaugeStrategy.previewDeposit(amount);
-    //     // deposit into rewards gauge happens
-    //     airdrop(ERC20(gauge), alice, amount);
-    //     vm.startPrank(alice);
-    //     ERC20(gauge).approve(address(ysdRewardsGauge), amount);
-    // TODO: wrong gauge?
-    //     ysdRewardsGauge.deposit(amount, alice);
-    //     vm.stopPrank();
+        // deposit into rewards gauge happens
+        airdrop(ERC20(gauge), alice, amount);
+        vm.startPrank(alice);
+        ERC20(gauge).approve(address(ysdRewardsGauge), amount);
+        ysdRewardsGauge.deposit(amount, alice);
+        vm.stopPrank();
 
-    //     vm.startPrank(alice);
-    //     ysdRewardsGauge.redeem(ysdRewardsGauge.balanceOf(alice), alice, alice);
-    //     assertEq(yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge), 0, "depositToGauge failed");
-    //     assertEq(
-    //         yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
-    //         0,
-    //         "yearn staking delegate withdraw failed"
-    //     );
-    //     assertEq(yearnGaugeStrategy.totalSupply(), 0, "totalSupply did not update correctly");
-    //     assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
-    //     assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
-    // }
+        vm.startPrank(alice);
+        ysdRewardsGauge.redeem(ysdRewardsGauge.balanceOf(alice), alice, alice);
+        assertEq(yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge), 0, "depositToGauge failed");
+        assertEq(
+            yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
+            0,
+            "yearn staking delegate withdraw failed"
+        );
+        assertEq(yearnGaugeStrategy.totalSupply(), 0, "totalSupply did not update correctly");
+        assertEq(IERC20(gauge).balanceOf(alice), amount, "asset was not returned on withdraw");
+        assertEq(yearnGaugeStrategy.balanceOf(alice), 0, "Withdraw was not successful");
+    }
 
     function testFuzz_harvest_passWhen_RewardRateZero(uint256 amount) public {
         vm.assume(amount != 0);
