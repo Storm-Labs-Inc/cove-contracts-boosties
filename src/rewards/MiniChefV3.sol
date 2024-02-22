@@ -203,8 +203,11 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         // slither-disable-next-line timestamp
         if (block.timestamp > pool.lastRewardTime && lpSupply_ != 0 && totalAllocPoint_ != 0) {
             uint256 time = block.timestamp - pool.lastRewardTime;
+            // Explicitly round down when calculating the reward
+            // slither-disable-start divide-before-multiply
             uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
             accRewardPerShare += rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_;
+            // slither-disable-end divide-before-multiply
         }
         pending = (user.amount * accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION) - user.rewardDebt + user.unpaidRewards;
     }
@@ -220,8 +223,11 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
             uint256 totalAllocPoint_ = totalAllocPoint;
             if (lpSupply_ != 0 && totalAllocPoint_ != 0) {
                 uint256 time = block.timestamp - pool.lastRewardTime;
+                // Explicitly round down when calculating the reward
+                // slither-disable-start divide-before-multiply
                 uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
                 pool.accRewardPerShare += uint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
+                // slither-disable-end divide-before-multiply
             }
             pool.lastRewardTime = uint64(block.timestamp);
             _poolInfo[pid] = pool;
