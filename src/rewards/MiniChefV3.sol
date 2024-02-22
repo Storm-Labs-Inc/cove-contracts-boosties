@@ -200,8 +200,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         uint256 totalAllocPoint_ = totalAllocPoint;
         if (block.timestamp > pool.lastRewardTime && lpSupply_ != 0 && totalAllocPoint_ != 0) {
             uint256 time = block.timestamp - pool.lastRewardTime;
-            uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-            accRewardPerShare += rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_;
+            accRewardPerShare +=
+                time * rewardPerSecond * pool.allocPoint * _ACC_REWARD_TOKEN_PRECISION / (totalAllocPoint_ * lpSupply_);
         }
         pending = (user.amount * accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION) - user.rewardDebt + user.unpaidRewards;
     }
@@ -216,8 +216,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
             uint256 totalAllocPoint_ = totalAllocPoint;
             if (lpSupply_ != 0 && totalAllocPoint_ != 0) {
                 uint256 time = block.timestamp - pool.lastRewardTime;
-                uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-                pool.accRewardPerShare += uint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
+                pool.accRewardPerShare += uint128(
+                    time * rewardPerSecond * pool.allocPoint * _ACC_REWARD_TOKEN_PRECISION
+                        / (lpSupply_ * totalAllocPoint_)
+                );
             }
             pool.lastRewardTime = uint64(block.timestamp);
             _poolInfo[pid] = pool;
