@@ -184,7 +184,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     }
 
     function test_getGaugeInfo_revertWhen_GaugeNotDeployed(address gauge) public {
-        vm.assume(gauge != address(mockCoveYearnStrategyV2));
+        vm.assume(gauge != address(yearnGaugeV2));
         factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
         vm.expectRevert(Errors.GaugeNotDeployed.selector);
         factory.getGaugeInfo(address(gauge));

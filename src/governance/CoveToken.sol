@@ -29,9 +29,9 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     /// @notice Timestamp after which minting is allowed.
     uint256 public mintingAllowedAfter;
     /// @notice Timestamp after which the owner can unpause the contract.
-    uint256 public ownerCanUnpauseAfter;
+    uint256 public immutable OWNER_CAN_UNPAUSE_AFTER;
     /// @notice Timestamp after which anyone can unpause the contract.
-    uint256 public anyoneCanUnpauseAfter;
+    uint256 public immutable ANYONE_CAN_UNPAUSE_AFTER;
 
     /// @notice Mapping to track addresses allowed to receive transfers.
     mapping(address => bool) public allowedTransferee;
@@ -60,8 +60,8 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
         }
         // Effects
         _pause(); // Pause the contract
-        ownerCanUnpauseAfter = block.timestamp + _OWNER_PAUSE_PERIOD;
-        anyoneCanUnpauseAfter = block.timestamp + _MAX_PAUSE_PERIOD;
+        OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
+        ANYONE_CAN_UNPAUSE_AFTER = block.timestamp + _MAX_PAUSE_PERIOD;
         _addToAllowedTransferrer(address(0)); // Allow minting
         _addToAllowedTransferrer(owner_); // Allow transfers from owner for distribution
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
@@ -86,7 +86,8 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Unpauses the contract.
      */
     function unpause() external whenPaused {
-        uint256 unpauseAfter = hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ? ownerCanUnpauseAfter : anyoneCanUnpauseAfter;
+        uint256 unpauseAfter =
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ? OWNER_CAN_UNPAUSE_AFTER : ANYONE_CAN_UNPAUSE_AFTER;
         if (block.timestamp < unpauseAfter) {
             revert Errors.UnpauseTooEarly();
         }

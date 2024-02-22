@@ -99,7 +99,7 @@ contract CoveToken_Test is BaseTest {
     }
 
     function test_unpause_owner() public {
-        vm.warp(coveToken.ownerCanUnpauseAfter());
+        vm.warp(coveToken.OWNER_CAN_UNPAUSE_AFTER());
         vm.startPrank(owner);
         coveToken.unpause();
         assertEq(coveToken.paused(), false, "Contract should be unpaused");
@@ -122,7 +122,7 @@ contract CoveToken_Test is BaseTest {
     }
 
     function test_unpause_anyone() public {
-        vm.warp(coveToken.anyoneCanUnpauseAfter());
+        vm.warp(coveToken.ANYONE_CAN_UNPAUSE_AFTER());
         vm.startPrank(alice);
         coveToken.unpause();
         assertFalse(coveToken.paused());
@@ -131,7 +131,7 @@ contract CoveToken_Test is BaseTest {
     function test_unpause_anyoneCanTransfer(address user, address user2, uint256 amount) public {
         vm.assume(user != address(0) && user != owner);
         vm.assume(user2 != address(0) && user2 != owner);
-        vm.warp(coveToken.anyoneCanUnpauseAfter());
+        vm.warp(coveToken.ANYONE_CAN_UNPAUSE_AFTER());
         amount = bound(amount, 0, 1_000_000_000 ether);
         vm.prank(user);
         coveToken.unpause();
@@ -147,14 +147,14 @@ contract CoveToken_Test is BaseTest {
         vm.prank(owner);
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         coveToken.unpause();
-        vm.warp(coveToken.ownerCanUnpauseAfter());
+        vm.warp(coveToken.OWNER_CAN_UNPAUSE_AFTER());
         vm.prank(alice);
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         coveToken.unpause();
     }
 
     function test_unpause_revertsWhen_notAdmin() public {
-        vm.warp(coveToken.ownerCanUnpauseAfter());
+        vm.warp(coveToken.OWNER_CAN_UNPAUSE_AFTER());
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         vm.startPrank(alice);
         coveToken.unpause();

@@ -80,7 +80,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
     function pidOfLPToken(IERC20 lpToken_) external view returns (uint256 pid) {
         uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
-        if (pidPlusOne == 0) {
+        if (pidPlusOne <= 0) {
             revert Errors.InvalidLPToken();
         }
         unchecked {

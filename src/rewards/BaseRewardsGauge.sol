@@ -214,7 +214,7 @@ contract BaseRewardsGauge is
             uint256 leftover = remaining * rewardData[_rewardToken].rate;
             newRate = (_amount + leftover) / _WEEK;
         }
-        if (newRate == 0) {
+        if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
         rewardData[_rewardToken].rate = newRate;
