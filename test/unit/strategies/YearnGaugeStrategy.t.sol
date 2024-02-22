@@ -63,7 +63,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.etch(dYfi, address(new ERC20Mock()).code);
         yfi = MAINNET_YFI;
         vm.etch(yfi, address(new ERC20Mock()).code);
-        vm.etch(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, address(new TokenizedStrategy(MAINNET_VAULT_FACTORY)).code);
+        vm.etch(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, address(new TokenizedStrategy()).code);
         _deployVaultFactoryAt(yearnAdmin, MAINNET_VAULT_FACTORY);
         vaultAsset = address(new ERC20Mock());
         vm.label(vaultAsset, "vaultAsset");
