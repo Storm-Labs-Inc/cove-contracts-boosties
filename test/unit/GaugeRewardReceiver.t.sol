@@ -188,13 +188,13 @@ contract GaugeRewardReceiver_Test is BaseTest {
         GaugeRewardReceiver(gaugeRewardReceiver).rescue(IERC20(rewardToken), admin, 100e18);
     }
 
-    function testFuzz_rescue_revertWhen_CallerIsNotTheOwner(address a) public {
+    function testFuzz_rescue_revertWhen_CallerIsNotTheAdmin(address a) public {
         vm.assume(a != admin);
         gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize(admin);
 
         ERC20Mock(rewardToken).mint(gaugeRewardReceiver, 100e18);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(_formatAccessControlError(a, DEFAULT_ADMIN_ROLE));
         vm.prank(a);
         GaugeRewardReceiver(gaugeRewardReceiver).rescue(IERC20(rewardToken), address(0), 100e18);
     }

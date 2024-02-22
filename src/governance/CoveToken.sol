@@ -16,22 +16,22 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     /// @dev Minimum time interval between mints.
     uint256 private constant _MIN_MINT_INTERVAL = 365 days;
     /// @dev Numerator for calculating mint cap.
-    uint256 private constant _MINT_CAP_NUMERATOR = 200;
+    uint256 private constant _MINT_CAP_NUMERATOR = 600;
     /// @dev Denominator for calculating mint cap.
     uint256 private constant _MINT_CAP_DENOMINATOR = 10_000;
     /// @dev Maximum period the contract can be paused.
-    uint256 private constant _MAX_PAUSE_PERIOD = 52 weeks;
+    uint256 private constant _MAX_PAUSE_PERIOD = 18 * 4 weeks;
     /// @dev Period after which the owner can unpause the contract.
-    uint256 private constant _OWNER_PAUSE_PERIOD = 12 weeks;
+    uint256 private constant _OWNER_PAUSE_PERIOD = 6 * 4 weeks;
     /// @dev Role identifier for minters.
     bytes32 private constant _MINTER_ROLE = keccak256("MINTER_ROLE");
 
     /// @notice Timestamp after which minting is allowed.
     uint256 public mintingAllowedAfter;
     /// @notice Timestamp after which the owner can unpause the contract.
-    uint256 public ownerCanUnpauseAfter;
+    uint256 public immutable OWNER_CAN_UNPAUSE_AFTER;
     /// @notice Timestamp after which anyone can unpause the contract.
-    uint256 public anyoneCanUnpauseAfter;
+    uint256 public immutable ANYONE_CAN_UNPAUSE_AFTER;
 
     /// @notice Mapping to track addresses allowed to receive transfers.
     mapping(address => bool) public allowedTransferee;
@@ -55,13 +55,14 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      */
     constructor(address owner_, uint256 mintingAllowedAfter_) ERC20Permit("CoveToken") ERC20("CoveToken", "COVE") {
         // Checks
+        // slither-disable-next-line timestamp
         if (mintingAllowedAfter_ < block.timestamp) {
             revert Errors.MintingAllowedTooEarly();
         }
         // Effects
         _pause(); // Pause the contract
-        ownerCanUnpauseAfter = block.timestamp + _OWNER_PAUSE_PERIOD;
-        anyoneCanUnpauseAfter = block.timestamp + _MAX_PAUSE_PERIOD;
+        OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
+        ANYONE_CAN_UNPAUSE_AFTER = block.timestamp + _MAX_PAUSE_PERIOD;
         _addToAllowedTransferrer(address(0)); // Allow minting
         _addToAllowedTransferrer(owner_); // Allow transfers from owner for distribution
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
@@ -74,8 +75,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @param to The address to mint tokens to.
      * @param amount The amount of tokens to mint.
      */
-    function mint(address to, uint256 amount) external {
-        _checkRole(_MINTER_ROLE);
+    function mint(address to, uint256 amount) external onlyRole(_MINTER_ROLE) {
         if (amount > availableSupplyToMint()) {
             revert Errors.InflationTooLarge();
         }
@@ -87,7 +87,9 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Unpauses the contract.
      */
     function unpause() external whenPaused {
-        uint256 unpauseAfter = hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ? ownerCanUnpauseAfter : anyoneCanUnpauseAfter;
+        uint256 unpauseAfter =
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender) ? OWNER_CAN_UNPAUSE_AFTER : ANYONE_CAN_UNPAUSE_AFTER;
+        // slither-disable-next-line timestamp
         if (block.timestamp < unpauseAfter) {
             revert Errors.UnpauseTooEarly();
         }
@@ -131,6 +133,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @return uint256 The amount of supply available for minting.
      */
     function availableSupplyToMint() public view returns (uint256) {
+        // slither-disable-next-line timestamp
         if (block.timestamp < mintingAllowedAfter) {
             return 0;
         }

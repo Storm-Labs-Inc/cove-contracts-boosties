@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "./utils/BaseTest.t.sol";
+import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
-contract CoveTokenTest is BaseTest {
+contract CoveToken_Test is BaseTest {
     CoveToken public coveToken;
     address public owner;
     address public alice;
     address public bob;
     bytes32 public minterRole = keccak256("MINTER_ROLE");
+    uint256 public deployTimestamp;
 
     function setUp() public override {
         owner = createUser("Owner");
         alice = createUser("Alice");
         bob = createUser("Bob");
         coveToken = new CoveToken(owner, block.timestamp + 365 days);
+        deployTimestamp = block.timestamp;
         vm.prank(owner);
         coveToken.grantRole(minterRole, owner);
     }
@@ -32,6 +34,35 @@ contract CoveTokenTest is BaseTest {
     function test_initialize_revertsWhen_mintingAllowedTooEarly() public {
         vm.expectRevert(Errors.MintingAllowedTooEarly.selector);
         new CoveToken(owner, block.timestamp - 1);
+    }
+
+    function test_availableSupplyToMint() public {
+        uint256 totalSupply = coveToken.totalSupply();
+        assertEq(coveToken.availableSupplyToMint(), 0, "Available supply to mint should be 0 before minting is allowed");
+
+        vm.warp(coveToken.mintingAllowedAfter());
+        assertEq(
+            coveToken.availableSupplyToMint(),
+            totalSupply * 600 / 10_000,
+            "Available supply to mint should be 6% of the current supply"
+        );
+        vm.startPrank(owner);
+        coveToken.grantRole(minterRole, owner);
+        coveToken.mint(owner, coveToken.availableSupplyToMint());
+        assertEq(
+            coveToken.totalSupply(),
+            totalSupply + totalSupply * 600 / 10_000,
+            "Total supply should have increased by 6%"
+        );
+        totalSupply = coveToken.totalSupply();
+        assertEq(coveToken.availableSupplyToMint(), 0, "Available supply to mint should be 0 after minting");
+
+        vm.warp(coveToken.mintingAllowedAfter());
+        assertEq(
+            coveToken.availableSupplyToMint(),
+            totalSupply * 600 / 10_000,
+            "Available supply to mint should be 6% of the current supply"
+        );
     }
 
     function testFuzz_mint(uint256 amount) public {
@@ -51,7 +82,7 @@ contract CoveTokenTest is BaseTest {
         coveToken.mint(alice, amount);
     }
 
-    function tesFuzz_mint_revertsWhen_inflationTooLarge(uint256 amount) public {
+    function testFuzz_mint_revertsWhen_inflationTooLarge(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, coveToken.availableSupplyToMint() + 1, type(uint256).max);
         vm.expectRevert(Errors.InflationTooLarge.selector);
@@ -68,14 +99,30 @@ contract CoveTokenTest is BaseTest {
     }
 
     function test_unpause_owner() public {
-        vm.warp(coveToken.ownerCanUnpauseAfter());
+        vm.warp(coveToken.OWNER_CAN_UNPAUSE_AFTER());
         vm.startPrank(owner);
         coveToken.unpause();
         assertEq(coveToken.paused(), false, "Contract should be unpaused");
     }
 
+    function test_anyoneCanUnpauseAfter() public {
+        assertEq(
+            coveToken.ANYONE_CAN_UNPAUSE_AFTER(),
+            deployTimestamp + 18 * 4 weeks,
+            "ANYONE_CAN_UNPAUSE_AFTER should be 18 months after deployment"
+        );
+    }
+
+    function test_ownerCanUnpauseAfter() public {
+        assertEq(
+            coveToken.OWNER_CAN_UNPAUSE_AFTER(),
+            deployTimestamp + 6 * 4 weeks,
+            "OWNER_CAN_UNPAUSE_AFTER should be 6 months after deployment"
+        );
+    }
+
     function test_unpause_anyone() public {
-        vm.warp(coveToken.anyoneCanUnpauseAfter());
+        vm.warp(coveToken.ANYONE_CAN_UNPAUSE_AFTER());
         vm.startPrank(alice);
         coveToken.unpause();
         assertFalse(coveToken.paused());
@@ -84,7 +131,7 @@ contract CoveTokenTest is BaseTest {
     function test_unpause_anyoneCanTransfer(address user, address user2, uint256 amount) public {
         vm.assume(user != address(0) && user != owner);
         vm.assume(user2 != address(0) && user2 != owner);
-        vm.warp(coveToken.anyoneCanUnpauseAfter());
+        vm.warp(coveToken.ANYONE_CAN_UNPAUSE_AFTER());
         amount = bound(amount, 0, 1_000_000_000 ether);
         vm.prank(user);
         coveToken.unpause();
@@ -100,14 +147,14 @@ contract CoveTokenTest is BaseTest {
         vm.prank(owner);
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         coveToken.unpause();
-        vm.warp(coveToken.ownerCanUnpauseAfter());
+        vm.warp(coveToken.OWNER_CAN_UNPAUSE_AFTER());
         vm.prank(alice);
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         coveToken.unpause();
     }
 
     function test_unpause_revertsWhen_notAdmin() public {
-        vm.warp(coveToken.ownerCanUnpauseAfter());
+        vm.warp(coveToken.OWNER_CAN_UNPAUSE_AFTER());
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         vm.startPrank(alice);
         coveToken.unpause();

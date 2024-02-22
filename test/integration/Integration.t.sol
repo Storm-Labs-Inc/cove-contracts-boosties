@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
-import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
+import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
 import { IVault } from "yearn-vaults-v3/interfaces/IVault.sol";
 import { IYearnGaugeStrategy } from "src/interfaces/IYearnGaugeStrategy.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";

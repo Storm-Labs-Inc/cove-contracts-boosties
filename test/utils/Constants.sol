@@ -8,6 +8,9 @@ contract Constants is CommonBase {
     uint40 internal constant _JAN_1_2023 = 1_672_531_200;
     uint256 internal constant _MAX_UINT256 = type(uint256).max;
     uint256 internal constant _WEEK = 604_800;
+    // solhint-disable-next-line private-vars-leading-underscore
+    bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     // Ethereum mainnet addresses
     // Tokens

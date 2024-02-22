@@ -5,8 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -15,7 +14,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
  * @notice CoveYFI is a tokenized version of veYFI, commonly referred to as a liquid locker.
  * @dev Extends the ERC-20 standard with permit, pausable, ownable, and rescuable functionality.
  */
-contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
+contract CoveYFI is ERC20Permit, Rescuable, AccessControl {
     // Libraries
     using SafeERC20 for IERC20;
 
@@ -27,15 +26,9 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
 
     /**
      * @param _yearnStakingDelegate The address of the YearnStakingDelegate contract.
+     * @param admin The address of the contract admin for rescuing tokens.
      */
-    constructor(
-        address _yearnStakingDelegate,
-        address admin
-    )
-        ERC20("Cove YFI", "coveYFI")
-        ERC20Permit("Cove YFI")
-        Ownable()
-    {
+    constructor(address _yearnStakingDelegate, address admin) ERC20("Cove YFI", "coveYFI") ERC20Permit("Cove YFI") {
         // Checks
         // Check for zero addresses
         if (_yearnStakingDelegate == address(0)) {
@@ -45,7 +38,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         // Effects
         // Set storage variables
         _YEARN_STAKING_DELEGATE = _yearnStakingDelegate;
-        _transferOwnership(admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
         // Interactions
         // Max approve YFI for the yearn staking delegate
@@ -60,38 +53,19 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @param balance The amount of YFI tokens to deposit and stake. Must be greater than zero to succeed.
      */
     function deposit(uint256 balance) external {
-        address sender = _msgSender();
+        _deposit(balance, msg.sender);
+    }
 
-        // Checks
-        if (balance == 0) {
-            revert Errors.ZeroAmount();
+    /**
+     * @notice Deposits YFI tokens into the YearnStakingDelegate contract and mints coveYFI tokens to the receiver.
+     * @param balance The amount of YFI tokens to deposit and stake.
+     * @param receiver The address to mint the coveYFI tokens to.
+     */
+    function deposit(uint256 balance, address receiver) external {
+        if (receiver == address(0)) {
+            receiver = msg.sender;
         }
-
-        // Effects
-        _mint(sender, balance);
-
-        // Interactions
-        IERC20(_YFI).safeTransferFrom(sender, address(this), balance);
-        // lockYfi ultimately calls modify_lock which returns a struct with unnecessary balance information
-        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/VotingYFI.vy#L300
-        // slither-disable-next-line unused-return
-        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
-    }
-
-    /**
-     * @notice Pauses all token transfers, mints, and burns within the contract.
-     * @dev Can only be called by the contract owner. Emits a Paused event.
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-     * @notice Unpauses all token transfers, mints, and burns within the contract.
-     * @dev Can only be called by the contract owner. Emits an Unpaused event.
-     */
-    function unpause() external onlyOwner {
-        _unpause();
+        _deposit(balance, receiver);
     }
 
     /**
@@ -102,7 +76,7 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
      * @param to The recipient address of the rescued tokens.
      * @param balance The amount of tokens to rescue.
      */
-    function rescue(IERC20 token, address to, uint256 balance) external onlyOwner {
+    function rescue(IERC20 token, address to, uint256 balance) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _rescue(token, to, balance);
     }
 
@@ -124,18 +98,20 @@ contract CoveYFI is ERC20Permit, Pausable, Ownable, Rescuable {
         return _YFI;
     }
 
-    /**
-     * @notice Hook that is called before any transfer of tokens including minting and burning.
-     * @dev Overridden to restrict transfers while the contract is paused, except for minting.
-     * @param from The address the tokens are being transferred from.
-     * @param to The address the tokens are being transferred to.
-     * @param value The amount of tokens being transferred.
-     */
-    function _beforeTokenTransfer(address from, address to, uint256 value) internal virtual override {
-        // Only allow minting by allowing transfers from the 0x0 address
-        if (paused() && from != address(0x0)) {
-            revert Errors.OnlyMintingEnabled();
+    function _deposit(uint256 balance, address receiver) internal {
+        // Checks
+        if (balance == 0) {
+            revert Errors.ZeroAmount();
         }
-        super._beforeTokenTransfer(from, to, value);
+
+        // Effects
+        _mint(receiver, balance);
+
+        // Interactions
+        IERC20(_YFI).safeTransferFrom(msg.sender, address(this), balance);
+        // lockYfi ultimately calls modify_lock which returns a struct with unnecessary balance information
+        // Ref: https://github.com/yearn/veYFI/blob/master/contracts/VotingYFI.vy#L300
+        // slither-disable-next-line unused-return
+        IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
     }
 }

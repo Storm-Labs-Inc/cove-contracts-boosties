@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
-import { IStrategy } from "@tokenized-strategy/interfaces/IStrategy.sol";
+import { IStrategy } from "tokenized-strategy/interfaces/IStrategy.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { IYearnGaugeStrategy } from "src/interfaces/IYearnGaugeStrategy.sol";
