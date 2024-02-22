@@ -146,7 +146,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      * @param amount The amount to withdraw in case of an emergency.
      */
     function _emergencyWithdraw(uint256 amount) internal override {
-        uint256 currentTotalBalance = TokenizedStrategy.totalAssets();
+        uint256 currentTotalBalance = TokenizedStrategy.totalDebt();
         uint256 withdrawAmount = amount > currentTotalBalance ? currentTotalBalance : amount;
         _withdrawFromYSD(address(asset), withdrawAmount);
     }
