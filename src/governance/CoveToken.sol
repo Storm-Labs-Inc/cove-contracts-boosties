@@ -20,9 +20,9 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     /// @dev Denominator for calculating mint cap.
     uint256 private constant _MINT_CAP_DENOMINATOR = 10_000;
     /// @dev Maximum period the contract can be paused.
-    uint256 private constant _MAX_PAUSE_PERIOD = 52 weeks;
+    uint256 private constant _MAX_PAUSE_PERIOD = 18 * 4 weeks;
     /// @dev Period after which the owner can unpause the contract.
-    uint256 private constant _OWNER_PAUSE_PERIOD = 12 weeks;
+    uint256 private constant _OWNER_PAUSE_PERIOD = 6 * 4 weeks;
     /// @dev Role identifier for minters.
     bytes32 private constant _MINTER_ROLE = keccak256("MINTER_ROLE");
 
