@@ -113,6 +113,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         uint256 callerReward = address(this).balance;
         emit CallerReward(msg.sender, callerReward);
         // slither-disable-next-line arbitrary-send-eth
+        // slither-disable-next-line low-level-calls
         (bool sent,) = msg.sender.call{ value: callerReward }("");
         if (!sent) {
             revert Errors.CallerRewardEthTransferFailed();
