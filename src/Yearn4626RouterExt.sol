@@ -9,6 +9,7 @@ import { IWETH9 } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
 import { IYearn4626RouterExt } from "./interfaces/IYearn4626RouterExt.sol";
 
 contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
+    // slither-disable-next line naming-convention
     IPermit2 private immutable _PERMIT2;
 
     error InsufficientShares();
