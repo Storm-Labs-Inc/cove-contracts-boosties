@@ -67,18 +67,18 @@ contract BaseRewardsGauge is
 
     /**
      * @notice Initialize the contract
-     * @param asset Address of the asset token that will be deposited
+     * @param asset_ Address of the asset token that will be deposited
      */
-    function initialize(address asset) public virtual initializer {
-        if (asset == address(0)) {
+    function initialize(address asset_) public virtual initializer {
+        if (asset_ == address(0)) {
             revert ZeroAddress();
         }
-        string memory name = string.concat(IERC20Metadata(asset).name(), " Cove Rewards Gauge");
-        string memory symbol = string.concat(IERC20Metadata(asset).symbol(), "-gauge");
+        string memory name_ = string.concat(IERC20Metadata(asset_).name(), " Cove Rewards Gauge");
+        string memory symbol_ = string.concat(IERC20Metadata(asset_).symbol(), "-gauge");
 
-        __ERC20_init(name, symbol);
-        __ERC20Permit_init(name);
-        __ERC4626_init(IERC20(asset));
+        __ERC20_init(name_, symbol_);
+        __ERC20Permit_init(name_);
+        __ERC4626_init(IERC20(asset_));
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(_MANAGER_ROLE, msg.sender);
@@ -227,7 +227,7 @@ contract BaseRewardsGauge is
     /**
      * @notice Claim pending rewards and checkpoint rewards for a user
      */
-    function _checkpointRewards(address user, uint256 totalSupply, bool claim, address receiver) internal {
+    function _checkpointRewards(address user, uint256 totalSupply_, bool claim, address receiver) internal {
         uint256 userBalance = 0;
         if (user != address(0)) {
             userBalance = balanceOf(user);
@@ -243,19 +243,19 @@ contract BaseRewardsGauge is
             if (token == address(0)) {
                 break;
             }
-            _updateReward(token, totalSupply);
+            _updateReward(token, totalSupply_);
             if (user != address(0)) {
                 _processUserReward(token, user, userBalance, claim, receiver);
             }
         }
     }
 
-    function _updateReward(address token, uint256 totalSupply) internal {
+    function _updateReward(address token, uint256 totalSupply_) internal {
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
         // slither-disable-next-line timestamp
-        if (duration > 0 && totalSupply > 0) {
-            rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / totalSupply;
+        if (duration > 0 && totalSupply_ > 0) {
+            rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / totalSupply_;
             rewardData[token].lastUpdate = lastUpdate;
         }
     }
@@ -290,9 +290,9 @@ contract BaseRewardsGauge is
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        uint256 totalSupply = totalSupply();
-        _checkpointRewards(from, totalSupply, false, address(0));
-        _checkpointRewards(to, totalSupply, false, address(0));
+        uint256 totalSupply_ = totalSupply();
+        _checkpointRewards(from, totalSupply_, false, address(0));
+        _checkpointRewards(to, totalSupply_, false, address(0));
         super._beforeTokenTransfer(from, to, amount);
     }
 }
