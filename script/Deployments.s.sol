@@ -165,8 +165,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         coveToken.multicall(data);
     }
 
-    function deploySablierStreams() public broadcast {
-        batchCreateStreams(IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
+    function deploySablierStreams() public broadcast returns (uint256[] memory streamIds) {
+        streamIds = batchCreateStreams(IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
     }
 
     function deployCoveYearnGaugeFactory(

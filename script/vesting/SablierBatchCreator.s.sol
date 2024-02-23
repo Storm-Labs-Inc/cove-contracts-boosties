@@ -111,5 +111,12 @@ contract SablierBatchCreator is CommonBase, Constants {
         streamIds = ISablierV2Batch(MAINNET_SABLIER_V2_BATCH).createWithDurations(
             MAINNET_SABLIER_V2_LOCKUP_LINEAR, token, batch
         );
+        // Log out recipient, amount, and stream id
+        console.log("Sablier V2 streams created:", streamIds.length);
+        for (uint256 i = 0; i < streamIds.length; i++) {
+            console.log(
+                "  Stream ID: %d, Recipient: %s, Amount: %d", streamIds[i], batch[i].recipient, batch[i].totalAmount
+            );
+        }
     }
 }
