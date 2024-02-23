@@ -49,7 +49,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         // Deploy Cove Token with minting allowed after 3 years
         uint256 mintingAllowedAfter = block.timestamp + 3 * 365 days;
         deployCoveToken(mintingAllowedAfter);
-        // Allow admin, and manager, and sablier batch contract to transfer cove tokens
+        // Allow admin, and manager, and sablier batch contract, and the vesting contract to transfer cove tokens
         address[] memory allowedSenders = new address[](4);
         allowedSenders[0] = admin;
         allowedSenders[1] = manager;
