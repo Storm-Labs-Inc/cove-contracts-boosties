@@ -59,7 +59,7 @@ jobs:
         uses: crytic/slither-action@v0.3.1
         id: slither
         with:
-          fail-on: low
+          fail-on: all
           ignore-compile: true
           node-version: ${{ env.NODE_VERSION }}
           slither-args:

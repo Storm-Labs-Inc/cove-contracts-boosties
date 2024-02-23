@@ -36,8 +36,10 @@ contract CoveYearnGaugeFactory is AccessControl {
 
     bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
     address private constant _DYFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
+    // slither-disable-start naming-convention
     address public immutable YEARN_STAKING_DELEGATE;
     address public immutable COVE;
+    // slither-disable-end naming-convention
     address public rewardForwarderImpl;
     address public baseRewardsGaugeImpl;
     address public ysdRewardsGaugeImpl;

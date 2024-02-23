@@ -28,10 +28,13 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
 
     /// @notice Timestamp after which minting is allowed.
     uint256 public mintingAllowedAfter;
+
+    // slither-disable-start naming-convention
     /// @notice Timestamp after which the owner can unpause the contract.
     uint256 public immutable OWNER_CAN_UNPAUSE_AFTER;
     /// @notice Timestamp after which anyone can unpause the contract.
     uint256 public immutable ANYONE_CAN_UNPAUSE_AFTER;
+    // slither-disable-end naming-convention
 
     /// @notice Mapping to track addresses allowed to receive transfers.
     mapping(address => bool) public allowedTransferee;
