@@ -47,7 +47,6 @@ contract YSDRewardsGauge is BaseRewardsGauge {
 
     function setStakingDelegateRewardsReceiver(address receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(asset());
-        // TODO: modify staking delegate to allow setting rewards receiver
         IStakingDelegateRewards(stakingDelegateRewards).setRewardReceiver(receiver);
     }
 
