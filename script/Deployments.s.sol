@@ -151,8 +151,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         deployIfMissing("CoveToken")
         returns (address)
     {
-        CoveToken coveToken = deployer.deploy_CoveToken("CoveToken", broadcaster, mintingAllowedAfter, options);
-        return address(coveToken);
+        address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, mintingAllowedAfter, options));
+        return cove;
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
