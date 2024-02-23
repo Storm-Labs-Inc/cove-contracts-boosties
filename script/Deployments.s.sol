@@ -13,7 +13,6 @@ import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol"
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
 import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { Constants } from "test/utils/Constants.sol";
 import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
 // Could also import the default deployer functions
