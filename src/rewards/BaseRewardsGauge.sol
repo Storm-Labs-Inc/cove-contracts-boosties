@@ -281,9 +281,9 @@ contract BaseRewardsGauge is
         uint256 totalClaimed = data % (2 ** 128);
 
         if (totalClaimable > 0) {
-            claimData[_user][token] = _claim ? totalClaimed + totalClaimable : totalClaimed + (totalClaimable << 128);
+            claimData[user][token] = claim ? totalClaimed + totalClaimable : totalClaimed + (totalClaimable << 128);
 
-            if (_claim) {
+            if (claim) {
                 IERC20(token).safeTransfer(receiver, totalClaimable);
             }
         }
