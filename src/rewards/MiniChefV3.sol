@@ -30,7 +30,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         uint64 allocPoint;
     }
 
-    // slither-disable-next-line naming-convention,similar-names
+    // slither-disable-next-line naming-convention
+    // slither-disable-next-line similar-names
     /// @notice Address of REWARD_TOKEN contract.
     IERC20 public immutable REWARD_TOKEN;
 
