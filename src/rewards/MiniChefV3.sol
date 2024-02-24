@@ -9,21 +9,32 @@ import { SelfPermit } from "src/deps/uniswap/v3-periphery/base/SelfPermit.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
+/**
+ * @title MiniChefV3
+ * @notice A contract for managing staking, rewards, and pool information for liquidity providers.
+ * @dev This contract handles the logic for staking LP tokens, distributing rewards, and managing pool information.
+ * It supports multiple reward tokens through external rewarder contracts and includes emergency withdrawal
+ * functionality.
+ */
 contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     using SafeERC20 for IERC20;
 
-    /// @notice Info of each MCV3 user.
-    /// `amount` LP token amount the user has provided.
-    /// `rewardDebt` The amount of REWARD_TOKEN entitled to the user.
+    /**
+     * @notice Info of each MCV3 user.
+     * `amount` LP token amount the user has provided.
+     * `rewardDebt` The amount of REWARD_TOKEN entitled to the user.
+     */
     struct UserInfo {
         uint256 amount;
         uint256 rewardDebt;
         uint256 unpaidRewards;
     }
 
-    /// @notice Info of each MCV3 pool.
-    /// `allocPoint` The amount of allocation points assigned to the pool.
-    /// Also known as the amount of REWARD_TOKEN to distribute per block.
+    /**
+     * @notice Info of each MCV3 pool.
+     * `allocPoint` The amount of allocation points assigned to the pool.
+     * Also known as the amount of REWARD_TOKEN to distribute per block.
+     */
     struct PoolInfo {
         uint128 accRewardPerShare;
         uint64 lastRewardTime;
@@ -68,7 +79,11 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
     event LogRewardPerSecond(uint256 rewardPerSecond);
 
-    /// @param rewardToken_ The reward token contract address.
+    /**
+     * @dev Constructs the MiniChefV3 contract with a specified reward token and admin address.
+     * @param rewardToken_ The ERC20 token to be used as the reward token.
+     * @param admin The address that will be granted the default admin role.
+     */
     constructor(IERC20 rewardToken_, address admin) {
         REWARD_TOKEN = rewardToken_;
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
@@ -79,35 +94,64 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         pools = _poolInfo.length;
     }
 
+    /**
+     * @notice Retrieves the pool ID of a given LP token.
+     * @dev Returns the pool ID by looking up the LP token address in the `_pidPlusOne` mapping.
+     * @param lpToken_ The LP token to query the pool ID for.
+     * @return pid The pool ID of the given LP token.
+     */
     function pidOfLPToken(IERC20 lpToken_) external view returns (uint256 pid) {
         uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
         // slither-disable-next-line timestamp
         if (pidPlusOne <= 0) {
             revert Errors.InvalidLPToken();
         }
+        /// @dev The unchecked block is used here because the subtraction is safe from underflow.
+        /// The condition above ensures that `pidPlusOne` is greater than zero, so subtracting one will not underflow.
         unchecked {
             pid = pidPlusOne - 1;
         }
     }
 
+    /**
+     * @notice Checks if an LP token has been added to any pool.
+     * @dev Returns true if the LP token exists in the `_pidPlusOne` mapping.
+     * @param lpToken_ The LP token to check.
+     * @return added True if the LP token has been added to a pool.
+     */
     function isLPTokenAdded(IERC20 lpToken_) external view returns (bool added) {
         // slither-disable-next-line timestamp
         added = _pidPlusOne[address(lpToken_)] != 0;
     }
 
+    /**
+     * @notice Retrieves user information for a specific pool.
+     * @dev Returns the user's staked amount, reward debt, and unpaid rewards for a given pool.
+     * @param pid The pool ID to retrieve user information for.
+     * @param user The user address to retrieve information for.
+     * @return info The user's information for the specified pool.
+     */
     function getUserInfo(uint256 pid, address user) external view returns (UserInfo memory info) {
         info = _userInfo[pid][user];
     }
 
+    /**
+     * @notice Retrieves pool information for a specific pool ID.
+     * @dev Returns the pool's accumulated reward per share, last reward time, and allocation points.
+     * @param pid The pool ID to retrieve information for.
+     * @return info The pool's information.
+     */
     function getPoolInfo(uint256 pid) external view returns (PoolInfo memory info) {
         info = _poolInfo[pid];
     }
 
-    /// @notice Add a new LP to the pool. Can only be called by the owner.
-    /// DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    /// @param allocPoint AP of the new pool.
-    /// @param lpToken_ Address of the LP ERC-20 token.
-    /// @param rewarder_ Address of the rewarder delegate.
+    /**
+     * @notice Add a new LP to the pool. Can only be called by the owner.
+     * DO NOT add the same LP token more than once. Rewards will be messed up if you do.
+     * @param allocPoint AP of the new pool.
+     * @param lpToken_ Address of the LP ERC-20 token.
+     * @param rewarder_ Address of the rewarder delegate.
+     */
     function add(
         uint256 allocPoint,
         IERC20 lpToken_,
@@ -131,12 +175,14 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         emit LogPoolAddition(pid, allocPoint, lpToken_, rewarder_);
     }
 
-    /// @notice Update the given pool's REWARD_TOKEN allocation point and `IRewarder` contract. Can only be called by
-    /// the owner.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @param allocPoint New AP of the pool.
-    /// @param rewarder_ Address of the rewarder delegate.
-    /// @param overwrite True if rewarder_ should be `set`. Otherwise `rewarder_` is ignored.
+    /**
+     * @notice Update the given pool's REWARD_TOKEN allocation point and `IRewarder` contract. Can only be called by
+     * the owner.
+     * @param pid The index of the pool. See `_poolInfo`.
+     * @param allocPoint New AP of the pool.
+     * @param rewarder_ Address of the rewarder delegate.
+     * @param overwrite True if rewarder_ should be `set`. Otherwise `rewarder_` is ignored.
+     */
     function set(
         uint256 pid,
         uint256 allocPoint,
@@ -154,11 +200,13 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         emit LogSetPool(pid, allocPoint, overwrite ? rewarder_ : rewarder[pid], overwrite);
     }
 
-    /// @notice Rescue ERC20 tokens from the contract.
-    /// @param token The address of the ERC20 token to rescue.
-    /// @param to The address to send the rescued tokens to.
-    /// @param amount The amount of tokens to rescue.
-    /// @dev Rescue is only allowed when there is a discrepancy between balanceOf this and lpSupply.
+    /*
+    * @notice Rescue ERC20 tokens from the contract.
+    * @param token The address of the ERC20 token to rescue.
+    * @param to The address to send the rescued tokens to.
+    * @param amount The amount of tokens to rescue.
+    * @dev Rescue is only allowed when there is a discrepancy between balanceOf this and lpSupply.
+    */
     function rescue(IERC20 token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 pidPlusOne = _pidPlusOne[address(token)];
         uint256 availableForRescue = token.balanceOf(address(this));
@@ -177,24 +225,30 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         }
     }
 
-    /// @notice Sets the reward per second to be distributed. Can only be called by the owner.
-    /// @param rewardPerSecond_ The amount of reward token to be distributed per second.
+    /**
+     * @notice Sets the reward per second to be distributed. Can only be called by the owner.
+     * @param rewardPerSecond_ The amount of reward token to be distributed per second.
+     */
     function setRewardPerSecond(uint256 rewardPerSecond_) public onlyRole(DEFAULT_ADMIN_ROLE) {
         rewardPerSecond = rewardPerSecond_;
         emit LogRewardPerSecond(rewardPerSecond_);
     }
 
-    /// @notice Commits REWARD_TOKEN to the contract for distribution.
-    /// @param amount The amount of REWARD_TOKEN to commit.
+    /**
+     * @notice Commits REWARD_TOKEN to the contract for distribution.
+     * @param amount The amount of REWARD_TOKEN to commit.
+     */
     function commitReward(uint256 amount) external {
         availableReward += amount;
         REWARD_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    /// @notice View function to see pending REWARD_TOKEN on frontend.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @param user_ Address of user.
-    /// @return pending REWARD_TOKEN reward for a given user.
+    /**
+     * @notice View function to see pending REWARD_TOKEN on frontend.
+     * @param pid The index of the pool. See `_poolInfo`.
+     * @param user_ Address of user.
+     * @return pending REWARD_TOKEN reward for a given user.
+     */
     function pendingReward(uint256 pid, address user_) external view returns (uint256 pending) {
         PoolInfo memory pool = _poolInfo[pid];
         UserInfo storage user = _userInfo[pid][user_];
@@ -213,9 +267,11 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         pending = (user.amount * accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION) - user.rewardDebt + user.unpaidRewards;
     }
 
-    /// @notice Update reward variables of the given pool.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @return pool Returns the pool that was updated.
+    /**
+     * @notice Update reward variables of the given pool.
+     * @param pid The index of the pool. See `_poolInfo`.
+     * @return pool Returns the pool that was updated.
+     */
     function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = _poolInfo[pid];
         // slither-disable-next-line timestamp
@@ -236,10 +292,12 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         }
     }
 
-    /// @notice Deposit LP tokens to MCV3 for REWARD_TOKEN allocation.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @param amount LP token amount to deposit.
-    /// @param to The receiver of `amount` deposit benefit.
+    /**
+     * @notice Deposit LP tokens to MCV3 for REWARD_TOKEN allocation.
+     * @param pid The index of the pool. See `_poolInfo`.
+     * @param amount LP token amount to deposit.
+     * @param to The receiver of `amount` deposit benefit.
+     */
     function deposit(uint256 pid, uint256 amount, address to) public {
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][to];
@@ -260,10 +318,12 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         }
     }
 
-    /// @notice Withdraw LP tokens from MCV3.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @param amount LP token amount to withdraw.
-    /// @param to Receiver of the LP tokens.
+    /**
+     * @notice Withdraw LP tokens from MCV3.
+     * @param pid The index of the pool. See `_poolInfo`.
+     * @param amount LP token amount to withdraw.
+     * @param to Receiver of the LP tokens.
+     */
     function withdraw(uint256 pid, uint256 amount, address to) public {
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][msg.sender];
@@ -284,9 +344,11 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         }
     }
 
-    /// @notice Harvest proceeds for transaction sender to `to`.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @param to Receiver of REWARD_TOKEN rewards.
+    /**
+     * @notice Harvest proceeds for transaction sender to `to`.
+     * @param pid The index of the pool. See `_poolInfo`.
+     * @param to Receiver of REWARD_TOKEN rewards.
+     */
     function harvest(uint256 pid, address to) public {
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][msg.sender];
@@ -302,7 +364,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
             uint256 availableReward_ = availableReward;
             uint256 unpaidRewards_ = 0;
             rewardAmount = pendingReward_ > availableReward_ ? availableReward_ : pendingReward_;
-            /// @dev unchecked is used as the subtraction is guaranteed to not underflow.
+            /// @dev unchecked is used as the subtraction is guaranteed to not underflow because
+            /// `rewardAmount` is always less than or equal to `availableReward_`.
             unchecked {
                 availableReward -= rewardAmount;
                 unpaidRewards_ = pendingReward_ - rewardAmount;
@@ -322,9 +385,11 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         }
     }
 
-    /// @notice Withdraw without caring about rewards. EMERGENCY ONLY.
-    /// @param pid The index of the pool. See `_poolInfo`.
-    /// @param to Receiver of the LP tokens.
+    /**
+     * @notice Withdraw without caring about rewards. EMERGENCY ONLY.
+     * @param pid The index of the pool. See `_poolInfo`.
+     * @param to Receiver of the LP tokens.
+     */
     function emergencyWithdraw(uint256 pid, address to) public {
         UserInfo storage user = _userInfo[pid][msg.sender];
         uint256 amount = user.amount;

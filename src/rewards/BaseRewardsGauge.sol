@@ -16,8 +16,10 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
 
 /**
- * @title BaseRewardsGauge
- * @notice Solidity implementation of a tokenized liquidity gauge with support for multi rewards distribution
+ * @title Base Rewards Gauge
+ * @notice Gauge contract for managing and distributing reward tokens to stakers.
+ * @dev This contract handles the accounting of reward tokens, allowing users to claim their accrued rewards.
+ * It supports multiple reward tokens and allows for the addition of new rewards by authorized distributors.
  */
 contract BaseRewardsGauge is
     IBaseRewardsGauge,
@@ -147,7 +149,11 @@ contract BaseRewardsGauge is
     }
 
     /**
-     * @notice Set the active reward contract
+     * @notice Adds a new reward token to be distributed by this contract.
+     * @dev Adds a new reward token to the contract, enabling it to be claimed by users.
+     * Can only be called by an address with the manager role.
+     * @param rewardToken The address of the reward token to add.
+     * @param distributor The address of the distributor for the reward token.
      */
     function addReward(address rewardToken, address distributor) external {
         _checkRole(_MANAGER_ROLE);
@@ -225,7 +231,14 @@ contract BaseRewardsGauge is
     }
 
     /**
-     * @notice Claim pending rewards and checkpoint rewards for a user
+     * @dev Internal function to claim pending rewards and update reward accounting for a user.
+     *      This function is called during any claim operation and when rewards are deposited.
+     *      It iterates through all reward tokens to update user rewards and optionally claims them.
+     * @param user The user address to checkpoint rewards for. If set to address(0), only updates the global state.
+     * @param totalSupply_ The current total supply of the staking token.
+     * @param claim If true, rewards will be transferred to the user or their designated receiver.
+     * @param receiver The address to send claimed rewards to. If set to address(0), sends to the user or their default
+     * receiver.
      */
     function _checkpointRewards(address user, uint256 totalSupply_, bool claim, address receiver) internal {
         uint256 userBalance = 0;
@@ -247,6 +260,13 @@ contract BaseRewardsGauge is
         }
     }
 
+    /**
+     * @dev Internal function to update the reward accounting for a given token.
+     *      This updates the accumulated reward per token and the timestamp of the last reward update.
+     *      It is called by `_checkpointRewards` to ensure the reward state is up to date before any interactions.
+     * @param token The address of the reward token to update accounting for.
+     * @param totalSupply_ The current total supply of the staking token, used to calculate the rewards per token.
+     */
     function _updateReward(address token, uint256 totalSupply_) internal {
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
@@ -257,10 +277,24 @@ contract BaseRewardsGauge is
         }
     }
 
+    /**
+     * @notice Returns the total amount of the underlying asset that the gauge has.
+     * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
+     *      This is used to calculate the value of each share.
+     * @return The total assets held by the gauge.
+     */
     function totalAssets() public view virtual override returns (uint256) {
         return totalSupply();
     }
 
+    /**
+     * @dev Internal function to process user rewards, updating the claimable and claimed amounts.
+     * @param token The address of the reward token to process.
+     * @param user The user address to process rewards for.
+     * @param userBalance The current balance of the user.
+     * @param claim Whether to claim the rewards (transfer them to the user).
+     * @param receiver The address to send claimed rewards to.
+     */
     function _processUserReward(
         address token,
         address user,
@@ -291,6 +325,12 @@ contract BaseRewardsGauge is
         }
     }
 
+    /**
+     * @dev Hook that is called before any transfer of tokens. This includes minting and burning.
+     * @param from The address which is transferring tokens.
+     * @param to The address which is receiving tokens.
+     * @param amount The amount of tokens being transferred.
+     */
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         uint256 totalSupply_ = totalSupply();
         _checkpointRewards(from, totalSupply_, false, address(0));
