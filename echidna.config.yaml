@@ -6,5 +6,5 @@ codeSize: 0xffffff
 deployer: "0x10000"
 sender: ["0x10000"]
 
-# instruct foundry to compile tests
-cryticArgs: ["--foundry-compile-all"]
+# Skip compiling. Repo must be compiled before running Echidna.
+cryticArgs: ["--ignore-compile"]

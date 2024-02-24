@@ -196,7 +196,6 @@ jobs:
         with:
           files: .
           contract: "BaseRewardsGauge_EchidnaTest" # TODO: change to the master invariant test contract
-          crytic-args: --ignore-compile
           config: echidna.config.yaml
 
   spelling:
