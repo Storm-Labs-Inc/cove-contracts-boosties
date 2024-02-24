@@ -240,9 +240,6 @@ contract BaseRewardsGauge is
         uint256 rewardCount = rewardTokens.length;
         for (uint256 i = 0; i < rewardCount; i++) {
             address token = rewardTokens[i];
-            if (token == address(0)) {
-                break;
-            }
             _updateReward(token, totalSupply_);
             if (user != address(0)) {
                 _processUserReward(token, user, userBalance, claim, receiver);
@@ -271,8 +268,9 @@ contract BaseRewardsGauge is
     {
         uint256 integral = rewardData[token].integral;
         uint256 integralFor = rewardIntegralFor[token][user];
-        uint256 newClaimable = integralFor < integral ? userBalance * (integral - integralFor) / _PRECISION : 0;
-        if (newClaimable > 0) {
+        uint256 newClaimable = 0;
+        if (integral > integralFor) {
+            newClaimable = userBalance * (integral - integralFor) / _PRECISION;
             rewardIntegralFor[token][user] = integral;
         }
 
