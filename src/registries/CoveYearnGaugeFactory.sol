@@ -10,6 +10,13 @@ import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Errors } from "src/libraries/Errors.sol";
 
+/**
+ * @title Cove Yearn Gauge Factory
+ * @notice Factory contract to deploy and manage Yearn gauge-related contracts for Cove protocol.
+ * @dev This contract allows for the creation of Yearn gauge strategies, auto-compounding gauges, and
+ * non-auto-compounding gauges.
+ * It also manages the reward forwarder implementations and various administrative roles.
+ */
 contract CoveYearnGaugeFactory is AccessControl {
     struct GaugeInfoStored {
         address coveYearnStrategy;
@@ -53,6 +60,17 @@ contract CoveYearnGaugeFactory is AccessControl {
         address yearnGauge, address coveYearnStrategy, address autoCompoundingGauge, address nonAutoCompoundingGauge
     );
 
+    /**
+     * @dev Initializes the factory with the necessary contract implementations and administrative roles.
+     * @param factoryAdmin The address that will be granted the factory admin role.
+     * @param ysd The address of the Yearn staking delegate.
+     * @param cove The address of the Cove token.
+     * @param rewardForwarderImpl_ The implementation address of the RewardForwarder contract.
+     * @param baseRewardsGaugeImpl_ The implementation address of the BaseRewardsGauge contract.
+     * @param ysdRewardsGaugeImpl_ The implementation address of the YSDRewardsGauge contract.
+     * @param treasuryMultisig_ The address of the treasury multisig.
+     * @param gaugeAdmin_ The address that will be granted the gauge admin role.
+     */
     constructor(
         address factoryAdmin,
         address ysd,
@@ -75,10 +93,18 @@ contract CoveYearnGaugeFactory is AccessControl {
         _grantRole(_MANAGER_ROLE, factoryAdmin);
     }
 
+    /**
+     * @notice Returns the number of supported Yearn gauges.
+     * @return The count of supported Yearn gauges.
+     */
     function numOfSupportedYearnGauges() external view returns (uint256) {
         return supportedYearnGauges.length;
     }
 
+    /**
+     * @notice Retrieves information for all supported Yearn gauges.
+     * @return An array of GaugeInfo structs containing details for each supported Yearn gauge.
+     */
     function getAllGaugeInfo() external view returns (GaugeInfo[] memory) {
         uint256 length = supportedYearnGauges.length;
         GaugeInfo[] memory result = new GaugeInfo[](length);
@@ -88,8 +114,14 @@ contract CoveYearnGaugeFactory is AccessControl {
         return result;
     }
 
-    // slither-disable-start calls-loop
+    /**
+     * @notice Retrieves information for a specific Yearn gauge.
+     * @dev Fetches gauge information from storage and attempts to determine the vault asset and version.
+     * @param yearnGauge The address of the Yearn gauge to retrieve information for.
+     * @return A GaugeInfo struct containing details for the specified Yearn gauge.
+     */
     function getGaugeInfo(address yearnGauge) public view returns (GaugeInfo memory) {
+        // slither-disable-start calls-loop
         GaugeInfoStored memory stored = yearnGaugeInfoStored[yearnGauge];
         address coveYearnStrategy = stored.coveYearnStrategy;
         if (coveYearnStrategy == address(0)) {
@@ -113,9 +145,15 @@ contract CoveYearnGaugeFactory is AccessControl {
             autoCompoundingGauge: stored.autoCompoundingGauge,
             nonAutoCompoundingGauge: stored.nonAutoCompoundingGauge
         });
+        // slither-disable-end calls-loop
     }
-    // slither-disable-end calls-loop
 
+    /**
+     * @notice Deploys Cove gauges for a given Yearn strategy.
+     * @dev Creates new instances of auto-compounding and non-auto-compounding gauges, initializes them, and sets up
+     * reward forwarders.
+     * @param coveYearnStrategy The address of the Cove Yearn strategy for which to deploy gauges.
+     */
     function deployCoveGauges(address coveYearnStrategy) external onlyRole(_MANAGER_ROLE) {
         // Sanity check
         if (coveYearnStrategy == address(0)) {
@@ -191,22 +229,47 @@ contract CoveYearnGaugeFactory is AccessControl {
         }
     }
 
+    /**
+     * @notice Sets the implementation address for the RewardForwarder contract.
+     * @dev Can only be called by the admin role. Reverts if the new implementation address is the zero address.
+     * @param impl The new implementation address for the RewardForwarder contract.
+     */
     function setRewardForwarderImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setRewardForwarderImplementation(impl);
     }
 
+    /**
+     * @notice Sets the implementation address for the YSDRewardsGauge contract.
+     * @dev Can only be called by the admin role. Reverts if the new implementation address is the zero address.
+     * @param impl The new implementation address for the YSDRewardsGauge contract.
+     */
     function setYsdRewardsGaugeImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setYsdRewardsGaugeImplementation(impl);
     }
 
+    /**
+     * @notice Sets the treasury multisig address.
+     * @dev Can only be called by the admin role. Reverts if the new treasury multisig address is the zero address.
+     * @param multisig The new treasury multisig address.
+     */
     function setTreasuryMultisig(address multisig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setTreasuryMultisig(multisig);
     }
 
+    /**
+     * @notice Sets the implementation address for the BaseRewardsGauge contract.
+     * @dev Can only be called by the admin role. Reverts if the new implementation address is the zero address.
+     * @param impl The new implementation address for the BaseRewardsGauge contract.
+     */
     function setBaseRewardsGaugeImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setBaseRewardsGaugeImplementation(impl);
     }
 
+    /**
+     * @notice Sets the gauge admin address.
+     * @dev Can only be called by the admin role. Reverts if the new gauge admin address is the zero address.
+     * @param admin The new gauge admin address.
+     */
     function setGaugeAdmin(address admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setGaugeAdmin(admin);
     }
