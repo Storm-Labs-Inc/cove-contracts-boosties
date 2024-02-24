@@ -68,6 +68,11 @@ contract Constants is CommonBase {
     // Uniswap
     address public constant MAINNET_PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
+    // Sablier V2
+    // See https://docs.sablier.com/contracts/v2/deployments for all deployments
+    address public constant MAINNET_SABLIER_V2_BATCH = 0xEa07DdBBeA804E7fe66b958329F8Fa5cDA95Bd55;
+    address public constant MAINNET_SABLIER_V2_LOCKUP_LINEAR = 0xAFb979d9afAd1aD27C5eFf4E27226E3AB9e5dCC9;
+
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     // keccak256("TokenPermissions(address token,uint256 amount)");
@@ -115,5 +120,10 @@ contract Constants is CommonBase {
         vm.label(MAINNET_FRAX_USDC_POOL, "FRAX_USDC_POOL");
         vm.label(MAINNET_WETH_YETH_POOL, "ETH_WETH_YETH_POOL");
         vm.label(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, "TOKENIZED_STRATEGY_IMPLEMENTATION");
+        // Uniswap
+        vm.label(MAINNET_PERMIT2, "PERMIT2");
+        // Sablier V2
+        vm.label(MAINNET_SABLIER_V2_BATCH, "SABLIER_V2_BATCH");
+        vm.label(MAINNET_SABLIER_V2_LOCKUP_LINEAR, "SABLIER_V2_LOCKUP_LINEAR");
     }
 }
