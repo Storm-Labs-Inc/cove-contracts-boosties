@@ -207,6 +207,10 @@ contract CoveYearnGaugeFactory is AccessControl {
         _setBaseRewardsGaugeImplementation(impl);
     }
 
+    function setGaugeAdmin(address admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setGaugeAdmin(admin);
+    }
+
     function _setRewardForwarderImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
