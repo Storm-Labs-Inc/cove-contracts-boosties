@@ -6,6 +6,7 @@ fs_permissions = [
     { access = "read-write", path = "./deployments" },
     { access = "read", path = "./out" },
     { access = "read", path = "./config" },
+    { access = "read", path = "./script" },
 ]
 solc = '0.8.18'
 ffi = true

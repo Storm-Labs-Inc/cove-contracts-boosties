@@ -12,12 +12,13 @@ import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { Constants } from "test/utils/Constants.sol";
+import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
+import { CoveToken } from "src/governance/CoveToken.sol";
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
 
-contract Deployments is BaseDeployScript, Constants {
+contract Deployments is BaseDeployScript, SablierBatchCreator {
     // Using generated functions
     using DeployerFunctions for Deployer;
     // Using default deployer function
@@ -48,6 +49,15 @@ contract Deployments is BaseDeployScript, Constants {
         // Deploy Cove Token with minting allowed after 3 years
         uint256 mintingAllowedAfter = block.timestamp + 3 * 365 days;
         deployCoveToken(mintingAllowedAfter);
+        // Allow admin, and manager, and sablier batch contract, and the vesting contract to transfer cove tokens
+        address[] memory allowedSenders = new address[](4);
+        allowedSenders[0] = admin;
+        allowedSenders[1] = manager;
+        allowedSenders[2] = MAINNET_SABLIER_V2_BATCH;
+        allowedSenders[3] = MAINNET_SABLIER_V2_LOCKUP_LINEAR;
+        allowlistCoveTokenTransfers(allowedSenders);
+        // Deploy Vesting via Sablier
+        deploySablierStreams();
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
@@ -141,8 +151,21 @@ contract Deployments is BaseDeployScript, Constants {
         deployIfMissing("CoveToken")
         returns (address)
     {
-        address cove = address(deployer.deploy_CoveToken("CoveToken", admin, mintingAllowedAfter, options));
+        address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, mintingAllowedAfter, options));
         return cove;
+    }
+
+    function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
+        CoveToken coveToken = CoveToken(deployer.getAddress("CoveToken"));
+        bytes[] memory data = new bytes[](transferrers.length);
+        for (uint256 i = 0; i < transferrers.length; i++) {
+            data[i] = abi.encodeWithSelector(CoveToken.addAllowedTransferrer.selector, transferrers[i]);
+        }
+        coveToken.multicall(data);
+    }
+
+    function deploySablierStreams() public broadcast returns (uint256[] memory streamIds) {
+        streamIds = batchCreateStreams(IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
     }
 
     function deployCoveYearnGaugeFactory(
