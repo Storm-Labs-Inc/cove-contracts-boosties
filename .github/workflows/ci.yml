@@ -176,12 +176,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   invariant-test:
-    strategy:
-      fail-fast: true # In case one of the jobs fails, the other jobs will be cancelled
-      matrix:
-        runs-on: [buildjet-4vcpu-ubuntu-2204, buildjet-8vcpu-ubuntu-2204, buildjet-16vcpu-ubuntu-2204]
-    name: Invariant Test (Echidna) - ${{matrix.runs-on}}
-    runs-on: ${{matrix.runs-on}}
+    name: Invariant Test (Echidna)
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - name: Checkout repository without submodules
         uses: actions/checkout@v3
