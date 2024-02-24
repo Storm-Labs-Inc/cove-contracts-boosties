@@ -61,8 +61,6 @@ contract BaseRewardsGauge is
     error ZeroAddress();
     error RewardCannotBeAsset();
 
-    event LogString(string);
-
     constructor() {
         _disableInitializers();
     }
@@ -242,9 +240,9 @@ contract BaseRewardsGauge is
         uint256 rewardCount = rewardTokens.length;
         for (uint256 i = 0; i < rewardCount; i++) {
             address token = rewardTokens[i];
-            _updateReward(token, _totalSupply);
-            if (_user != address(0)) {
-                _processUserReward(token, _user, userBalance, _claim, receiver);
+            _updateReward(token, totalSupply_);
+            if (user != address(0)) {
+                _processUserReward(token, user, userBalance, claim, receiver);
             }
         }
     }

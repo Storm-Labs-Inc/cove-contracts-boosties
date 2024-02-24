@@ -21,7 +21,7 @@ contract BaseRewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
         BaseRewardsGauge gaugeImpl = new BaseRewardsGauge();
         // Initialize the gauge with the asset token
         _rewardsGauge = BaseRewardsGauge(Clones.clone(address(gaugeImpl)));
-        _rewardsGauge.initialize(address(_asset), "");
+        _rewardsGauge.initialize(address(_asset));
         // Initialize the rewards
         for (uint256 i = 0; i < 8; i++) {
             _rewards[i] = new TestERC20Token(
