@@ -32,6 +32,14 @@ pnpm build
 pnpm test
 ```
 
+### Running echidna tests
+
+```sh
+# First install echidna from https://github.com/crytic/echidna
+# Then run echidna tests
+echidna ./echidna --config ./echidna.config.yaml --contract BaseRewardsGauge_EchidnaTest;
+```
+
 # Deploying contracts to live network
 
 ## Local mainnet fork

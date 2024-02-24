@@ -6,6 +6,7 @@ Yearn-ERC4626-Router/=lib/Yearn-ERC4626-Router/src/
 solmate/=lib/permit2/lib/solmate/src/
 permit2/=lib/permit2/src/
 forge-std/=lib/forge-std/src/
+@crytic/properties=lib/properties/
 veYFI/=lib/veYFI/contracts/
 forge-deploy/=lib/forge-deploy/contracts/
 script/=script/
