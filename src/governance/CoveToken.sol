@@ -9,6 +9,10 @@ import { Errors } from "src/libraries/Errors.sol";
 
 /**
  * @title CoveToken
+ * @notice ERC20 token with governance features including roles, pausability, and permit functionality.
+ * @dev This token includes roles for minting and pausing, as well as the ability to set transfer allowances via
+ * signatures.
+ * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControl, Pausable, and Multicall contracts.
  */
 contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     /// @dev Initial supply of tokens.
@@ -163,6 +167,14 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
         emit TransferrerDisallowed(target);
     }
 
+    /**
+     * @dev Hook that is called before any transfer of tokens. This includes minting and burning.
+     *      It checks if the contract is paused and if so, only allows transfers from allowed transferrers
+     *      to allowed transferees.
+     * @param from The address which is transferring tokens.
+     * @param to The address which is receiving tokens.
+     * @param amount The amount of tokens being transferred.
+     */
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         // Check if the transfer is allowed
         // When paused, only allowed transferrers can transfer and only allowed transferees can receive

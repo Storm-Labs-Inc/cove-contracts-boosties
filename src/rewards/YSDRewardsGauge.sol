@@ -12,8 +12,11 @@ import {
 } from "@openzeppelin-upgradeable/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /**
- * @title YSDRewardsGauge
- * @notice Solidity implementation of a tokenized liquidity gauge with support for multi rewards distribution
+ * @title YSD Rewards Gauge
+ * @notice Gauge contract for managing and distributing YSD rewards to stakers within the Yearn ecosystem.
+ * @dev Extends from BaseRewardsGauge, adding specific logic for Yearn staking and strategy interactions.
+ *      It includes functionality to set reward receivers and handle deposits and withdrawals in coordination with Yearn
+ * contracts.
  */
 contract YSDRewardsGauge is BaseRewardsGauge {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -31,8 +34,11 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     }
 
     /**
-     * @notice Initialize the contract
-     * @param asset_ Address of the asset token that will be deposited
+     * @notice Initializes the YSDRewardsGauge with the asset, Yearn staking delegate, and strategy addresses.
+     * @dev Overrides the BaseRewardsGauge initialize function to include initialization of Yearn-specific parameters.
+     * @param asset_ The asset token that will be used for deposits.
+     * @param ysd_ The address of the Yearn staking delegate.
+     * @param strategy The address of the Yearn strategy.
      */
     function initialize(address asset_, address ysd_, address strategy) public virtual /* initializer */ {
         super.initialize(asset_);
@@ -45,13 +51,20 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         IERC20Upgradeable(asset()).forceApprove(yearnStakingDelegate, type(uint256).max);
     }
 
+    /**
+     * @notice Sets the receiver of staking delegate rewards.
+     * @dev Sets the address that will receive rewards from the Yearn staking delegate.
+     * @param receiver The address to receive the staking rewards.
+     */
     function setStakingDelegateRewardsReceiver(address receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         address stakingDelegateRewards = IYearnStakingDelegate(yearnStakingDelegate).gaugeStakingRewards(asset());
         IStakingDelegateRewards(stakingDelegateRewards).setRewardReceiver(receiver);
     }
 
     /**
-     * @notice Get the maximum number of assets that can be deposited.
+     * @notice Calculates the maximum total assets that can be deposited into the gauge.
+     * @dev Determines the maximum assets that can be managed by the gauge based on the strategy's limits.
+     * @return The maximum amount of assets that can be deposited.
      */
     function maxTotalAssets() public view virtual returns (uint256) {
         uint256 maxAssets = YearnGaugeStrategy(coveYearnStrategy).maxTotalAssets();
@@ -63,6 +76,14 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         }
     }
 
+    /**
+     * @dev Internal function to handle deposits into the gauge.
+     *      Overrides the BaseRewardsGauge _deposit function to include interaction with the Yearn staking delegate.
+     * @param caller The address initiating the deposit.
+     * @param receiver The address that will receive the shares.
+     * @param assets The amount of assets to deposit.
+     * @param shares The amount of shares to mint.
+     */
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         if (totalAssets() + assets > maxTotalAssets()) {
             revert MaxTotalAssetsExceeded();
@@ -72,7 +93,13 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     }
 
     /**
-     * @dev Withdraw/redeem common workflow.
+     * @dev Internal function to handle withdrawals from the gauge.
+     *      Overrides the BaseRewardsGauge _withdraw function to include interaction with the Yearn staking delegate.
+     * @param caller The address initiating the withdrawal.
+     * @param receiver The address that will receive the assets.
+     * @param owner The address that owns the shares being withdrawn.
+     * @param assets The amount of assets to withdraw.
+     * @param shares The amount of shares to burn.
      */
     function _withdraw(
         address caller,
@@ -101,7 +128,10 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     }
 
     /**
-     * @dev Overried as assets held within the staking delegate contract.
+     * @notice Returns the total amount of the underlying asset that the gauge has.
+     * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
+     *      Overrides the BaseRewardsGauge totalAssets function to include the balance from the Yearn staking delegate.
+     * @return The total assets held by the gauge.
      */
     function totalAssets() public view virtual override returns (uint256) {
         return IYearnStakingDelegate(yearnStakingDelegate).balanceOf(address(this), asset());
