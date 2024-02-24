@@ -175,6 +175,29 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  invariant-test:
+    name: Invariant Test (Echidna)
+    runs-on: buildjet-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build
+        run: |
+          pnpm build
+      - name: Run Echidna
+        uses: crytic/echidna-action@v2
+        with:
+          files: .
+          contract: "BaseRewardsGauge_EchidnaTest" # TODO: change to the master invariant test contract
+          config: echidna.config.yaml
+
   spelling:
     name: Spelling
     runs-on: buildjet-2vcpu-ubuntu-2204

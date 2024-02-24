@@ -257,6 +257,10 @@ contract BaseRewardsGauge is
         }
     }
 
+    function totalAssets() public view virtual override returns (uint256) {
+        return totalSupply();
+    }
+
     function _processUserReward(
         address token,
         address user,
