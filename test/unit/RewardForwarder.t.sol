@@ -94,4 +94,16 @@ contract RewardForwarder_Test is BaseTest {
         assertEq(token.balanceOf(treasury), 100);
         assertEq(token.balanceOf(destination), 900);
     }
+
+    function test_forwardRewardToken_noBalance() public {
+        vm.prank(admin);
+        // set treasury split
+        rewardForwarder.setTreasuryBps(address(token), 1000);
+        // approve reward token
+        rewardForwarder.approveRewardToken(address(token));
+        // forward reward token
+        rewardForwarder.forwardRewardToken(address(token));
+        assertEq(token.balanceOf(treasury), 0);
+        assertEq(token.balanceOf(destination), 0);
+    }
 }
