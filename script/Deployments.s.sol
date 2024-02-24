@@ -11,10 +11,14 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
+import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
+import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
 import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
 import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
 
@@ -62,6 +66,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
         deployCoveStrategies(deployer.getAddress("YearnStakingDelegate"));
+        // Deploy Rewards Gauge for CoveYFI
+        deployCoveYFIRewards();
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
     }
@@ -153,6 +159,28 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
     {
         address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, mintingAllowedAfter, options));
         return cove;
+    }
+
+    function deployCoveYFIRewards() public broadcast {
+        address baseRewardsGaugeImpl = deployer.getAddress("BaseRewardsGaugeImpl");
+        BaseRewardsGauge coveRewardsGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
+        deployer.save("CoveRewardsGauge", address(coveRewardsGauge), "BaseRewardsGauge.sol:BaseRewardsGauge");
+        address rewardForwarderImpl = deployer.getAddress("RewardForwarderImpl");
+        RewardForwarder coveRewardsGaugeRewardForwarder = RewardForwarder(Clones.clone(rewardForwarderImpl));
+        deployer.save(
+            "CoveRewardsGaugeRewardForwarder",
+            address(coveRewardsGaugeRewardForwarder),
+            "RewardForwarder.sol:RewardForwarder"
+        );
+        address coveYFI = deployer.getAddress("CoveYFI");
+        coveRewardsGauge.initialize(coveYFI);
+        coveRewardsGaugeRewardForwarder.initialize(admin, treasury, address(coveRewardsGauge));
+        coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
+        coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
+        // The YearnStakingDelegate will forward the rewards alloted to the treasury to the
+        // CoveRewardsGaugeRewardForwarder
+        YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
+        ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
