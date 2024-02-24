@@ -10,7 +10,7 @@ staking platform for Yearn, governance token, as well as auxiliary contracts.
 
 For additional documentation, please refer to the [GitBook](https://docs.cove.finance/).
 
-# Installation
+## Installation
 
 Tested with node 18.16.1, python 3.9.17, and rustc 1.75.0.
 
@@ -28,7 +28,7 @@ pnpm install
 pnpm build
 ```
 
-# Usage
+## Usage
 
 ```sh
 # Build forge-deploy if not already built
@@ -39,7 +39,7 @@ pnpm build
 pnpm test
 ```
 
-## Running echidna tests
+### Running echidna tests
 
 ```sh
 # First install echidna from https://github.com/crytic/echidna
@@ -47,9 +47,9 @@ pnpm test
 pnpm invariant-test
 ```
 
-# Deploying contracts to a live network
+## Deploying contracts to a live network
 
-## Local mainnet fork
+### Local mainnet fork
 
 ```sh
 # Fork mainnet on the local network using anvil with the provided script
