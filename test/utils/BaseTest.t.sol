@@ -187,7 +187,7 @@ abstract contract BaseTest is Test, Constants {
         return Clones.clone(implementation);
     }
 
-    /// PERMIT2 HELPER FUNCTIONS ///
+    /// PERMIT & PERMIT2 HELPER FUNCTIONS ///
     function _generatePermitSignature(
         address token,
         address approvalFrom,
