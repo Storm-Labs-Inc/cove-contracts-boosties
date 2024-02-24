@@ -106,6 +106,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         if (pidPlusOne <= 0) {
             revert Errors.InvalidLPToken();
         }
+        /// @dev The unchecked block is used here because the subtraction is safe from underflow.
+        /// The condition above ensures that `pidPlusOne` is greater than zero, so subtracting one will not underflow.
         unchecked {
             pid = pidPlusOne - 1;
         }
@@ -362,7 +364,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
             uint256 availableReward_ = availableReward;
             uint256 unpaidRewards_ = 0;
             rewardAmount = pendingReward_ > availableReward_ ? availableReward_ : pendingReward_;
-            /// @dev unchecked is used as the subtraction is guaranteed to not underflow.
+            /// @dev unchecked is used as the subtraction is guaranteed to not underflow because
+            /// `rewardAmount` is always less than or equal to `availableReward_`.
             unchecked {
                 availableReward -= rewardAmount;
                 unpaidRewards_ = pendingReward_ - rewardAmount;
