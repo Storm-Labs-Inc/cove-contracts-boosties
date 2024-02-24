@@ -197,6 +197,7 @@ jobs:
           files: .
           contract: "BaseRewardsGauge_EchidnaTest"
           crytic-args: --ignore-compile
+          config: echidna.config.yaml
 
   spelling:
     name: Spelling
