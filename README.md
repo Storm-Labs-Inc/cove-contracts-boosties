@@ -5,9 +5,14 @@
 
 ![cove](https://github.com/Storm-Labs-Inc/smart-contracts-core/assets/972382/a572543c-9797-4a2c-a394-18050ca25e72)
 
+This repository contains the core smart contracts for the Cove Protocol. This currently includes a liquid locker and
+staking platform for Yearn, governance token, as well as auxiliary contracts.
+
+For additional documentation, please refer to the [GitBook](https://docs.cove.finance/).
+
 # Installation
 
-Tested with node 18.16.1, python 3.9.17, and rustc 1.75.0
+Tested with node 18.16.1, python 3.9.17, and rustc 1.75.0.
 
 ```sh
 # Install rustc via rustup
@@ -23,7 +28,7 @@ pnpm install
 pnpm build
 ```
 
-# Compilation
+# Usage
 
 ```sh
 # Build forge-deploy if not already built
@@ -34,20 +39,20 @@ pnpm build
 pnpm test
 ```
 
-### Running echidna tests
+## Running echidna tests
 
 ```sh
 # First install echidna from https://github.com/crytic/echidna
 # Then run echidna tests
-echidna ./echidna --config ./echidna.config.yaml --contract BaseRewardsGauge_EchidnaTest;
+pnpm invariant-test
 ```
 
-# Deploying contracts to live network
+# Deploying contracts to a live network
 
 ## Local mainnet fork
 
 ```sh
-# Fork the mainnet on local network using anvil with the provided script
+# Fork mainnet on the local network using anvil with the provided script
 pnpm fork:mainnet
 ```
 
@@ -56,11 +61,11 @@ Keep this terminal session going to keep the fork network alive.
 Then in another terminal session:
 
 ```sh
-# Deploy contracts to local network
+# Deploy the contracts to the local network
 pnpm deploy:local
 ```
 
-- deployments will be in `deployments/<chainId>-fork`
-- make sure to not commit `broadcast/`
-- if trying to deploy new contract either use the default deployer functions or generate them with
-  `$./forge-deploy gen-deployer`
+- Deployments will be in `deployments/<chainId>-fork`.
+- Make sure to not commit `broadcast/`.
+- If trying to deploy new contract either use the default deployer functions or generate them with
+  `$./forge-deploy gen-deployer`.
