@@ -144,6 +144,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.setRewardForwarderImplementation(address(newRewardForwarderImpl));
     }
 
+    function test_setRewardForwarderImplementation_revertWhen_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        factory.setRewardForwarderImplementation(address(0));
+    }
+
     function test_setBaseRewardsGaugeImplementation() public {
         BaseRewardsGauge newBaseRewardsGaugeImpl = new BaseRewardsGauge();
         factory.setBaseRewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
@@ -155,6 +160,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.revokeRole(factory.DEFAULT_ADMIN_ROLE(), address(this));
         vm.expectRevert(_formatAccessControlError(address(this), factory.DEFAULT_ADMIN_ROLE()));
         factory.setBaseRewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
+    }
+
+    function test_setBaseRewardsGaugeImplementation_revertWhen_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        factory.setBaseRewardsGaugeImplementation(address(0));
     }
 
     function test_setYsdRewardsGaugeImplementation() public {
@@ -170,6 +180,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.setYsdRewardsGaugeImplementation(address(newYsdRewardsGaugeImpl));
     }
 
+    function test_setYsdRewardsGaugeImplementation_revertWhen_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        factory.setYsdRewardsGaugeImplementation(address(0));
+    }
+
     function test_setTreasuryMultisig() public {
         address newTreasuryMultisig = createUser("newTreasuryMultisig");
         factory.setTreasuryMultisig(newTreasuryMultisig);
@@ -183,10 +198,26 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.setTreasuryMultisig(newTreasuryMultisig);
     }
 
+    function test_setTreasuryMultisig_revertWhen_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        factory.setTreasuryMultisig(address(0));
+    }
+
     function test_getGaugeInfo_revertWhen_GaugeNotDeployed(address gauge) public {
         vm.assume(gauge != address(yearnGaugeV2));
         factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
         vm.expectRevert(Errors.GaugeNotDeployed.selector);
         factory.getGaugeInfo(address(gauge));
+    }
+
+    function test_setGaugeAdmin() public {
+        address newGaugeAdmin = createUser("newAdmin");
+        factory.setGaugeAdmin(newGaugeAdmin);
+        assertEq(factory.gaugeAdmin(), newGaugeAdmin);
+    }
+
+    function test_setGaugeAdmin_revert_when_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        factory.setGaugeAdmin(address(0));
     }
 }
