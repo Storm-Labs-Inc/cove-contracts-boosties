@@ -21,7 +21,7 @@ import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
  * @dev This contract handles the accounting of reward tokens, allowing users to claim their accrued rewards.
  * It supports multiple reward tokens and allows for the addition of new rewards by authorized distributors.
  */
-contract BaseRewardsGauge is
+abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
     ERC4626Upgradeable,
     ERC20PermitUpgradeable,
@@ -39,9 +39,9 @@ contract BaseRewardsGauge is
     }
 
     uint256 public constant MAX_REWARDS = 8;
-    uint256 private constant _WEEK = 1 weeks;
-    uint256 private constant _PRECISION = 1e18;
-    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    uint256 internal constant _WEEK = 1 weeks;
+    uint256 internal constant _PRECISION = 1e18;
+    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     // For tracking external rewards
     address[] public rewardTokens;
@@ -67,11 +67,8 @@ contract BaseRewardsGauge is
         _disableInitializers();
     }
 
-    /**
-     * @notice Initialize the contract
-     * @param asset_ Address of the asset token that will be deposited
-     */
-    function initialize(address asset_) public virtual initializer {
+    // slither-disable-next-line naming-convention
+    function __BaseRewardsGauge_init(address asset_) internal onlyInitializing {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
@@ -233,6 +230,16 @@ contract BaseRewardsGauge is
     }
 
     /**
+     * @notice Returns the total amount of the underlying asset that the gauge has.
+     * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
+     *      This is used to calculate the value of each share.
+     * @return The total assets held by the gauge.
+     */
+    function totalAssets() public view virtual override(ERC4626Upgradeable) returns (uint256) {
+        return totalSupply();
+    }
+
+    /**
      * @dev Internal function to claim pending rewards and update reward accounting for a user.
      *      This function is called during any claim operation and when rewards are deposited.
      *      It iterates through all reward tokens to update user rewards and optionally claims them.
@@ -285,16 +292,6 @@ contract BaseRewardsGauge is
     }
 
     /**
-     * @notice Returns the total amount of the underlying asset that the gauge has.
-     * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
-     *      This is used to calculate the value of each share.
-     * @return The total assets held by the gauge.
-     */
-    function totalAssets() public view virtual override returns (uint256) {
-        return totalSupply();
-    }
-
-    /**
      * @dev Internal function to process user rewards, updating the claimable and claimed amounts.
      * @param token The address of the reward token to process.
      * @param user The user address to process rewards for.
@@ -338,7 +335,7 @@ contract BaseRewardsGauge is
      * @param to The address which is receiving tokens.
      * @param amount The amount of tokens being transferred.
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20Upgradeable) {
         uint256 totalSupply_ = totalSupply();
         _checkpointRewards(from, totalSupply_, false, address(0));
         _checkpointRewards(to, totalSupply_, false, address(0));

@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
-import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
+import { ERC20RewardsGauge, BaseRewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
@@ -15,7 +15,7 @@ import { Errors } from "src/libraries/Errors.sol";
 
 contract CoveYearnGaugeFactory_Test is BaseTest {
     CoveYearnGaugeFactory public factory;
-    BaseRewardsGauge public baseRewardsGaugeImpl;
+    BaseRewardsGauge public erc20RewardsGaugeImpl;
     YSDRewardsGauge public ysdRewardsGaugeImpl;
     RewardForwarder public rewardForwarderImpl;
     MockYearnStakingDelegate public mockYearnStakingDelegate;
@@ -38,7 +38,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         cove = new ERC20Mock();
         vm.etch(MAINNET_DYFI, address(new ERC20Mock()).code);
 
-        baseRewardsGaugeImpl = new BaseRewardsGauge();
+        erc20RewardsGaugeImpl = new ERC20RewardsGauge();
         ysdRewardsGaugeImpl = new YSDRewardsGauge();
         rewardForwarderImpl = new RewardForwarder();
         mockYearnStakingDelegate = new MockYearnStakingDelegate();
@@ -66,7 +66,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
             ysd: address(mockYearnStakingDelegate),
             cove: address(cove),
             rewardForwarderImpl_: address(rewardForwarderImpl),
-            baseRewardsGaugeImpl_: address(baseRewardsGaugeImpl),
+            erc20RewardsGaugeImpl_: address(erc20RewardsGaugeImpl),
             ysdRewardsGaugeImpl_: address(ysdRewardsGaugeImpl),
             treasuryMultisig_: treasuryMultisig,
             gaugeAdmin_: gaugeAdmin
@@ -79,7 +79,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertEq(factory.YEARN_STAKING_DELEGATE(), address(mockYearnStakingDelegate));
         assertEq(factory.COVE(), address(cove));
         assertEq(factory.rewardForwarderImpl(), address(rewardForwarderImpl));
-        assertEq(factory.baseRewardsGaugeImpl(), address(baseRewardsGaugeImpl));
+        assertEq(factory.erc20RewardsGaugeImpl(), address(erc20RewardsGaugeImpl));
         assertEq(factory.ysdRewardsGaugeImpl(), address(ysdRewardsGaugeImpl));
         assertEq(factory.treasuryMultisig(), treasuryMultisig);
         assertEq(factory.gaugeAdmin(), gaugeAdmin);
@@ -150,21 +150,21 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     }
 
     function test_setBaseRewardsGaugeImplementation() public {
-        BaseRewardsGauge newBaseRewardsGaugeImpl = new BaseRewardsGauge();
-        factory.setBaseRewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
-        assertEq(factory.baseRewardsGaugeImpl(), address(newBaseRewardsGaugeImpl));
+        ERC20RewardsGauge newBaseRewardsGaugeImpl = new ERC20RewardsGauge();
+        factory.setERC20RewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
+        assertEq(factory.erc20RewardsGaugeImpl(), address(newBaseRewardsGaugeImpl));
     }
 
     function test_setBaseRewardsGaugeImplementation_revertWhen_notAdmin() public {
-        BaseRewardsGauge newBaseRewardsGaugeImpl = new BaseRewardsGauge();
+        ERC20RewardsGauge newBaseRewardsGaugeImpl = new ERC20RewardsGauge();
         factory.revokeRole(factory.DEFAULT_ADMIN_ROLE(), address(this));
         vm.expectRevert(_formatAccessControlError(address(this), factory.DEFAULT_ADMIN_ROLE()));
-        factory.setBaseRewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
+        factory.setERC20RewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
     }
 
     function test_setBaseRewardsGaugeImplementation_revertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        factory.setBaseRewardsGaugeImplementation(address(0));
+        factory.setERC20RewardsGaugeImplementation(address(0));
     }
 
     function test_setYsdRewardsGaugeImplementation() public {

@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { BaseTest } from "test/utils/BaseTest.t.sol";
 import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
-import { MockBaseRewardsGauge } from "test/mocks/MockBaseRewardsGauge.sol";
+import { MockERC20RewardsGauge } from "test/mocks/MockERC20RewardsGauge.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -22,7 +22,7 @@ contract RewardForwarder_Test is BaseTest {
         token = new ERC20("dummy", "DUMB");
         vm.label(address(token), "token");
         // deploy dummy reward receiver
-        destination = address(new MockBaseRewardsGauge());
+        destination = address(new MockERC20RewardsGauge());
         vm.label(destination, "destination");
         rewardForwarderImplementation = new RewardForwarder();
         vm.label(address(rewardForwarderImplementation), "rewardForwarderImpl");

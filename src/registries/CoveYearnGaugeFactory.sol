@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
+import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -48,7 +48,7 @@ contract CoveYearnGaugeFactory is AccessControl {
     address public immutable COVE;
     // slither-disable-end naming-convention
     address public rewardForwarderImpl;
-    address public baseRewardsGaugeImpl;
+    address public erc20RewardsGaugeImpl;
     address public ysdRewardsGaugeImpl;
     address public treasuryMultisig;
     address public gaugeAdmin;
@@ -66,7 +66,7 @@ contract CoveYearnGaugeFactory is AccessControl {
      * @param ysd The address of the Yearn staking delegate.
      * @param cove The address of the Cove token.
      * @param rewardForwarderImpl_ The implementation address of the RewardForwarder contract.
-     * @param baseRewardsGaugeImpl_ The implementation address of the BaseRewardsGauge contract.
+     * @param erc20RewardsGaugeImpl_ The implementation address of the ERC20RewardsGauge contract.
      * @param ysdRewardsGaugeImpl_ The implementation address of the YSDRewardsGauge contract.
      * @param treasuryMultisig_ The address of the treasury multisig.
      * @param gaugeAdmin_ The address that will be granted the gauge admin role.
@@ -77,7 +77,7 @@ contract CoveYearnGaugeFactory is AccessControl {
         address ysd,
         address cove,
         address rewardForwarderImpl_,
-        address baseRewardsGaugeImpl_,
+        address erc20RewardsGaugeImpl_,
         address ysdRewardsGaugeImpl_,
         address treasuryMultisig_,
         address gaugeAdmin_
@@ -88,7 +88,7 @@ contract CoveYearnGaugeFactory is AccessControl {
         YEARN_STAKING_DELEGATE = ysd;
         COVE = cove;
         _setRewardForwarderImplementation(rewardForwarderImpl_);
-        _setBaseRewardsGaugeImplementation(baseRewardsGaugeImpl_);
+        _setERC20RewardsGaugeImplementation(erc20RewardsGaugeImpl_);
         _setYsdRewardsGaugeImplementation(ysdRewardsGaugeImpl_);
         _setTreasuryMultisig(treasuryMultisig_);
         _setGaugeAdmin(gaugeAdmin_);
@@ -174,7 +174,7 @@ contract CoveYearnGaugeFactory is AccessControl {
         address treasuryMultisig_ = treasuryMultisig;
 
         // Deploy both gauges
-        BaseRewardsGauge coveStratGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
+        ERC20RewardsGauge coveStratGauge = ERC20RewardsGauge(Clones.clone(erc20RewardsGaugeImpl));
         YSDRewardsGauge coveYsdGauge = YSDRewardsGauge(Clones.clone(ysdRewardsGaugeImpl));
 
         // Save the gauge info
@@ -261,12 +261,12 @@ contract CoveYearnGaugeFactory is AccessControl {
     }
 
     /**
-     * @notice Sets the implementation address for the BaseRewardsGauge contract.
+     * @notice Sets the implementation address for the ERC20RewardsGauge contract.
      * @dev Can only be called by the admin role. Reverts if the new implementation address is the zero address.
-     * @param impl The new implementation address for the BaseRewardsGauge contract.
+     * @param impl The new implementation address for the ERC20RewardsGauge contract.
      */
-    function setBaseRewardsGaugeImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setBaseRewardsGaugeImplementation(impl);
+    function setERC20RewardsGaugeImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setERC20RewardsGaugeImplementation(impl);
     }
 
     /**
@@ -285,11 +285,11 @@ contract CoveYearnGaugeFactory is AccessControl {
         rewardForwarderImpl = impl;
     }
 
-    function _setBaseRewardsGaugeImplementation(address impl) internal {
+    function _setERC20RewardsGaugeImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
         }
-        baseRewardsGaugeImpl = impl;
+        erc20RewardsGaugeImpl = impl;
     }
 
     function _setTreasuryMultisig(address multisig) internal {

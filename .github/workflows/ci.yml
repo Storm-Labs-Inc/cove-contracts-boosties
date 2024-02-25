@@ -122,7 +122,7 @@ jobs:
         uses: crytic/echidna-action@v2
         with:
           files: .
-          contract: "BaseRewardsGauge_EchidnaTest" # TODO: change to the master invariant test contract
+          contract: "ERC20RewardsGauge_EchidnaTest" # TODO: change to the master invariant test contract
           config: echidna.config.yaml
 
   compare-gas-reports:
