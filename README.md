@@ -7,45 +7,70 @@
 
 ![cove](https://github.com/Storm-Labs-Inc/smart-contracts-core/assets/972382/a572543c-9797-4a2c-a394-18050ca25e72)
 
-This repository contains the core smart contracts for the Cove Protocol. This currently includes a liquid locker and
-staking platform for Yearn, governance token, as well as auxiliary contracts.
+This repository contains the core smart contracts for the Cove Protocol. It includes a liquid locker and staking
+platform for Yearn, a governance token, and auxiliary contracts.
 
-For additional documentation, please refer to the [GitBook](https://docs.cove.finance/).
+For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
+
+## Prerequisites
+
+Ensure you have the following installed:
+
+- [Node.js](https://nodejs.org/) (v18.16.1)
+- [Python](https://www.python.org/) (v3.9.17)
+- [Rust](https://www.rust-lang.org/) (v1.75.0)
 
 ## Installation
 
-Tested with node 18.16.1, python 3.9.17, and rustc 1.75.0.
+Install [Rust using rustup](https://rustup.rs/):
 
 ```sh
-# Install rustc via rustup
-# https://www.rust-lang.org/tools/install
 rustup update
-# Install python dependencies
+```
+
+Install python dependencies:
+
+```sh
 pip install -r requirements.txt
-# Install submodules as forge libraries
+```
+
+Install forge libraries as submodules:
+
+```sh
 forge install
-# Install node dependencies and build dependencies
+```
+
+Install node and build dependencies:
+
+```sh
 pnpm install
-# Build contracts
-pnpm build
 ```
 
 ## Usage
 
+Build forge-deploy if not already built:
+
 ```sh
-# Build forge-deploy if not already built
 pnpm forge-deploy:build
-# Build contracts
+```
+
+Build contracts:
+
+```sh
 pnpm build
-# Run tests
+```
+
+Run tests:
+
+```sh
 pnpm test
 ```
 
 ### Running echidna tests
 
+First [install echidna](https://github.com/crytic/echidna), and then run the tests:
+
 ```sh
-# First install echidna from https://github.com/crytic/echidna
-# Then run echidna tests
 pnpm invariant-test
 ```
 
@@ -53,21 +78,21 @@ pnpm invariant-test
 
 ### Local mainnet fork
 
+Fork mainnet on the local network using anvil with the provided script:
+
 ```sh
-# Fork mainnet on the local network using anvil with the provided script
 pnpm fork:mainnet
 ```
 
 Keep this terminal session going to keep the fork network alive.
 
-Then in another terminal session:
+Then in another terminal session, deploy the contracts to the local network:
 
 ```sh
-# Deploy the contracts to the local network
 pnpm deploy:local
 ```
 
 - Deployments will be in `deployments/<chainId>-fork`.
 - Make sure to not commit `broadcast/`.
-- If trying to deploy new contract either use the default deployer functions or generate them with
-  `$./forge-deploy gen-deployer`.
+- If trying to deploy new contract either use the default deployer functions or generate them
+  with`$./forge-deploy gen-deployer`.
