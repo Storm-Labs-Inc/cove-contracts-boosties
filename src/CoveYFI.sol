@@ -28,7 +28,14 @@ contract CoveYFI is ERC20Permit, Rescuable, AccessControl {
      * @param _yearnStakingDelegate The address of the YearnStakingDelegate contract.
      * @param admin The address of the contract admin for rescuing tokens.
      */
-    constructor(address _yearnStakingDelegate, address admin) ERC20("Cove YFI", "coveYFI") ERC20Permit("Cove YFI") {
+    constructor(
+        address _yearnStakingDelegate,
+        address admin
+    )
+        payable
+        ERC20("Cove YFI", "coveYFI")
+        ERC20Permit("Cove YFI")
+    {
         // Checks
         // Check for zero addresses
         if (_yearnStakingDelegate == address(0)) {

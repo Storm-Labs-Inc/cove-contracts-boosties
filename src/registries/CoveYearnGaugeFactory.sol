@@ -80,7 +80,9 @@ contract CoveYearnGaugeFactory is AccessControl {
         address ysdRewardsGaugeImpl_,
         address treasuryMultisig_,
         address gaugeAdmin_
-    ) {
+    )
+        payable
+    {
         if (ysd == address(0) || cove == address(0)) revert Errors.ZeroAddress();
         YEARN_STAKING_DELEGATE = ysd;
         COVE = cove;

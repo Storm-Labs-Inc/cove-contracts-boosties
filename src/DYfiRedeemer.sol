@@ -41,7 +41,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     /// @notice The slippage that should be applied to the redemption process
     uint256 private _slippage;
 
-    constructor(address admin) {
+    constructor(address admin) payable {
         // Effects
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _slippage = _DEFAULT_SLIPPAGE;

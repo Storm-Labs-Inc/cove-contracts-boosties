@@ -63,7 +63,7 @@ contract BaseRewardsGauge is
     error ZeroAddress();
     error RewardCannotBeAsset();
 
-    constructor() {
+    constructor() payable {
         _disableInitializers();
     }
 

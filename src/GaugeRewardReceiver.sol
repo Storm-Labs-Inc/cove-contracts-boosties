@@ -24,7 +24,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ac
     /**
      * @notice Initializes the contract by disabling initializers from the Clone pattern.
      */
-    constructor() {
+    constructor() payable {
         _disableInitializers();
     }
 

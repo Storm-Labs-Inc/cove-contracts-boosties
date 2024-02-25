@@ -84,7 +84,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param rewardToken_ The ERC20 token to be used as the reward token.
      * @param admin The address that will be granted the default admin role.
      */
-    constructor(IERC20 rewardToken_, address admin) {
+    constructor(IERC20 rewardToken_, address admin) payable {
         REWARD_TOKEN = rewardToken_;
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -257,13 +257,15 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         uint256 totalAllocPoint_ = totalAllocPoint;
         // slither-disable-next-line timestamp
         if (block.timestamp > pool.lastRewardTime) {
-            if (lpSupply_ != 0 && totalAllocPoint_ != 0) {
-                uint256 time = block.timestamp - pool.lastRewardTime;
-                // Explicitly round down when calculating the reward
-                // slither-disable-start divide-before-multiply
-                uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-                accRewardPerShare += rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_;
-                // slither-disable-end divide-before-multiply
+            if (lpSupply_ != 0) {
+                if (totalAllocPoint_ != 0) {
+                    uint256 time = block.timestamp - pool.lastRewardTime;
+                    // Explicitly round down when calculating the reward
+                    // slither-disable-start divide-before-multiply
+                    uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
+                    accRewardPerShare += rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_;
+                    // slither-disable-end divide-before-multiply
+                }
             }
         }
         pending = (user.amount * accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION) - user.rewardDebt + user.unpaidRewards;
@@ -379,8 +381,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
         emit Harvest(msg.sender, pid, rewardAmount);
 
-        if (pendingReward_ != 0 && rewardAmount != 0) {
-            REWARD_TOKEN.safeTransfer(to, rewardAmount);
+        if (pendingReward_ != 0) {
+            if (rewardAmount != 0) {
+                REWARD_TOKEN.safeTransfer(to, rewardAmount);
+            }
         }
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
