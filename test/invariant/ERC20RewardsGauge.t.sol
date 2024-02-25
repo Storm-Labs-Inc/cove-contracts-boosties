@@ -4,23 +4,23 @@ pragma solidity 0.8.18;
 import { CryticERC4626PropertyTests } from "@crytic/properties/contracts/ERC4626/ERC4626PropertyTests.sol";
 // this token _must_ be the vault's underlying asset
 import { TestERC20Token } from "@crytic/properties/contracts/ERC4626/util/TestERC20Token.sol";
-import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
+import { ERC20RewardsGauge, BaseRewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { Clones } from "@crytic/properties/lib/openzeppelin-contracts/contracts/proxy/Clones.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-/// @title BaseRewardsGauge_EchidnaTest
-/// @notice Echidna test contract for BaseRewardsGauge
-/// @dev This contract is used to test the additional properties of BaseRewardsGauge
+/// @title ERC20RewardsGauge_EchidnaTest
+/// @notice Echidna test contract for ERC20RewardsGauge
+/// @dev This contract is used to test the additional properties of ERC20RewardsGauge
 ///     along with CryticERC4626PropertyTests.
-contract BaseRewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
-    BaseRewardsGauge private _rewardsGauge;
+contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
+    ERC20RewardsGauge private _rewardsGauge;
     TestERC20Token[8] private _rewards;
 
     constructor() {
         TestERC20Token _asset = new TestERC20Token("Test Token", "TT", 18);
-        BaseRewardsGauge gaugeImpl = new BaseRewardsGauge();
+        ERC20RewardsGauge gaugeImpl = new ERC20RewardsGauge();
         // Initialize the gauge with the asset token
-        _rewardsGauge = BaseRewardsGauge(Clones.clone(address(gaugeImpl)));
+        _rewardsGauge = ERC20RewardsGauge(Clones.clone(address(gaugeImpl)));
         _rewardsGauge.initialize(address(_asset));
         // Initialize the rewards
         for (uint256 i = 0; i < 8; i++) {

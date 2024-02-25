@@ -21,7 +21,7 @@ import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
  * @dev This contract handles the accounting of reward tokens, allowing users to claim their accrued rewards.
  * It supports multiple reward tokens and allows for the addition of new rewards by authorized distributors.
  */
-contract BaseRewardsGauge is
+abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
     ERC4626Upgradeable,
     ERC20PermitUpgradeable,
@@ -39,9 +39,9 @@ contract BaseRewardsGauge is
     }
 
     uint256 public constant MAX_REWARDS = 8;
-    uint256 private constant _WEEK = 1 weeks;
-    uint256 private constant _PRECISION = 1e18;
-    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    uint256 internal constant _WEEK = 1 weeks;
+    uint256 internal constant _PRECISION = 1e18;
+    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     // For tracking external rewards
     address[] public rewardTokens;
@@ -67,11 +67,7 @@ contract BaseRewardsGauge is
         _disableInitializers();
     }
 
-    /**
-     * @notice Initialize the contract
-     * @param asset_ Address of the asset token that will be deposited
-     */
-    function initialize(address asset_) public virtual initializer {
+    function __BaseRewardsGauge_init(address asset_) internal onlyInitializing {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
@@ -82,8 +78,8 @@ contract BaseRewardsGauge is
         __ERC20Permit_init(name_);
         __ERC4626_init(IERC20(asset_));
         __ReentrancyGuard_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(_MANAGER_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(_MANAGER_ROLE, msg.sender);
     }
 
     /**

@@ -29,22 +29,17 @@ contract YSDRewardsGauge is BaseRewardsGauge {
 
     constructor() BaseRewardsGauge() { }
 
-    function initialize(address) public virtual override {
-        revert InvalidInitialization();
-    }
-
     /**
      * @notice Initializes the YSDRewardsGauge with the asset, Yearn staking delegate, and strategy addresses.
-     * @dev Overrides the BaseRewardsGauge initialize function to include initialization of Yearn-specific parameters.
      * @param asset_ The asset token that will be used for deposits.
      * @param ysd_ The address of the Yearn staking delegate.
      * @param strategy The address of the Yearn strategy.
      */
-    function initialize(address asset_, address ysd_, address strategy) public virtual /* initializer */ {
-        super.initialize(asset_);
+    function initialize(address asset_, address ysd_, address strategy) public virtual initializer {
         if (ysd_ == address(0) || strategy == address(0)) {
             revert ZeroAddress();
         }
+        __BaseRewardsGauge_init(asset_);
         yearnStakingDelegate = ysd_;
         coveYearnStrategy = strategy;
         // approve yearnStakingDelegate to spend asset_
@@ -78,7 +73,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
 
     /**
      * @dev Internal function to handle deposits into the gauge.
-     *      Overrides the BaseRewardsGauge _deposit function to include interaction with the Yearn staking delegate.
+     *      Overrides the ERC4626's _deposit function to include interaction with the Yearn staking delegate.
      * @param caller The address initiating the deposit.
      * @param receiver The address that will receive the shares.
      * @param assets The amount of assets to deposit.
@@ -94,7 +89,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
 
     /**
      * @dev Internal function to handle withdrawals from the gauge.
-     *      Overrides the BaseRewardsGauge _withdraw function to include interaction with the Yearn staking delegate.
+     *      Overrides the ERC4626's _withdraw() function to include interaction with the Yearn staking delegate.
      * @param caller The address initiating the withdrawal.
      * @param receiver The address that will receive the assets.
      * @param owner The address that owns the shares being withdrawn.
@@ -130,7 +125,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     /**
      * @notice Returns the total amount of the underlying asset that the gauge has.
      * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
-     *      Overrides the BaseRewardsGauge totalAssets function to include the balance from the Yearn staking delegate.
+     *      Overrides the ERC4626's totalAssets function to include the balance from the Yearn staking delegate.
      * @return The total assets held by the gauge.
      */
     function totalAssets() public view virtual override returns (uint256) {
