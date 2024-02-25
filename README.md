@@ -22,19 +22,19 @@ Ensure you have the following installed:
 
 ## Installation
 
-Install [Rust using rustup](https://rustup.rs/):
+Install [rust using rustup](https://rustup.rs/):
 
 ```sh
 rustup update
 ```
 
-Install python dependencies:
+Install the python dependencies:
 
 ```sh
 pip install -r requirements.txt
 ```
 
-Install forge libraries as submodules:
+Install the forge libraries as submodules:
 
 ```sh
 forge install
@@ -54,13 +54,13 @@ Build forge-deploy if not already built:
 pnpm forge-deploy:build
 ```
 
-Build contracts:
+Build the contracts:
 
 ```sh
 pnpm build
 ```
 
-Run tests:
+Run the tests:
 
 ```sh
 pnpm test
@@ -68,7 +68,7 @@ pnpm test
 
 ### Running echidna tests
 
-First [install echidna](https://github.com/crytic/echidna), and then run the tests:
+[Install echidna](https://github.com/crytic/echidna) and run the tests:
 
 ```sh
 pnpm invariant-test
@@ -96,3 +96,7 @@ pnpm deploy:local
 - Make sure to not commit `broadcast/`.
 - If trying to deploy new contract either use the default deployer functions or generate them
   with`$./forge-deploy gen-deployer`.
+
+## Audits
+
+Smart contract audits of the Cove Protocol are available [here](https://github.com/Storm-Labs-Inc/cove-audits).
