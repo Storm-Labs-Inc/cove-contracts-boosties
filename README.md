@@ -66,12 +66,35 @@ Run the tests:
 pnpm test
 ```
 
-### Running echidna tests
+### Run echidna tests
 
 [Install echidna](https://github.com/crytic/echidna) and run the tests:
 
 ```sh
 pnpm invariant-test
+```
+
+### Run slither
+
+[Install slither](https://github.com/crytic/slither) and run the tool:
+
+```sh
+pnpm slither
+```
+
+To run the [upgradeability checks](https://github.com/crytic/slither/wiki/Upgradeability-Checks) with
+`slither-check-upgradeability`:
+
+```sh
+pnpm slither-upgradeability
+```
+
+### Run semgrep
+
+[Install semgrep](https://github.com/semgrep/semgrep) and run the tool:
+
+```sh
+pnpm semgrep
 ```
 
 ## Deploying contracts to a live network
