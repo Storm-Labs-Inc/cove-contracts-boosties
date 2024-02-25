@@ -15,6 +15,7 @@ import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/IToken
 import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
+import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
 
@@ -29,6 +30,12 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
     address public manager;
 
     address[] public coveYearnStrategies;
+
+    // Expected cove token balances after deployment
+    uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether;
+    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 1_000_000 ether;
+    uint256 public constant COVE_BALANCE_MULTISIG = 998_000_000 ether;
+    uint256 public constant COVE_BALANCE_DEPLOYER = 0;
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
@@ -56,14 +63,20 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         allowedSenders[2] = MAINNET_SABLIER_V2_BATCH;
         allowedSenders[3] = MAINNET_SABLIER_V2_LOCKUP_LINEAR;
         allowlistCoveTokenTransfers(allowedSenders);
+        // Deploy MiniChefV3 farm
+        deployMiniChefV3();
         // Deploy Vesting via Sablier
         deploySablierStreams();
+        // Send the rest of the Cove tokens to admin
+        sendCoveTokensToAdmin();
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
         deployCoveStrategies(deployer.getAddress("YearnStakingDelegate"));
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
+        // Verify the state of the deployment
+        verifyPostDeploymentState();
     }
 
     function deployYearnStakingDelegateStack() public broadcast deployIfMissing("YearnStakingDelegate") {
@@ -164,6 +177,32 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         coveToken.multicall(data);
     }
 
+    function deployMiniChefV3() public broadcast deployIfMissing("MiniChefV3") returns (address) {
+        address miniChefV3 = address(
+            deployer.deploy_MiniChefV3({
+                name: "MiniChefV3",
+                rewardToken_: IERC20(deployer.getAddress("CoveToken")),
+                admin: broadcaster,
+                options: options
+            })
+        );
+        // Add Cove token as pid 0 in MiniChefV3 with allocPoint 1000
+        MiniChefV3(miniChefV3).add({
+            allocPoint: 1000,
+            lpToken_: IERC20(deployer.getAddress("CoveToken")),
+            rewarder_: IMiniChefV3Rewarder(address(0))
+        });
+        // Commit some rewards to the MiniChefV3
+        CoveToken(deployer.getAddress("CoveToken")).approve(miniChefV3, COVE_BALANCE_MINICHEF);
+        MiniChefV3(miniChefV3).commitReward(COVE_BALANCE_MINICHEF);
+        return miniChefV3;
+    }
+
+    function sendCoveTokensToAdmin() public broadcast {
+        CoveToken coveToken = CoveToken(deployer.getAddress("CoveToken"));
+        coveToken.transfer(admin, coveToken.balanceOf(address(broadcaster)));
+    }
+
     function deploySablierStreams() public broadcast returns (uint256[] memory streamIds) {
         streamIds = batchCreateStreams(IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
     }
@@ -235,6 +274,24 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
             deployer.getAddress("CoveYearnGaugeFactory")
         );
         masterRegistry.multicall(data);
+    }
+
+    function verifyPostDeploymentState() public {
+        IERC20 coveToken = IERC20(deployer.getAddress("CoveToken"));
+        // Verify minichef v3 balance
+        require(
+            coveToken.balanceOf(deployer.getAddress("MiniChefV3")) == COVE_BALANCE_MINICHEF,
+            "CoveToken balance in MiniChefV3 is incorrect"
+        );
+        // Verify total vesting balance
+        require(
+            coveToken.balanceOf(MAINNET_SABLIER_V2_LOCKUP_LINEAR) == COVE_BALANCE_LINEAR_VESTING,
+            "CoveToken balance in SablierV2LockupLinear is incorrect"
+        );
+        // Verify multisig balance
+        require(coveToken.balanceOf(admin) == COVE_BALANCE_MULTISIG, "CoveToken balance in admin multisig is incorrect");
+        // Verify deployer holds no cove tokens
+        require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
     }
 
     function getCurrentDeployer() external view returns (Deployer) {
