@@ -86,8 +86,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
-        ysd.addGaugeRewards(MAINNET_CRV_YCRV_GAUGE, stakingDelegateRewards);
-        ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_CRV_YCRV_POOL_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_POOL_GAUGE, stakingDelegateRewards);
 
         // Move admin roles to the admin multisig
         ysd.grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
