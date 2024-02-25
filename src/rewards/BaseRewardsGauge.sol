@@ -78,8 +78,8 @@ abstract contract BaseRewardsGauge is
         __ERC20Permit_init(name_);
         __ERC4626_init(IERC20(asset_));
         __ReentrancyGuard_init();
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(_MANAGER_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(_MANAGER_ROLE, msg.sender);
     }
 
     /**
