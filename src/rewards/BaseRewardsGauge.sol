@@ -67,6 +67,7 @@ abstract contract BaseRewardsGauge is
         _disableInitializers();
     }
 
+    // slither-disable-next-line naming-convention
     function __BaseRewardsGauge_init(address asset_) internal onlyInitializing {
         if (asset_ == address(0)) {
             revert ZeroAddress();
