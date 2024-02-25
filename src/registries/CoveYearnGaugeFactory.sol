@@ -112,8 +112,15 @@ contract CoveYearnGaugeFactory is AccessControl {
         uint256 length = supportedYearnGauges.length;
         GaugeInfo[] memory result = new GaugeInfo[](length);
         address[] memory gauges = supportedYearnGauges;
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < length;) {
             result[i] = getGaugeInfo(gauges[i]);
+
+            /// @dev The unchecked block is used here because the loop index `i` is simply incremented in each
+            /// iteration, ensuring that `i` will not exceed the length of the array and cause an overflow. Underflow is
+            /// not a concern as `i` is initialized to 0 and only incremented.
+            unchecked {
+                ++i;
+            }
         }
         return result;
     }

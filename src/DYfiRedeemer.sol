@@ -78,10 +78,18 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Transfer all dYfi to this contract from dYfi holders who have approved this contract
         // List of dYfi holders and their dYfi amounts must be provided off-chain
         uint256 totalDYfiAmount;
-        for (uint256 i = 0; i < dYfiHolders.length; ++i) {
+        for (uint256 i = 0; i < dYfiHolders.length;) {
             totalDYfiAmount += dYfiAmounts[i];
             // slither-disable-next-line arbitrary-send-erc20
             IERC20(_DYFI).safeTransferFrom(dYfiHolders[i], address(this), dYfiAmounts[i]);
+
+            /// @dev The unchecked block is used here because overflow is not possible as the loop index `i`
+            /// is simply incremented in each iteration. The loop is bounded by `dYfiHolders.length`, ensuring
+            /// that `i` will not exceed the length of the array and overflow. Underflow is not a concern as `i`
+            /// is initialized to 0 and only incremented.
+            unchecked {
+                ++i;
+            }
         }
         if (totalDYfiAmount == 0) {
             revert Errors.NoDYfiToRedeem();
@@ -105,10 +113,18 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Distribute YFI to dYFI holders proportionally to their dYFI amounts
         // If for any reason, the flashLoan call resulted in less YFI than yfiToDistribute, the following
         // distribution would revert on a transfer call.
-        for (uint256 i = 0; i < dYfiHolders.length; ++i) {
+        for (uint256 i = 0; i < dYfiHolders.length;) {
             uint256 yfiAmount = yfiToDistribute * dYfiAmounts[i] / totalDYfiAmount;
             emit DYfiRedeemed(dYfiHolders[i], dYfiAmounts[i], yfiAmount);
             IERC20(_YFI).safeTransfer(dYfiHolders[i], yfiAmount);
+
+            /// @dev The unchecked block is used here because overflow is not possible as the loop index `i`
+            /// is simply incremented in each iteration. The loop is bounded by `dYfiHolders.length`, ensuring
+            /// that `i` will not exceed the length of the array and overflow. Underflow is not a concern as `i`
+            /// is initialized to 0 and only incremented.
+            unchecked {
+                ++i;
+            }
         }
         // Send the remaining ETH to the caller
         uint256 callerReward = address(this).balance;
