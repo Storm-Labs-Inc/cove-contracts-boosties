@@ -63,18 +63,20 @@ contract YSDRewardsGauge_Test is BaseTest {
         );
     }
 
-    function test_initialize_revertWhen_CallingInheritedInitialize() public {
-        YSDRewardsGauge clone = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
-        vm.expectRevert(YSDRewardsGauge.InvalidInitialization.selector);
-        clone.initialize(address(dummyGaugeAsset));
-    }
-
     function test_initialize_revertWhen_ZeroAddress() public {
         YSDRewardsGauge clone = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
-        clone.initialize(address(dummyGaugeAsset), address(0), address(0xbeef));
+        clone.initialize(address(0), address(0xbeef), address(0xbeef));
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
-        clone.initialize(address(dummyGaugeAsset), address(0xbeef), address(0));
+        clone.initialize(address(0xbeef), address(0), address(0xbeef));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.ZeroAddress.selector));
+        clone.initialize(address(0xbeef), address(0xbeef), address(0));
+    }
+
+    function testFuzz_initialize_revetWhen_AlreadyInitialized(address asset_, address ysd_, address strategy_) public {
+        vm.assume(asset_ != address(0) && ysd_ != address(0) && strategy_ != address(0));
+        vm.expectRevert("Initializable: contract is already initialized");
+        rewardsGauge.initialize(asset_, ysd_, strategy_);
     }
 
     function test_setStakingDelegateRewardsReceiver() public {

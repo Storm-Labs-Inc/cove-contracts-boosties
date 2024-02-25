@@ -16,6 +16,7 @@ import { SwapAndLock } from "src/SwapAndLock.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
+import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { CoveYFI } from "src/CoveYFI.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
@@ -32,7 +33,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     SwapAndLock public swapAndLock;
     DYfiRedeemer public dYfiRedeemer;
     IVault public vault;
-    BaseRewardsGauge public baseRewardsGauge;
+    BaseRewardsGauge public erc20RewardsGauge;
     address public baseRewardForwarder;
     YSDRewardsGauge public ysdRewardsGauge;
     address public ysdRewardForwarder;
@@ -112,7 +113,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // CoveToken
             coveToken = new CoveToken(admin, block.timestamp);
             // RewardsGauges
-            BaseRewardsGauge baseRewardsGaugeImplementation = new BaseRewardsGauge();
+            ERC20RewardsGauge erc20RewardsGaugeImplementation = new ERC20RewardsGauge();
             YSDRewardsGauge ysdRewardsGaugeImplementation = new YSDRewardsGauge();
             RewardForwarder rewardForwarderImplementation = new RewardForwarder();
             coveYearnGaugeFactory = new CoveYearnGaugeFactory(
@@ -120,7 +121,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
                 address(yearnStakingDelegate),
                 address(coveToken),
                 address(rewardForwarderImplementation),
-                address(baseRewardsGaugeImplementation),
+                address(erc20RewardsGaugeImplementation),
                 address(ysdRewardsGaugeImplementation),
                 treasury,
                 admin
@@ -128,10 +129,10 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             vm.label(address(coveYearnGaugeFactory), "coveYearnGaugeFactory");
             coveYearnGaugeFactory.deployCoveGauges(address(yearnGaugeStrategy));
             CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = coveYearnGaugeFactory.getGaugeInfo(address(gauge));
-            baseRewardsGauge = BaseRewardsGauge(gaugeInfo.autoCompoundingGauge);
-            vm.label(address(baseRewardsGauge), "baseRewardsGauge");
-            baseRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
-            (baseRewardForwarder,,,,) = baseRewardsGauge.rewardData(address(coveToken));
+            erc20RewardsGauge = BaseRewardsGauge(gaugeInfo.autoCompoundingGauge);
+            vm.label(address(erc20RewardsGauge), "erc20RewardsGauge");
+            erc20RewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
+            (baseRewardForwarder,,,,) = erc20RewardsGauge.rewardData(address(coveToken));
             vm.label(baseRewardForwarder, "baseRewardForwarder");
             ysdRewardsGauge = YSDRewardsGauge(gaugeInfo.nonAutoCompoundingGauge);
             vm.label(address(ysdRewardsGauge), "ysdRewardsGauge");
@@ -142,7 +143,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             vm.label(address(coveToken), "coveToken");
             coveToken.grantRole(keccak256("MINTER_ROLE"), admin);
             coveToken.addAllowedTransferrer(address(baseRewardForwarder));
-            coveToken.addAllowedTransferrer(address(baseRewardsGauge));
+            coveToken.addAllowedTransferrer(address(erc20RewardsGauge));
             coveToken.addAllowedTransferrer(address(ysdRewardForwarder));
             coveToken.addAllowedTransferrer(address(ysdRewardsGauge));
             vm.stopPrank();
@@ -308,8 +309,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
         vm.startPrank(alice);
         uint256 shares = yearnGaugeStrategy.balanceOf(alice);
-        IERC20(yearnGaugeStrategy).approve(address(baseRewardsGauge), shares);
-        baseRewardsGauge.deposit(shares, alice);
+        IERC20(yearnGaugeStrategy).approve(address(erc20RewardsGauge), shares);
+        erc20RewardsGauge.deposit(shares, alice);
         vm.stopPrank();
         uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
         uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
@@ -359,12 +360,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
         // User withdraws
         vm.startPrank(alice);
-        baseRewardsGauge.redeem(shares, alice, alice);
+        erc20RewardsGauge.redeem(shares, alice, alice);
         yearnGaugeStrategy.redeem(shares, alice, alice);
         assertGt(IERC20(gauge).balanceOf(alice), amount, "profit not given to user on withdraw");
     }
 
-    function testFuzz_report_staking_rewards_profit_baseRewardsGauge_reward(uint256 amount, uint256 reward) public {
+    function testFuzz_report_staking_rewards_profit_erc20RewardsGauge_reward(uint256 amount, uint256 reward) public {
         vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
         vm.assume(amount < 100_000_000_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
         reward = bound(reward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
@@ -381,8 +382,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
         vm.startPrank(alice);
         uint256 shares = yearnGaugeStrategy.balanceOf(alice);
-        IERC20(yearnGaugeStrategy).approve(address(baseRewardsGauge), shares);
-        baseRewardsGauge.deposit(shares, alice);
+        IERC20(yearnGaugeStrategy).approve(address(erc20RewardsGauge), shares);
+        erc20RewardsGauge.deposit(shares, alice);
         vm.stopPrank();
         uint256 beforeTotalAssets = yearnGaugeStrategy.totalAssets();
         uint256 beforePreviewRedeem = yearnGaugeStrategy.previewRedeem(shares);
@@ -394,7 +395,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
         assertApproxEqRel(
             reward,
-            baseRewardsGauge.claimableReward(alice, address(coveToken)),
+            erc20RewardsGauge.claimableReward(alice, address(coveToken)),
             0.005 * 1e18,
             "alice should have claimable rewards equal to the total amount of reward tokens deposited"
         );
@@ -439,11 +440,11 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
         // User withdraws
         vm.startPrank(alice);
-        baseRewardsGauge.redeem(shares, alice, alice);
+        erc20RewardsGauge.redeem(shares, alice, alice);
         yearnGaugeStrategy.redeem(shares, alice, alice);
         assertGt(IERC20(gauge).balanceOf(alice), amount, "profit not given to user on withdraw");
         uint256 coveBalanceBefore = IERC20(address(coveToken)).balanceOf(alice);
-        baseRewardsGauge.claimRewards(alice, alice);
+        erc20RewardsGauge.claimRewards(alice, alice);
         assertApproxEqRel(
             coveBalanceBefore + reward,
             IERC20(address(coveToken)).balanceOf(alice),
