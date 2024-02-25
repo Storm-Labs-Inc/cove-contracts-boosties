@@ -12,7 +12,7 @@ contract ERC20RewardsGauge is BaseRewardsGauge {
      * @notice Initialize the contract
      * @param asset_ Address of the asset token that will be deposited
      */
-    function initialize(address asset_) public virtual initializer {
+    function initialize(address asset_) external virtual initializer {
         __BaseRewardsGauge_init(asset_);
     }
 }

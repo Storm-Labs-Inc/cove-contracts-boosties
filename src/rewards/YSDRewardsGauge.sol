@@ -34,7 +34,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
      * @param ysd_ The address of the Yearn staking delegate.
      * @param strategy The address of the Yearn strategy.
      */
-    function initialize(address asset_, address ysd_, address strategy) public virtual initializer {
+    function initialize(address asset_, address ysd_, address strategy) external virtual initializer {
         if (ysd_ == address(0) || strategy == address(0)) {
             revert ZeroAddress();
         }
