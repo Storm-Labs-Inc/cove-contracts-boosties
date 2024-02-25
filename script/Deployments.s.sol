@@ -61,7 +61,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
-        deployCoveStrategies(deployer.getAddress("YearnStakingDelegate"));
+        deployWethYethCoveStrategy(deployer.getAddress("YearnStakingDelegate"));
+        // TODO: Deploy strategies for other gauges
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
     }
@@ -85,6 +86,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_CRV_YCRV_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_GAUGE, stakingDelegateRewards);
 
         // Move admin roles to the admin multisig
         ysd.grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
@@ -102,7 +105,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         return yearn4626RouterExt;
     }
 
-    function deployCoveStrategies(address ysd)
+    function deployWethYethCoveStrategy(address ysd)
         public
         broadcast
         deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_POOL_GAUGE).name()))
@@ -120,7 +123,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         curveSwapParams.route[1] = MAINNET_ETH_YFI_POOL;
         curveSwapParams.route[2] = MAINNET_WETH;
         curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
-        curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL; // expect the lp token back
+        curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL_LP_TOKEN; // expect the lp token back
 
         // i, j, swap_type, pool_type, n_coins
         // YFI -> WETH
