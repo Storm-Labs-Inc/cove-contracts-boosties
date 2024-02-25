@@ -102,6 +102,29 @@ jobs:
           FOUNDRY_FUZZ_SEED: 0x${{ github.event.pull_request.base.sha || github.sha }}
           MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
 
+  test-invariant:
+    name: Test / Invariant (Echidna)
+    runs-on: buildjet-8vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build
+        run: |
+          pnpm build
+      - name: Run Echidna
+        uses: crytic/echidna-action@v2
+        with:
+          files: .
+          contract: "BaseRewardsGauge_EchidnaTest" # TODO: change to the master invariant test contract
+          config: echidna.config.yaml
+
   compare-gas-reports:
     name: Compare gas reports
     runs-on: buildjet-2vcpu-ubuntu-2204
@@ -174,29 +197,6 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  invariant-test:
-    name: Invariant Test (Echidna)
-    runs-on: buildjet-2vcpu-ubuntu-2204
-    steps:
-      - name: Checkout repository without submodules
-        uses: actions/checkout@v3
-        with:
-          submodules: false
-      - name: Base setup
-        uses: ./.github/actions/base-setup
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Build
-        run: |
-          pnpm build
-      - name: Run Echidna
-        uses: crytic/echidna-action@v2
-        with:
-          files: .
-          contract: "BaseRewardsGauge_EchidnaTest" # TODO: change to the master invariant test contract
-          config: echidna.config.yaml
 
   spelling:
     name: Spelling
