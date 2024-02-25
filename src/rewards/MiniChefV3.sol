@@ -78,7 +78,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     event LogSetPool(uint256 indexed pid, uint256 allocPoint, IMiniChefV3Rewarder indexed rewarder, bool overwrite);
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
     event LogRewardPerSecond(uint256 rewardPerSecond);
-    event LogRewardCommitted(address indexed user, uint256 amount);
+    event LogRewardCommitted(address user, uint256 amount);
 
     /**
      * @dev Constructs the MiniChefV3 contract with a specified reward token and admin address.
