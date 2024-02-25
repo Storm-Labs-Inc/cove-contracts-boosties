@@ -27,7 +27,7 @@ contract RewardForwarder is AccessControlUpgradeable {
     event TreasurySet(address treasury);
     event TreasuryBpsSet(address rewardToken, uint256 treasuryBps);
 
-    constructor() {
+    constructor() payable {
         _disableInitializers();
     }
 

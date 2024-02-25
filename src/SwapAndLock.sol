@@ -38,7 +38,8 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
      * @notice Constructs the SwapAndLock contract.
      * @param yearnStakingDelegate_ Address of the YearnStakingDelegate contract.
      */
-    constructor(address yearnStakingDelegate_, address admin) {
+    // slither-disable-next-line locked-ether
+    constructor(address yearnStakingDelegate_, address admin) payable {
         // Checks
         if (yearnStakingDelegate_ == address(0)) {
             revert Errors.ZeroAddress();

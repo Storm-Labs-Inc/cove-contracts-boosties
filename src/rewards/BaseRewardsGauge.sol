@@ -63,7 +63,7 @@ abstract contract BaseRewardsGauge is
     error ZeroAddress();
     error RewardCannotBeAsset();
 
-    constructor() {
+    constructor() payable {
         _disableInitializers();
     }
 
@@ -139,8 +139,10 @@ abstract contract BaseRewardsGauge is
      *                 for the caller
      */
     function claimRewards(address addr, address receiver) external nonReentrant {
-        if (receiver != address(0) && addr != msg.sender) {
-            revert CannotRedirectForAnotherUser();
+        if (receiver != address(0)) {
+            if (addr != msg.sender) {
+                revert CannotRedirectForAnotherUser();
+            }
         }
         _checkpointRewards(addr, totalSupply(), true, receiver);
     }
@@ -251,15 +253,18 @@ abstract contract BaseRewardsGauge is
         uint256 userBalance = 0;
         if (user != address(0)) {
             userBalance = balanceOf(user);
-            if (claim && receiver == address(0)) {
-                // if receiver is not explicitly declared, check if a default receiver is set
-                receiver = rewardsReceiver[user];
-                receiver = receiver == address(0) ? user : receiver;
+            if (claim) {
+                if (receiver == address(0)) {
+                    // if receiver is not explicitly declared, check if a default receiver is set
+                    receiver = rewardsReceiver[user];
+                    receiver = receiver == address(0) ? user : receiver;
+                }
             }
         }
         uint256 rewardCount = rewardTokens.length;
-        for (uint256 i = 0; i < rewardCount; i++) {
-            address token = rewardTokens[i];
+        address[] memory tokens = rewardTokens;
+        for (uint256 i = 0; i < rewardCount; ++i) {
+            address token = tokens[i];
             _updateReward(token, totalSupply_);
             if (user != address(0)) {
                 _processUserReward(token, user, userBalance, claim, receiver);
@@ -278,9 +283,11 @@ abstract contract BaseRewardsGauge is
         uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
         uint256 duration = lastUpdate - rewardData[token].lastUpdate;
         // slither-disable-next-line timestamp
-        if (duration > 0 && totalSupply_ > 0) {
-            rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / totalSupply_;
-            rewardData[token].lastUpdate = lastUpdate;
+        if (duration > 0) {
+            if (totalSupply_ > 0) {
+                rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / totalSupply_;
+                rewardData[token].lastUpdate = lastUpdate;
+            }
         }
     }
 
