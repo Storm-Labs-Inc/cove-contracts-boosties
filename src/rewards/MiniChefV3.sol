@@ -241,8 +241,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      */
     function commitReward(uint256 amount) external {
         availableReward = availableReward + amount;
-        REWARD_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
         emit LogRewardCommitted(msg.sender, amount);
+        REWARD_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
