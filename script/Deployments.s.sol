@@ -178,7 +178,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         returns (address)
     {
         address rewardForwarderImpl = address(deployer.deploy_RewardForwarder("RewardForwarderImpl", options));
-        address baseRewardsGaugeImpl = address(deployer.deploy_BaseRewardsGauge("BaseRewardsGaugeImpl", options));
+        address erc20RewardsGaugeImpl = address(deployer.deploy_ERC20RewardsGauge("ERC20RewardsGaugeImpl", options));
         address ysdRewardsGaugeImpl = address(deployer.deploy_YSDRewardsGauge("YSDRewardsGaugeImpl", options));
         // Deploy Gauge Factory
         address factory = address(
@@ -188,7 +188,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
                 ysd,
                 cove,
                 rewardForwarderImpl,
-                baseRewardsGaugeImpl,
+                erc20RewardsGaugeImpl,
                 ysdRewardsGaugeImpl,
                 treasury,
                 admin,
