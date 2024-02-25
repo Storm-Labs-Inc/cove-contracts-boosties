@@ -55,7 +55,6 @@ contract Constants is CommonBase {
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
     address public constant MAINNET_CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
-    address public constant MAINNET_CURVE_ETH_YFI_LP_TOKEN = 0x29059568bB40344487d62f7450E78b8E6C74e0e5;
 
     // Balancer
     address public constant MAINNET_BALANCER_FLASH_LOAN_PROVIDER = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
@@ -140,7 +139,7 @@ contract Constants is CommonBase {
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");
-        vm.label(MAINNET_CURVE_ETH_YFI_LP_TOKEN, "CURVE_ETH_YFI_LP_TOKEN");
+        vm.label(MAINNET_ETH_YFI_POOL_LP_TOKEN, "CURVE_ETH_YFI_LP_TOKEN");
         // Curve Pools
         vm.label(MAINNET_CRV3POOL, "CRV3POOL");
         vm.label(MAINNET_DYFI_ETH_POOL, "DYFI_ETH_POOL");
