@@ -11,7 +11,7 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
-import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
+import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
 import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
 import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -162,9 +162,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
     }
 
     function deployCoveYFIRewards() public broadcast {
-        address baseRewardsGaugeImpl = deployer.getAddress("BaseRewardsGaugeImpl");
-        BaseRewardsGauge coveRewardsGauge = BaseRewardsGauge(Clones.clone(baseRewardsGaugeImpl));
-        deployer.save("CoveRewardsGauge", address(coveRewardsGauge), "BaseRewardsGauge.sol:BaseRewardsGauge");
+        address erc20RewardsGaugeImpl = deployer.getAddress("ERC20RewardsGaugeImpl");
+        ERC20RewardsGauge coveRewardsGauge = ERC20RewardsGauge(Clones.clone(erc20RewardsGaugeImpl));
+        deployer.save("CoveRewardsGauge", address(coveRewardsGauge), "ERC20RewardsGauge.sol:ERC20RewardsGauge");
         address rewardForwarderImpl = deployer.getAddress("RewardForwarderImpl");
         RewardForwarder coveRewardsGaugeRewardForwarder = RewardForwarder(Clones.clone(rewardForwarderImpl));
         deployer.save(
