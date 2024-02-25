@@ -174,13 +174,20 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         );
         address coveYFI = deployer.getAddress("CoveYFI");
         coveRewardsGauge.initialize(coveYFI);
-        coveRewardsGaugeRewardForwarder.initialize(admin, treasury, address(coveRewardsGauge));
+        coveRewardsGaugeRewardForwarder.initialize(broadcaster, treasury, address(coveRewardsGauge));
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
+        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, 2000); //20%
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
         // CoveRewardsGaugeRewardForwarder
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
+        coveRewardsGauge.grantRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), admin);
+        coveRewardsGauge.grantRole(_MANAGER_ROLE, manager);
+        coveRewardsGauge.renounceRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), broadcaster);
+        coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
+        coveRewardsGaugeRewardForwarder.grantRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), admin);
+        coveRewardsGaugeRewardForwarder.renounceRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), broadcaster);
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
