@@ -119,6 +119,7 @@ contract Constants is CommonBase {
         vm.label(MAINNET_ETH_YFI_POOL, "YFI_ETH_POOL");
         vm.label(MAINNET_FRAX_USDC_POOL, "FRAX_USDC_POOL");
         vm.label(MAINNET_WETH_YETH_POOL, "ETH_WETH_YETH_POOL");
+        vm.label(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, "TOKENIZED_STRATEGY_IMPLEMENTATION");
         // Uniswap
         vm.label(MAINNET_PERMIT2, "PERMIT2");
         // Sablier V2
