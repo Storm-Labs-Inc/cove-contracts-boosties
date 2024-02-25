@@ -292,6 +292,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         require(coveToken.balanceOf(admin) == COVE_BALANCE_MULTISIG, "CoveToken balance in admin multisig is incorrect");
         // Verify deployer holds no cove tokens
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
+        // Add more checks here
     }
 
     function getCurrentDeployer() external view returns (Deployer) {
