@@ -35,6 +35,7 @@ contract MasterRegistry is IMasterRegistry, AccessControl, Multicall {
      */
     event UpdateRegistry(bytes32 indexed name, address registryAddress, uint256 version);
 
+    // slither-disable-next-line locked-ether
     constructor(address admin, address manager) payable {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(_MANAGER_ROLE, admin);

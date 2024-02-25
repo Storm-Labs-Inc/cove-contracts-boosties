@@ -71,6 +71,7 @@ contract CoveYearnGaugeFactory is AccessControl {
      * @param treasuryMultisig_ The address of the treasury multisig.
      * @param gaugeAdmin_ The address that will be granted the gauge admin role.
      */
+    // slither-disable-next-line locked-ether
     constructor(
         address factoryAdmin,
         address ysd,

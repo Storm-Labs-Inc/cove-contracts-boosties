@@ -28,6 +28,7 @@ contract CoveYFI is ERC20Permit, Rescuable, AccessControl {
      * @param _yearnStakingDelegate The address of the YearnStakingDelegate contract.
      * @param admin The address of the contract admin for rescuing tokens.
      */
+    // slither-disable-next-line locked-ether
     constructor(
         address _yearnStakingDelegate,
         address admin

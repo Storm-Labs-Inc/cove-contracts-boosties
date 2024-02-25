@@ -69,6 +69,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param admin Address of the admin.
      * @param manager Address of the manager.
      */
+    // slither-disable-next-line locked-ether
     constructor(address gaugeRewardReceiverImpl, address treasury_, address admin, address manager) payable {
         // Checks
         // Check for zero addresses

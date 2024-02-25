@@ -41,6 +41,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
     /// @notice The slippage that should be applied to the redemption process
     uint256 private _slippage;
 
+    // slither-disable-next-line locked-ether
     constructor(address admin) payable {
         // Effects
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
