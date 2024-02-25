@@ -227,6 +227,16 @@ abstract contract BaseRewardsGauge is
     }
 
     /**
+     * @notice Returns the total amount of the underlying asset that the gauge has.
+     * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
+     *      This is used to calculate the value of each share.
+     * @return The total assets held by the gauge.
+     */
+    function totalAssets() public view virtual override(ERC4626Upgradeable) returns (uint256) {
+        return totalSupply();
+    }
+
+    /**
      * @dev Internal function to claim pending rewards and update reward accounting for a user.
      *      This function is called during any claim operation and when rewards are deposited.
      *      It iterates through all reward tokens to update user rewards and optionally claims them.
@@ -274,16 +284,6 @@ abstract contract BaseRewardsGauge is
     }
 
     /**
-     * @notice Returns the total amount of the underlying asset that the gauge has.
-     * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
-     *      This is used to calculate the value of each share.
-     * @return The total assets held by the gauge.
-     */
-    function totalAssets() public view virtual override returns (uint256) {
-        return totalSupply();
-    }
-
-    /**
      * @dev Internal function to process user rewards, updating the claimable and claimed amounts.
      * @param token The address of the reward token to process.
      * @param user The user address to process rewards for.
@@ -327,7 +327,7 @@ abstract contract BaseRewardsGauge is
      * @param to The address which is receiving tokens.
      * @param amount The amount of tokens being transferred.
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20Upgradeable) {
         uint256 totalSupply_ = totalSupply();
         _checkpointRewards(from, totalSupply_, false, address(0));
         _checkpointRewards(to, totalSupply_, false, address(0));
