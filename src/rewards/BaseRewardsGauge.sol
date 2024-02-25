@@ -255,8 +255,9 @@ contract BaseRewardsGauge is
             }
         }
         uint256 rewardCount = rewardTokens.length;
+        address[] memory tokens = rewardTokens;
         for (uint256 i = 0; i < rewardCount; ++i) {
-            address token = rewardTokens[i];
+            address token = tokens[i];
             _updateReward(token, totalSupply_);
             if (user != address(0)) {
                 _processUserReward(token, user, userBalance, claim, receiver);
