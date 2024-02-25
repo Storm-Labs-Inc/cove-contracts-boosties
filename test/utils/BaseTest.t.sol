@@ -10,6 +10,8 @@ import { Errors } from "src/libraries/Errors.sol";
 import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { ISignatureTransfer } from "src/Yearn4626RouterExt.sol";
 
 abstract contract BaseTest is Test, Constants {
     //// VARIABLES ////
@@ -183,5 +185,89 @@ abstract contract BaseTest is Test, Constants {
 
     function _cloneContract(address implementation) internal returns (address) {
         return Clones.clone(implementation);
+    }
+
+    /// PERMIT & PERMIT2 HELPER FUNCTIONS ///
+    function _generatePermitSignature(
+        address token,
+        address approvalFrom,
+        uint256 approvalFromPrivKey,
+        address approvalTo,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline
+    )
+        internal
+        view
+        returns (uint8 v, bytes32 r, bytes32 s)
+    {
+        (v, r, s) = vm.sign(
+            approvalFromPrivKey, // user's private key
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01", // EIP-712 encoding
+                    IERC20Permit(token).DOMAIN_SEPARATOR(),
+                    // Frontend should use deadline with enough buffer and with the correct nonce
+                    // keccak256(abi.encode(PERMIT_TYPEHASH, user, address(router), depositAmount,
+                    // sourceToken.nonces(user),
+                    // block.timestamp + 100_000))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, approvalFrom, approvalTo, amount, nonce, deadline))
+                )
+            )
+        );
+    }
+
+    // Below from Permit2.PermitSignature.sol, only added a "to" parameter
+    function _getPermit2PermitTransferSignature(
+        ISignatureTransfer.PermitTransferFrom memory permit,
+        address to,
+        uint256 privateKey,
+        bytes32 domainSeparator
+    )
+        internal
+        view
+        returns (bytes memory sig)
+    {
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(PERMIT2_TRANSFER_FROM_TYPEHASH, tokenPermissions, to, permit.nonce, permit.deadline)
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        return bytes.concat(r, s, bytes1(v));
+    }
+
+    function _getPermit2PermitTransferFrom(
+        address token,
+        uint256 amount,
+        uint256 nonce,
+        uint256 deadline
+    )
+        internal
+        view
+        returns (ISignatureTransfer.PermitTransferFrom memory permit)
+    {
+        permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: token, amount: amount }),
+            nonce: nonce,
+            deadline: deadline
+        });
+    }
+
+    function _getPerit2SignatureTransferDetails(
+        address to,
+        uint256 requestedAmount
+    )
+        internal
+        pure
+        returns (ISignatureTransfer.SignatureTransferDetails memory transferDetails)
+    {
+        transferDetails = ISignatureTransfer.SignatureTransferDetails({ to: to, requestedAmount: requestedAmount });
     }
 }

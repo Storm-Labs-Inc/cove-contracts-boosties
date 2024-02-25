@@ -71,6 +71,7 @@ contract CoveYearnGaugeFactory is AccessControl {
      * @param treasuryMultisig_ The address of the treasury multisig.
      * @param gaugeAdmin_ The address that will be granted the gauge admin role.
      */
+    // slither-disable-next-line locked-ether
     constructor(
         address factoryAdmin,
         address ysd,
@@ -80,7 +81,9 @@ contract CoveYearnGaugeFactory is AccessControl {
         address ysdRewardsGaugeImpl_,
         address treasuryMultisig_,
         address gaugeAdmin_
-    ) {
+    )
+        payable
+    {
         if (ysd == address(0) || cove == address(0)) revert Errors.ZeroAddress();
         YEARN_STAKING_DELEGATE = ysd;
         COVE = cove;
@@ -108,8 +111,9 @@ contract CoveYearnGaugeFactory is AccessControl {
     function getAllGaugeInfo() external view returns (GaugeInfo[] memory) {
         uint256 length = supportedYearnGauges.length;
         GaugeInfo[] memory result = new GaugeInfo[](length);
-        for (uint256 i = 0; i < length; i++) {
-            result[i] = getGaugeInfo(supportedYearnGauges[i]);
+        address[] memory gauges = supportedYearnGauges;
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = getGaugeInfo(gauges[i]);
         }
         return result;
     }

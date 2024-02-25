@@ -60,7 +60,14 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @param owner_ The address of the initial owner.
      * @param mintingAllowedAfter_ The timestamp after which minting is allowed.
      */
-    constructor(address owner_, uint256 mintingAllowedAfter_) ERC20Permit("CoveToken") ERC20("CoveToken", "COVE") {
+    constructor(
+        address owner_,
+        uint256 mintingAllowedAfter_
+    )
+        payable
+        ERC20Permit("CoveToken")
+        ERC20("CoveToken", "COVE")
+    {
         // Checks
         // slither-disable-next-line timestamp
         if (mintingAllowedAfter_ < block.timestamp) {
@@ -178,8 +185,12 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         // Check if the transfer is allowed
         // When paused, only allowed transferrers can transfer and only allowed transferees can receive
-        if (paused() && (!allowedTransferrer[from] && !allowedTransferee[to])) {
-            revert Errors.TransferNotAllowedYet();
+        if (paused()) {
+            if (!allowedTransferrer[from]) {
+                if (!allowedTransferee[to]) {
+                    revert Errors.TransferNotAllowedYet();
+                }
+            }
         }
         super._beforeTokenTransfer(from, to, amount);
     }

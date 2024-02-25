@@ -42,6 +42,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
         address yearnStakingDelegate_,
         address curveRouter_
     )
+        payable
         BaseStrategy(asset_, "Wrapped YearnV3 Strategy")
         CurveRouterSwapper(curveRouter_)
         YearnGaugeStrategyBase(asset_, yearnStakingDelegate_)

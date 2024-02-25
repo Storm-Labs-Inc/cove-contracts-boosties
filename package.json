@@ -11,6 +11,8 @@
     "invariant-test": "pnpm run build && echidna ./ --config ./echidna.config.yaml --contract BaseRewardsGauge_EchidnaTest",
     "coverage": "forge coverage --report lcov",
     "slither": "forge clean && forge build --skip test script --build-info && slither . --ignore-compile",
+    "slither-upgradeability": "for f in $(grep -l -r \"openzeppelin-upgradeable\" src); do c=$(echo \"${f##*/}\" | cut -f 1 -d \".\"); echo \"$c\"; slither-check-upgradeability $f $c; echo; done",
+    "semgrep": "semgrep --config p/smart-contracts --exclude deps/ src/",
     "fork:mainnet": "./bash/start-anvil-fork.sh",
     "deploy:local": "pnpm run build && ./bash/deploy-to-local.sh",
     "deploy:prod": "pnpm run build && ./bash/deploy-to-prod.sh",

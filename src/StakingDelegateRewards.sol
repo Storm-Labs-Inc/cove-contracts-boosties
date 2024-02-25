@@ -51,7 +51,8 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, Reent
      * @param rewardsToken_ The ERC20 token to be used as the rewards token.
      * @param stakingDelegate_ The address of the staking delegate contract.
      */
-    constructor(address rewardsToken_, address stakingDelegate_) {
+    // slither-disable-next-line locked-ether
+    constructor(address rewardsToken_, address stakingDelegate_) payable {
         // Checks
         // Check for zero addresses
         if (rewardsToken_ == address(0) || stakingDelegate_ == address(0)) {
