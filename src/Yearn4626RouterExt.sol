@@ -30,7 +30,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @param weth_ The address of the WETH contract.
      * @param permit2_ The address of the Permit2 contract.
      */
-    constructor(string memory name_, address weth_, address permit2_) Yearn4626Router(name_, IWETH9(weth_)) {
+    // slither-disable-next-line locked-ether
+    constructor(string memory name_, address weth_, address permit2_) payable Yearn4626Router(name_, IWETH9(weth_)) {
         _PERMIT2 = IPermit2(permit2_);
     }
 

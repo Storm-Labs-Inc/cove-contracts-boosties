@@ -24,7 +24,8 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ac
     /**
      * @notice Initializes the contract by disabling initializers from the Clone pattern.
      */
-    constructor() {
+    // slither-disable-next-line locked-ether
+    constructor() payable {
         _disableInitializers();
     }
 

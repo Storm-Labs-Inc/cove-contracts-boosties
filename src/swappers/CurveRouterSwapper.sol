@@ -40,7 +40,7 @@ contract CurveRouterSwapper {
      * @dev Sets the Curve Router address on contract deployment.
      * @param curveRouter_ The address of the Curve Router.
      */
-    constructor(address curveRouter_) {
+    constructor(address curveRouter_) payable {
         // Checks
         if (curveRouter_ == address(0)) {
             revert Errors.ZeroAddress();
@@ -99,7 +99,8 @@ contract CurveRouterSwapper {
         }
         // Check if toToken is in the route
         address toTokenInRoute = address(0);
-        for (uint256 i = 0; i < curveSwapParams.route.length; i++) {
+        uint256 routeLength = curveSwapParams.route.length;
+        for (uint256 i = 0; i < routeLength; ++i) {
             if (curveSwapParams.route[i] == address(0)) {
                 break;
             }

@@ -27,7 +27,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     error MaxTotalAssetsExceeded();
     error InvalidInitialization();
 
-    constructor() BaseRewardsGauge() { }
+    constructor() payable BaseRewardsGauge() { }
 
     function initialize(address) public virtual override {
         revert InvalidInitialization();
