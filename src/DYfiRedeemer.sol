@@ -77,7 +77,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Transfer all dYfi to this contract from dYfi holders who have approved this contract
         // List of dYfi holders and their dYfi amounts must be provided off-chain
         uint256 totalDYfiAmount;
-        for (uint256 i = 0; i < dYfiHolders.length; i++) {
+        for (uint256 i = 0; i < dYfiHolders.length; ++i) {
             totalDYfiAmount += dYfiAmounts[i];
             // slither-disable-next-line arbitrary-send-erc20
             IERC20(_DYFI).safeTransferFrom(dYfiHolders[i], address(this), dYfiAmounts[i]);
@@ -104,7 +104,7 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
         // Distribute YFI to dYFI holders proportionally to their dYFI amounts
         // If for any reason, the flashLoan call resulted in less YFI than yfiToDistribute, the following
         // distribution would revert on a transfer call.
-        for (uint256 i = 0; i < dYfiHolders.length; i++) {
+        for (uint256 i = 0; i < dYfiHolders.length; ++i) {
             uint256 yfiAmount = yfiToDistribute * dYfiAmounts[i] / totalDYfiAmount;
             emit DYfiRedeemed(dYfiHolders[i], dYfiAmounts[i], yfiAmount);
             IERC20(_YFI).safeTransfer(dYfiHolders[i], yfiAmount);

@@ -108,7 +108,7 @@ contract CoveYearnGaugeFactory is AccessControl {
     function getAllGaugeInfo() external view returns (GaugeInfo[] memory) {
         uint256 length = supportedYearnGauges.length;
         GaugeInfo[] memory result = new GaugeInfo[](length);
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length; ++i) {
             result[i] = getGaugeInfo(supportedYearnGauges[i]);
         }
         return result;

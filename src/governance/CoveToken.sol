@@ -178,8 +178,10 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         // Check if the transfer is allowed
         // When paused, only allowed transferrers can transfer and only allowed transferees can receive
-        if (paused() && (!allowedTransferrer[from] && !allowedTransferee[to])) {
-            revert Errors.TransferNotAllowedYet();
+        if (paused()) {
+            if (!allowedTransferrer[from] && !allowedTransferee[to]) {
+                revert Errors.TransferNotAllowedYet();
+            }
         }
         super._beforeTokenTransfer(from, to, amount);
     }

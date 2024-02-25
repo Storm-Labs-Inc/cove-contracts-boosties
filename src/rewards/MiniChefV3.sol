@@ -163,7 +163,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         if (_pidPlusOne[address(lpToken_)] != 0) {
             revert Errors.LPTokenAlreadyAdded();
         }
-        totalAllocPoint += allocPoint;
+        totalAllocPoint = totalAllocPoint + allocPoint;
         lpToken.push(lpToken_);
         lpSupply.push(0);
         rewarder.push(rewarder_);
@@ -239,7 +239,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param amount The amount of REWARD_TOKEN to commit.
      */
     function commitReward(uint256 amount) external {
-        availableReward += amount;
+        availableReward = availableReward + amount;
         REWARD_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
     }
 
@@ -256,13 +256,15 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         uint256 lpSupply_ = lpSupply[pid];
         uint256 totalAllocPoint_ = totalAllocPoint;
         // slither-disable-next-line timestamp
-        if (block.timestamp > pool.lastRewardTime && lpSupply_ != 0 && totalAllocPoint_ != 0) {
-            uint256 time = block.timestamp - pool.lastRewardTime;
-            // Explicitly round down when calculating the reward
-            // slither-disable-start divide-before-multiply
-            uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-            accRewardPerShare += rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_;
-            // slither-disable-end divide-before-multiply
+        if (block.timestamp > pool.lastRewardTime) {
+            if (lpSupply_ != 0 && totalAllocPoint_ != 0) {
+                uint256 time = block.timestamp - pool.lastRewardTime;
+                // Explicitly round down when calculating the reward
+                // slither-disable-start divide-before-multiply
+                uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
+                accRewardPerShare += rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_;
+                // slither-disable-end divide-before-multiply
+            }
         }
         pending = (user.amount * accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION) - user.rewardDebt + user.unpaidRewards;
     }
@@ -278,13 +280,15 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         if (block.timestamp > pool.lastRewardTime) {
             uint256 lpSupply_ = lpSupply[pid];
             uint256 totalAllocPoint_ = totalAllocPoint;
-            if (lpSupply_ != 0 && totalAllocPoint_ != 0) {
-                uint256 time = block.timestamp - pool.lastRewardTime;
-                // Explicitly round down when calculating the reward
-                // slither-disable-start divide-before-multiply
-                uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-                pool.accRewardPerShare += uint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
-                // slither-disable-end divide-before-multiply
+            if (lpSupply_ != 0) {
+                if (totalAllocPoint_ != 0) {
+                    uint256 time = block.timestamp - pool.lastRewardTime;
+                    // Explicitly round down when calculating the reward
+                    // slither-disable-start divide-before-multiply
+                    uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
+                    pool.accRewardPerShare += uint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
+                    // slither-disable-end divide-before-multiply
+                }
             }
             pool.lastRewardTime = uint64(block.timestamp);
             _poolInfo[pid] = pool;
@@ -305,7 +309,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         // Effects
         user.amount += amount;
         user.rewardDebt += amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
-        lpSupply[pid] += amount;
+        lpSupply[pid] = lpSupply[pid] + amount;
 
         emit Deposit(msg.sender, pid, amount, to);
 
