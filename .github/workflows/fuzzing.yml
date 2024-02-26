@@ -12,7 +12,7 @@ env:
 jobs:
   echidna:
     name: Echidna
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: buildjet-8vcpu-ubuntu-2204
     strategy:
       fail-fast: false
       matrix:
