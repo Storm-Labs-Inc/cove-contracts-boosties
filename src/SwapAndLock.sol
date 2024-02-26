@@ -62,7 +62,7 @@ contract SwapAndLock is ISwapAndLock, AccessControl, ReentrancyGuard {
     /**
      * @notice Sets the address of the DYfiRedeemer contract and approves it to spend dYFI. If the redeemer was already
      * set, the approval is removed from the old redeemer.
-     * @param newDYfiRedeemer Address of the new DYfiRedeemer contract.
+     * @param newDYfiRedeemer Address of the new DYFIRedeemer contract.
      */
     function setDYfiRedeemer(address newDYfiRedeemer) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Checks

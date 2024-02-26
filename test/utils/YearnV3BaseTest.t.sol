@@ -13,7 +13,7 @@ import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
-import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
+import { DYFIRedeemer } from "src/DYFIRedeemer.sol";
 
 import { GaugeFactory } from "src/deps/yearn/veYFI/GaugeFactory.sol";
 import { VeRegistry } from "src/deps/yearn/veYFI/VeRegistry.sol";
@@ -178,7 +178,7 @@ contract YearnV3BaseTest is BaseTest {
     }
 
     function setUpDYfiRedeemer(address owner) public returns (address) {
-        address dYfiRedeemer = address(new DYfiRedeemer(owner));
+        address dYfiRedeemer = address(new DYFIRedeemer(owner));
         vm.label(dYfiRedeemer, "DYfiRedeemer");
         return dYfiRedeemer;
     }

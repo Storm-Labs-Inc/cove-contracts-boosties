@@ -14,7 +14,7 @@ import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.so
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
-import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
+import { DYFIRedeemer } from "src/DYFIRedeemer.sol";
 
 contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -22,7 +22,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     IYearnGaugeStrategy public yearnGaugeStrategy;
     MockYearnStakingDelegate public mockYearnStakingDelegate;
     MockStakingDelegateRewards public mockStakingDelegateRewards;
-    DYfiRedeemer public dYfiRedeemer;
+    DYFIRedeemer public dYfiRedeemer;
     IVault public vault;
 
     // Events TODO: remove for interface
@@ -47,7 +47,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         vm.label(address(mockYearnStakingDelegate), "mockYearnStakingDelegate");
         vm.label(address(mockStakingDelegateRewards), "mockStakingDelegateRewards");
         mockYearnStakingDelegate.setGaugeStakingRewards(address(mockStakingDelegateRewards));
-        dYfiRedeemer = new DYfiRedeemer(admin);
+        dYfiRedeemer = new DYFIRedeemer(admin);
         vm.label(address(dYfiRedeemer), "dYfiRedeemer");
 
         //// wrapped strategy ////

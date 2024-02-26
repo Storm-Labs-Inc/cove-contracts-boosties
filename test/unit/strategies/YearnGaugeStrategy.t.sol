@@ -19,14 +19,14 @@ import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { ERC4626Mock } from "@openzeppelin/contracts/mocks/ERC4626Mock.sol";
 import { MockGauge } from "test/mocks/MockGauge.sol";
 import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
-import { MockDYfiRedeemer } from "test/mocks/MockDYfiRedeemer.sol";
+import { MockDYFIRedeemer } from "test/mocks/MockDYFIRedeemer.sol";
 
 contract YearnGaugeStrategy_Test is BaseTest {
     using SafeERC20 for IERC20;
 
     IYearnGaugeStrategy public yearnGaugeStrategy;
     IYearnStakingDelegate public yearnStakingDelegate;
-    MockDYfiRedeemer public mockDYfiRedeemer;
+    MockDYFIRedeemer public mockDYfiRedeemer;
     address public stakingDelegateRewards;
     address public dYfi;
     address public yfi;
@@ -71,7 +71,7 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.label(vault, "vault");
         gauge = address(new MockGauge(vault));
         vm.label(gauge, "gauge");
-        mockDYfiRedeemer = new MockDYfiRedeemer();
+        mockDYfiRedeemer = new MockDYFIRedeemer();
         vm.label(address(mockDYfiRedeemer), "mockDYfiRedeemer");
         curveRouter = address(new MockCurveRouter());
         vm.label(curveRouter, "curveRouter");

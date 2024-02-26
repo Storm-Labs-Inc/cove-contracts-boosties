@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Constants } from "test/utils/Constants.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 
-contract MockDYfiRedeemer is Constants, StdCheats {
+contract MockDYFIRedeemer is Constants, StdCheats {
     function massRedeem(address[] calldata accounts, uint256[] calldata dYfiAmounts) external {
         for (uint256 i = 0; i < accounts.length; i++) {
             IERC20(MAINNET_DYFI).transferFrom(accounts[i], address(this), dYfiAmounts[i]);
