@@ -24,12 +24,12 @@
     "lint:sol": "forge fmt --check && pnpm run solhint:src && pnpm run solhint:script && pnpm run solhint:test",
     "solhint:src": "npx solhint --noPrompt --config .solhint.json --ignore-path .solhintignore \"{src}/**/*.sol\"",
     "solhint:script": "npx solhint --noPrompt --config .solhint.script.json --ignore-path .solhintignore \"{script}/**/*.sol\"",
-    "solhint:test": "npx solhint --noPrompt --config .solhint.test.json --ignore-path .solhintignore \"{test}/**/*.sol\"",
+    "solhint:test": "npx solhint --noPrompt --config .solhint.test.json --ignore-path .solhintignore \"test/**/*.sol\"",
     "prettier:check": "npx prettier --check \"**/*.{json,md,yml,yaml}\"",
     "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
   },
   "lint-staged": {
-    "{src}/!(deps/**/*|interfaces/deps/**/*)/**/*.sol": [
+    "src/!(deps/**/*|interfaces/deps/**/*)/**/*.sol": [
       "forge fmt",
       "npx solhint --fix --noPrompt --config .solhint.json --ignore-path .solhintignore"
     ],
