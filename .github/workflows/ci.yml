@@ -78,6 +78,44 @@ jobs:
             const body = process.env.REPORT
             await script({ github, context, header, body })
 
+  semgrep:
+    name: Semgrep
+    runs-on: buildjet-2vcpu-ubuntu-2204
+    permissions: write-all
+    steps:
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache-rpc-storage: false
+      - run: python3 -m pip install --upgrade semgrep
+      - run: |
+          semgrep --config p/smart-contracts --exclude deps/ src/ -o semgrep.out --text
+          RAW_REPORT=$(cat semgrep.out)
+          echo $RAW_REPORT
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          if [ "$RAW_REPORT" != "" ]; then
+            echo "report<<$EOF" >> $GITHUB_OUTPUT
+            echo "# Semgrep report" >> $GITHUB_OUTPUT
+            echo "$RAW_REPORT" >> $GITHUB_OUTPUT
+            echo "$EOF" >> $GITHUB_OUTPUT
+          fi
+        env:
+          SEMGREP_SEND_METRICS: off
+        id: semgrep
+      - name: Add semgrep to sticky comment
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: semgrep
+          delete: ${{ !steps.semgrep.outputs.report }}
+          message: ${{ steps.semgrep.outputs.report }}
+
   test:
     name: Test
     runs-on: buildjet-2vcpu-ubuntu-2204
@@ -163,6 +201,7 @@ jobs:
           'pull_request_target')
         uses: marocchino/sticky-pull-request-comment@v2
         with:
+          header: gas
           # delete the comment in case changes no longer impact gas costs
           delete: ${{ !steps.gas_diff.outputs.markdown }}
           message: ${{ steps.gas_diff.outputs.markdown }}
