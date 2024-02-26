@@ -398,6 +398,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         // slither-disable-start arbitrary-send-eth
         // slither-disable-start low-level-calls
         // solhint-disable-next-line avoid-low-level-calls
+        // nosemgrep: solidity.security.arbitrary-low-level-call.arbitrary-low-level-call
         (bool success, bytes memory result) = target.call{ value: value }(data);
         // slither-disable-end arbitrary-send-eth
         // slither-disable-end low-level-calls
