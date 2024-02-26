@@ -1,16 +1,28 @@
 # smart-contracts-core
 
+![cove](./assets/cove.png)
+
+<div align="center">
+
 [![codecov](https://codecov.io/gh/Storm-Labs-Inc/smart-contracts-core/branch/master/graph/badge.svg?token=TT68C116IT)](https://codecov.io/gh/Storm-Labs-Inc/smart-contracts-core)
 [![CI](https://github.com/Storm-Labs-Inc/smart-contracts-core/actions/workflows/ci.yml/badge.svg)](https://github.com/Storm-Labs-Inc/smart-contracts-core/actions/workflows/ci.yml)
-[![Discord](https://img.shields.io/discord/1162443184681533470?logo=discord&label=discord&labelColor=070909&color=E9FEA2)](https://discord.gg/xdhvEFVsE9)
+[![Discord](https://img.shields.io/discord/1162443184681533470?logo=discord&label=discord)](https://discord.gg/xdhvEFVsE9)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/cove_fi)](https://twitter.com/intent/user?screen_name=cove_fi)
 
-![cove](https://github.com/Storm-Labs-Inc/smart-contracts-core/assets/972382/a572543c-9797-4a2c-a394-18050ca25e72)
+</div>
 
-This repository contains the core smart contracts for the Cove Protocol. It includes a liquid locker and staking
-platform for Yearn, a governance token, and auxiliary contracts.
+This repository contains the core smart contracts for the Cove Protocol. It includes Boosties (a liquid locker and
+staking platform for Yearn), a governance token, and auxiliary contracts.
+
+The testing suite includes unit, integration, fork, and invariant tests.
 
 For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
+
+## Architecture
+
+### Boosties
+
+![boosties](./assets/boosties.png)
 
 ## Prerequisites
 
@@ -66,9 +78,10 @@ Run the tests:
 pnpm test
 ```
 
-### Run echidna tests
+### Run invariant tests (echidna)
 
-[Install echidna](https://github.com/crytic/echidna) and run the test for each Echidna test contract:
+[Install echidna](https://github.com/crytic/echidna?tab=readme-ov-file#installation) and run the test for each Echidna
+test contract:
 
 > Echidna may fail if the contracts are not built cleanly. If you encounter issues, try running
 > `pnpm clean && pnpm build` before running the tests.
@@ -77,9 +90,9 @@ pnpm test
 pnpm invariant-test ERC20RewardsGauge_EchidnaTest
 ```
 
-### Run slither
+### Run slither static analysis
 
-[Install slither](https://github.com/crytic/slither) and run the tool:
+[Install slither](https://github.com/crytic/slither?tab=readme-ov-file#how-to-install) and run the tool:
 
 ```sh
 pnpm slither
@@ -92,9 +105,10 @@ To run the [upgradeability checks](https://github.com/crytic/slither/wiki/Upgrad
 pnpm slither-upgradeability
 ```
 
-### Run semgrep
+### Run semgrep static analysis
 
-[Install semgrep](https://github.com/semgrep/semgrep) and run the tool:
+[Install semgrep](https://github.com/semgrep/semgrep?tab=readme-ov-file#option-2-getting-started-from-the-cli) and run
+the tool:
 
 ```sh
 pnpm semgrep
