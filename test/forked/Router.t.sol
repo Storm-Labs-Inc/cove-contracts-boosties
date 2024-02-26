@@ -29,22 +29,22 @@ contract Router_ForkedTest is BaseTest {
 
     function test_curveLpTokenToYearnGauge() public {
         uint256 depositAmount = 1 ether;
-        airdrop(IERC20(MAINNET_CURVE_ETH_YFI_LP_TOKEN), user, depositAmount);
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount);
 
         // Generate a permit signature
         (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
-            MAINNET_CURVE_ETH_YFI_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
+            MAINNET_ETH_YFI_POOL_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
         );
 
         bytes[] memory data = new bytes[](6);
         data[0] = abi.encodeWithSelector(
-            SelfPermit.selfPermit.selector, MAINNET_CURVE_ETH_YFI_LP_TOKEN, depositAmount, block.timestamp, v, r, s
+            SelfPermit.selfPermit.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, block.timestamp, v, r, s
         );
         data[1] = abi.encodeWithSelector(
-            PeripheryPayments.pullToken.selector, MAINNET_CURVE_ETH_YFI_LP_TOKEN, depositAmount, address(router)
+            PeripheryPayments.pullToken.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, address(router)
         );
         data[2] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_CURVE_ETH_YFI_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
+            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
         );
         data[3] = abi.encodeWithSelector(
             Yearn4626RouterExt.depositToVaultV2.selector,
@@ -71,28 +71,28 @@ contract Router_ForkedTest is BaseTest {
         vm.prank(user);
         router.multicall(data);
 
-        assertEq(IERC20(MAINNET_CURVE_ETH_YFI_LP_TOKEN).balanceOf(user), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(user), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user), 949_289_266_142_683_599);
     }
 
     function test_curveLpTokenToYearnGauge_revertWhen_insufficientShares() public {
         uint256 depositAmount = 1 ether;
-        airdrop(IERC20(MAINNET_CURVE_ETH_YFI_LP_TOKEN), user, depositAmount);
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount);
 
         // Generate a permit signature
         (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
-            MAINNET_CURVE_ETH_YFI_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
+            MAINNET_ETH_YFI_POOL_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
         );
 
         bytes[] memory data = new bytes[](6);
         data[0] = abi.encodeWithSelector(
-            SelfPermit.selfPermit.selector, MAINNET_CURVE_ETH_YFI_LP_TOKEN, depositAmount, block.timestamp, v, r, s
+            SelfPermit.selfPermit.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, block.timestamp, v, r, s
         );
         data[1] = abi.encodeWithSelector(
-            PeripheryPayments.pullToken.selector, MAINNET_CURVE_ETH_YFI_LP_TOKEN, depositAmount, address(router)
+            PeripheryPayments.pullToken.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, address(router)
         );
         data[2] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_CURVE_ETH_YFI_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
+            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
         );
         data[3] = abi.encodeWithSelector(
             Yearn4626RouterExt.depositToVaultV2.selector,
