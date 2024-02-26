@@ -35,7 +35,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
     address[] public coveYearnStrategies;
 
     // Constants
-    uint256 private constant COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
+    uint256 private constant _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
@@ -180,7 +180,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         coveRewardsGaugeRewardForwarder.initialize(broadcaster, treasury, address(coveRewardsGauge));
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
-        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
+        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
         // CoveRewardsGaugeRewardForwarder
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
