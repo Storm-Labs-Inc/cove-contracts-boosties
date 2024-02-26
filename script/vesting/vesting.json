@@ -3,7 +3,7 @@
     {
       "0_sender": "0x000000000000000000000000000000000000dead",
       "1_recepient": "0x000000000000000000000000000000000000dead",
-      "2_totalAmount": 10,
+      "2_totalAmount": 200000000000000000000000,
       "3_cancelable": true,
       "4_trasnferable": true,
       "5_durations": {
@@ -18,7 +18,7 @@
     {
       "0_sender": "0x000000000000000000000000000000000000dead",
       "1_recepient": "0x000000000000000000000000000000000000dead",
-      "2_totalAmount": 20,
+      "2_totalAmount": 800000000000000000000000,
       "3_cancelable": true,
       "4_trasnferable": true,
       "5_durations": {
