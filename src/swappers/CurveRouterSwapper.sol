@@ -100,11 +100,18 @@ contract CurveRouterSwapper {
         // Check if toToken is in the route
         address toTokenInRoute = address(0);
         uint256 routeLength = curveSwapParams.route.length;
-        for (uint256 i = 0; i < routeLength; ++i) {
+        for (uint256 i = 0; i < routeLength;) {
             if (curveSwapParams.route[i] == address(0)) {
                 break;
             }
             toTokenInRoute = curveSwapParams.route[i];
+
+            /// @dev The unchecked block is used here because the loop index `i` is simply incremented in each
+            /// iteration, ensuring that `i` will not exceed the length of the array and cause an overflow. Underflow is
+            /// not a concern as `i` is initialized to 0 and only incremented.
+            unchecked {
+                ++i;
+            }
         }
         if (toTokenInRoute != toToken) {
             revert Errors.InvalidToToken(toToken, toTokenInRoute);
