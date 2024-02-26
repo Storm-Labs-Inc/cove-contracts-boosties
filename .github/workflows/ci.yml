@@ -68,7 +68,7 @@ jobs:
 
       - name: Create/update checklist as PR comment
         uses: actions/github-script@v6
-        if: github.event_name == 'pull_request' && ${{ !endsWith(steps.slither.outputs.stdout, 'Summary\n') }}
+        if: github.event_name == 'pull_request' && ${{ !endsWith(steps.slither.outputs.stdout, 'Summary') }}
         env:
           REPORT: ${{ steps.slither.outputs.stdout }}
         with:
