@@ -78,6 +78,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     event LogSetPool(uint256 indexed pid, uint256 allocPoint, IMiniChefV3Rewarder indexed rewarder, bool overwrite);
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
     event LogRewardPerSecond(uint256 rewardPerSecond);
+    event LogRewardCommitted(uint256 amount);
 
     /**
      * @dev Constructs the MiniChefV3 contract with a specified reward token and admin address.
@@ -86,7 +87,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      */
     constructor(IERC20 rewardToken_, address admin) payable {
         REWARD_TOKEN = rewardToken_;
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     /// @notice Returns the number of MCV3 pools.
@@ -240,6 +241,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      */
     function commitReward(uint256 amount) external {
         availableReward = availableReward + amount;
+        emit LogRewardCommitted(amount);
         REWARD_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
     }
 
