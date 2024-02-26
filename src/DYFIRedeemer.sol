@@ -10,12 +10,12 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ICurveTwoAssetPool } from "src/interfaces/deps/curve/ICurveTwoAssetPool.sol";
 import { IWETH } from "src/interfaces/deps/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { IDYfiRedeemer } from "src/interfaces/IDYfiRedeemer.sol";
+import { IDYFIRedeemer } from "src/interfaces/IDYFIRedeemer.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
- * @title DYfiRedeemer
+ * @title DYFIRedeemer
  * @notice This contract can be used to redeem dYFI for YFI for multiple dYFI holders in a single transaction.
  * Any address that holds dYFI can approve this contract to spend their dYFI. Then the caller of massRedeem
  * will provide a list of dYFI holders and their dYFI amounts. By utilizing low-fee flash loans from Balancer,
@@ -25,7 +25,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
  * the minimum amount of YFI that should be redeemed for their dYFI. The minimum amount of YFI at a given time can be
  * calculated using the `minYfiRedeem(uint256 dYfiAmount)` function.
  */
-contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable {
+contract DYFIRedeemer is IDYFIRedeemer, AccessControl, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     address private constant _REDEMPTION = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;
@@ -40,6 +40,10 @@ contract DYfiRedeemer is IDYfiRedeemer, AccessControl, ReentrancyGuard, Pausable
 
     /// @notice The slippage that should be applied to the redemption process
     uint256 private _slippage;
+
+    event SlippageSet(uint256 slippage);
+    event DYfiRedeemed(address indexed dYfiHolder, uint256 dYfiAmount, uint256 yfiAmount);
+    event CallerReward(address indexed caller, uint256 amount);
 
     // slither-disable-next-line locked-ether
     constructor(address admin) payable {

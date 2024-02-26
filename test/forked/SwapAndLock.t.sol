@@ -5,7 +5,7 @@ import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
 import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { IDYfiRedeemer } from "src/interfaces/IDYfiRedeemer.sol";
+import { IDYFIRedeemer } from "src/interfaces/IDYFIRedeemer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SwapAndLock_ForkedTest is YearnV3BaseTest {
@@ -43,7 +43,7 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
         uint256[] memory dYfiAmounts = new uint256[](1);
         dYfiAmounts[0] = dYfiAmount;
         vm.prank(redeemCaller);
-        IDYfiRedeemer(dYfiRedeemer).massRedeem(accounts, dYfiAmounts);
+        IDYFIRedeemer(dYfiRedeemer).massRedeem(accounts, dYfiAmounts);
         uint256 yfiAmount = IERC20(MAINNET_YFI).balanceOf(swapAndLock);
         assertGt(yfiAmount, 0, "dYfi was not redeemed for YFI");
 

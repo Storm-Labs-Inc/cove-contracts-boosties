@@ -5,11 +5,11 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
-import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
+import { DYFIRedeemer } from "src/DYFIRedeemer.sol";
 import { MockChainLinkOracle } from "test/mocks/MockChainLinkOracle.sol";
 
-contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
-    DYfiRedeemer public dYfiRedeemer;
+contract DYFIRedeemer_ForkedTest is YearnV3BaseTest {
+    DYFIRedeemer public dYfiRedeemer;
     uint256 public constant MAX_SLIPPAGE = 0.05e18;
 
     // Users
@@ -24,7 +24,7 @@ contract DYfiRedeemer_ForkedTest is YearnV3BaseTest {
         bob = createUser("bob");
         charlie = createUser("charlie");
         caller = createUser("caller");
-        dYfiRedeemer = new DYfiRedeemer(admin);
+        dYfiRedeemer = new DYFIRedeemer(admin);
     }
 
     function test_massRedeem() public {

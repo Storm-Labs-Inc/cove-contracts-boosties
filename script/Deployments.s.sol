@@ -98,10 +98,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
             deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd), options)
         );
         address swapAndLock = address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), broadcaster, options));
-        deployer.deploy_DYfiRedeemer("DYfiRedeemer", admin, options);
+        deployer.deploy_DYFIRedeemer("DYFIRedeemer", admin, options);
         deployer.deploy_CoveYFI("CoveYFI", address(ysd), admin, options);
         // Admin transactions
-        SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYfiRedeemer"));
+        SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYFIRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
         ysd.setSnapshotDelegate("veyfi.eth", treasury);
         ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
@@ -303,7 +303,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
             MasterRegistry.addRegistry.selector, bytes32("SwapAndLock"), deployer.getAddress("SwapAndLock")
         );
         data[3] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("DYfiRedeemer"), deployer.getAddress("DYfiRedeemer")
+            MasterRegistry.addRegistry.selector, bytes32("DYFIRedeemer"), deployer.getAddress("DYFIRedeemer")
         );
         data[4] = abi.encodeWithSelector(
             MasterRegistry.addRegistry.selector, bytes32("CoveYFI"), deployer.getAddress("CoveYFI")

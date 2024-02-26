@@ -14,7 +14,7 @@ import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
-import { DYfiRedeemer } from "src/DYfiRedeemer.sol";
+import { DYFIRedeemer } from "src/DYFIRedeemer.sol";
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
@@ -31,7 +31,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     YearnStakingDelegate public yearnStakingDelegate;
     StakingDelegateRewards public stakingDelegateRewards;
     SwapAndLock public swapAndLock;
-    DYfiRedeemer public dYfiRedeemer;
+    DYFIRedeemer public dYfiRedeemer;
     IVault public vault;
     BaseRewardsGauge public erc20RewardsGauge;
     address public baseRewardForwarder;
@@ -69,7 +69,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             stakingDelegateRewards =
                 StakingDelegateRewards(setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate)));
             swapAndLock = SwapAndLock(setUpSwapAndLock(admin, address(yearnStakingDelegate)));
-            dYfiRedeemer = new DYfiRedeemer(admin);
+            dYfiRedeemer = new DYFIRedeemer(admin);
             vm.label(address(dYfiRedeemer), "dYfiRedeemer");
             coveYFI = new CoveYFI(address(yearnStakingDelegate), admin);
             vm.label(address(coveYFI), "coveYFI");
