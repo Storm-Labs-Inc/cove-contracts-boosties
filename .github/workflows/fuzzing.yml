@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        testName:
+        contract:
           - ERC20RewardsGauge_EchidnaTest
     steps:
       - name: Checkout repository without submodules
@@ -29,11 +29,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Build
-        run: |
-          pnpm build
+        run: pnpm build
       - name: Run Echidna
         uses: crytic/echidna-action@v2
         with:
           files: .
-          contract: ${{ matrix.testName }}
+          contract: ${{ matrix.contract }}
           config: echidna.config.yaml
