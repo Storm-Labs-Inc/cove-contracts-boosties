@@ -11,10 +11,14 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
+import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
+import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
 import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
 import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
 
@@ -29,6 +33,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
     address public manager;
 
     address[] public coveYearnStrategies;
+
+    // Constants
+    uint256 private constant _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
@@ -62,6 +69,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
         deployCoveStrategies(deployer.getAddress("YearnStakingDelegate"));
+        // Deploy Rewards Gauge for CoveYFI
+        deployCoveYFIRewards();
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
     }
@@ -153,6 +162,35 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
     {
         address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, mintingAllowedAfter, options));
         return cove;
+    }
+
+    function deployCoveYFIRewards() public broadcast {
+        address erc20RewardsGaugeImpl = deployer.getAddress("ERC20RewardsGaugeImpl");
+        ERC20RewardsGauge coveRewardsGauge = ERC20RewardsGauge(Clones.clone(erc20RewardsGaugeImpl));
+        deployer.save("CoveRewardsGauge", address(coveRewardsGauge), "ERC20RewardsGauge.sol:ERC20RewardsGauge");
+        address rewardForwarderImpl = deployer.getAddress("RewardForwarderImpl");
+        RewardForwarder coveRewardsGaugeRewardForwarder = RewardForwarder(Clones.clone(rewardForwarderImpl));
+        deployer.save(
+            "CoveRewardsGaugeRewardForwarder",
+            address(coveRewardsGaugeRewardForwarder),
+            "RewardForwarder.sol:RewardForwarder"
+        );
+        address coveYFI = deployer.getAddress("CoveYFI");
+        coveRewardsGauge.initialize(coveYFI);
+        coveRewardsGaugeRewardForwarder.initialize(broadcaster, treasury, address(coveRewardsGauge));
+        coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
+        coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
+        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
+        // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
+        // CoveRewardsGaugeRewardForwarder
+        YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
+        ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
+        coveRewardsGauge.grantRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), admin);
+        coveRewardsGauge.grantRole(_MANAGER_ROLE, manager);
+        coveRewardsGauge.renounceRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), broadcaster);
+        coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
+        coveRewardsGaugeRewardForwarder.grantRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), admin);
+        coveRewardsGaugeRewardForwarder.renounceRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), broadcaster);
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
