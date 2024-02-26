@@ -287,13 +287,14 @@ abstract contract BaseRewardsGauge is
      * @param totalSupply_ The current total supply of the staking token, used to calculate the rewards per token.
      */
     function _updateReward(address token, uint256 totalSupply_) internal {
-        uint256 lastUpdate = Math.min(block.timestamp, rewardData[token].periodFinish);
-        uint256 duration = lastUpdate - rewardData[token].lastUpdate;
+        Reward storage reward = rewardData[token];
+        uint256 lastUpdate = Math.min(block.timestamp, reward.periodFinish);
+        uint256 duration = lastUpdate - reward.lastUpdate;
         // slither-disable-next-line timestamp
         if (duration > 0) {
             if (totalSupply_ > 0) {
-                rewardData[token].integral += duration * rewardData[token].rate * _PRECISION / totalSupply_;
-                rewardData[token].lastUpdate = lastUpdate;
+                reward.integral = reward.integral + duration * reward.rate * _PRECISION / totalSupply_;
+                reward.lastUpdate = lastUpdate;
             }
         }
     }

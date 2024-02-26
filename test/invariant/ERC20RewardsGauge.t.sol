@@ -14,12 +14,12 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 /// @dev This contract is used to test the additional properties of ERC20RewardsGauge
 ///     along with CryticERC4626PropertyTests.
 contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
+    uint256 internal constant _MAX_REWARDS = 8;
     BaseRewardsGauge internal _rewardsGauge;
-    TestERC20Token[8] internal _rewards;
+    TestERC20Token[_MAX_REWARDS] internal _rewards;
+    uint256[_MAX_REWARDS] internal _committedRewards;
 
     mapping(address => mapping(address => uint256)) internal _claimed;
-
-    uint256 internal constant _MAX_REWARDS = 8;
 
     constructor() {
         TestERC20Token _asset = new TestERC20Token("Test Token", "TT", 18);
@@ -52,6 +52,7 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
                 balanceBefore + tokens,
                 "depositRewardToken() must credit the correct number of reward tokens to the gauge"
             );
+            _committedRewards[rewardIndex] += tokens;
         } catch (bytes memory reason) {
             // Ignore the case where the reward amount is too low
             if (abi.decode(reason, (bytes4)) == BaseRewardsGauge.RewardAmountTooLow.selector) {
@@ -61,26 +62,24 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
         }
     }
 
-    function verify_claimRewards_UsersCanClaimAllRewards() public {
-        // Ensure that the gauge has some deposits to claim rewards
-        if (_rewardsGauge.totalSupply() == 0) {
-            revert();
-        }
-        hevm.warp(block.timestamp + 2 weeks);
+    function verify_claimableReward_LteRemaining(uint256 rewardIndex) public {
+        rewardIndex = clampBetween(rewardIndex, 0, 7);
+        TestERC20Token reward = _rewards[rewardIndex];
+        uint256 totalClaimable = 0;
         for (uint256 i = 0; i < 3; ++i) {
             address user = restrictAddressToThirdParties(i);
-            _rewardsGauge.claimRewards(user, address(0));
+            totalClaimable += _rewardsGauge.claimableReward(user, address(reward));
         }
-        for (uint256 i = 0; i < _MAX_REWARDS; ++i) {
-            uint256 dust = _rewards[i].balanceOf(address(_rewardsGauge));
-            emit LogUint256("reward token index", i);
-            emit LogUint256("dust remaining in gauge", dust);
-            assertLt(dust, 1e10, "All rewards must be claimed with some dust left");
-        }
+        uint256 totalRemaining = _rewards[rewardIndex].balanceOf(address(_rewardsGauge));
+        assertGte(
+            totalRemaining,
+            totalClaimable,
+            "Sum of claimableReward() must be less than or equal to the remaining amount of reward tokens"
+        );
     }
 
     /// @notice Verify that the reward tokens are claimed correctly to the user
-    function verify_claimRewardsProperties(uint256 userIndex) public {
+    function verify_claimRewards_EqClaimableRewards(uint256 userIndex) public {
         address user = restrictAddressToThirdParties(userIndex);
         uint256[_MAX_REWARDS] memory balancesBefore;
         uint256[_MAX_REWARDS] memory claimableRewards;
@@ -90,19 +89,16 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
         }
         try _rewardsGauge.claimRewards(user, address(0)) {
             for (uint256 i = 0; i < _MAX_REWARDS; i++) {
-                assertEq(
-                    _rewards[i].balanceOf(user),
-                    balancesBefore[i] + claimableRewards[i],
-                    "claimRewards() must credit the correct number of reward tokens to the user"
-                );
-                _claimed[user][address(_rewards[i])] += claimableRewards[i];
+                uint256 received = _rewards[i].balanceOf(user) - balancesBefore[i];
+                assertEq(received, claimableRewards[i], "claimRewards() must claim amounts equal to claimableReward()");
+                _claimed[user][address(_rewards[i])] += received;
             }
         } catch {
             assertWithMsg(false, "claimRewards() must not revert");
         }
     }
 
-    function verify_claimedRewardProperties(uint256 userIndex) public {
+    function verify_claimedReward(uint256 userIndex) public {
         address user = restrictAddressToThirdParties(userIndex);
         for (uint256 i = 0; i < _MAX_REWARDS; i++) {
             assertEq(
