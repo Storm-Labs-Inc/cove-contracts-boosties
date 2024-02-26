@@ -51,6 +51,11 @@ contract Constants is CommonBase {
     address public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE = 0x6130E6cD924a40b24703407F246966D7435D4998;
     address public constant MAINNET_CRV_YCRV_POOL_VAULT = 0x6E9455D109202b426169F0d8f01A3332DAE160f3;
     address public constant MAINNET_CRV_YCRV_POOL_GAUGE = 0x107717C98C8125A94D3d2Cc82b86a1b705f3A27C;
+    uint256 public constant MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
 
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
@@ -81,16 +86,16 @@ contract Constants is CommonBase {
     /// @dev pool type 1, [WETH, YETH]
     address public constant MAINNET_WETH_YETH_POOL = 0x69ACcb968B19a53790f43e57558F5E443A91aF22;
     address public constant MAINNET_WETH_YETH_POOL_LP_TOKEN = MAINNET_WETH_YETH_POOL;
-    /// @dev pool type ?, [PRISMA, YPRISMA]
+    /// @dev pool type 1, [PRISMA, YPRISMA]
     address public constant MAINNET_PRISMA_YPRISMA_POOL = 0x69833361991ed76f9e8DBBcdf9ea1520fEbFb4a7;
     address public constant MAINNET_PRISMA_YPRISMA_POOL_LP_TOKEN = MAINNET_PRISMA_YPRISMA_POOL;
-    /// @dev pool type ?, [CRV, YCRV]
+    /// @dev pool type 1, [CRV, YCRV]
     address public constant MAINNET_CRV_YCRV_POOL = 0x99f5aCc8EC2Da2BC0771c32814EFF52b712de1E5;
     address public constant MAINNET_CRV_YCRV_POOL_LP_TOKEN = MAINNET_CRV_YCRV_POOL;
-    /// @dev pool type ?, [ETH/WETH, PRISMA]
+    /// @dev pool type 2, [ETH/WETH, PRISMA]
     address public constant MAINNET_ETH_PRISMA_POOL = 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B;
     address public constant MAINNET_ETH_PRISMA_POOL_LP_TOKEN = 0xb34e1a3D07f9D180Bc2FDb9Fd90B8994423e33c1;
-    /// @dev pool type ?, [crvUSD, ETH/WETH, CRV]
+    /// @dev pool type 3, [crvUSD, ETH/WETH, CRV]
     address public constant MAINNET_TRICRV_POOL = 0x4eBdF703948ddCEA3B11f675B4D1Fba9d2414A14;
     address public constant MAINNET_TRICRV_POOL_LP_TOKEN = MAINNET_TRICRV_POOL;
 
