@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
-import "@crytic/properties/contracts/util/Hevm.sol";
 import { CryticERC4626PropertyTests } from "@crytic/properties/contracts/ERC4626/ERC4626PropertyTests.sol";
 // this token _must_ be the vault's underlying asset
 import { TestERC20Token } from "@crytic/properties/contracts/ERC4626/util/TestERC20Token.sol";
@@ -62,6 +61,7 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
         }
     }
 
+    /// @notice Verify that claimableReward() always returns less than or equal to the remaining amount of reward tokens
     function verify_claimableReward_LteRemaining(uint256 rewardIndex) public {
         rewardIndex = clampBetween(rewardIndex, 0, 7);
         TestERC20Token reward = _rewards[rewardIndex];
@@ -78,7 +78,7 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
         );
     }
 
-    /// @notice Verify that the reward tokens are claimed correctly to the user
+    /// @notice Verify claimRewards() transfers same amount of tokens as claimableReward()
     function verify_claimRewards_EqClaimableRewards(uint256 userIndex) public {
         address user = restrictAddressToThirdParties(userIndex);
         uint256[_MAX_REWARDS] memory balancesBefore;
@@ -98,6 +98,7 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
         }
     }
 
+    /// @notice Verify that claimedReward() returns the correct amount of claimed reward tokens
     function verify_claimedReward(uint256 userIndex) public {
         address user = restrictAddressToThirdParties(userIndex);
         for (uint256 i = 0; i < _MAX_REWARDS; i++) {
