@@ -263,11 +263,18 @@ abstract contract BaseRewardsGauge is
         }
         uint256 rewardCount = rewardTokens.length;
         address[] memory tokens = rewardTokens;
-        for (uint256 i = 0; i < rewardCount; ++i) {
+        for (uint256 i = 0; i < rewardCount;) {
             address token = tokens[i];
             _updateReward(token, totalSupply_);
             if (user != address(0)) {
                 _processUserReward(token, user, userBalance, claim, receiver);
+            }
+
+            /// @dev The unchecked block is used here because the loop index `i` is simply incremented in each
+            /// iteration, ensuring that `i` will not exceed the length of the array and cause an overflow. Underflow is
+            /// not a concern as `i` is initialized to 0 and only incremented.
+            unchecked {
+                ++i;
             }
         }
     }
