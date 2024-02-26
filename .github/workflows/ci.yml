@@ -74,7 +74,8 @@ jobs:
         with:
           script: |
             console.log(process.env.REPORT)
-            console.log(${{ endsWith(steps.slither.outputs.stdout, 'Summary') }})
+            console.log(${{ endsWith(steps.slither.outputs.stdout, 'Summary
+            ') }})
             console.log(${{ endsWith(steps.slither.outputs.stdout, 'Summary\n')}})
             console.log(${{ endsWith(steps.slither.outputs.stdout, 'Summary\n\n')}})
             console.log(${{ endsWith(steps.slither.outputs.stdout, '\n')}})
