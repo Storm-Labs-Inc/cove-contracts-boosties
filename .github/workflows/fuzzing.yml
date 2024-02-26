@@ -30,7 +30,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Build
         run: pnpm build
-      - name: Run Echidna
+      - name: Run ${{ matrix.contract }}
         uses: crytic/echidna-action@v2
         with:
           files: .
