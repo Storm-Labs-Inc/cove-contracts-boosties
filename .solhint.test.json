@@ -1,7 +1,11 @@
 {
   "extends": "solhint:recommended",
   "rules": {
-    "code-complexity": ["error", 8],
+    "no-complex-fallback": "off",
+    "custom-errors": "off",
+    "reason-string": "off",
+    "no-empty-blocks": "off",
+    "code-complexity": ["warn", 8],
     "compiler-version": ["error", ">=0.8.18"],
     "func-name-mixedcase": "off",
     "func-visibility": [

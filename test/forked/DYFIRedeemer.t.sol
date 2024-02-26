@@ -297,28 +297,27 @@ contract DYFIRedeemer_ForkedTest is YearnV3BaseTest {
         dYfiRedeemer.receiveFlashLoan(tokens, new uint256[](tokens.length), new uint256[](tokens.length), "");
     }
 
-    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidTokensArrayLength(uint256 l) public {
-        vm.assume(l != 1);
-        vm.assume(l < 2000);
-        IERC20[] memory tokens = new IERC20[](l);
+    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidTokensArrayLength(uint256 len) public {
+        len = bound(len, 1, 2000);
+        IERC20[] memory tokens = new IERC20[](len);
         vm.prank(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
         dYfiRedeemer.receiveFlashLoan(tokens, new uint256[](1), new uint256[](1), "");
     }
 
-    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidAmountsArrayLength(uint256 l) public {
-        vm.assume(l != 1);
-        vm.assume(l < 2000);
-        uint256[] memory amounts = new uint256[](l);
+    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidAmountsArrayLength(uint256 len)
+        public
+    {
+        len = bound(len, 1, 2000);
+        uint256[] memory amounts = new uint256[](len);
         vm.prank(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
         dYfiRedeemer.receiveFlashLoan(new IERC20[](1), amounts, new uint256[](1), "");
     }
 
-    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidFeesArrayLength(uint256 l) public {
-        vm.assume(l != 1);
-        vm.assume(l < 2000);
-        uint256[] memory fees = new uint256[](l);
+    function testFuzz_receiverFlashLoan_revertWhen_InvalidTokensReceived_InvalidFeesArrayLength(uint256 len) public {
+        len = bound(len, 1, 2000);
+        uint256[] memory fees = new uint256[](len);
         vm.prank(MAINNET_BALANCER_FLASH_LOAN_PROVIDER);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidTokensReceived.selector));
         dYfiRedeemer.receiveFlashLoan(new IERC20[](1), new uint256[](1), fees, "");
