@@ -19,11 +19,12 @@ import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
 import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
 
-contract Deployments is BaseDeployScript, SablierBatchCreator {
+contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsConstants {
     // Using generated functions
     using DeployerFunctions for Deployer;
     // Using default deployer function
@@ -75,11 +76,15 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
         deploySablierStreams();
         // Send the rest of the Cove tokens to admin
         sendCoveTokensToAdmin();
+        address yearnStakingDelegateAddress = deployer.getAddress("YearnStakingDelegate");
         // Deploy CoveYearnGaugeFactory
-        deployCoveYearnGaugeFactory(deployer.getAddress("YearnStakingDelegate"), deployer.getAddress("CoveToken"));
+        deployCoveYearnGaugeFactory(yearnStakingDelegateAddress, deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
-        deployWethYethCoveStrategy(deployer.getAddress("YearnStakingDelegate"));
-        // TODO: Deploy strategies for other gauges
+        deployWethYethCoveStrategy(yearnStakingDelegateAddress);
+        deployEthYfiCoveStrategy(yearnStakingDelegateAddress);
+        deployEthDyfiCoveStrategy(yearnStakingDelegateAddress);
+        deployCrvYcrvCoveStrategy(yearnStakingDelegateAddress);
+        deployPrismaYprismaCoveStrategy(yearnStakingDelegateAddress);
         // Deploy Rewards Gauge for CoveYFI
         deployCoveYFIRewards();
         // Register contracts in the Master Registry
@@ -137,24 +142,101 @@ contract Deployments is BaseDeployScript, SablierBatchCreator {
             ysd,
             MAINNET_CURVE_ROUTER
         );
-
-        CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
-        // [token_from, pool, token_to, pool, ...]
-        curveSwapParams.route[0] = MAINNET_YFI;
-        curveSwapParams.route[1] = MAINNET_ETH_YFI_POOL;
-        curveSwapParams.route[2] = MAINNET_WETH;
-        curveSwapParams.route[3] = MAINNET_WETH_YETH_POOL;
-        curveSwapParams.route[4] = MAINNET_WETH_YETH_POOL_LP_TOKEN; // expect the lp token back
-
-        // i, j, swap_type, pool_type, n_coins
-        // YFI -> WETH
-        curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
-        // ETH -> weth/yeth pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
-        curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
         // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(curveSwapParams);
-        // TODO: set the max total assets
-        strategy.setMaxTotalAssets(type(uint256).max);
+        strategy.setHarvestSwapParams(getMainnetWethYethGaugeCurveSwapParams());
+        strategy.setMaxTotalAssets(MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT);
+        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
+        ITokenizedStrategy(address(strategy)).setKeeper(manager);
+        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
+
+        // Deploy the reward gauges for the strategy via the factory
+        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
+        factory.deployCoveGauges(address(strategy));
+    }
+
+    function deployEthYfiCoveStrategy(address ysd)
+        public
+        broadcast
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_ETH_YFI_GAUGE).name()))
+    {
+        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_ETH_YFI_GAUGE).name()),
+            MAINNET_ETH_YFI_GAUGE,
+            ysd,
+            MAINNET_CURVE_ROUTER
+        );
+        // set params for harvest rewards swapping
+        strategy.setHarvestSwapParams(getMainnetEthYfiGaugeCurveSwapParams());
+        strategy.setMaxTotalAssets(MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT);
+        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
+        ITokenizedStrategy(address(strategy)).setKeeper(manager);
+        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
+
+        // Deploy the reward gauges for the strategy via the factory
+        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
+        factory.deployCoveGauges(address(strategy));
+    }
+
+    function deployEthDyfiCoveStrategy(address ysd)
+        public
+        broadcast
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_DYFI_ETH_GAUGE).name()))
+    {
+        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_DYFI_ETH_GAUGE).name()),
+            MAINNET_DYFI_ETH_GAUGE,
+            ysd,
+            MAINNET_CURVE_ROUTER
+        );
+        // set params for harvest rewards swapping
+        strategy.setHarvestSwapParams(getMainnetDyfiEthGaugeCurveSwapParams());
+        strategy.setMaxTotalAssets(MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT);
+        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
+        ITokenizedStrategy(address(strategy)).setKeeper(manager);
+        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
+
+        // Deploy the reward gauges for the strategy via the factory
+        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
+        factory.deployCoveGauges(address(strategy));
+    }
+
+    function deployCrvYcrvCoveStrategy(address ysd)
+        public
+        broadcast
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_POOL_GAUGE).name()))
+    {
+        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_POOL_GAUGE).name()),
+            MAINNET_CRV_YCRV_POOL_GAUGE,
+            ysd,
+            MAINNET_CURVE_ROUTER
+        );
+        // set params for harvest rewards swapping
+        strategy.setHarvestSwapParams(getMainnetCrvYcrvPoolGaugeCurveSwapParams());
+        strategy.setMaxTotalAssets(MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT);
+        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
+        ITokenizedStrategy(address(strategy)).setKeeper(manager);
+        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
+
+        // Deploy the reward gauges for the strategy via the factory
+        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
+        factory.deployCoveGauges(address(strategy));
+    }
+
+    function deployPrismaYprismaCoveStrategy(address ysd)
+        public
+        broadcast
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_POOL_GAUGE).name()))
+    {
+        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_POOL_GAUGE).name()),
+            MAINNET_PRISMA_YPRISMA_POOL_GAUGE,
+            ysd,
+            MAINNET_CURVE_ROUTER
+        );
+        // set params for harvest rewards swapping
+        strategy.setHarvestSwapParams(getMainnetPrismaYprismaPoolGaugeCurveSwapParams());
+        strategy.setMaxTotalAssets(MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT);
         ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
         ITokenizedStrategy(address(strategy)).setKeeper(manager);
         ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
