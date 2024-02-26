@@ -20,6 +20,8 @@ For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
 
 ## Architecture
 
+### Boosties
+
 ![boosties](./assets/boosties.png)
 
 ## Prerequisites
