@@ -11,8 +11,8 @@
 
 </div>
 
-This repository contains the core smart contracts for the Cove Protocol. It includes a liquid locker and staking
-platform for Yearn, a governance token, and auxiliary contracts.
+This repository contains the core smart contracts for the Cove Protocol. It includes Boosties (a liquid locker and
+staking platform for Yearn), a governance token, and auxiliary contracts.
 
 The testing suite includes unit, integration, fork, and invariant tests.
 
@@ -130,6 +130,10 @@ pnpm deploy:local
 - Make sure to not commit `broadcast/`.
 - If trying to deploy new contract either use the default deployer functions or generate them
   with`$./forge-deploy gen-deployer`.
+
+## Architecture
+
+![boosties](./assets/boosties.png)
 
 ## Audits
 
