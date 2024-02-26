@@ -7,7 +7,6 @@ import { console2 as console } from "forge-std/console2.sol";
 import { DeployerFunctions, DefaultDeployerFunction, Deployer } from "generated/deployer/DeployerFunctions.g.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
 import { SwapAndLock } from "src/SwapAndLock.sol";
