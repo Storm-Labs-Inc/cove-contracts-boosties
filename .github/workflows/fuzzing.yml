@@ -1,0 +1,40 @@
+name: Fuzzing
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+env:
+  FOUNDRY_PROFILE: ci
+  NODE_VERSION: 18.16.1
+  PYTHON_VERSION: 3.9.17
+
+jobs:
+  echidna:
+    name: Echidna
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        testName:
+          - ERC20RewardsGauge_EchidnaTest
+    steps:
+      - name: Checkout repository without submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+      - name: Base setup
+        uses: ./.github/actions/base-setup
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build
+        run: |
+          pnpm build
+      - name: Run Echidna
+        uses: crytic/echidna-action@v2
+        with:
+          files: .
+          contract: ${{ matrix.testName }}
+          config: echidna.config.yaml
