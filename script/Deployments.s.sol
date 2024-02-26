@@ -19,6 +19,7 @@ import { CoveToken } from "src/governance/CoveToken.sol";
 import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -414,6 +415,43 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Verify deployer holds no cove tokens
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
         // Add more checks here
+        // Verify roles have been properly set
+        // TODO: should broadcaster be set to admin and manager here?
+        // verifyAdminRole(deployer.getAddress("YearnStakingDelegate"), "YearnStakingDelegate");
+        // verifyManagerRole(deployer.getAddress("YearnStakingDelegate"), "YearnStakingDelegate");
+        // TODO: Should the broadcaster be set to admin here?
+        // verifyAdminRole(deployer.getAddress("StakingDelegateRewards"), "StakingDelegateRewards");
+        verifyAdminRole(deployer.getAddress("DYFIRedeemer"), "DYFIRedeemer");
+        verifyAdminRole(deployer.getAddress("CoveYFI"), "CoveYFI");
+        verifyAdminRole(deployer.getAddress("MasterRegistry"), "MasterRegistry");
+        AccessControl(deployer.getAddress("CoveToken")).hasRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        AccessControl(deployer.getAddress("MiniChefV3")).hasRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        AccessControl(deployer.getAddress("CoveYearnGaugeFactory")).hasRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        AccessControl(deployer.getAddress("CoveYearnGaugeFactory")).hasRole(_MANAGER_ROLE, broadcaster);
+    }
+
+    function verifyAdminRole(address contractAddress, string memory contractName) internal view {
+        AccessControl contractInstance = AccessControl(contractAddress);
+        require(
+            contractInstance.hasRole(contractInstance.DEFAULT_ADMIN_ROLE(), admin),
+            string(abi.encodePacked(contractName, ": Admin doesn't have admin role"))
+        );
+        require(
+            !contractInstance.hasRole(contractInstance.DEFAULT_ADMIN_ROLE(), broadcaster),
+            string(abi.encodePacked(contractName, ": Broadcaster has admin role"))
+        );
+    }
+
+    function verifyManagerRole(address contractAddress, string memory contractName) internal view {
+        AccessControl contractInstance = AccessControl(contractAddress);
+        require(
+            contractInstance.hasRole(_MANAGER_ROLE, manager),
+            string(abi.encodePacked(contractName, ": Manager doesn't have manager role"))
+        );
+        require(
+            !contractInstance.hasRole(_MANAGER_ROLE, broadcaster),
+            string(abi.encodePacked(contractName, ": Broadcaster has manager role"))
+        );
     }
 
     function getCurrentDeployer() external view returns (Deployer) {
