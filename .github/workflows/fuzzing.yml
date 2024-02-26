@@ -18,6 +18,7 @@ jobs:
       matrix:
         contract:
           - ERC20RewardsGauge_EchidnaTest
+          - YSDRewardsGauge_EchidnaTest
     steps:
       - name: Checkout repository without submodules
         uses: actions/checkout@v3

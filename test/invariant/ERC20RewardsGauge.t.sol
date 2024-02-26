@@ -13,17 +13,21 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 /// @dev This contract is used to test the additional properties of ERC20RewardsGauge
 ///     along with CryticERC4626PropertyTests.
 contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
-    ERC20RewardsGauge private _rewardsGauge;
-    TestERC20Token[8] private _rewards;
+    uint256 internal constant _MAX_REWARDS = 8;
+    BaseRewardsGauge internal _rewardsGauge;
+    TestERC20Token[_MAX_REWARDS] internal _rewards;
+    uint256[_MAX_REWARDS] internal _committedRewards;
+
+    mapping(address => mapping(address => uint256)) internal _claimed;
 
     constructor() {
         TestERC20Token _asset = new TestERC20Token("Test Token", "TT", 18);
         ERC20RewardsGauge gaugeImpl = new ERC20RewardsGauge();
         // Initialize the gauge with the asset token
         _rewardsGauge = ERC20RewardsGauge(Clones.clone(address(gaugeImpl)));
-        _rewardsGauge.initialize(address(_asset));
+        ERC20RewardsGauge(address(_rewardsGauge)).initialize(address(_asset));
         // Initialize the rewards
-        for (uint256 i = 0; i < 8; i++) {
+        for (uint256 i = 0; i < _MAX_REWARDS; i++) {
             _rewards[i] = new TestERC20Token(
                 string.concat("Reward Token ", Strings.toString(i)), string.concat("RT", Strings.toString(i)), 18
             );
@@ -35,7 +39,7 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
     }
 
     /// @notice Verify that the reward tokens are deposited and credited correctly
-    function verify_depositRewardTokenProperties(uint256 rewardIndex, uint256 tokens) public {
+    function verify_depositRewardToken_TransfersCorrectAmount(uint256 rewardIndex, uint256 tokens) public {
         rewardIndex = clampBetween(rewardIndex, 0, 7);
         tokens = clampBetween(tokens, 1, type(uint104).max);
         TestERC20Token reward = _rewards[rewardIndex];
@@ -47,6 +51,7 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
                 balanceBefore + tokens,
                 "depositRewardToken() must credit the correct number of reward tokens to the gauge"
             );
+            _committedRewards[rewardIndex] += tokens;
         } catch (bytes memory reason) {
             // Ignore the case where the reward amount is too low
             if (abi.decode(reason, (bytes4)) == BaseRewardsGauge.RewardAmountTooLow.selector) {
@@ -56,25 +61,52 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
         }
     }
 
-    /// @notice Verify that the reward tokens are claimed correctly to the user
-    function verify_claimRewardsProperties(uint256 userIndex) public {
+    /// @notice Verify that claimableReward() always returns less than or equal to the remaining amount of reward tokens
+    function verify_claimableReward_LteRemaining(uint256 rewardIndex) public {
+        rewardIndex = clampBetween(rewardIndex, 0, 7);
+        TestERC20Token reward = _rewards[rewardIndex];
+        uint256 totalClaimable = 0;
+        for (uint256 i = 0; i < 3; ++i) {
+            address user = restrictAddressToThirdParties(i);
+            totalClaimable += _rewardsGauge.claimableReward(user, address(reward));
+        }
+        uint256 totalRemaining = _rewards[rewardIndex].balanceOf(address(_rewardsGauge));
+        assertGte(
+            totalRemaining,
+            totalClaimable,
+            "Sum of claimableReward() must be less than or equal to the remaining amount of reward tokens"
+        );
+    }
+
+    /// @notice Verify claimRewards() transfers same amount of tokens as claimableReward()
+    function verify_claimRewards_EqClaimableRewards(uint256 userIndex) public {
         address user = restrictAddressToThirdParties(userIndex);
-        uint256[8] memory balancesBefore;
-        uint256[8] memory claimableRewards;
-        for (uint256 i = 0; i < 8; i++) {
+        uint256[_MAX_REWARDS] memory balancesBefore;
+        uint256[_MAX_REWARDS] memory claimableRewards;
+        for (uint256 i = 0; i < _MAX_REWARDS; i++) {
             balancesBefore[i] = _rewards[i].balanceOf(user);
             claimableRewards[i] = _rewardsGauge.claimableReward(user, address(_rewards[i]));
         }
         try _rewardsGauge.claimRewards(user, address(0)) {
-            for (uint256 i = 0; i < 8; i++) {
-                assertEq(
-                    _rewards[i].balanceOf(user),
-                    balancesBefore[i] + claimableRewards[i],
-                    "claimRewards() must credit the correct number of reward tokens to the user"
-                );
+            for (uint256 i = 0; i < _MAX_REWARDS; i++) {
+                uint256 received = _rewards[i].balanceOf(user) - balancesBefore[i];
+                assertEq(received, claimableRewards[i], "claimRewards() must claim amounts equal to claimableReward()");
+                _claimed[user][address(_rewards[i])] += received;
             }
         } catch {
             assertWithMsg(false, "claimRewards() must not revert");
+        }
+    }
+
+    /// @notice Verify that claimedReward() returns the correct amount of claimed reward tokens
+    function verify_claimedReward(uint256 userIndex) public {
+        address user = restrictAddressToThirdParties(userIndex);
+        for (uint256 i = 0; i < _MAX_REWARDS; i++) {
+            assertEq(
+                _rewardsGauge.claimedReward(user, address(_rewards[i])),
+                _claimed[user][address(_rewards[i])],
+                "claimedReward() must return the correct amount of claimed reward tokens"
+            );
         }
     }
 }

@@ -1,11 +1,9 @@
 {
   "extends": "solhint:recommended",
   "rules": {
-    "no-complex-fallback": "off",
     "custom-errors": "off",
     "reason-string": "off",
-    "no-empty-blocks": "off",
-    "code-complexity": ["warn", 8],
+    "code-complexity": ["error", 8],
     "compiler-version": ["error", ">=0.8.18"],
     "func-name-mixedcase": "off",
     "func-visibility": [
@@ -22,13 +20,12 @@
     "func-param-name-mixedcase": "error",
     "modifier-name-mixedcase": "error",
     "private-vars-leading-underscore": "error",
-    "var-name-mixedcase": "off",
+    "var-name-mixedcase": "error",
     "imports-on-top": "error",
     "const-name-snakecase": "error",
-    "contract-name-camelcase": "off",
+    "contract-name-camelcase": "error",
     "no-unused-vars": "error",
     "no-unused-import": "error",
-    "immutable-vars-naming": ["error", { "immutablesAsConstants": true }],
-    "max-states-count": "off"
+    "immutable-vars-naming": ["error", { "immutablesAsConstants": true }]
   }
 }

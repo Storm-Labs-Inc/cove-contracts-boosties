@@ -68,10 +68,13 @@ pnpm test
 
 ### Run echidna tests
 
-[Install echidna](https://github.com/crytic/echidna) and run the tests:
+[Install echidna](https://github.com/crytic/echidna) and run the test for each Echidna test contract:
+
+> Echidna may fail if the contracts are not built cleanly. If you encounter issues, try running
+> `pnpm clean && pnpm build` before running the tests.
 
 ```sh
-pnpm invariant-test
+pnpm invariant-test ERC20RewardsGauge_EchidnaTest
 ```
 
 ### Run slither
