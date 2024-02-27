@@ -120,6 +120,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Move admin roles to the admin multisig
         ysd.grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
         ysd.grantRole(_MANAGER_ROLE, admin);
+        SwapAndLock(swapAndLock).grantRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
         SwapAndLock(swapAndLock).renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
         // TODO: how Broadcaster does not have this role?
         StakingDelegateRewards(stakingDelegateRewards).grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -437,6 +438,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
         _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
         _verifyRole("CoveYearnGaugeFactory", _MANAGER_ROLE, broadcaster);
+        _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
         // Verify broadcaster is missing roles
         _verifyMissingRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, broadcaster);
         _verifyMissingRole("YearnStakingDelegate", _MANAGER_ROLE, broadcaster);
@@ -447,6 +449,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyMissingRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, broadcaster);
         _verifyMissingRole("CoveToken", DEFAULT_ADMIN_ROLE, broadcaster);
         _verifyMissingRole("MiniChefV3", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("SwapAndLock", DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
     function _verifyRole(string memory contractName, bytes32 role, address user) internal view {
