@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "prepare": "husky install && pnpm run forge-deploy:build",
-    "clean": "rm -rf cache out && forge clean",
+    "clean": "rm -rf cache out crytic-export generated && forge clean",
     "build": "./forge-deploy gen-deployer && forge build --build-info",
     "test": "forge test -vvv --gas-report",
-    "invariant-test": "pnpm run build && echidna ./ --config ./echidna.config.yaml --contract BaseRewardsGauge_EchidnaTest",
+    "invariant-test": "echidna ./ --config ./echidna.config.yaml --contract",
     "coverage": "forge coverage --report lcov",
     "slither": "forge clean && forge build --skip test script --build-info && slither . --ignore-compile",
     "slither-upgradeability": "for f in $(grep -l -r \"openzeppelin-upgradeable\" src); do c=$(echo \"${f##*/}\" | cut -f 1 -d \".\"); echo \"$c\"; slither-check-upgradeability $f $c; echo; done",
@@ -19,16 +19,23 @@
     "forge-deploy:clean": "rm -rf deployments/1-fork/*",
     "forge-deploy:build": "cd lib/forge-deploy && cargo build --release && cp target/release/forge-deploy ../../forge-deploy",
     "lint": "pnpm run lint:sol && pnpm run prettier:check",
-    "lint:fix": "pnpm lint:sol:fix && pnpm run prettier:write",
-    "lint:sol": "forge fmt --check && npx solhint \"{script,src}/**/*.sol\" --ignore-path .solhintignore && npx solhint \"{test}/**/*.sol\" --config .solhint.test.json --ignore-path .solhintignore",
-    "lint:sol:fix": "forge fmt && npx solhint --fix --noPrompt \"{script,src}/**/*.sol\" --ignore-path .solhintignore && npx solhint --fix --noPrompt \"{test}/**/*.sol\" --config .solhint.test.json --ignore-path .solhintignore",
+    "lint:fix": "pnpm lint:fix:sol && pnpm run prettier:write",
+    "lint:fix:sol": "forge fmt && pnpm run solhint:src --fix && pnpm run solhint:script --fix && pnpm run solhint:test --fix",
+    "lint:sol": "forge fmt --check && pnpm run solhint:src && pnpm run solhint:script && pnpm run solhint:test",
+    "solhint:src": "npx solhint --noPrompt --config .solhint.json --ignore-path .solhintignore \"{src}/**/*.sol\"",
+    "solhint:script": "npx solhint --noPrompt --config .solhint.script.json --ignore-path .solhintignore \"{script}/**/*.sol\"",
+    "solhint:test": "npx solhint --noPrompt --config .solhint.test.json --ignore-path .solhintignore \"test/**/*.sol\"",
     "prettier:check": "npx prettier --check \"**/*.{json,md,yml,yaml}\"",
     "prettier:write": "npx prettier --write \"**/*.{json,md,yml,yaml}\""
   },
   "lint-staged": {
-    "{script,src}/!(deps/**/*|interfaces/deps/**/*)/**/*.sol": [
+    "src/!(deps/**/*|interfaces/deps/**/*)/**/*.sol": [
       "forge fmt",
       "npx solhint --fix --noPrompt --config .solhint.json --ignore-path .solhintignore"
+    ],
+    "script/**/*.sol": [
+      "forge fmt",
+      "npx solhint --fix --noPrompt --config .solhint.script.json --ignore-path .solhintignore"
     ],
     "test/**/*.sol": [
       "forge fmt",
