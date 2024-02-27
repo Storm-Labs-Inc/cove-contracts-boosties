@@ -20,7 +20,6 @@ import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -102,7 +101,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, options
         );
         address stakingDelegateRewards = address(
-            deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd), options)
+            deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd), admin, options)
         );
         address swapAndLock = address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), broadcaster, options));
         deployer.deploy_DYFIRedeemer("DYFIRedeemer", admin, options);
@@ -122,9 +121,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         ysd.grantRole(_MANAGER_ROLE, admin);
         SwapAndLock(swapAndLock).grantRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
         SwapAndLock(swapAndLock).renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
-        // TODO: how Broadcaster does not have this role?
-        StakingDelegateRewards(stakingDelegateRewards).grantRole(DEFAULT_ADMIN_ROLE, admin);
-        StakingDelegateRewards(stakingDelegateRewards).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
     function deployYearn4626RouterExt() public broadcast deployIfMissing("Yearn4626RouterExt") returns (address) {
