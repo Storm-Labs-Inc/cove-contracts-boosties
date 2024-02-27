@@ -20,6 +20,7 @@ import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -47,8 +48,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
         admin = vm.envOr("ADMIN_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
+        manager = vm.envOr("DEV_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
         treasury = admin;
-        manager = broadcaster;
 
         vm.label(admin, "admin");
         vm.label(manager, "manager");
@@ -70,6 +71,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         allowedSenders[2] = MAINNET_SABLIER_V2_BATCH;
         allowedSenders[3] = MAINNET_SABLIER_V2_LOCKUP_LINEAR;
         allowlistCoveTokenTransfers(allowedSenders);
+        // renounce coveToken roles
         // Deploy MiniChefV3 farm
         deployMiniChefV3();
         // Deploy Vesting via Sablier
@@ -117,9 +119,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
 
         // Move admin roles to the admin multisig
         ysd.grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
-        ysd.renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
-        SwapAndLock(swapAndLock).grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
+        ysd.grantRole(_MANAGER_ROLE, admin);
         SwapAndLock(swapAndLock).renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
+        // TODO: how Broadcaster does not have this role?
+        StakingDelegateRewards(stakingDelegateRewards).grantRole(DEFAULT_ADMIN_ROLE, admin);
+        StakingDelegateRewards(stakingDelegateRewards).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
     function deployYearn4626RouterExt() public broadcast deployIfMissing("Yearn4626RouterExt") returns (address) {
@@ -247,7 +251,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     }
 
     function deployMasterRegistry() public broadcast deployIfMissing("MasterRegistry") returns (address) {
-        address masterRegistry = address(deployer.deploy_MasterRegistry("MasterRegistry", admin, manager, options));
+        address masterRegistry = address(deployer.deploy_MasterRegistry("MasterRegistry", admin, broadcaster, options));
         return masterRegistry;
     }
 
@@ -279,7 +283,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
         coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
-        // CoveRewardsGaugeRewardForwarder
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
         coveRewardsGauge.grantRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), admin);
@@ -288,6 +291,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
         coveRewardsGaugeRewardForwarder.grantRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), admin);
         coveRewardsGaugeRewardForwarder.renounceRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), broadcaster);
+        ysd.renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
+        ysd.renounceRole(_MANAGER_ROLE, broadcaster);
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
@@ -297,6 +302,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             data[i] = abi.encodeWithSelector(CoveToken.addAllowedTransferrer.selector, transferrers[i]);
         }
         coveToken.multicall(data);
+        coveToken.grantRole(coveToken.DEFAULT_ADMIN_ROLE(), admin);
+        coveToken.renounceRole(coveToken.DEFAULT_ADMIN_ROLE(), broadcaster);
     }
 
     function deployMiniChefV3() public broadcast deployIfMissing("MiniChefV3") returns (address) {
@@ -317,6 +324,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Commit some rewards to the MiniChefV3
         CoveToken(deployer.getAddress("CoveToken")).approve(miniChefV3, COVE_BALANCE_MINICHEF);
         MiniChefV3(miniChefV3).commitReward(COVE_BALANCE_MINICHEF);
+        MiniChefV3(miniChefV3).grantRole(DEFAULT_ADMIN_ROLE, admin);
+        MiniChefV3(miniChefV3).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         return miniChefV3;
     }
 
@@ -416,42 +425,38 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
         // Add more checks here
         // Verify roles have been properly set
-        // TODO: should broadcaster be set to admin and manager here?
-        // verifyAdminRole(deployer.getAddress("YearnStakingDelegate"), "YearnStakingDelegate");
-        // verifyManagerRole(deployer.getAddress("YearnStakingDelegate"), "YearnStakingDelegate");
-        // TODO: Should the broadcaster be set to admin here?
-        // verifyAdminRole(deployer.getAddress("StakingDelegateRewards"), "StakingDelegateRewards");
-        verifyAdminRole(deployer.getAddress("DYFIRedeemer"), "DYFIRedeemer");
-        verifyAdminRole(deployer.getAddress("CoveYFI"), "CoveYFI");
-        verifyAdminRole(deployer.getAddress("MasterRegistry"), "MasterRegistry");
-        AccessControl(deployer.getAddress("CoveToken")).hasRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        AccessControl(deployer.getAddress("MiniChefV3")).hasRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        AccessControl(deployer.getAddress("CoveYearnGaugeFactory")).hasRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        AccessControl(deployer.getAddress("CoveYearnGaugeFactory")).hasRole(_MANAGER_ROLE, broadcaster);
+        _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("YearnStakingDelegate", _MANAGER_ROLE, manager);
+        _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("CoveYFI", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("MasterRegistry", _MANAGER_ROLE, broadcaster);
+        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("CoveToken", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRole("CoveYearnGaugeFactory", _MANAGER_ROLE, broadcaster);
+        // Verify broadcaster is missing roles
+        _verifyMissingRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("YearnStakingDelegate", _MANAGER_ROLE, broadcaster);
+        _verifyMissingRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("CoveYFI", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("MasterRegistry", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("CoveToken", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyMissingRole("MiniChefV3", DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
-    function verifyAdminRole(address contractAddress, string memory contractName) internal view {
-        AccessControl contractInstance = AccessControl(contractAddress);
-        require(
-            contractInstance.hasRole(contractInstance.DEFAULT_ADMIN_ROLE(), admin),
-            string(abi.encodePacked(contractName, ": Admin doesn't have admin role"))
-        );
-        require(
-            !contractInstance.hasRole(contractInstance.DEFAULT_ADMIN_ROLE(), broadcaster),
-            string(abi.encodePacked(contractName, ": Broadcaster has admin role"))
-        );
+    function _verifyRole(string memory contractName, bytes32 role, address user) internal view {
+        AccessControl contractInstance = AccessControl(deployer.getAddress(contractName));
+        require(contractInstance.hasRole(role, user), string.concat("Incorrect role for: ", contractName));
     }
 
-    function verifyManagerRole(address contractAddress, string memory contractName) internal view {
-        AccessControl contractInstance = AccessControl(contractAddress);
-        require(
-            contractInstance.hasRole(_MANAGER_ROLE, manager),
-            string(abi.encodePacked(contractName, ": Manager doesn't have manager role"))
-        );
-        require(
-            !contractInstance.hasRole(_MANAGER_ROLE, broadcaster),
-            string(abi.encodePacked(contractName, ": Broadcaster has manager role"))
-        );
+    function _verifyMissingRole(string memory contractName, bytes32 role, address user) internal view {
+        AccessControl contractInstance = AccessControl(deployer.getAddress(contractName));
+        require(!contractInstance.hasRole(role, user), string.concat("Incorrect missing role for: ", contractName));
     }
 
     function getCurrentDeployer() external view returns (Deployer) {
