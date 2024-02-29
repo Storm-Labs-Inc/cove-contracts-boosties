@@ -32,8 +32,6 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     address public treasuryMultisig;
     address public gaugeAdmin;
 
-    bytes32 public MANAGER_ROLE = keccak256("MANAGER_ROLE");
-
     function setUp() public override {
         cove = new ERC20Mock();
         vm.etch(MAINNET_DYFI, address(new ERC20Mock()).code);

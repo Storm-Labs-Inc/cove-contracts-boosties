@@ -70,7 +70,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         allowedSenders[2] = MAINNET_SABLIER_V2_BATCH;
         allowedSenders[3] = MAINNET_SABLIER_V2_LOCKUP_LINEAR;
         allowlistCoveTokenTransfers(allowedSenders);
-        // renounce coveToken roles
         // Deploy MiniChefV3 farm
         deployMiniChefV3();
         // Deploy Vesting via Sablier
@@ -117,10 +116,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_POOL_GAUGE, stakingDelegateRewards);
 
         // Move admin roles to the admin multisig
-        ysd.grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
-        ysd.grantRole(_MANAGER_ROLE, admin);
-        SwapAndLock(swapAndLock).grantRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
-        SwapAndLock(swapAndLock).renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
+        ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
+        ysd.grantRole(MANAGER_ROLE, admin);
+        SwapAndLock(swapAndLock).grantRole(DEFAULT_ADMIN_ROLE, admin);
+        SwapAndLock(swapAndLock).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
     function deployYearn4626RouterExt() public broadcast deployIfMissing("Yearn4626RouterExt") returns (address) {
@@ -282,14 +281,14 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
-        coveRewardsGauge.grantRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), admin);
-        coveRewardsGauge.grantRole(_MANAGER_ROLE, manager);
-        coveRewardsGauge.renounceRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), broadcaster);
-        coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
-        coveRewardsGaugeRewardForwarder.grantRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), admin);
-        coveRewardsGaugeRewardForwarder.renounceRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), broadcaster);
-        ysd.renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
-        ysd.renounceRole(_MANAGER_ROLE, broadcaster);
+        coveRewardsGauge.grantRole(DEFAULT_ADMIN_ROLE, admin);
+        coveRewardsGauge.grantRole(MANAGER_ROLE, manager);
+        coveRewardsGauge.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        coveRewardsGauge.renounceRole(MANAGER_ROLE, broadcaster);
+        coveRewardsGaugeRewardForwarder.grantRole(DEFAULT_ADMIN_ROLE, admin);
+        coveRewardsGaugeRewardForwarder.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        ysd.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        ysd.renounceRole(MANAGER_ROLE, broadcaster);
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
@@ -299,8 +298,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             data[i] = abi.encodeWithSelector(CoveToken.addAllowedTransferrer.selector, transferrers[i]);
         }
         coveToken.multicall(data);
-        coveToken.grantRole(coveToken.DEFAULT_ADMIN_ROLE(), admin);
-        coveToken.renounceRole(coveToken.DEFAULT_ADMIN_ROLE(), broadcaster);
+        coveToken.grantRole(DEFAULT_ADMIN_ROLE, admin);
+        coveToken.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
     function deployMiniChefV3() public broadcast deployIfMissing("MiniChefV3") returns (address) {
@@ -404,7 +403,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         masterRegistry.multicall(data);
     }
 
-    function verifyPostDeploymentState() public {
+    function verifyPostDeploymentState() public view {
         IERC20 coveToken = IERC20(deployer.getAddress("CoveToken"));
         // Verify minichef v3 balance
         require(
@@ -422,29 +421,38 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
         // Add more checks here
         // Verify roles have been properly set
+        /// YearnStakingDelegate
         _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("YearnStakingDelegate", _MANAGER_ROLE, manager);
-        _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("CoveYFI", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("MasterRegistry", _MANAGER_ROLE, broadcaster);
-        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("CoveToken", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
-        _verifyRole("CoveYearnGaugeFactory", _MANAGER_ROLE, broadcaster);
-        _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
-        // Verify broadcaster is missing roles
+        _verifyRole("YearnStakingDelegate", MANAGER_ROLE, manager);
         _verifyMissingRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, broadcaster);
-        _verifyMissingRole("YearnStakingDelegate", _MANAGER_ROLE, broadcaster);
+        _verifyMissingRole("YearnStakingDelegate", MANAGER_ROLE, broadcaster);
+        /// StakingDelegateRewards
+        _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, broadcaster);
+        /// DYFIRedeemer
+        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, broadcaster);
+        /// CoveYFI
         _verifyMissingRole("CoveYFI", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRole("CoveYFI", DEFAULT_ADMIN_ROLE, admin);
+        /// MasterRegistry
+        _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("MasterRegistry", MANAGER_ROLE, broadcaster);
         _verifyMissingRole("MasterRegistry", DEFAULT_ADMIN_ROLE, broadcaster);
+        /// DYFIRedeemer
+        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, broadcaster);
+        /// CoveToken
+        _verifyRole("CoveToken", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("CoveToken", DEFAULT_ADMIN_ROLE, broadcaster);
+        /// MiniChefV3
+        _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("MiniChefV3", DEFAULT_ADMIN_ROLE, broadcaster);
+        /// CoveYearnGaugeFactory
+        _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRole("CoveYearnGaugeFactory", MANAGER_ROLE, broadcaster);
+        /// SwapAndLock
+        _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("SwapAndLock", DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
