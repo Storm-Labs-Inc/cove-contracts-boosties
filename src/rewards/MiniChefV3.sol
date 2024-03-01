@@ -23,6 +23,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @notice Info of each MCV3 user.
      * `amount` LP token amount the user has provided.
      * `rewardDebt` The amount of REWARD_TOKEN entitled to the user.
+     * `unpaidRewards` The amount of REWARD_TOKEN that has not been claimed by the user.
      */
     struct UserInfo {
         uint256 amount;
@@ -32,6 +33,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
     /**
      * @notice Info of each MCV3 pool.
+     * `accRewardPerShare` The amount of REWARD_TOKEN per share accumulated.
+     * `lastRewardTime` The last recorded time the pool was updated.
      * `allocPoint` The amount of allocation points assigned to the pool.
      * Also known as the amount of REWARD_TOKEN to distribute per block.
      */

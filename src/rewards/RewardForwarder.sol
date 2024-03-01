@@ -62,8 +62,8 @@ contract RewardForwarder is AccessControlUpgradeable {
      */
     function forwardRewardToken(address rewardToken) external {
         uint256 balance = IERC20(rewardToken).balanceOf(address(this));
-        uint256 treasuryAmount = balance * treasuryBps[rewardToken] / _MAX_BPS;
         if (balance > 0) {
+            uint256 treasuryAmount = balance * treasuryBps[rewardToken] / _MAX_BPS;
             if (treasuryAmount > 0) {
                 IERC20(rewardToken).safeTransfer(treasury, treasuryAmount);
             }

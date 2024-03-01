@@ -108,12 +108,13 @@ abstract contract BaseRewardsGauge is
      * @return uint256 Claimable reward token amount
      */
     function claimableReward(address user, address rewardToken) external view returns (uint256) {
-        uint256 integral = rewardData[rewardToken].integral;
+        Reward memory rewardTokenData = rewardData[rewardToken];
+        uint256 integral = rewardTokenData.integral;
         uint256 currentTotalSupply = totalSupply();
         if (currentTotalSupply != 0) {
-            uint256 lastUpdate = Math.min(block.timestamp, rewardData[rewardToken].periodFinish);
-            uint256 duration = lastUpdate - rewardData[rewardToken].lastUpdate;
-            integral += (duration * rewardData[rewardToken].rate * _PRECISION) / currentTotalSupply;
+            uint256 lastUpdate = Math.min(block.timestamp, rewardTokenData.periodFinish);
+            uint256 duration = lastUpdate - rewardTokenData.lastUpdate;
+            integral += (duration * rewardTokenData.rate * _PRECISION) / currentTotalSupply;
         }
 
         uint256 integralFor = rewardIntegralFor[rewardToken][user];
@@ -221,7 +222,7 @@ abstract contract BaseRewardsGauge is
             newRate = (amount + leftover) / _WEEK;
         }
         // slither-disable-next-line timestamp
-        if (newRate <= 0) {
+        if (newRate == 0) {
             revert RewardAmountTooLow();
         }
         rewardData[rewardToken].rate = newRate;
@@ -293,7 +294,7 @@ abstract contract BaseRewardsGauge is
         // slither-disable-next-line timestamp
         if (duration > 0) {
             if (totalSupply_ > 0) {
-                reward.integral = reward.integral + duration * reward.rate * _PRECISION / totalSupply_;
+                reward.integral = reward.integral + (duration * reward.rate * _PRECISION / totalSupply_);
                 reward.lastUpdate = lastUpdate;
             }
         }
