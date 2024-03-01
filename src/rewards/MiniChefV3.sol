@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -79,6 +79,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
     event LogRewardPerSecond(uint256 rewardPerSecond);
     event LogRewardCommitted(uint256 amount);
+    event LogRewarderEmergencyWithdrawFaulty(uint256 indexed pid, address indexed user, address to, uint256 amount);
 
     /**
      * @dev Constructs the MiniChefV3 contract with a specified reward token and admin address.
@@ -418,7 +419,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, 0, 0);
+            try _rewarder.onReward(pid, msg.sender, to, 0, 0) { }
+            catch {
+                emit LogRewarderEmergencyWithdrawFaulty(pid, msg.sender, to, amount);
+            }
         }
     }
 }
