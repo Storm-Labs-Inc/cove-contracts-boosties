@@ -14,6 +14,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/
 import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
+import { Pausable } from "src/Pausable.sol";
 
 /**
  * @title Base Rewards Gauge
@@ -26,7 +27,8 @@ abstract contract BaseRewardsGauge is
     ERC4626Upgradeable,
     ERC20PermitUpgradeable,
     AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    Pausable
 {
     using SafeERC20 for IERC20;
 
@@ -38,13 +40,10 @@ abstract contract BaseRewardsGauge is
         uint256 integral;
     }
 
-    bool public paused;
-
     uint256 public constant MAX_REWARDS = 8;
     uint256 internal constant _WEEK = 1 weeks;
     uint256 internal constant _PRECISION = 1e18;
     bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 internal constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     // For tracking external rewards
     address[] public rewardTokens;
@@ -66,7 +65,6 @@ abstract contract BaseRewardsGauge is
     error ZeroAddress();
     error RewardCannotBeAsset();
     error DepositsPaused();
-    error DepositsNotPaused();
 
     constructor() payable {
         _disableInitializers();
@@ -236,25 +234,19 @@ abstract contract BaseRewardsGauge is
     }
 
     /**
-     * @dev pauses deposits for the gauge. Can only be called by an address with the pauser role.
+     * @dev Sets the paused to true callable only by PAUSER_ROLE when the contract is not paused.
      */
     function pause() external {
         _checkRole(_PAUSER_ROLE);
-        if (paused) {
-            revert DepositsPaused();
-        }
-        paused = true;
+        _pause();
     }
 
     /**
-     * @dev unpauses deposits for the gauge. Can only be called by an address with the pauser role.
+     * @dev Sets the paused to false callable only by PAUSER_ROLE when the contract is paused.
      */
     function unpause() external {
         _checkRole(_PAUSER_ROLE);
-        if (!paused) {
-            revert DepositsNotPaused();
-        }
-        paused = false;
+        _unpause();
     }
 
     /**

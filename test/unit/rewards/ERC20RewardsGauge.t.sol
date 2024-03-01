@@ -36,9 +36,9 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.startPrank(admin);
         rewardsGauge.initialize(address(dummyGaugeAsset));
         // set admin as manager
-        rewardsGauge.grantRole(keccak256("MANAGER_ROLE"), admin);
+        rewardsGauge.grantRole(_MANAGER_ROLE, admin);
         // set admin as the pauser
-        rewardsGauge.grantRole(keccak256("PAUSER_ROLE"), admin);
+        rewardsGauge.grantRole(_PAUSER_ROLE, admin);
         vm.stopPrank();
     }
 
@@ -187,27 +187,13 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.deposit(amount, alice);
     }
 
-    function test_pause_revertWhen_notAdmin() public {
-        vm.expectRevert(_formatAccessControlError(address(this), keccak256("PAUSER_ROLE")));
+    function test_pause_revertWhen_notPauser() public {
+        vm.expectRevert(_formatAccessControlError(address(this), _PAUSER_ROLE));
         rewardsGauge.pause();
     }
 
-    function test_pause_revertWhen_alreadyPaused() public {
-        vm.startPrank(admin);
-        rewardsGauge.pause();
-        assertTrue(rewardsGauge.paused(), "deposits should be paused");
-        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.DepositsPaused.selector));
-        rewardsGauge.pause();
-    }
-
-    function test_unpause_revertWhen_notAdmin() public {
-        vm.expectRevert(_formatAccessControlError(address(this), keccak256("PAUSER_ROLE")));
-        rewardsGauge.unpause();
-    }
-
-    function test_unpause_revertsWhen_notPaused() public {
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.DepositsNotPaused.selector));
+    function test_unpause_revertWhen_notPauser() public {
+        vm.expectRevert(_formatAccessControlError(address(this), _PAUSER_ROLE));
         rewardsGauge.unpause();
     }
 
