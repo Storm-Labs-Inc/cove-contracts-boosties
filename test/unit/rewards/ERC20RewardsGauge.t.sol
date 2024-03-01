@@ -197,6 +197,12 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.unpause();
     }
 
+    function test_unpause_revertsWhen_notPaused() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.DepositsNotPaused.selector));
+        rewardsGauge.unpause();
+    }
+
     function testFuzz_unpause(uint256 amount) public {
         vm.assume(amount > 0);
         vm.startPrank(admin);
