@@ -35,8 +35,10 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.label(address(rewardsGauge), "rewardsGauge");
         vm.startPrank(admin);
         rewardsGauge.initialize(address(dummyGaugeAsset));
-        // set admin as manager as well
+        // set admin as manager
         rewardsGauge.grantRole(keccak256("MANAGER_ROLE"), admin);
+        // set admin as the pauser
+        rewardsGauge.grantRole(keccak256("PAUSER_ROLE"), admin);
         vm.stopPrank();
     }
 
@@ -169,6 +171,42 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.addReward(address(dummyRewardToken), admin);
         // address distributor = createUser("distributor");
         // alice gets some mockgauge tokens by depositing dummy token
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(rewardsGauge), amount);
+        rewardsGauge.deposit(amount, alice);
+        assertEq(rewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
+    }
+
+    function testFuzz_deposit_revertsWhen_depositsPaused(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.startPrank(admin);
+        rewardsGauge.pause();
+        assertTrue(rewardsGauge.paused(), "deposits should be paused");
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.DepositsPaused.selector));
+        rewardsGauge.deposit(amount, alice);
+    }
+
+    function test_pause_revertWhen_notAdmin() public {
+        vm.expectRevert(_formatAccessControlError(address(this), keccak256("PAUSER_ROLE")));
+        rewardsGauge.pause();
+    }
+
+    function test_unpause_revertWhen_notAdmin() public {
+        vm.expectRevert(_formatAccessControlError(address(this), keccak256("PAUSER_ROLE")));
+        rewardsGauge.unpause();
+    }
+
+    function testFuzz_unpause(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.startPrank(admin);
+        rewardsGauge.pause();
+        assertTrue(rewardsGauge.paused(), "deposits should be paused");
+        vm.stopPrank();
+        vm.startPrank(admin);
+        rewardsGauge.unpause();
+        assertFalse(rewardsGauge.paused(), "deposits should be unpaused");
+        vm.stopPrank();
         airdrop(dummyGaugeAsset, alice, amount);
         vm.startPrank(alice);
         dummyGaugeAsset.approve(address(rewardsGauge), amount);

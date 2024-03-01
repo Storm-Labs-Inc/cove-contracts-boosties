@@ -38,10 +38,13 @@ abstract contract BaseRewardsGauge is
         uint256 integral;
     }
 
+    bool public paused = false;
+
     uint256 public constant MAX_REWARDS = 8;
     uint256 internal constant _WEEK = 1 weeks;
     uint256 internal constant _PRECISION = 1e18;
     bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 internal constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     // For tracking external rewards
     address[] public rewardTokens;
@@ -62,6 +65,8 @@ abstract contract BaseRewardsGauge is
     error RewardAmountTooLow();
     error ZeroAddress();
     error RewardCannotBeAsset();
+    error DepositsPaused();
+    error DepositsNotPaused();
 
     constructor() payable {
         _disableInitializers();
@@ -81,6 +86,7 @@ abstract contract BaseRewardsGauge is
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(_MANAGER_ROLE, msg.sender);
+        _grantRole(_PAUSER_ROLE, msg.sender);
     }
 
     /**
@@ -230,6 +236,28 @@ abstract contract BaseRewardsGauge is
     }
 
     /**
+     * @dev pauses deposits for the gauge. Can only be called by an address with the pauser role.
+     */
+    function pause() external {
+        _checkRole(_PAUSER_ROLE);
+        if (paused) {
+            revert DepositsPaused();
+        }
+        paused = true;
+    }
+
+    /**
+     * @dev unpauses deposits for the gauge. Can only be called by an address with the pauser role.
+     */
+    function unpause() external {
+        _checkRole(_PAUSER_ROLE);
+        if (!paused) {
+            revert DepositsNotPaused();
+        }
+        paused = false;
+    }
+
+    /**
      * @notice Returns the total amount of the underlying asset that the gauge has.
      * @dev Provides the total assets managed by the gauge, which is the same as the total supply of the gauge's shares.
      *      This is used to calculate the value of each share.
@@ -335,6 +363,25 @@ abstract contract BaseRewardsGauge is
                 IERC20(token).safeTransfer(receiver, totalClaimable);
             }
         }
+    }
+
+    /**
+     * @dev Handles all flow of deposits for the gauge, includes a check if deposits are paused before depositing.
+     */
+    function _deposit(
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    )
+        internal
+        virtual
+        override(ERC4626Upgradeable)
+    {
+        if (paused) {
+            revert DepositsPaused();
+        }
+        super._deposit(caller, receiver, assets, shares);
     }
 
     /**

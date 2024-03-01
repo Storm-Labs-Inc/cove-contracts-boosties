@@ -79,16 +79,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
      * @param assets The amount of assets to deposit.
      * @param shares The amount of shares to mint.
      */
-    function _deposit(
-        address caller,
-        address receiver,
-        uint256 assets,
-        uint256 shares
-    )
-        internal
-        virtual
-        override(ERC4626Upgradeable)
-    {
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         if (totalAssets() + assets > maxTotalAssets()) {
             revert MaxTotalAssetsExceeded();
         }
