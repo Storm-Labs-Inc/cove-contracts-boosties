@@ -38,7 +38,7 @@ abstract contract BaseRewardsGauge is
         uint256 integral;
     }
 
-    bool public paused = false;
+    bool public paused;
 
     uint256 public constant MAX_REWARDS = 8;
     uint256 internal constant _WEEK = 1 weeks;
