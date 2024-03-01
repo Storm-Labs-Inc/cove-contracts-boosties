@@ -114,6 +114,32 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertEq(abi.encode(allGaugeInfo[1]), abi.encode(v3GaugeInfo), "allGaugeInfo[1]==v3GaugeInfo");
     }
 
+    function test_getAllGaugeInfo() public {
+        factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
+
+        // 0 offset, limit matches the number of gauges
+        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo(1, 0);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        // 0 offset, limit exceeds the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(2, 0);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        factory.deployCoveGauges(address(mockCoveYearnStrategyV3));
+
+        // non 0 offset, limit matches the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(1, 1);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        // non 0 offset, limit exceeds the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(2, 1);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        // offset exceeds the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(1, 3);
+        assertEq(allGaugeInfo.length, 0, "allGaugeInfo.length");
+    }
+
     function test_deployCoveGauges_revertWhen_notManager() public {
         factory.revokeRole(MANAGER_ROLE, address(this));
         vm.expectRevert(_formatAccessControlError(address(this), MANAGER_ROLE));
