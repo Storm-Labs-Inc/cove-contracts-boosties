@@ -116,8 +116,8 @@ contract CoveYearnGaugeFactory is AccessControl {
         address[] memory gauges = supportedYearnGauges;
         uint256 numGauges = gauges.length;
         // Handle the case of offset + limit exceeding the remaining length by taking the min.
-        // If the offset is higher than the number of gauges there are no results to return.
-        uint256 length = offset > numGauges ? 0 : Math.min(limit, numGauges - offset);
+        // If the offset is >= the number of gauges there are no results to return.
+        uint256 length = offset >= numGauges ? 0 : Math.min(limit, numGauges - offset);
         GaugeInfo[] memory result = new GaugeInfo[](length);
         for (uint256 i = offset; i < length;) {
             result[i] = getGaugeInfo(gauges[i]);

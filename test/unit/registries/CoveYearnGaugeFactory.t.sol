@@ -125,6 +125,10 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         allGaugeInfo = factory.getAllGaugeInfo(2, 0);
         assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
 
+        // 1 offset, limit is 1 but there is only 1 gauge at the 0 index
+        allGaugeInfo = factory.getAllGaugeInfo(1, 1);
+        assertEq(allGaugeInfo.length, 0, "allGaugeInfo.length");
+
         factory.deployCoveGauges(address(mockCoveYearnStrategyV3));
 
         // non 0 offset, limit matches the number of gauges
