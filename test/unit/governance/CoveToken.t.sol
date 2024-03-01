@@ -17,7 +17,7 @@ contract CoveToken_Test is BaseTest {
         owner = createUser("Owner");
         alice = createUser("Alice");
         bob = createUser("Bob");
-        coveToken = new CoveToken(owner, block.timestamp + 365 days);
+        coveToken = new CoveToken(owner);
         deployTimestamp = block.timestamp;
         vm.prank(owner);
         coveToken.grantRole(minterRole, owner);
@@ -25,15 +25,12 @@ contract CoveToken_Test is BaseTest {
 
     function test_initialize() public {
         require(coveToken.hasRole(coveToken.DEFAULT_ADMIN_ROLE(), owner), "Owner should have DEFAULT_ADMIN_ROLE");
-        assertEq(coveToken.mintingAllowedAfter(), block.timestamp + 365 days);
+        assertEq(
+            coveToken.mintingAllowedAfter(), block.timestamp + 3 * 52 weeks, "Minting should be allowed after 3 years"
+        );
         require(coveToken.allowedTransferrer(owner), "Owner should be allowed to transfer");
         assertEq(coveToken.paused(), true, "Contract should be paused");
         assertEq(coveToken.balanceOf(owner), 1_000_000_000 ether, "Owner should have initial supply");
-    }
-
-    function test_initialize_revertsWhen_mintingAllowedTooEarly() public {
-        vm.expectRevert(Errors.MintingAllowedTooEarly.selector);
-        new CoveToken(owner, block.timestamp - 1);
     }
 
     function test_availableSupplyToMint() public {

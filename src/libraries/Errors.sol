@@ -100,6 +100,7 @@ library Errors {
     error InvalidLPToken();
     error InsufficientBalance();
     error LPTokenAlreadyAdded();
+    error RewardRateTooHigh();
 
     /// Yearn4626RouterExt ///
     error InsufficientShares();
@@ -124,4 +125,7 @@ library Errors {
     error InflationTooLarge();
     error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
     error ExpectedPause();
+
+    /// COVE YEARN GAUGE FACTORY ///
+    error AddressNotContract();
 }
