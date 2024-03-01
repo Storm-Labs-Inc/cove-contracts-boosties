@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
