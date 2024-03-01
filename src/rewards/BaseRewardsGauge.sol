@@ -221,7 +221,7 @@ abstract contract BaseRewardsGauge is
             uint256 leftover = remaining * rewardData[rewardToken].rate;
             newRate = (amount + leftover) / _WEEK;
         }
-        // slither-disable-next-line timestamp
+        // slither-disable-next-line timestamp,incorrect-equality
         if (newRate == 0) {
             revert RewardAmountTooLow();
         }
