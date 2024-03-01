@@ -108,7 +108,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertFalse(v3GaugeInfo.autoCompoundingGauge == address(0), "v3GaugeInfo.autoCompoundingGauge");
         assertFalse(v3GaugeInfo.nonAutoCompoundingGauge == address(0), "v3GaugeInfo.nonAutoCompoundingGauge");
 
-        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo();
+        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo(2, 0);
         assertEq(allGaugeInfo.length, 2, "allGaugeInfo.length");
         assertEq(abi.encode(allGaugeInfo[0]), abi.encode(v2GaugeInfo), "allGaugeInfo[0]==v2GaugeInfo");
         assertEq(abi.encode(allGaugeInfo[1]), abi.encode(v3GaugeInfo), "allGaugeInfo[1]==v3GaugeInfo");
