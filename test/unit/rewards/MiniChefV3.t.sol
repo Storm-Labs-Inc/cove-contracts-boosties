@@ -190,6 +190,13 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
     }
 
+    function test_deposit_revertWhen_ZeroAmount() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 pid = miniChef.poolLength() - 1;
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        miniChef.deposit(pid, 0, alice);
+    }
+
     function test_withdraw() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
@@ -219,6 +226,18 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
         vm.expectCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector, pid, alice, alice, 0, 0));
         miniChef.withdraw(pid, amount, alice);
+    }
+
+    function test_withdraw_revertWhen_ZeroAmount() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        miniChef.withdraw(pid, 0, alice);
     }
 
     function test_emergencyWithdraw() public {
