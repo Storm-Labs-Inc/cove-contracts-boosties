@@ -237,6 +237,7 @@ abstract contract BaseRewardsGauge is
         _rewardData[rewardToken].rate = newRate;
         _rewardData[rewardToken].lastUpdate = block.timestamp;
         _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
+        // slither-disable-next-line weak-prng
         _rewardData[rewardToken].leftOver = amount % _WEEK;
     }
 
