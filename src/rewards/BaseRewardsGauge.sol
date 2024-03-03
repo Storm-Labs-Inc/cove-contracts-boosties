@@ -63,6 +63,10 @@ abstract contract BaseRewardsGauge is
     error ZeroAddress();
     error RewardCannotBeAsset();
 
+    event RewardTokenAdded(address rewardToken, address distributor);
+    event RewardTokenDeposited(address rewardToken, uint256 amount);
+    event RewardDistributorSet(address rewardToken, address distributor);
+
     constructor() payable {
         _disableInitializers();
     }
@@ -171,6 +175,7 @@ abstract contract BaseRewardsGauge is
             revert RewardTokenAlreadyAdded();
         }
 
+        emit RewardTokenAdded(rewardToken, distributor);
         rewardData[rewardToken].distributor = distributor;
         rewardTokens.push(rewardToken);
     }
@@ -193,6 +198,7 @@ abstract contract BaseRewardsGauge is
             revert InvalidDistributorAddress();
         }
 
+        emit RewardDistributorSet(rewardToken, distributor);
         rewardData[rewardToken].distributor = distributor;
     }
 
@@ -224,6 +230,7 @@ abstract contract BaseRewardsGauge is
         if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
+        emit RewardTokenDeposited(rewardToken, amount);
         rewardData[rewardToken].rate = newRate;
         rewardData[rewardToken].lastUpdate = block.timestamp;
         rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
