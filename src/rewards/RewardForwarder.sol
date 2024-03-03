@@ -100,8 +100,9 @@ contract RewardForwarder is AccessControlUpgradeable {
         if (treasuryBps_ > _MAX_BPS) {
             revert InvalidTreasuryBps();
         }
+        emit TreasuryBpsSet(rewardToken, treasuryBps_);
+        // slither-disable-next-line reentrancy-benign
         this.forwardRewardToken(rewardToken);
         treasuryBps[rewardToken] = treasuryBps_;
-        emit TreasuryBpsSet(rewardToken, treasuryBps_);
     }
 }
