@@ -421,6 +421,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         if (address(_rewarder) != address(0)) {
             try _rewarder.onReward(pid, msg.sender, to, 0, 0) { }
             catch {
+                // slither-disable-next-line reentrancy-events
                 emit LogRewarderEmergencyWithdrawFaulty(pid, msg.sender, to, amount);
             }
         }
