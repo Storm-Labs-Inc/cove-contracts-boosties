@@ -144,6 +144,17 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertEq(allGaugeInfo.length, 0, "allGaugeInfo.length");
     }
 
+    function testFuzz_getAllGaugeInfo(uint256 limit, uint256 offset) public {
+        factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
+        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo(limit, offset);
+        // only case where we expect the single gauge's info to be returned
+        if (offset == 0 && limit >= 1) {
+            assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+        } else {
+            assertEq(allGaugeInfo.length, 0, "allGaugeInfo.length");
+        }
+    }
+
     function test_deployCoveGauges_revertWhen_notManager() public {
         factory.revokeRole(MANAGER_ROLE, address(this));
         vm.expectRevert(_formatAccessControlError(address(this), MANAGER_ROLE));
@@ -246,7 +257,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertEq(factory.gaugeAdmin(), newGaugeAdmin);
     }
 
-    function test_setGaugeAdmin_revert_when_ZeroAddress() public {
+    function test_setGaugeAdmin_revertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         factory.setGaugeAdmin(address(0));
     }
