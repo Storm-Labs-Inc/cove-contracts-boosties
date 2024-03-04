@@ -113,14 +113,14 @@ contract MiniChefV3_Test is BaseTest {
         uint256 pid = miniChef.poolLength();
         IERC20 invalidLpToken = IERC20(address(0xdead));
         IMiniChefV3Rewarder dummyRewarder = IMiniChefV3Rewarder(address(0));
-        uint256 allocPoint = 1000;
+        uint64 allocPoint = 1000;
 
         vm.expectRevert(Errors.LPTokenNotAdded.selector);
         miniChef.set(pid, allocPoint, invalidLpToken, dummyRewarder, true);
     }
 
     function test_set_revertWhen_LPTokenDoesNotMatchPoolId() public {
-        uint256 allocPoint = 1000;
+        uint64 allocPoint = 1000;
         IERC20 lpToken1 = IERC20(address(new ERC20Mock()));
         IMiniChefV3Rewarder dummyRewarder = IMiniChefV3Rewarder(address(0));
         miniChef.add(allocPoint, lpToken1, dummyRewarder);
