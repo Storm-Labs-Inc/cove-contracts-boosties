@@ -74,12 +74,12 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
             revert Errors.MintingAllowedTooEarly();
         }
         // Effects
-        _pause(); // Pause the contract
         OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
         ANYONE_CAN_UNPAUSE_AFTER = block.timestamp + _MAX_PAUSE_PERIOD;
         _addToAllowedTransferrer(address(0)); // Allow minting
         _addToAllowedTransferrer(owner_); // Allow transfers from owner for distribution
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
+        _pause(); // Pause the contract
         _grantRole(DEFAULT_ADMIN_ROLE, owner_);
         mintingAllowedAfter = mintingAllowedAfter_; // Set the time delay for the first mint
     }
