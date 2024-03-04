@@ -182,18 +182,27 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * the owner.
      * @param pid The index of the pool. See `_poolInfo`.
      * @param allocPoint New AP of the pool.
+     * @param lpToken_ Address of the LP ERC-20 token.
      * @param rewarder_ Address of the rewarder delegate.
      * @param overwrite True if rewarder_ should be `set`. Otherwise `rewarder_` is ignored.
      */
     function set(
         uint256 pid,
         uint64 allocPoint,
+        IERC20 lpToken_,
         IMiniChefV3Rewarder rewarder_,
         bool overwrite
     )
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
+        if (pidPlusOne < 1) {
+            revert Errors.LPTokenNotAdded();
+        }
+        if (pidPlusOne != pid + 1) {
+            revert Errors.LPTokenDoesNotMatchPoolId();
+        }
         totalAllocPoint = totalAllocPoint - _poolInfo[pid].allocPoint + allocPoint;
         _poolInfo[pid].allocPoint = allocPoint;
         if (overwrite) {
