@@ -15,7 +15,6 @@ contract ERC20RewardsGauge_Test is BaseTest {
     address public admin;
     address public treasury;
     address public alice;
-    address public destination;
 
     function setUp() public override {
         admin = createUser("admin");
@@ -61,8 +60,8 @@ contract ERC20RewardsGauge_Test is BaseTest {
         assertEq(rewardsGauge.decimals(), 18, "decimals should same as underlying asset");
     }
 
-    function testFuzz_setRewardsReceiver(address desitnation) public {
-        vm.assume(desitnation != address(0));
+    function testFuzz_setRewardsReceiver(address destination) public {
+        vm.assume(destination != address(0));
         rewardsGauge.setRewardsReceiver(destination);
         assertEq(
             rewardsGauge.rewardsReceiver(address(this)), destination, "destination should be set as rewards receiver"
