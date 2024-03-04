@@ -323,6 +323,7 @@ abstract contract BaseRewardsGauge is
         uint256 integral = rewardData[token].integral;
         uint256 integralFor = rewardIntegralFor[token][user];
         uint256 newClaimable = 0;
+        // slither-disable-next-line timestamp
         if (integral > integralFor) {
             newClaimable = userBalance * (integral - integralFor) / _PRECISION;
             rewardIntegralFor[token][user] = integral;
