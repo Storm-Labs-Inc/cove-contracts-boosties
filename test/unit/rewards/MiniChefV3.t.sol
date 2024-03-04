@@ -64,6 +64,15 @@ contract MiniChefV3_Test is BaseTest {
         assertTrue(miniChef.isLPTokenAdded(IERC20(lpToken)), "lpToken not added");
     }
 
+    function test_unPause() public {
+        vm.prank(pauser);
+        miniChef.pause();
+        assertTrue(miniChef.paused(), "contract not paused");
+        vm.prank(admin);
+        miniChef.unPause();
+        assertFalse(miniChef.paused(), "contract not unpaused");
+    }
+
     function test_add() public {
         uint256 allocPoint = 1000;
         IERC20 newLpToken = IERC20(address(new ERC20Mock()));
@@ -170,7 +179,7 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
     }
 
-    function test_revertWhen_Paused() public {
+    function test_deposit_revertWhen_Paused() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
         vm.prank(pauser);

@@ -289,6 +289,20 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.deposit(testGauge, 1e18);
     }
 
+    function testFuzz_deposit_passWhen_unpaused(uint256 amount) public {
+        vm.assume(amount > 0);
+
+        vm.prank(pauser);
+        yearnStakingDelegate.pause();
+        assertTrue(yearnStakingDelegate.paused());
+        vm.prank(admin);
+        yearnStakingDelegate.unpause();
+        assertTrue(!yearnStakingDelegate.paused());
+        vm.prank(alice);
+        yearnStakingDelegate.deposit(testGauge, 1e18);
+        assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
+    }
+
     function testFuzz_withdraw(uint256 amount) public {
         vm.assume(amount > 0);
         _setGaugeRewards();
