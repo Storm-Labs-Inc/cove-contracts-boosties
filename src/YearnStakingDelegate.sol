@@ -8,6 +8,7 @@ import { IYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IYfiRewardPool.s
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -15,7 +16,6 @@ import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/Clon
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
  * @title YearnStakingDelegate

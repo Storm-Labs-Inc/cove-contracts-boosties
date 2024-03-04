@@ -96,7 +96,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         address gaugeRewardReceiverImpl =
             address(deployer.deploy_GaugeRewardReceiver("GaugeRewardReceiverImplementation", options));
         YearnStakingDelegate ysd = deployer.deploy_YearnStakingDelegate(
-            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, options
+            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, broadcaster, options
         );
         address stakingDelegateRewards = address(
             deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd), options)
@@ -304,6 +304,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 name: "MiniChefV3",
                 rewardToken_: IERC20(deployer.getAddress("CoveToken")),
                 admin: broadcaster,
+                pauser: broadcaster,
                 options: options
             })
         );
