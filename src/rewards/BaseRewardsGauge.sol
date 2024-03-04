@@ -108,7 +108,7 @@ abstract contract BaseRewardsGauge is
      * @return uint256 Claimable reward token amount
      */
     function claimableReward(address user, address rewardToken) external view returns (uint256) {
-        Reward memory rewardTokenData = rewardData[rewardToken];
+        Reward storage rewardTokenData = rewardData[rewardToken];
         uint256 integral = rewardTokenData.integral;
         uint256 currentTotalSupply = totalSupply();
         if (currentTotalSupply != 0) {
