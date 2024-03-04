@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.sol";
 import { SelfPermit } from "src/deps/uniswap/v3-periphery/base/SelfPermit.sol";
 import { Rescuable } from "src/Rescuable.sol";
@@ -16,7 +17,7 @@ import { Errors } from "src/libraries/Errors.sol";
  * It supports multiple reward tokens through external rewarder contracts and includes emergency withdrawal
  * functionality.
  */
-contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
+contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit, Pausable {
     using SafeERC20 for IERC20;
 
     /**
@@ -67,6 +68,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     /// @notice The amount of REWARD_TOKEN available in this contract for distribution.
     uint256 public availableReward;
     uint256 private constant _ACC_REWARD_TOKEN_PRECISION = 1e12;
+    // @notice The pauser role for the contract.
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSERER_ROLE");
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
@@ -85,9 +88,10 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param rewardToken_ The ERC20 token to be used as the reward token.
      * @param admin The address that will be granted the default admin role.
      */
-    constructor(IERC20 rewardToken_, address admin) payable {
+    constructor(IERC20 rewardToken_, address admin, address pauser) payable {
         REWARD_TOKEN = rewardToken_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(PAUSER_ROLE, pauser);
     }
 
     /// @notice Returns the number of MCV3 pools.
@@ -306,7 +310,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param amount LP token amount to deposit.
      * @param to The receiver of `amount` deposit benefit.
      */
-    function deposit(uint256 pid, uint256 amount, address to) public {
+    function deposit(uint256 pid, uint256 amount, address to) public whenNotPaused {
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][to];
 
@@ -420,5 +424,19 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         if (address(_rewarder) != address(0)) {
             _rewarder.onReward(pid, msg.sender, to, 0, 0);
         }
+    }
+
+    /**
+     * @dev Sets the paused to true callable only by PAUSER_ROLE when the contract is not paused.
+     */
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @dev Sets the paused to false callable only by PAUSER_ROLE when the contract is paused.
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 }

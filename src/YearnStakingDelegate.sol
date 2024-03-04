@@ -15,20 +15,22 @@ import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/Clon
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
  * @title YearnStakingDelegate
  * @notice Contract for staking yearn gauge tokens, managing rewards, and delegating voting power.
  * @dev Inherits from IYearnStakingDelegate, AccessControl, ReentrancyGuard, and Rescuable.
  */
-contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable {
+contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable, Pausable {
     // Libraries
     using SafeERC20 for IERC20;
     using ClonesWithImmutableArgs for address;
 
     // Constants
     // slither-disable-start naming-convention
-    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSERER_ROLE");
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
@@ -70,12 +72,20 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param manager Address of the manager.
      */
     // slither-disable-next-line locked-ether
-    constructor(address gaugeRewardReceiverImpl, address treasury_, address admin, address manager) payable {
+    constructor(
+        address gaugeRewardReceiverImpl,
+        address treasury_,
+        address admin,
+        address manager,
+        address pauser
+    )
+        payable
+    {
         // Checks
         // Check for zero addresses
         if (
             gaugeRewardReceiverImpl == address(0) || treasury_ == address(0) || admin == address(0)
-                || manager == address(0)
+                || manager == address(0) || pauser == address(0)
         ) {
             revert Errors.ZeroAddress();
         }
@@ -93,8 +103,9 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
         blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_MANAGER_ROLE, admin);
-        _grantRole(_MANAGER_ROLE, manager);
+        _grantRole(MANAGER_ROLE, admin);
+        _grantRole(MANAGER_ROLE, manager);
+        _grantRole(PAUSER_ROLE, pauser);
 
         // Interactions
         // Max approve YFI to veYFI so we can lock it later
@@ -106,7 +117,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param gauge The address of the gauge token to deposit.
      * @param amount The amount of tokens to deposit.
      */
-    function deposit(address gauge, uint256 amount) external {
+    function deposit(address gauge, uint256 amount) external whenNotPaused {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();
@@ -206,7 +217,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param amount Amount of YFI tokens to lock.
      * @return The locked balance information.
      */
-    function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory) {
+    function lockYfi(uint256 amount) external whenNotPaused returns (IVotingYFI.LockedBalance memory) {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();
@@ -224,7 +235,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @notice Set treasury address. This address will receive a portion of the rewards
      * @param treasury_ address to receive rewards
      */
-    function setTreasury(address treasury_) external onlyRole(_MANAGER_ROLE) {
+    function setTreasury(address treasury_) external onlyRole(MANAGER_ROLE) {
         // Checks
         if (treasury_ == address(0)) {
             revert Errors.ZeroAddress();
@@ -369,6 +380,20 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function rescueDYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _rescueDYfi();
+    }
+
+    /**
+     * @dev Sets the paused to true callable only by PAUSER_ROLE when the contract is not paused.
+     */
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @dev Sets the paused to false callable only by PAUSER_ROLE when the contract is paused.
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     /**

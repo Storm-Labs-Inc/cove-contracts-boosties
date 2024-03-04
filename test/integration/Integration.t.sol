@@ -63,7 +63,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         {
             gaugeRewardReceiver = setUpGaugeRewardReceiverImplementation(admin);
             yearnStakingDelegate =
-                YearnStakingDelegate(new YearnStakingDelegate(gaugeRewardReceiver, treasury, admin, admin));
+                YearnStakingDelegate(new YearnStakingDelegate(gaugeRewardReceiver, treasury, admin, admin, admin));
             vm.label(address(yearnStakingDelegate), "yearnStakingDelegate");
             vm.label(yearnStakingDelegate.gaugeRewardReceivers(gauge), "gaugeRewardReceiver");
             stakingDelegateRewards =
