@@ -14,7 +14,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/
 import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
-import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { PausableUpgradeable } from "@openzeppelin-upgradeable/contracts/security/PausableUpgradeable.sol";
 
 /**
  * @title Base Rewards Gauge
@@ -28,7 +28,7 @@ abstract contract BaseRewardsGauge is
     ERC20PermitUpgradeable,
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
-    Pausable
+    PausableUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -40,11 +40,11 @@ abstract contract BaseRewardsGauge is
         uint256 integral;
     }
 
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 public constant MAX_REWARDS = 8;
     uint256 internal constant _WEEK = 1 weeks;
     uint256 internal constant _PRECISION = 1e18;
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 internal constant _PAUSER_ROLE = keccak256("MANAGER_ROLE");
 
     // For tracking external rewards
     address[] public rewardTokens;
@@ -83,8 +83,8 @@ abstract contract BaseRewardsGauge is
         __ERC4626_init(IERC20(asset_));
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(_MANAGER_ROLE, msg.sender);
-        _grantRole(_PAUSER_ROLE, msg.sender);
+        _grantRole(MANAGER_ROLE, msg.sender);
+        _grantRole(PAUSER_ROLE, msg.sender);
     }
 
     /**
@@ -159,7 +159,7 @@ abstract contract BaseRewardsGauge is
      * @param distributor The address of the distributor for the reward token.
      */
     function addReward(address rewardToken, address distributor) external {
-        _checkRole(_MANAGER_ROLE);
+        _checkRole(MANAGER_ROLE);
         if (rewardToken == address(0) || distributor == address(0)) {
             revert ZeroAddress();
         }
@@ -187,7 +187,7 @@ abstract contract BaseRewardsGauge is
      */
     function setRewardDistributor(address rewardToken, address distributor) external {
         address currentDistributor = rewardData[rewardToken].distributor;
-        if (!(msg.sender == currentDistributor || hasRole(_MANAGER_ROLE, msg.sender))) {
+        if (!(msg.sender == currentDistributor || hasRole(MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
         if (currentDistributor == address(0)) {
@@ -237,7 +237,7 @@ abstract contract BaseRewardsGauge is
      * @dev Sets the paused to true callable only by PAUSER_ROLE when the contract is not paused.
      */
     function pause() external {
-        _checkRole(_PAUSER_ROLE);
+        _checkRole(PAUSER_ROLE);
         _pause();
     }
 
@@ -245,7 +245,7 @@ abstract contract BaseRewardsGauge is
      * @dev Sets the paused to false callable only by PAUSER_ROLE when the contract is paused.
      */
     function unpause() external {
-        _checkRole(_PAUSER_ROLE);
+        _checkRole(DEFAULT_ADMIN_ROLE);
         _unpause();
     }
 
@@ -385,24 +385,5 @@ abstract contract BaseRewardsGauge is
         _checkpointRewards(from, totalSupply_, false, address(0));
         _checkpointRewards(to, totalSupply_, false, address(0));
         super._beforeTokenTransfer(from, to, amount);
-    }
-
-    /**
-     * @notice Triggers a paused state. Disallowing deposits.
-     * Can only be called by an address with the pauser role.
-     * @dev
-     */
-    function pause() external {
-        _checkRole(_PAUSER_ROLE);
-        _pause();
-    }
-
-    /**
-     * @notice Retunrs to a normal state. Disallowing deposits.
-     * Can only be called by an address with the pauser role.
-     */
-    function unpause() external {
-        _checkRole(_PAUSER_ROLE);
-        _unpause();
     }
 }
