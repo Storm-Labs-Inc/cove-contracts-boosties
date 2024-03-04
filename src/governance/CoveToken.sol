@@ -75,14 +75,15 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
             revert Errors.MintingAllowedTooEarly();
         }
         // Effects
+        _pause(); // Pause the contract
         OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
         ANYONE_CAN_UNPAUSE_AFTER = block.timestamp + _MAX_PAUSE_PERIOD;
+        _addToAllowedTransferrer(address(0)); // Allow minting
         _addToAllowedTransferrer(owner_); // Allow transfers from owner for distribution
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
         _grantRole(DEFAULT_ADMIN_ROLE, owner_);
         _grantRole(_TIMELOCK_ROLE, owner_); // This role must be revoked after granting it to the timelock
         _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
-        _pause(); // Pause the contract
         mintingAllowedAfter = mintingAllowedAfter_; // Set the time delay for the first mint
     }
 
