@@ -62,7 +62,7 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     function test_add() public {
-        uint256 allocPoint = 1000;
+        uint64 allocPoint = 1000;
         IERC20 newLpToken = IERC20(address(new ERC20Mock()));
         IMiniChefV3Rewarder newRewarder = IMiniChefV3Rewarder(address(0));
 
@@ -88,7 +88,7 @@ contract MiniChefV3_Test is BaseTest {
 
     function test_set() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
-        uint256 allocPoint = 500;
+        uint64 allocPoint = 500;
         IMiniChefV3Rewarder newRewarder = IMiniChefV3Rewarder(address(0));
         uint256 pid = miniChef.poolLength() - 1;
 
