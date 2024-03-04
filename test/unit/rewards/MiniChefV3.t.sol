@@ -68,8 +68,7 @@ contract MiniChefV3_Test is BaseTest {
         vm.prank(pauser);
         miniChef.pause();
         assertTrue(miniChef.paused(), "contract not paused");
-        vm.prank(admin);
-        miniChef.unPause();
+        miniChef.unpause();
         assertFalse(miniChef.paused(), "contract not unpaused");
     }
 
