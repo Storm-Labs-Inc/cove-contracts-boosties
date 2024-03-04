@@ -29,6 +29,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     uint256 private constant _OWNER_PAUSE_PERIOD = 6 * 4 weeks;
     /// @dev Role identifier for minters.
     bytes32 private constant _MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     /// @notice Timestamp after which minting is allowed.
     uint256 public mintingAllowedAfter;
@@ -74,13 +75,14 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
             revert Errors.MintingAllowedTooEarly();
         }
         // Effects
-        _pause(); // Pause the contract
         OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
         ANYONE_CAN_UNPAUSE_AFTER = block.timestamp + _MAX_PAUSE_PERIOD;
-        _addToAllowedTransferrer(address(0)); // Allow minting
         _addToAllowedTransferrer(owner_); // Allow transfers from owner for distribution
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
         _grantRole(DEFAULT_ADMIN_ROLE, owner_);
+        _grantRole(_TIMELOCK_ROLE, owner_); // This role must be revoked after granting it to the timelock
+        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
+        _pause(); // Pause the contract
         mintingAllowedAfter = mintingAllowedAfter_; // Set the time delay for the first mint
     }
 
@@ -114,7 +116,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Adds an address to the list of allowed transferees.
      * @param target The address to allow.
      */
-    function addAllowedTransferee(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addAllowedTransferee(address target) external onlyRole(_TIMELOCK_ROLE) {
         _addToAllowedTransferee(target);
     }
 
@@ -122,7 +124,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Removes an address from the list of allowed transferees.
      * @param target The address to disallow.
      */
-    function removeAllowedTransferee(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function removeAllowedTransferee(address target) external onlyRole(_TIMELOCK_ROLE) {
         _removeFromAllowedTransferee(target);
     }
 
@@ -130,7 +132,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Adds an address to the list of allowed transferrers.
      * @param target The address to allow.
      */
-    function addAllowedTransferrer(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addAllowedTransferrer(address target) external onlyRole(_TIMELOCK_ROLE) {
         _addToAllowedTransferrer(target);
     }
 
@@ -138,7 +140,7 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Removes an address from the list of allowed transferrers.
      * @param target The address to disallow.
      */
-    function removeAllowedTransferrer(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function removeAllowedTransferrer(address target) external onlyRole(_TIMELOCK_ROLE) {
         _removeFromAllowedTransferrer(target);
     }
 
