@@ -14,7 +14,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/
 import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
-import { Pausable } from "src/Pausable.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
  * @title Base Rewards Gauge
@@ -44,6 +44,7 @@ abstract contract BaseRewardsGauge is
     uint256 internal constant _WEEK = 1 weeks;
     uint256 internal constant _PRECISION = 1e18;
     bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 internal constant _PAUSER_ROLE = keccak256("MANAGER_ROLE");
 
     // For tracking external rewards
     address[] public rewardTokens;
@@ -64,7 +65,6 @@ abstract contract BaseRewardsGauge is
     error RewardAmountTooLow();
     error ZeroAddress();
     error RewardCannotBeAsset();
-    error DepositsPaused();
 
     constructor() payable {
         _disableInitializers();
@@ -369,10 +369,8 @@ abstract contract BaseRewardsGauge is
         internal
         virtual
         override(ERC4626Upgradeable)
+        whenNotPaused
     {
-        if (paused) {
-            revert DepositsPaused();
-        }
         super._deposit(caller, receiver, assets, shares);
     }
 
@@ -387,5 +385,24 @@ abstract contract BaseRewardsGauge is
         _checkpointRewards(from, totalSupply_, false, address(0));
         _checkpointRewards(to, totalSupply_, false, address(0));
         super._beforeTokenTransfer(from, to, amount);
+    }
+
+    /**
+     * @notice Triggers a paused state. Disallowing deposits.
+     * Can only be called by an address with the pauser role.
+     * @dev
+     */
+    function pause() external {
+        _checkRole(_PAUSER_ROLE);
+        _pause();
+    }
+
+    /**
+     * @notice Retunrs to a normal state. Disallowing deposits.
+     * Can only be called by an address with the pauser role.
+     */
+    function unpause() external {
+        _checkRole(_PAUSER_ROLE);
+        _unpause();
     }
 }

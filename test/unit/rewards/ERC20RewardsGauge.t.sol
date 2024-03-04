@@ -183,7 +183,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.startPrank(admin);
         rewardsGauge.pause();
         assertTrue(rewardsGauge.paused(), "deposits should be paused");
-        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.DepositsPaused.selector));
+        vm.expectRevert("Pausable: paused");
         rewardsGauge.deposit(amount, alice);
     }
 
