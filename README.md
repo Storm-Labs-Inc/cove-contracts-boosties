@@ -1,6 +1,6 @@
 # smart-contracts-core
 
-![cove](https://github.com/Storm-Labs-Inc/smart-contracts-core/blob/master/assets/cove.png?raw=true)
+![cove](./assets/cove.png)
 
 <div align="center">
 
@@ -22,7 +22,7 @@ For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
 
 ### Boosties
 
-![boosties](https://github.com/Storm-Labs-Inc/smart-contracts-core/blob/master/assets/boosties.png?raw=true)
+![boosties](./assets/boosties.png)
 
 ## Prerequisites
 
