@@ -467,7 +467,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @dev Sets the paused to true callable by PAUSER_ROLE or DEFAULT_ADMIN_ROLE when the contract is not paused.
      */
     function pause() external {
-        if (!hasRole(_PAUSER_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+        if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
             revert Errors.Unauthorized();
         }
         _pause();

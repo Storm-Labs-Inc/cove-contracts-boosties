@@ -262,7 +262,7 @@ abstract contract BaseRewardsGauge is
      * @dev Sets the paused to true callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE when the contract is not paused.
      */
     function pause() external {
-        if (!hasRole(_PAUSER_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+        if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
             revert Unauthorized();
         }
         _pause();
