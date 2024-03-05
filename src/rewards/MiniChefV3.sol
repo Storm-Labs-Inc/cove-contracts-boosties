@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.sol";
 import { SelfPermit } from "src/deps/uniswap/v3-periphery/base/SelfPermit.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
  * @title MiniChefV3
@@ -16,13 +17,14 @@ import { Errors } from "src/libraries/Errors.sol";
  * It supports multiple reward tokens through external rewarder contracts and includes emergency withdrawal
  * functionality.
  */
-contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
+contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit {
     using SafeERC20 for IERC20;
 
     /**
      * @notice Info of each MCV3 user.
      * `amount` LP token amount the user has provided.
      * `rewardDebt` The amount of REWARD_TOKEN entitled to the user.
+     * `unpaidRewards` The amount of REWARD_TOKEN that has not been claimed by the user.
      */
     struct UserInfo {
         uint256 amount;
@@ -32,6 +34,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
     /**
      * @notice Info of each MCV3 pool.
+     * `accRewardPerShare` The amount of REWARD_TOKEN per share accumulated.
+     * `lastRewardTime` The last recorded time the pool was updated.
      * `allocPoint` The amount of allocation points assigned to the pool.
      * Also known as the amount of REWARD_TOKEN to distribute per block.
      */
@@ -66,6 +70,8 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     uint256 public rewardPerSecond;
     /// @notice The amount of REWARD_TOKEN available in this contract for distribution.
     uint256 public availableReward;
+    /// @notice The maximum amount of REWARD_TOKEN that can be distributed per second.
+    uint256 public constant MAX_REWARD_TOKEN_PER_SECOND = 100_000_000 ether / uint256(1 weeks);
     uint256 private constant _ACC_REWARD_TOKEN_PRECISION = 1e12;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
@@ -79,6 +85,9 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
     event LogRewardPerSecond(uint256 rewardPerSecond);
     event LogRewardCommitted(uint256 amount);
+    event LogRewarderEmergencyWithdrawFaulty(
+        address indexed user, uint256 indexed pid, uint256 amount, address indexed to
+    );
 
     /**
      * @dev Constructs the MiniChefV3 contract with a specified reward token and admin address.
@@ -86,6 +95,9 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param admin The address that will be granted the default admin role.
      */
     constructor(IERC20 rewardToken_, address admin) payable {
+        if (address(rewardToken_) == address(0) || admin == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         REWARD_TOKEN = rewardToken_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -154,13 +166,16 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param rewarder_ Address of the rewarder delegate.
      */
     function add(
-        uint256 allocPoint,
+        uint64 allocPoint,
         IERC20 lpToken_,
         IMiniChefV3Rewarder rewarder_
     )
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        if (address(lpToken_) == (address(0))) {
+            revert Errors.ZeroAddress();
+        }
         if (_pidPlusOne[address(lpToken_)] != 0) {
             revert Errors.LPTokenAlreadyAdded();
         }
@@ -169,7 +184,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         lpSupply.push(0);
         rewarder.push(rewarder_);
         _poolInfo.push(
-            PoolInfo({ allocPoint: uint64(allocPoint), lastRewardTime: uint64(block.timestamp), accRewardPerShare: 0 })
+            PoolInfo({ allocPoint: allocPoint, lastRewardTime: uint64(block.timestamp), accRewardPerShare: 0 })
         );
         uint256 pid = _poolInfo.length - 1;
         _pidPlusOne[address(lpToken_)] = pid + 1;
@@ -181,20 +196,29 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * the owner.
      * @param pid The index of the pool. See `_poolInfo`.
      * @param allocPoint New AP of the pool.
+     * @param lpToken_ Address of the LP ERC-20 token.
      * @param rewarder_ Address of the rewarder delegate.
      * @param overwrite True if rewarder_ should be `set`. Otherwise `rewarder_` is ignored.
      */
     function set(
         uint256 pid,
-        uint256 allocPoint,
+        uint64 allocPoint,
+        IERC20 lpToken_,
         IMiniChefV3Rewarder rewarder_,
         bool overwrite
     )
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
+        if (pidPlusOne < 1) {
+            revert Errors.LPTokenNotAdded();
+        }
+        if (pidPlusOne != pid + 1) {
+            revert Errors.LPTokenDoesNotMatchPoolId();
+        }
         totalAllocPoint = totalAllocPoint - _poolInfo[pid].allocPoint + allocPoint;
-        _poolInfo[pid].allocPoint = uint64(allocPoint);
+        _poolInfo[pid].allocPoint = allocPoint;
         if (overwrite) {
             rewarder[pid] = rewarder_;
         }
@@ -231,6 +255,9 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param rewardPerSecond_ The amount of reward token to be distributed per second.
      */
     function setRewardPerSecond(uint256 rewardPerSecond_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (rewardPerSecond_ > MAX_REWARD_TOKEN_PER_SECOND) {
+            revert Errors.RewardRateTooHigh();
+        }
         rewardPerSecond = rewardPerSecond_;
         emit LogRewardPerSecond(rewardPerSecond_);
     }
@@ -290,7 +317,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
                     // Explicitly round down when calculating the reward
                     // slither-disable-start divide-before-multiply
                     uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-                    pool.accRewardPerShare += uint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
+                    pool.accRewardPerShare += SafeCast.toUint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
                     // slither-disable-end divide-before-multiply
                 }
             }
@@ -307,6 +334,9 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param to The receiver of `amount` deposit benefit.
      */
     function deposit(uint256 pid, uint256 amount, address to) public {
+        if (amount == 0) {
+            revert Errors.ZeroAmount();
+        }
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][to];
 
@@ -333,6 +363,9 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param to Receiver of the LP tokens.
      */
     function withdraw(uint256 pid, uint256 amount, address to) public {
+        if (amount == 0) {
+            revert Errors.ZeroAmount();
+        }
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][msg.sender];
 
@@ -418,7 +451,11 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, 0, 0);
+            try _rewarder.onReward(pid, msg.sender, to, 0, 0) { }
+            catch {
+                // slither-disable-next-line reentrancy-events
+                emit LogRewarderEmergencyWithdrawFaulty(msg.sender, pid, amount, to);
+            }
         }
     }
 }

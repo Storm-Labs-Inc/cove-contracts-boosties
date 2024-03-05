@@ -108,10 +108,51 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertFalse(v3GaugeInfo.autoCompoundingGauge == address(0), "v3GaugeInfo.autoCompoundingGauge");
         assertFalse(v3GaugeInfo.nonAutoCompoundingGauge == address(0), "v3GaugeInfo.nonAutoCompoundingGauge");
 
-        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo();
+        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo(2, 0);
         assertEq(allGaugeInfo.length, 2, "allGaugeInfo.length");
         assertEq(abi.encode(allGaugeInfo[0]), abi.encode(v2GaugeInfo), "allGaugeInfo[0]==v2GaugeInfo");
         assertEq(abi.encode(allGaugeInfo[1]), abi.encode(v3GaugeInfo), "allGaugeInfo[1]==v3GaugeInfo");
+    }
+
+    function test_getAllGaugeInfo() public {
+        factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
+
+        // 0 offset, limit matches the number of gauges
+        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo(1, 0);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        // 0 offset, limit exceeds the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(2, 0);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        // 1 offset, limit is 1 but there is only 1 gauge at the 0 index
+        allGaugeInfo = factory.getAllGaugeInfo(1, 1);
+        assertEq(allGaugeInfo.length, 0, "allGaugeInfo.length");
+
+        factory.deployCoveGauges(address(mockCoveYearnStrategyV3));
+
+        // non 0 offset, limit matches the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(1, 1);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        // non 0 offset, limit exceeds the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(2, 1);
+        assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+
+        // offset exceeds the number of gauges
+        allGaugeInfo = factory.getAllGaugeInfo(1, 3);
+        assertEq(allGaugeInfo.length, 0, "allGaugeInfo.length");
+    }
+
+    function testFuzz_getAllGaugeInfo(uint256 limit, uint256 offset) public {
+        factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
+        CoveYearnGaugeFactory.GaugeInfo[] memory allGaugeInfo = factory.getAllGaugeInfo(limit, offset);
+        // only case where we expect the single gauge's info to be returned
+        if (offset == 0 && limit >= 1) {
+            assertEq(allGaugeInfo.length, 1, "allGaugeInfo.length");
+        } else {
+            assertEq(allGaugeInfo.length, 0, "allGaugeInfo.length");
+        }
     }
 
     function test_deployCoveGauges_revertWhen_notManager() public {
@@ -149,6 +190,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.setRewardForwarderImplementation(address(0));
     }
 
+    function test_setRewardForwarderImplementation_revertWhen_notContract() public {
+        vm.expectRevert(Errors.AddressNotContract.selector);
+        factory.setRewardForwarderImplementation(address(1));
+    }
+
     function test_setBaseRewardsGaugeImplementation() public {
         ERC20RewardsGauge newBaseRewardsGaugeImpl = new ERC20RewardsGauge();
         factory.setERC20RewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
@@ -167,6 +213,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.setERC20RewardsGaugeImplementation(address(0));
     }
 
+    function test_setBaseRewardsGaugeImplementation_revertWhen_notContract() public {
+        vm.expectRevert(Errors.AddressNotContract.selector);
+        factory.setERC20RewardsGaugeImplementation(address(1));
+    }
+
     function test_setYsdRewardsGaugeImplementation() public {
         YSDRewardsGauge newYsdRewardsGaugeImpl = new YSDRewardsGauge();
         factory.setYsdRewardsGaugeImplementation(address(newYsdRewardsGaugeImpl));
@@ -183,6 +234,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     function test_setYsdRewardsGaugeImplementation_revertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         factory.setYsdRewardsGaugeImplementation(address(0));
+    }
+
+    function test_setYsdRewardsGaugeImplementation_revertWhen_notContract() public {
+        vm.expectRevert(Errors.AddressNotContract.selector);
+        factory.setYsdRewardsGaugeImplementation(address(1));
     }
 
     function test_setTreasuryMultisig() public {
@@ -216,7 +272,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertEq(factory.gaugeAdmin(), newGaugeAdmin);
     }
 
-    function test_setGaugeAdmin_revert_when_ZeroAddress() public {
+    function test_setGaugeAdmin_revertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         factory.setGaugeAdmin(address(0));
     }

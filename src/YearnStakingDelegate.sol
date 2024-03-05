@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
@@ -7,7 +7,7 @@ import { IDYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IDYfiRewardPool
 import { IYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IYfiRewardPool.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -19,9 +19,9 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
 /**
  * @title YearnStakingDelegate
  * @notice Contract for staking yearn gauge tokens, managing rewards, and delegating voting power.
- * @dev Inherits from IYearnStakingDelegate, AccessControl, ReentrancyGuard, and Rescuable.
+ * @dev Inherits from IYearnStakingDelegate, AccessControlEnumerable, ReentrancyGuard, and Rescuable.
  */
-contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable {
+contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable, ReentrancyGuard, Rescuable {
     // Libraries
     using SafeERC20 for IERC20;
     using ClonesWithImmutableArgs for address;

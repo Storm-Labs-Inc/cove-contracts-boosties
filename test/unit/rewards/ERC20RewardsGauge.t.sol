@@ -16,6 +16,10 @@ contract ERC20RewardsGauge_Test is BaseTest {
     address public treasury;
     address public alice;
 
+    event RewardTokenAdded(address rewardToken, address distributor);
+    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
+    event RewardDistributorSet(address rewardToken, address distributor);
+
     function setUp() public override {
         admin = createUser("admin");
         treasury = createUser("treasury");
@@ -73,8 +77,10 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.assume(_distributor != address(0));
         vm.assume(rewardToken != address(dummyGaugeAsset));
         vm.prank(admin);
+        vm.expectEmit(false, false, false, true);
+        emit RewardTokenAdded(rewardToken, _distributor);
         rewardsGauge.addReward(rewardToken, _distributor);
-        (address distributor,,,,) = rewardsGauge.rewardData(rewardToken);
+        address distributor = rewardsGauge.getRewardData(rewardToken).distributor;
         assertEq(distributor, _distributor, "distributor should be set for reward token");
     }
 
@@ -83,7 +89,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         uint256 MAX_REWARDS = rewardsGauge.MAX_REWARDS();
         for (uint160 i = 1; i <= MAX_REWARDS; i++) {
             rewardsGauge.addReward(address(i), address(i * 10));
-            (address distributor,,,,) = rewardsGauge.rewardData(address(i));
+            address distributor = rewardsGauge.getRewardData(address(i)).distributor;
             assertEq(distributor, address(i * 10), "distributor should be set for reward token");
         }
     }
@@ -130,11 +136,13 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.assume(_distributor1 != address(0) && _distributor1 != _distributor0);
         vm.prank(admin);
         rewardsGauge.addReward(rewardToken, _distributor0);
-        (address distributor,,,,) = rewardsGauge.rewardData(rewardToken);
+        address distributor = rewardsGauge.getRewardData(rewardToken).distributor;
         assertEq(distributor, _distributor0, "distributor should be set for reward token");
         vm.prank(_distributor0);
+        vm.expectEmit(false, false, false, true);
+        emit RewardDistributorSet(rewardToken, _distributor1);
         rewardsGauge.setRewardDistributor(rewardToken, _distributor1);
-        (address updatedDistributor,,,,) = rewardsGauge.rewardData(rewardToken);
+        address updatedDistributor = rewardsGauge.getRewardData(rewardToken).distributor;
         assertEq(updatedDistributor, _distributor1, "distributor1 should be updated for reward token");
     }
 
@@ -182,14 +190,16 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.startPrank(admin);
         rewardsGauge.addReward(address(dummyRewardToken), admin);
         dummyRewardToken.approve(address(rewardsGauge), rewardAmount);
+        vm.expectEmit(false, false, false, true);
+        emit RewardTokenDeposited(address(dummyRewardToken), rewardAmount, rewardAmount / _WEEK, block.timestamp);
         rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
-        (address distributor, uint256 periodFinish, uint256 rate, uint256 lastUpdate, uint256 integral) =
-            rewardsGauge.rewardData(address(dummyRewardToken));
-        assertEq(distributor, admin);
-        assertEq(periodFinish, block.timestamp + 1 weeks);
-        assertEq(rate, rewardAmount / _WEEK);
-        assertEq(lastUpdate, block.timestamp);
-        assertEq(integral, 0);
+        BaseRewardsGauge.Reward memory rewardData = rewardsGauge.getRewardData(address(dummyRewardToken));
+        assertEq(rewardData.distributor, admin);
+        assertEq(rewardData.periodFinish, block.timestamp + 1 weeks);
+        assertEq(rewardData.rate, rewardAmount / _WEEK);
+        assertEq(rewardData.lastUpdate, block.timestamp);
+        assertEq(rewardData.integral, 0);
+        assertEq(rewardData.leftOver, rewardAmount % _WEEK);
     }
 
     function testFuzz_depositRewardToken_withPartialRewardRemaining(
@@ -206,32 +216,33 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.addReward(address(dummyRewardToken), admin);
         dummyRewardToken.approve(address(rewardsGauge), rewardAmount0 + rewardAmount1);
         rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount0);
-        (address distributor, uint256 periodFinish, uint256 rate, uint256 lastUpdate, uint256 integral) =
-            rewardsGauge.rewardData(address(dummyRewardToken));
-        assertEq(distributor, admin);
-        assertEq(periodFinish, block.timestamp + 1 weeks);
-        assertEq(rate, rewardAmount0 / _WEEK);
-        assertEq(lastUpdate, block.timestamp);
-        assertEq(integral, 0);
+        BaseRewardsGauge.Reward memory rewardData = rewardsGauge.getRewardData(address(dummyRewardToken));
+        assertEq(rewardData.distributor, admin);
+        assertEq(rewardData.periodFinish, block.timestamp + 1 weeks);
+        assertEq(rewardData.rate, rewardAmount0 / _WEEK);
+        assertEq(rewardData.lastUpdate, block.timestamp);
+        assertEq(rewardData.integral, 0);
+        assertEq(rewardData.leftOver, rewardAmount0 % _WEEK);
         // warp to halfway through the reward period
         vm.warp(block.timestamp + (1 weeks / 2));
         // deposit another round of rewards
         rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount1);
 
-        (, uint256 newPeriodFinish, uint256 newRate, uint256 newLastUpdate, uint256 newIntegral) =
-            rewardsGauge.rewardData(address(dummyRewardToken));
-        assertEq(newPeriodFinish, block.timestamp + 1 weeks, "periodFinish should be updated");
-        uint256 remainingTime = periodFinish - block.timestamp;
-        uint256 leftoverReward = remainingTime * rate;
+        BaseRewardsGauge.Reward memory newRewardData = rewardsGauge.getRewardData(address(dummyRewardToken));
+        assertEq(newRewardData.periodFinish, block.timestamp + 1 weeks, "periodFinish should be updated");
+        uint256 remainingTime = rewardData.periodFinish - block.timestamp;
+        uint256 leftoverReward = remainingTime * rewardData.rate + rewardData.leftOver;
         uint256 expectedNewRate = (leftoverReward + rewardAmount1) / _WEEK;
-        assertEq(newRate, expectedNewRate, "rate should be updated");
-        assertEq(newLastUpdate, block.timestamp, "lastUpdate should be updated");
-        assertEq(newIntegral, 0, "integral should still be 0");
+        assertEq(newRewardData.rate, expectedNewRate, "rate should be updated");
+        assertEq(newRewardData.lastUpdate, block.timestamp, "lastUpdate should be updated");
+        assertEq(newRewardData.integral, 0, "integral should still be 0");
+        assertEq(newRewardData.leftOver, (leftoverReward + rewardAmount1) % _WEEK, "leftOver should be updated");
     }
 
-    function test_depositRewardToken_revertWhen_unauthorized(address distributor, address user) public {
+    function test_depositRewardToken_revertWhen_Unauthorized(address distributor, address user) public {
         vm.assume(distributor != address(0));
         vm.assume(user != distributor);
+        vm.assume(!rewardsGauge.hasRole(_MANAGER_ROLE, user));
         vm.prank(admin);
         rewardsGauge.addReward(address(dummyRewardToken), distributor);
         vm.prank(user);
@@ -291,7 +302,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
             "alice should have received the full reward amount minus the adjustment"
         );
         // check that the integral was updated after claiming
-        (,,,, uint256 integral) = rewardsGauge.rewardData(address(dummyRewardToken));
+        uint256 integral = rewardsGauge.getRewardData(address(dummyRewardToken)).integral;
         assertGt(integral, 0);
         // alices claimed rewards should have increase by the claimed amount
         assertEq(
@@ -336,7 +347,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.prank(alice);
         rewardsGauge.claimRewards(alice, alice);
         // Due to the difference (> 1e18 multiplier) between the amount and rewardAmount, the integral will be zero
-        (,,,, uint256 integral) = rewardsGauge.rewardData(address(dummyRewardToken));
+        uint256 integral = rewardsGauge.getRewardData(address(dummyRewardToken)).integral;
         assertEq(integral, 0);
         assertEq(dummyRewardToken.balanceOf(alice), 0);
     }
@@ -429,7 +440,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
                 "alice should have received the full reward amount minus the adjustment"
             );
             // check that the integral was updated after claiming
-            (,,,, uint256 integral) = rewardsGauge.rewardData(dummyRewardTokens[i]);
+            uint256 integral = rewardsGauge.getRewardData(dummyRewardTokens[i]).integral;
             assertGt(integral, 0);
             // alices claimed rewards should have increase by the claimed amount
             assertEq(
@@ -553,7 +564,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
             );
         }
         // check that the integral was updated after claiming
-        (,,,, uint256 integral) = rewardsGauge.rewardData(address(dummyRewardToken));
+        uint256 integral = rewardsGauge.getRewardData(address(dummyRewardToken)).integral;
         assertGt(integral, 0);
     }
 
@@ -610,7 +621,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
             "alice should have received the full reward amount minus the adjustment"
         );
         // check that the integral was updated after claiming
-        (,,,, uint256 integral) = rewardsGauge.rewardData(address(dummyRewardToken));
+        uint256 integral = rewardsGauge.getRewardData(address(dummyRewardToken)).integral;
         assertGt(integral, 0);
         // alices claimed rewards should have increase by the claimed amount
         assertEq(
