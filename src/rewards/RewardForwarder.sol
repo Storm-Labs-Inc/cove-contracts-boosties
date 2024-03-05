@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { AccessControlEnumerableUpgradeable } from
     "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
@@ -63,8 +63,8 @@ contract RewardForwarder is AccessControlEnumerableUpgradeable {
      */
     function forwardRewardToken(address rewardToken) public {
         uint256 balance = IERC20(rewardToken).balanceOf(address(this));
-        uint256 treasuryAmount = balance * treasuryBps[rewardToken] / _MAX_BPS;
         if (balance > 0) {
+            uint256 treasuryAmount = balance * treasuryBps[rewardToken] / _MAX_BPS;
             if (treasuryAmount > 0) {
                 IERC20(rewardToken).safeTransfer(treasury, treasuryAmount);
             }
