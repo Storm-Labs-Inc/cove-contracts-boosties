@@ -83,7 +83,8 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     function test_pause_revertWhen_notPauser() public {
-        vm.expectRevert(_formatAccessControlError(address(this), _PAUSER_ROLE));
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector));
         miniChef.pause();
     }
 

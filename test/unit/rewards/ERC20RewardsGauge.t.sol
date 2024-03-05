@@ -206,7 +206,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
     }
 
     function test_pause_revertWhen_notPauser() public {
-        vm.expectRevert(_formatAccessControlError(address(this), _PAUSER_ROLE));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.Unauthorized.selector));
         rewardsGauge.pause();
     }
 

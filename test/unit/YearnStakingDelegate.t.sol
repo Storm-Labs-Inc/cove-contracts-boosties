@@ -176,7 +176,8 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_pause_revertWhen_notPauser() public {
-        vm.expectRevert(_formatAccessControlError(address(this), _PAUSER_ROLE));
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector));
         yearnStakingDelegate.pause();
     }
 
@@ -209,7 +210,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_lockYfi_revertWhen_Paused() public {
-        vm.prank(pauser);
+        vm.prank(admin);
         yearnStakingDelegate.pause();
         assertTrue(yearnStakingDelegate.paused());
         vm.expectRevert("Pausable: paused");
