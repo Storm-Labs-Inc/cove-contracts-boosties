@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
@@ -11,9 +11,9 @@ import { IStakingDelegateRewards } from "src/interfaces/IStakingDelegateRewards.
  * @title Staking Delegate Rewards
  * @notice Contract for managing staking rewards with functionality to update balances, notify new rewards, and recover
  * tokens.
- * @dev Inherits from IStakingDelegateRewards, AccessControl, and ReentrancyGuard.
+ * @dev Inherits from IStakingDelegateRewards, AccessControlEnumerable, and ReentrancyGuard.
  */
-contract StakingDelegateRewards is IStakingDelegateRewards, AccessControl, ReentrancyGuard {
+contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumerable, ReentrancyGuard {
     // Libraries
     using SafeERC20 for IERC20;
 
