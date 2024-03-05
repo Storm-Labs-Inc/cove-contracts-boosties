@@ -60,7 +60,7 @@ contract RewardForwarder is AccessControlUpgradeable {
      * treasury.
      * @param rewardToken The address of the reward token to forward.
      */
-    function forwardRewardToken(address rewardToken) external {
+    function forwardRewardToken(address rewardToken) public {
         uint256 balance = IERC20(rewardToken).balanceOf(address(this));
         uint256 treasuryAmount = balance * treasuryBps[rewardToken] / _MAX_BPS;
         if (balance > 0) {
@@ -88,6 +88,8 @@ contract RewardForwarder is AccessControlUpgradeable {
      * @param treasuryBps_ The number of basis points to allocate to the treasury.
      */
     function setTreasuryBps(address rewardToken, uint256 treasuryBps_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // slither-disable-next-line reentrancy-benign,reentrancy-events
+        this.forwardRewardToken(rewardToken);
         _setTreasuryBps(rewardToken, treasuryBps_);
     }
 
@@ -101,8 +103,6 @@ contract RewardForwarder is AccessControlUpgradeable {
             revert InvalidTreasuryBps();
         }
         emit TreasuryBpsSet(rewardToken, treasuryBps_);
-        // slither-disable-next-line reentrancy-benign
-        this.forwardRewardToken(rewardToken);
         treasuryBps[rewardToken] = treasuryBps_;
     }
 }
