@@ -22,8 +22,13 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
  * @notice Contract for staking yearn gauge tokens, managing rewards, and delegating voting power.
  * @dev Inherits from IYearnStakingDelegate, AccessControlEnumerable, ReentrancyGuard, and Rescuable.
  */
-contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable, Pausable {
-contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable, ReentrancyGuard, Rescuable, Pausable {
+contract YearnStakingDelegate is
+    IYearnStakingDelegate,
+    AccessControlEnumerable,
+    ReentrancyGuard,
+    Rescuable,
+    Pausable
+{
     // Libraries
     using SafeERC20 for IERC20;
     using ClonesWithImmutableArgs for address;

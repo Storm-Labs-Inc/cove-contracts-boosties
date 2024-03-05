@@ -18,7 +18,6 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * It supports multiple reward tokens through external rewarder contracts and includes emergency withdrawal
  * functionality.
  */
-contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit, Pausable {
 contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit, Pausable {
     using SafeERC20 for IERC20;
 
