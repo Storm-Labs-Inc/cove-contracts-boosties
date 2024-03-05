@@ -120,6 +120,7 @@ contract YearnStakingDelegate is
 
     /**
      * @notice Deposits a specified amount of gauge tokens into this staking delegate.
+     * @dev This function is disabled if the contract is paused.
      * @param gauge The address of the gauge token to deposit.
      * @param amount The amount of tokens to deposit.
      */
@@ -220,6 +221,7 @@ contract YearnStakingDelegate is
 
     /**
      * @notice Locks YFI tokens in the veYFI contract.
+     * @dev This function is disabled if the contract is paused.
      * @param amount Amount of YFI tokens to lock.
      * @return The locked balance information.
      */
@@ -399,7 +401,7 @@ contract YearnStakingDelegate is
     }
 
     /**
-     * @dev Sets the paused to false callable only by _PAUSER_ROLE when the contract is paused.
+     * @dev Sets the paused to false callable only by DEFAULT_ADMIN_ROLE when the contract is paused.
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
