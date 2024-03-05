@@ -114,12 +114,13 @@ abstract contract BaseRewardsGauge is
      * @return uint256 Claimable reward token amount
      */
     function claimableReward(address user, address rewardToken) external view returns (uint256) {
-        uint256 integral = _rewardData[rewardToken].integral;
+        Reward storage reward = _rewardData[rewardToken];
+        uint256 integral = reward.integral;
         uint256 currentTotalSupply = totalSupply();
         if (currentTotalSupply != 0) {
-            uint256 lastUpdate = Math.min(block.timestamp, _rewardData[rewardToken].periodFinish);
-            uint256 duration = lastUpdate - _rewardData[rewardToken].lastUpdate;
-            integral += (duration * _rewardData[rewardToken].rate * _PRECISION) / currentTotalSupply;
+            uint256 lastUpdate = Math.min(block.timestamp, reward.periodFinish);
+            uint256 duration = lastUpdate - reward.lastUpdate;
+            integral = integral + ((duration * reward.rate * _PRECISION) / currentTotalSupply);
         }
 
         uint256 integralFor = rewardIntegralFor[rewardToken][user];
@@ -182,7 +183,9 @@ abstract contract BaseRewardsGauge is
         if (rewardCount >= MAX_REWARDS) {
             revert MaxRewardsReached();
         }
-        if (_rewardData[rewardToken].distributor != address(0)) {
+
+        Reward storage reward = _rewardData[rewardToken];
+        if (reward.distributor != address(0)) {
             revert RewardTokenAlreadyAdded();
         }
 
@@ -198,7 +201,9 @@ abstract contract BaseRewardsGauge is
      * @param distributor address of the distributor contract
      */
     function setRewardDistributor(address rewardToken, address distributor) external {
-        address currentDistributor = _rewardData[rewardToken].distributor;
+        Reward storage reward = _rewardData[rewardToken];
+        address currentDistributor = reward.distributor;
+
         if (!(msg.sender == currentDistributor || hasRole(_MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
@@ -220,14 +225,15 @@ abstract contract BaseRewardsGauge is
      * @param amount amount of reward tokens to deposit
      */
     function depositRewardToken(address rewardToken, uint256 amount) external nonReentrant {
-        if (!(msg.sender == _rewardData[rewardToken].distributor || hasRole(_MANAGER_ROLE, msg.sender))) {
+        Reward storage reward = _rewardData[rewardToken];
+        if (!(msg.sender == reward.distributor || hasRole(_MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
 
         _checkpointRewards(address(0), totalSupply(), false, address(0));
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 periodFinish = _rewardData[rewardToken].periodFinish;
+        uint256 periodFinish = reward.periodFinish;
         uint256 newRate = 0;
         // slither-disable-next-line timestamp
         uint256 leftOver = _rewardData[rewardToken].leftOver;
@@ -237,8 +243,8 @@ abstract contract BaseRewardsGauge is
         }
         amount = amount + leftOver;
         newRate = amount / _WEEK;
-        // slither-disable-next-line timestamp
-        if (newRate <= 0) {
+        // slither-disable-next-line timestamp,incorrect-equality
+        if (newRate == 0) {
             revert RewardAmountTooLow();
         }
         emit RewardTokenDeposited(rewardToken, amount, newRate, block.timestamp);
@@ -246,7 +252,7 @@ abstract contract BaseRewardsGauge is
         _rewardData[rewardToken].lastUpdate = block.timestamp;
         _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
         // slither-disable-next-line weak-prng
-        _rewardData[rewardToken].leftOver = amount % _WEEK;
+        reward.leftOver = amount % _WEEK;
     }
 
     /**
@@ -313,7 +319,7 @@ abstract contract BaseRewardsGauge is
         // slither-disable-next-line timestamp
         if (duration > 0) {
             if (totalSupply_ > 0) {
-                reward.integral = reward.integral + duration * reward.rate * _PRECISION / totalSupply_;
+                reward.integral = reward.integral + (duration * reward.rate * _PRECISION / totalSupply_);
                 reward.lastUpdate = lastUpdate;
             }
         }
@@ -339,6 +345,7 @@ abstract contract BaseRewardsGauge is
         uint256 integral = _rewardData[token].integral;
         uint256 integralFor = rewardIntegralFor[token][user];
         uint256 newClaimable = 0;
+        // slither-disable-next-line timestamp
         if (integral > integralFor) {
             newClaimable = userBalance * (integral - integralFor) / _PRECISION;
             rewardIntegralFor[token][user] = integral;
