@@ -264,7 +264,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         assertEq(rewardData.integral, 0);
         assertEq(rewardData.leftOver, rewardAmount0 % _WEEK);
         // warp to halfway through the reward period
-        vm.warp(block.timestamp + (periodFinish / 2));
+        vm.warp(block.timestamp + (rewardData.periodFinish / 2));
         // deposit another round of rewards
         rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount1);
 

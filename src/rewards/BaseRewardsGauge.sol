@@ -196,7 +196,7 @@ abstract contract BaseRewardsGauge is
      * @param distributor address of the distributor contract
      */
     function setRewardDistributor(address rewardToken, address distributor) external {
-        address currentDistributor = rewardData[rewardToken].distributor;
+        address currentDistributor = _rewardData[rewardToken].distributor;
         if (!(msg.sender == currentDistributor || hasRole(MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
@@ -217,7 +217,7 @@ abstract contract BaseRewardsGauge is
      * @param amount amount of reward tokens to deposit
      */
     function depositRewardToken(address rewardToken, uint256 amount) external nonReentrant {
-        if (!(msg.sender == _rewardData[rewardToken].distributor || hasRole(_MANAGER_ROLE, msg.sender))) {
+        if (!(msg.sender == _rewardData[rewardToken].distributor || hasRole(MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
 
