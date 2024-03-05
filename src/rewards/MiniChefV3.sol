@@ -25,6 +25,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @notice Info of each MCV3 user.
      * `amount` LP token amount the user has provided.
      * `rewardDebt` The amount of REWARD_TOKEN entitled to the user.
+     * `unpaidRewards` The amount of REWARD_TOKEN that has not been claimed by the user.
      */
     struct UserInfo {
         uint256 amount;
@@ -34,6 +35,8 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
 
     /**
      * @notice Info of each MCV3 pool.
+     * `accRewardPerShare` The amount of REWARD_TOKEN per share accumulated.
+     * `lastRewardTime` The last recorded time the pool was updated.
      * `allocPoint` The amount of allocation points assigned to the pool.
      * Also known as the amount of REWARD_TOKEN to distribute per block.
      */
@@ -85,6 +88,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
     event LogRewardPerSecond(uint256 rewardPerSecond);
     event LogRewardCommitted(uint256 amount);
+    event LogRewarderEmergencyWithdrawFaulty(
+        address indexed user, uint256 indexed pid, uint256 amount, address indexed to
+    );
 
     /**
      * @dev Constructs the MiniChefV3 contract with a specified reward token and admin address.
@@ -449,7 +455,11 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, 0, 0);
+            try _rewarder.onReward(pid, msg.sender, to, 0, 0) { }
+            catch {
+                // slither-disable-next-line reentrancy-events
+                emit LogRewarderEmergencyWithdrawFaulty(msg.sender, pid, amount, to);
+            }
         }
     }
 

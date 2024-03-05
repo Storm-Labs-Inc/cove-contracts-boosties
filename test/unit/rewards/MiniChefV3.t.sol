@@ -330,6 +330,22 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.emergencyWithdraw(pid, alice);
     }
 
+    function test_emergencyWithdraw_passWhen_RewarderIsFaulty() public {
+        IMiniChefV3Rewarder rewarder = IMiniChefV3Rewarder(address(0xbeef));
+        vm.mockCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector), "");
+
+        miniChef.add(1000, lpToken, rewarder);
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        vm.mockCallRevert(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector), "");
+        miniChef.emergencyWithdraw(pid, alice);
+        assertEq(lpToken.balanceOf(alice), amount, "LP tokens not returned to user after emergency withdrawal");
+    }
+
     function test_harvest() public {
         miniChef.setRewardPerSecond(1e15);
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
