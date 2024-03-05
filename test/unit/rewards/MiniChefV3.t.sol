@@ -39,12 +39,12 @@ contract MiniChefV3_Test is BaseTest {
 
     function test_constructor_revertWhen_RewardTokenIsZero() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new MiniChefV3(IERC20(address(0)), address(this));
+        new MiniChefV3(IERC20(address(0)), address(this), address(this));
     }
 
     function test_constructor_revertWhen_AdminIsZero() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new MiniChefV3(IERC20(address(rewardToken)), address(0));
+        new MiniChefV3(IERC20(address(rewardToken)), address(0), address(this));
     }
 
     function test_poolLength() public {
@@ -245,7 +245,8 @@ contract MiniChefV3_Test is BaseTest {
         lpToken.mint(alice, amount);
         vm.expectRevert("Pausable: paused");
         miniChef.deposit(pid, amount, alice);
-        
+    }
+
     function test_deposit_revertWhen_ZeroAmount() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
