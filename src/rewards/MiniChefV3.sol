@@ -8,6 +8,7 @@ import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.
 import { SelfPermit } from "src/deps/uniswap/v3-periphery/base/SelfPermit.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
  * @title MiniChefV3
@@ -159,7 +160,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * @param rewarder_ Address of the rewarder delegate.
      */
     function add(
-        uint256 allocPoint,
+        uint64 allocPoint,
         IERC20 lpToken_,
         IMiniChefV3Rewarder rewarder_
     )
@@ -177,7 +178,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         lpSupply.push(0);
         rewarder.push(rewarder_);
         _poolInfo.push(
-            PoolInfo({ allocPoint: uint64(allocPoint), lastRewardTime: uint64(block.timestamp), accRewardPerShare: 0 })
+            PoolInfo({ allocPoint: allocPoint, lastRewardTime: uint64(block.timestamp), accRewardPerShare: 0 })
         );
         uint256 pid = _poolInfo.length - 1;
         _pidPlusOne[address(lpToken_)] = pid + 1;
@@ -189,20 +190,29 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
      * the owner.
      * @param pid The index of the pool. See `_poolInfo`.
      * @param allocPoint New AP of the pool.
+     * @param lpToken_ Address of the LP ERC-20 token.
      * @param rewarder_ Address of the rewarder delegate.
      * @param overwrite True if rewarder_ should be `set`. Otherwise `rewarder_` is ignored.
      */
     function set(
         uint256 pid,
-        uint256 allocPoint,
+        uint64 allocPoint,
+        IERC20 lpToken_,
         IMiniChefV3Rewarder rewarder_,
         bool overwrite
     )
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
+        if (pidPlusOne < 1) {
+            revert Errors.LPTokenNotAdded();
+        }
+        if (pidPlusOne != pid + 1) {
+            revert Errors.LPTokenDoesNotMatchPoolId();
+        }
         totalAllocPoint = totalAllocPoint - _poolInfo[pid].allocPoint + allocPoint;
-        _poolInfo[pid].allocPoint = uint64(allocPoint);
+        _poolInfo[pid].allocPoint = allocPoint;
         if (overwrite) {
             rewarder[pid] = rewarder_;
         }
@@ -301,7 +311,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
                     // Explicitly round down when calculating the reward
                     // slither-disable-start divide-before-multiply
                     uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-                    pool.accRewardPerShare += uint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
+                    pool.accRewardPerShare += SafeCast.toUint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
                     // slither-disable-end divide-before-multiply
                 }
             }

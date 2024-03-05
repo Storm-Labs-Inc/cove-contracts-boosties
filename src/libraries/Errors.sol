@@ -98,6 +98,8 @@ library Errors {
 
     /// MINICHEF V3 ////
     error InvalidLPToken();
+    error LPTokenNotAdded();
+    error LPTokenDoesNotMatchPoolId();
     error InsufficientBalance();
     error LPTokenAlreadyAdded();
     error RewardRateTooHigh();
