@@ -298,8 +298,8 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.prank(admin);
         yearnStakingDelegate.unpause();
         assertTrue(!yearnStakingDelegate.paused());
-        vm.prank(alice);
-        yearnStakingDelegate.deposit(testGauge, 1e18);
+        _setGaugeRewards();
+        _depositGaugeTokensToYSD(alice, amount);
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
     }
 
