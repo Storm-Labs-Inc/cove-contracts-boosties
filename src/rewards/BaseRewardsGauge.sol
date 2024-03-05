@@ -115,7 +115,7 @@ abstract contract BaseRewardsGauge is
         if (currentTotalSupply != 0) {
             uint256 lastUpdate = Math.min(block.timestamp, reward.periodFinish);
             uint256 duration = lastUpdate - reward.lastUpdate;
-            integral += (duration * reward.rate * _PRECISION) / currentTotalSupply;
+            integral = integral + ((duration * reward.rate * _PRECISION) / currentTotalSupply);
         }
 
         uint256 integralFor = rewardIntegralFor[rewardToken][user];
