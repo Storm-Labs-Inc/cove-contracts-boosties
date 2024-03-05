@@ -28,14 +28,15 @@ contract Router_ForkedTest is BaseTest {
     }
 
     function test_previewDeposits() public {
-        uint256 assetAmount = 1 ether;
+        uint256 assetInAmount = 1 ether;
         Yearn4626RouterExt.Vault[] memory previewDeposit = new Yearn4626RouterExt.Vault[](2);
         previewDeposit[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
         previewDeposit[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
 
-        uint256[] memory shares = router.previewDeposits(previewDeposit, assetAmount);
-        assertEq(shares[0], 949_289_266_142_683_599);
-        assertEq(shares[1], 949_289_266_142_683_599);
+        (address assetInAddress, uint256[] memory sharesOut) = router.previewDeposits(previewDeposit, assetInAmount);
+        assertEq(assetInAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        assertEq(sharesOut[0], 949_289_266_142_683_599);
+        assertEq(sharesOut[1], 949_289_266_142_683_599);
     }
 
     function test_previewMints() public {
@@ -44,9 +45,10 @@ contract Router_ForkedTest is BaseTest {
         previewMint[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
         previewMint[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
 
-        uint256[] memory assets = router.previewMints(previewMint, shareOutAmount);
-        assertEq(assets[0], 1 ether);
-        assertEq(assets[1], 1 ether);
+        (address assetInAddress, uint256[] memory assetsIn) = router.previewMints(previewMint, shareOutAmount);
+        assertEq(assetInAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        assertEq(assetsIn[0], 1 ether);
+        assertEq(assetsIn[1], 1 ether);
     }
 
     function test_previewWithdraws() public {
@@ -55,20 +57,22 @@ contract Router_ForkedTest is BaseTest {
         previewWithdraw[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
         previewWithdraw[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
 
-        uint256[] memory shares = router.previewWithdraws(previewWithdraw, assetOutAmount);
-        assertEq(shares[0], 1 ether);
-        assertEq(shares[1], 949_289_266_142_683_599);
+        (address assetOutAddress, uint256[] memory sharesIn) = router.previewWithdraws(previewWithdraw, assetOutAmount);
+        assertEq(assetOutAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        assertEq(sharesIn[0], 1 ether);
+        assertEq(sharesIn[1], 949_289_266_142_683_599);
     }
 
     function test_previewRedeems() public {
-        uint256 shareOutAmount = 949_289_266_142_683_599;
+        uint256 shareInAmount = 949_289_266_142_683_599;
         Yearn4626RouterExt.Vault[] memory previewRedeem = new Yearn4626RouterExt.Vault[](2);
         previewRedeem[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
         previewRedeem[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
 
-        uint256[] memory assets = router.previewRedeems(previewRedeem, shareOutAmount);
-        assertEq(assets[0], 949_289_266_142_683_599);
-        assertEq(assets[1], 1 ether);
+        (address assetOutAddress, uint256[] memory assetsOut) = router.previewRedeems(previewRedeem, shareInAmount);
+        assertEq(assetOutAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        assertEq(assetsOut[0], 949_289_266_142_683_599);
+        assertEq(assetsOut[1], 1 ether);
     }
 
     function test_curveLpTokenToYearnGauge() public {

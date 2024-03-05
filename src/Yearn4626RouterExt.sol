@@ -100,7 +100,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     )
         external
         view
-        returns (uint256[] memory sharesOut)
+        returns (address assetInAddress, uint256[] memory sharesOut)
     {
         sharesOut = new uint256[](vaults.length);
         for (uint256 i; i < vaults.length;) {
@@ -113,8 +113,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 vaultAsset = IERC4626(vaults[i].vault).asset();
                 sharesOut[i] = IERC4626(vaults[i].vault).previewDeposit(assetIn);
             }
-            if (i > 0 && vaultAsset != vaults[i - 1].vault) {
-                revert VaultMismatch();
+            if (i > 0) {
+                if (vaultAsset != vaults[i - 1].vault) {
+                    revert VaultMismatch();
+                }
+            } else {
+                assetInAddress = vaultAsset;
             }
             assetIn = sharesOut[i];
             unchecked {
@@ -135,7 +139,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     )
         external
         view
-        returns (uint256[] memory assetsIn)
+        returns (address assetInAddress, uint256[] memory assetsIn)
     {
         assetsIn = new uint256[](vaults.length);
         for (uint256 i; i < vaults.length;) {
@@ -148,8 +152,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 vaultAsset = IERC4626(vaults[i].vault).asset();
                 assetsIn[i] = IERC4626(vaults[i].vault).previewMint(shareOut);
             }
-            if (i > 0 && vaultAsset != vaults[i - 1].vault) {
-                revert VaultMismatch();
+            if (i > 0) {
+                if (vaultAsset != vaults[i - 1].vault) {
+                    revert VaultMismatch();
+                }
+            } else {
+                assetInAddress = vaultAsset;
             }
             shareOut = assetsIn[i];
             unchecked {
@@ -171,7 +179,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     )
         external
         view
-        returns (uint256[] memory sharesIn)
+        returns (address assetOutAddress, uint256[] memory sharesIn)
     {
         sharesIn = new uint256[](vaults.length);
         for (uint256 i; i < vaults.length;) {
@@ -184,8 +192,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 vaultAsset = IERC4626(vaults[i].vault).asset();
                 sharesIn[i] = IERC4626(vaults[i].vault).previewWithdraw(assetOut);
             }
-            if (i < vaults.length - 1 && vaultAsset != vaults[i + 1].vault) {
-                revert VaultMismatch();
+            if (i < vaults.length - 1) {
+                if (vaultAsset != vaults[i + 1].vault) {
+                    revert VaultMismatch();
+                }
+            } else {
+                assetOutAddress = vaultAsset;
             }
             assetOut = sharesIn[i];
             unchecked {
@@ -206,7 +218,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     )
         external
         view
-        returns (uint256[] memory assetsOut)
+        returns (address assetOutAddress, uint256[] memory assetsOut)
     {
         assetsOut = new uint256[](vaults.length);
         for (uint256 i; i < vaults.length;) {
@@ -219,8 +231,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 vaultAsset = IERC4626(vaults[i].vault).asset();
                 assetsOut[i] = IERC4626(vaults[i].vault).previewRedeem(shareIn);
             }
-            if (i < vaults.length - 1 && vaultAsset != vaults[i + 1].vault) {
-                revert VaultMismatch();
+            if (i < vaults.length - 1) {
+                if (vaultAsset != vaults[i + 1].vault) {
+                    revert VaultMismatch();
+                }
+            } else {
+                assetOutAddress = vaultAsset;
             }
             shareIn = assetsOut[i];
             unchecked {
