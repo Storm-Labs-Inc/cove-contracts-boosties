@@ -111,7 +111,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         {
             vm.startPrank(admin);
             // CoveToken
-            coveToken = new CoveToken(admin, block.timestamp);
+            coveToken = new CoveToken(admin);
             // RewardsGauges
             ERC20RewardsGauge erc20RewardsGaugeImplementation = new ERC20RewardsGauge();
             YSDRewardsGauge ysdRewardsGaugeImplementation = new YSDRewardsGauge();
@@ -132,12 +132,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             erc20RewardsGauge = BaseRewardsGauge(gaugeInfo.autoCompoundingGauge);
             vm.label(address(erc20RewardsGauge), "erc20RewardsGauge");
             erc20RewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
-            (baseRewardForwarder,,,,) = erc20RewardsGauge.rewardData(address(coveToken));
+            baseRewardForwarder = erc20RewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(baseRewardForwarder, "baseRewardForwarder");
             ysdRewardsGauge = YSDRewardsGauge(gaugeInfo.nonAutoCompoundingGauge);
             vm.label(address(ysdRewardsGauge), "ysdRewardsGauge");
             ysdRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
-            (ysdRewardForwarder,,,,) = ysdRewardsGauge.rewardData(address(coveToken));
+            ysdRewardForwarder = ysdRewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(ysdRewardForwarder, "ysdRewardForwarder");
             // Setup Cove token to be given as a reward
             vm.label(address(coveToken), "coveToken");
@@ -502,7 +502,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // Forward the earned dYFI to the rewardsGauge
         RewardForwarder(ysdRewardForwarder).forwardRewardToken(address(MAINNET_DYFI));
         // Warp forward 1 week for the rewards to be claimable
-        (, uint256 periodFinish,,,) = ysdRewardsGauge.rewardData(MAINNET_DYFI);
+        uint256 periodFinish = ysdRewardsGauge.getRewardData(MAINNET_DYFI).periodFinish;
         vm.warp(periodFinish);
         uint256 dYFIBalanceBefore = IERC20(MAINNET_DYFI).balanceOf(alice);
         ysdRewardsGauge.claimRewards(alice, alice);

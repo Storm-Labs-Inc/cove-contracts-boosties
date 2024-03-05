@@ -13,11 +13,16 @@ contract CoveToken_Test is BaseTest {
     bytes32 public minterRole = keccak256("MINTER_ROLE");
     uint256 public deployTimestamp;
 
+    event TransferrerAllowed(address indexed target, uint256 eventId);
+    event TransferrerDisallowed(address indexed target, uint256 eventId);
+    event TransfereeAllowed(address indexed target, uint256 eventId);
+    event TransfereeDisallowed(address indexed target, uint256 eventId);
+
     function setUp() public override {
         owner = createUser("Owner");
         alice = createUser("Alice");
         bob = createUser("Bob");
-        coveToken = new CoveToken(owner, block.timestamp + 365 days);
+        coveToken = new CoveToken(owner);
         deployTimestamp = block.timestamp;
         vm.prank(owner);
         coveToken.grantRole(minterRole, owner);
@@ -25,15 +30,12 @@ contract CoveToken_Test is BaseTest {
 
     function test_initialize() public {
         require(coveToken.hasRole(coveToken.DEFAULT_ADMIN_ROLE(), owner), "Owner should have DEFAULT_ADMIN_ROLE");
-        assertEq(coveToken.mintingAllowedAfter(), block.timestamp + 365 days);
+        assertEq(
+            coveToken.mintingAllowedAfter(), block.timestamp + 3 * 52 weeks, "Minting should be allowed after 3 years"
+        );
         require(coveToken.allowedTransferrer(owner), "Owner should be allowed to transfer");
         assertEq(coveToken.paused(), true, "Contract should be paused");
         assertEq(coveToken.balanceOf(owner), 1_000_000_000 ether, "Owner should have initial supply");
-    }
-
-    function test_initialize_revertsWhen_mintingAllowedTooEarly() public {
-        vm.expectRevert(Errors.MintingAllowedTooEarly.selector);
-        new CoveToken(owner, block.timestamp - 1);
     }
 
     function test_availableSupplyToMint() public {
@@ -275,5 +277,26 @@ contract CoveToken_Test is BaseTest {
         vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
         vm.startPrank(user);
         coveToken.removeAllowedTransferrer(user);
+    }
+
+    function test_events_eventIdIncrements() public {
+        vm.startPrank(owner);
+
+        vm.expectEmit(false, false, false, true);
+        // initialize adds the zero address and owner as transferrers so eventId starts at 2
+        emit TransferrerAllowed(address(alice), 2);
+        coveToken.addAllowedTransferrer(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit TransferrerDisallowed(address(alice), 3);
+        coveToken.removeAllowedTransferrer(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit TransfereeAllowed(address(alice), 4);
+        coveToken.addAllowedTransferee(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit TransfereeDisallowed(address(alice), 5);
+        coveToken.removeAllowedTransferee(address(alice));
     }
 }

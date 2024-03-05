@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
 import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
@@ -17,7 +19,7 @@ import { Errors } from "src/libraries/Errors.sol";
  * non-auto-compounding gauges.
  * It also manages the reward forwarder implementations and various administrative roles.
  */
-contract CoveYearnGaugeFactory is AccessControl {
+contract CoveYearnGaugeFactory is AccessControlEnumerable {
     struct GaugeInfoStored {
         address coveYearnStrategy;
         address autoCompoundingGauge;
@@ -106,13 +108,19 @@ contract CoveYearnGaugeFactory is AccessControl {
 
     /**
      * @notice Retrieves information for all supported Yearn gauges.
+     * @dev The usage of the limit and offset parameters matches the same pattern found in pagination/SQL queries.
+     * @param limit The maximum number of gauges to fetch information for.
+     * @param offset The starting gauge index to retrieve data from.
      * @return An array of GaugeInfo structs containing details for each supported Yearn gauge.
      */
-    function getAllGaugeInfo() external view returns (GaugeInfo[] memory) {
-        uint256 length = supportedYearnGauges.length;
-        GaugeInfo[] memory result = new GaugeInfo[](length);
+    function getAllGaugeInfo(uint256 limit, uint256 offset) external view returns (GaugeInfo[] memory) {
         address[] memory gauges = supportedYearnGauges;
-        for (uint256 i = 0; i < length;) {
+        uint256 numGauges = gauges.length;
+        // Handle the case of offset + limit exceeding the remaining length by taking the min.
+        // If the offset is >= the number of gauges there are no results to return.
+        uint256 length = offset >= numGauges ? 0 : Math.min(limit, numGauges - offset);
+        GaugeInfo[] memory result = new GaugeInfo[](length);
+        for (uint256 i = offset; i < length;) {
             result[i] = getGaugeInfo(gauges[i]);
 
             /// @dev The unchecked block is used here because the loop index `i` is simply incremented in each
@@ -289,12 +297,18 @@ contract CoveYearnGaugeFactory is AccessControl {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
         }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
+        }
         rewardForwarderImpl = impl;
     }
 
     function _setERC20RewardsGaugeImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
+        }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
         }
         erc20RewardsGaugeImpl = impl;
     }
@@ -309,6 +323,9 @@ contract CoveYearnGaugeFactory is AccessControl {
     function _setYsdRewardsGaugeImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
+        }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
         }
         ysdRewardsGaugeImpl = impl;
     }

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.18;
 
 import { IFlashLoanRecipient } from "src/interfaces/deps/balancer/IFlashLoanRecipient.sol";
-import { IAccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
-interface IDYFIRedeemer is IFlashLoanRecipient, IAccessControl {
+interface IDYFIRedeemer is IFlashLoanRecipient, IAccessControlEnumerable {
     function slippage() external view returns (uint256);
     function getLatestPrice() external view returns (uint256);
     function minYfiRedeem(uint256 dYfiAmount) external view returns (uint256);

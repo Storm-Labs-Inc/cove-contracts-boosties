@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
 
@@ -12,7 +13,7 @@ import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
  * @dev This contract is responsible for forwarding reward tokens to a rewards gauge and optionally to a treasury.
  * It allows for a portion of the rewards to be redirected to a treasury address.
  */
-contract RewardForwarder is AccessControlUpgradeable {
+contract RewardForwarder is AccessControlEnumerableUpgradeable {
     using SafeERC20 for IERC20;
 
     uint256 private constant _MAX_BPS = 10_000;
@@ -60,7 +61,7 @@ contract RewardForwarder is AccessControlUpgradeable {
      * treasury.
      * @param rewardToken The address of the reward token to forward.
      */
-    function forwardRewardToken(address rewardToken) external {
+    function forwardRewardToken(address rewardToken) public {
         uint256 balance = IERC20(rewardToken).balanceOf(address(this));
         uint256 treasuryAmount = balance * treasuryBps[rewardToken] / _MAX_BPS;
         if (balance > 0) {
@@ -82,11 +83,14 @@ contract RewardForwarder is AccessControlUpgradeable {
 
     /**
      * @notice Sets the basis points for the treasury for a specific reward token.
-     * @dev Can only be called by an address with the default admin role.
+     * @dev This function first calls forwardRewardToken before setting the new rate to ensure that it only applies to
+     *      future rewards. Can only be called by an address with the default admin role.
      * @param rewardToken The address of the reward token for which to set the basis points.
      * @param treasuryBps_ The number of basis points to allocate to the treasury.
      */
     function setTreasuryBps(address rewardToken, uint256 treasuryBps_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // slither-disable-next-line reentrancy-benign,reentrancy-events
+        this.forwardRewardToken(rewardToken);
         _setTreasuryBps(rewardToken, treasuryBps_);
     }
 
@@ -99,7 +103,7 @@ contract RewardForwarder is AccessControlUpgradeable {
         if (treasuryBps_ > _MAX_BPS) {
             revert InvalidTreasuryBps();
         }
-        treasuryBps[rewardToken] = treasuryBps_;
         emit TreasuryBpsSet(rewardToken, treasuryBps_);
+        treasuryBps[rewardToken] = treasuryBps_;
     }
 }

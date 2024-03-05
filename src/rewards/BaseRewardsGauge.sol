@@ -11,7 +11,8 @@ import {
 import { ERC20PermitUpgradeable } from
     "@openzeppelin-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
 
@@ -25,7 +26,7 @@ abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
     ERC4626Upgradeable,
     ERC20PermitUpgradeable,
-    AccessControlUpgradeable,
+    AccessControlEnumerableUpgradeable,
     ReentrancyGuardUpgradeable
 {
     using SafeERC20 for IERC20;
@@ -36,6 +37,7 @@ abstract contract BaseRewardsGauge is
         uint256 rate;
         uint256 lastUpdate;
         uint256 integral;
+        uint256 leftOver;
     }
 
     uint256 public constant MAX_REWARDS = 8;
@@ -45,7 +47,7 @@ abstract contract BaseRewardsGauge is
 
     // For tracking external rewards
     address[] public rewardTokens;
-    mapping(address => Reward) public rewardData;
+    mapping(address => Reward) internal _rewardData;
     // claimant -> default reward receiver
     mapping(address => address) public rewardsReceiver;
     // reward token -> claiming address -> integral
@@ -62,6 +64,10 @@ abstract contract BaseRewardsGauge is
     error RewardAmountTooLow();
     error ZeroAddress();
     error RewardCannotBeAsset();
+
+    event RewardTokenAdded(address rewardToken, address distributor);
+    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
+    event RewardDistributorSet(address rewardToken, address distributor);
 
     constructor() payable {
         _disableInitializers();
@@ -108,18 +114,27 @@ abstract contract BaseRewardsGauge is
      * @return uint256 Claimable reward token amount
      */
     function claimableReward(address user, address rewardToken) external view returns (uint256) {
-        uint256 integral = rewardData[rewardToken].integral;
+        uint256 integral = _rewardData[rewardToken].integral;
         uint256 currentTotalSupply = totalSupply();
         if (currentTotalSupply != 0) {
-            uint256 lastUpdate = Math.min(block.timestamp, rewardData[rewardToken].periodFinish);
-            uint256 duration = lastUpdate - rewardData[rewardToken].lastUpdate;
-            integral += (duration * rewardData[rewardToken].rate * _PRECISION) / currentTotalSupply;
+            uint256 lastUpdate = Math.min(block.timestamp, _rewardData[rewardToken].periodFinish);
+            uint256 duration = lastUpdate - _rewardData[rewardToken].lastUpdate;
+            integral += (duration * _rewardData[rewardToken].rate * _PRECISION) / currentTotalSupply;
         }
 
         uint256 integralFor = rewardIntegralFor[rewardToken][user];
         uint256 newClaimable = balanceOf(user) * (integral - integralFor) / _PRECISION;
 
         return (claimData[user][rewardToken] >> 128) + newClaimable;
+    }
+
+    /**
+     * @notice Get the reward data for a reward token
+     * @param rewardToken token address to get reward data for
+     * @return Reward struct for the reward token
+     */
+    function getRewardData(address rewardToken) external view returns (Reward memory) {
+        return _rewardData[rewardToken];
     }
 
     /**
@@ -167,11 +182,12 @@ abstract contract BaseRewardsGauge is
         if (rewardCount >= MAX_REWARDS) {
             revert MaxRewardsReached();
         }
-        if (rewardData[rewardToken].distributor != address(0)) {
+        if (_rewardData[rewardToken].distributor != address(0)) {
             revert RewardTokenAlreadyAdded();
         }
 
-        rewardData[rewardToken].distributor = distributor;
+        emit RewardTokenAdded(rewardToken, distributor);
+        _rewardData[rewardToken].distributor = distributor;
         rewardTokens.push(rewardToken);
     }
 
@@ -182,7 +198,7 @@ abstract contract BaseRewardsGauge is
      * @param distributor address of the distributor contract
      */
     function setRewardDistributor(address rewardToken, address distributor) external {
-        address currentDistributor = rewardData[rewardToken].distributor;
+        address currentDistributor = _rewardData[rewardToken].distributor;
         if (!(msg.sender == currentDistributor || hasRole(_MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
@@ -193,7 +209,8 @@ abstract contract BaseRewardsGauge is
             revert InvalidDistributorAddress();
         }
 
-        rewardData[rewardToken].distributor = distributor;
+        emit RewardDistributorSet(rewardToken, distributor);
+        _rewardData[rewardToken].distributor = distributor;
     }
 
     /**
@@ -203,30 +220,33 @@ abstract contract BaseRewardsGauge is
      * @param amount amount of reward tokens to deposit
      */
     function depositRewardToken(address rewardToken, uint256 amount) external nonReentrant {
-        if (msg.sender != rewardData[rewardToken].distributor) {
+        if (!(msg.sender == _rewardData[rewardToken].distributor || hasRole(_MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
 
         _checkpointRewards(address(0), totalSupply(), false, address(0));
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 periodFinish = rewardData[rewardToken].periodFinish;
+        uint256 periodFinish = _rewardData[rewardToken].periodFinish;
         uint256 newRate = 0;
         // slither-disable-next-line timestamp
-        if (block.timestamp >= periodFinish) {
-            newRate = amount / _WEEK;
-        } else {
+        uint256 leftOver = _rewardData[rewardToken].leftOver;
+        if (block.timestamp < periodFinish) {
             uint256 remaining = periodFinish - block.timestamp;
-            uint256 leftover = remaining * rewardData[rewardToken].rate;
-            newRate = (amount + leftover) / _WEEK;
+            leftOver = leftOver + remaining * _rewardData[rewardToken].rate;
         }
+        amount = amount + leftOver;
+        newRate = amount / _WEEK;
         // slither-disable-next-line timestamp
         if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
-        rewardData[rewardToken].rate = newRate;
-        rewardData[rewardToken].lastUpdate = block.timestamp;
-        rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
+        emit RewardTokenDeposited(rewardToken, amount, newRate, block.timestamp);
+        _rewardData[rewardToken].rate = newRate;
+        _rewardData[rewardToken].lastUpdate = block.timestamp;
+        _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
+        // slither-disable-next-line weak-prng
+        _rewardData[rewardToken].leftOver = amount % _WEEK;
     }
 
     /**
@@ -287,7 +307,7 @@ abstract contract BaseRewardsGauge is
      * @param totalSupply_ The current total supply of the staking token, used to calculate the rewards per token.
      */
     function _updateReward(address token, uint256 totalSupply_) internal {
-        Reward storage reward = rewardData[token];
+        Reward storage reward = _rewardData[token];
         uint256 lastUpdate = Math.min(block.timestamp, reward.periodFinish);
         uint256 duration = lastUpdate - reward.lastUpdate;
         // slither-disable-next-line timestamp
@@ -316,7 +336,7 @@ abstract contract BaseRewardsGauge is
     )
         internal
     {
-        uint256 integral = rewardData[token].integral;
+        uint256 integral = _rewardData[token].integral;
         uint256 integralFor = rewardIntegralFor[token][user];
         uint256 newClaimable = 0;
         if (integral > integralFor) {
