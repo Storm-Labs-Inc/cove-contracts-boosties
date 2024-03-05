@@ -17,7 +17,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
     address public alice;
 
     event RewardTokenAdded(address rewardToken, address distributor);
-    event RewardTokenDeposited(address rewardToken, uint256 amount);
+    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
     event RewardDistributorSet(address rewardToken, address distributor);
 
     function setUp() public override {
@@ -191,7 +191,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.addReward(address(dummyRewardToken), admin);
         dummyRewardToken.approve(address(rewardsGauge), rewardAmount);
         vm.expectEmit(false, false, false, true);
-        emit RewardTokenDeposited(address(dummyRewardToken), rewardAmount);
+        emit RewardTokenDeposited(address(dummyRewardToken), rewardAmount, rewardAmount / _WEEK, block.timestamp);
         rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
         BaseRewardsGauge.Reward memory rewardData = rewardsGauge.getRewardData(address(dummyRewardToken));
         assertEq(rewardData.distributor, admin);

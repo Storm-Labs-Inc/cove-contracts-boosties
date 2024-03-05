@@ -65,7 +65,7 @@ abstract contract BaseRewardsGauge is
     error RewardCannotBeAsset();
 
     event RewardTokenAdded(address rewardToken, address distributor);
-    event RewardTokenDeposited(address rewardToken, uint256 amount);
+    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
     event RewardDistributorSet(address rewardToken, address distributor);
 
     constructor() payable {
@@ -240,7 +240,7 @@ abstract contract BaseRewardsGauge is
         if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
-        emit RewardTokenDeposited(rewardToken, amount);
+        emit RewardTokenDeposited(rewardToken, amount, newRate, block.timestamp);
         _rewardData[rewardToken].rate = newRate;
         _rewardData[rewardToken].lastUpdate = block.timestamp;
         _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
