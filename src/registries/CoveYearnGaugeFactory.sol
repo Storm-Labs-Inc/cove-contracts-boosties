@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
@@ -296,12 +297,18 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
         }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
+        }
         rewardForwarderImpl = impl;
     }
 
     function _setERC20RewardsGaugeImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
+        }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
         }
         erc20RewardsGaugeImpl = impl;
     }
@@ -316,6 +323,9 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
     function _setYsdRewardsGaugeImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
+        }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
         }
         ysdRewardsGaugeImpl = impl;
     }

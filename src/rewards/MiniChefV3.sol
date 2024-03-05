@@ -67,6 +67,8 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
     uint256 public rewardPerSecond;
     /// @notice The amount of REWARD_TOKEN available in this contract for distribution.
     uint256 public availableReward;
+    /// @notice The maximum amount of REWARD_TOKEN that can be distributed per second.
+    uint256 public constant MAX_REWARD_TOKEN_PER_SECOND = 100_000_000 ether / uint256(1 weeks);
     uint256 private constant _ACC_REWARD_TOKEN_PRECISION = 1e12;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
@@ -87,6 +89,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param admin The address that will be granted the default admin role.
      */
     constructor(IERC20 rewardToken_, address admin) payable {
+        if (address(rewardToken_) == address(0) || admin == address(0)) {
+            revert Errors.ZeroAddress();
+        }
         REWARD_TOKEN = rewardToken_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -162,6 +167,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        if (address(lpToken_) == (address(0))) {
+            revert Errors.ZeroAddress();
+        }
         if (_pidPlusOne[address(lpToken_)] != 0) {
             revert Errors.LPTokenAlreadyAdded();
         }
@@ -241,6 +249,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param rewardPerSecond_ The amount of reward token to be distributed per second.
      */
     function setRewardPerSecond(uint256 rewardPerSecond_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (rewardPerSecond_ > MAX_REWARD_TOKEN_PER_SECOND) {
+            revert Errors.RewardRateTooHigh();
+        }
         rewardPerSecond = rewardPerSecond_;
         emit LogRewardPerSecond(rewardPerSecond_);
     }
@@ -317,6 +328,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param to The receiver of `amount` deposit benefit.
      */
     function deposit(uint256 pid, uint256 amount, address to) public {
+        if (amount == 0) {
+            revert Errors.ZeroAmount();
+        }
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][to];
 
@@ -343,6 +357,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param to Receiver of the LP tokens.
      */
     function withdraw(uint256 pid, uint256 amount, address to) public {
+        if (amount == 0) {
+            revert Errors.ZeroAmount();
+        }
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][msg.sender];
 
