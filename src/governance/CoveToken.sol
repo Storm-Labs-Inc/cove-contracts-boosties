@@ -11,7 +11,9 @@ import { Errors } from "src/libraries/Errors.sol";
  * @title CoveToken
  * @notice ERC20 token with governance features including roles, pausability, and permit functionality.
  * @dev This token includes roles for minting and pausing, as well as the ability to set transfer allowances via
- * signatures.
+ * signatures.  It also includes an allowlisting mechanism for:
+ * - Senders: Vesting contracts, treasury multisig, or rewards contracts so CoveToken can be claimed.
+ * - Receivers: For non-tokenized staking contracts like MiniChefV3 to enable staking while it is non-transferrable.
  * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControlEnumerable, Pausable, and Multicall contracts.
  */
 contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall {
