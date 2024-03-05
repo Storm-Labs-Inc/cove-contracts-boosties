@@ -142,10 +142,10 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // Setup Cove token to be given as a reward
             vm.label(address(coveToken), "coveToken");
             coveToken.grantRole(keccak256("MINTER_ROLE"), admin);
-            coveToken.addAllowedTransferrer(address(baseRewardForwarder));
-            coveToken.addAllowedTransferrer(address(erc20RewardsGauge));
-            coveToken.addAllowedTransferrer(address(ysdRewardForwarder));
-            coveToken.addAllowedTransferrer(address(ysdRewardsGauge));
+            coveToken.addAllowedSender(address(baseRewardForwarder));
+            coveToken.addAllowedSender(address(erc20RewardsGauge));
+            coveToken.addAllowedSender(address(ysdRewardForwarder));
+            coveToken.addAllowedSender(address(ysdRewardsGauge));
             vm.stopPrank();
         }
 

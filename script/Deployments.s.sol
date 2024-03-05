@@ -287,7 +287,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         CoveToken coveToken = CoveToken(deployer.getAddress("CoveToken"));
         bytes[] memory data = new bytes[](transferrers.length);
         for (uint256 i = 0; i < transferrers.length; i++) {
-            data[i] = abi.encodeWithSelector(CoveToken.addAllowedTransferrer.selector, transferrers[i]);
+            data[i] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, transferrers[i]);
         }
         coveToken.multicall(data);
     }
