@@ -309,9 +309,6 @@ contract MiniChefV3_Test is BaseTest {
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
         vm.mockCallRevert(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector), "");
-        // vm.stopPrank();
-        // IMiniChefV3Rewarder badRewarder = IMiniChefV3Rewarder(address(1));
-        // miniChef.set(pid, 1000, badRewarder, true);
         miniChef.emergencyWithdraw(pid, alice);
         assertEq(lpToken.balanceOf(alice), amount, "LP tokens not returned to user after emergency withdrawal");
     }
