@@ -64,6 +64,10 @@ abstract contract BaseRewardsGauge is
     error ZeroAddress();
     error RewardCannotBeAsset();
 
+    event RewardTokenAdded(address rewardToken, address distributor);
+    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
+    event RewardDistributorSet(address rewardToken, address distributor);
+
     constructor() payable {
         _disableInitializers();
     }
@@ -184,7 +188,8 @@ abstract contract BaseRewardsGauge is
             revert RewardTokenAlreadyAdded();
         }
 
-        reward.distributor = distributor;
+        emit RewardTokenAdded(rewardToken, distributor);
+        _rewardData[rewardToken].distributor = distributor;
         rewardTokens.push(rewardToken);
     }
 
@@ -208,7 +213,8 @@ abstract contract BaseRewardsGauge is
             revert InvalidDistributorAddress();
         }
 
-        reward.distributor = distributor;
+        emit RewardDistributorSet(rewardToken, distributor);
+        _rewardData[rewardToken].distributor = distributor;
     }
 
     /**
@@ -240,9 +246,10 @@ abstract contract BaseRewardsGauge is
         if (newRate == 0) {
             revert RewardAmountTooLow();
         }
-        reward.rate = newRate;
-        reward.lastUpdate = block.timestamp;
-        reward.periodFinish = block.timestamp + _WEEK;
+        emit RewardTokenDeposited(rewardToken, amount, newRate, block.timestamp);
+        _rewardData[rewardToken].rate = newRate;
+        _rewardData[rewardToken].lastUpdate = block.timestamp;
+        _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
         // slither-disable-next-line weak-prng
         reward.leftOver = amount % _WEEK;
     }
