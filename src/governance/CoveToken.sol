@@ -69,6 +69,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
             revert Errors.ZeroAddress();
         }
         // Effects
+        mintingAllowedAfter = block.timestamp + _INITIAL_INFLATION_DELAY;
         OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
         ANYONE_CAN_UNPAUSE_AFTER = block.timestamp + _MAX_PAUSE_PERIOD;
         _addToAllowedTransferrer(address(0)); // Allow minting
