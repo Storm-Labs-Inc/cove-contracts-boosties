@@ -391,7 +391,7 @@ contract YearnStakingDelegate is
     }
 
     /**
-     * @dev Sets the paused to true callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE when the contract is not paused.
+     * @dev Pauses the contract. Only callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
      */
     function pause() external {
         if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
@@ -401,7 +401,7 @@ contract YearnStakingDelegate is
     }
 
     /**
-     * @dev Sets the paused to false callable only by DEFAULT_ADMIN_ROLE when the contract is paused.
+     * @dev Unpauses the contract. Only callable by DEFAULT_ADMIN_ROLE.
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
