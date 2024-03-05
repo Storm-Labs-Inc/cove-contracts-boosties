@@ -6,7 +6,7 @@ import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapsho
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
-import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
+import { IYearnStakingDelegate, YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
@@ -86,14 +86,15 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
     function _setGaugeRewardSplit(
         address gauge_,
-        uint80 treasurySplit,
-        uint80 strategySplit,
-        uint80 veYfiSplit
+        uint64 treasurySplit,
+        uint64 coveYfiSplit,
+        uint64 userSplit,
+        uint64 veYfiSplit
     )
         internal
     {
         vm.prank(timelock);
-        yearnStakingDelegate.setGaugeRewardSplit(gauge_, treasurySplit, strategySplit, veYfiSplit);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge_, treasurySplit, coveYfiSplit, userSplit, veYfiSplit);
     }
 
     function _lockYfiForYSD(uint256 amount) internal {
@@ -124,10 +125,11 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
         assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
-        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(anyGauge);
-        assertEq(treasurySplit, 0);
-        assertEq(userSplit, 0);
-        assertEq(lockSplit, 0);
+        IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.getGaugeRewardSplit(anyGauge);
+        assertEq(rewardSplit.treasury, 0);
+        assertEq(rewardSplit.coveYfi, 0);
+        assertEq(rewardSplit.user, 0);
+        assertEq(rewardSplit.lock, 0);
         // Check for roles
         assertTrue(yearnStakingDelegate.hasRole(_TIMELOCK_ROLE, timelock));
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));

@@ -52,14 +52,15 @@ contract YearnStakingDelegate is
     /// @notice Mapping of vault to gauge
     mapping(address gauge => address) public gaugeStakingRewards;
     mapping(address gauge => address) public gaugeRewardReceivers;
-    mapping(address vault => RewardSplit) public gaugeRewardSplit;
     mapping(address user => mapping(address token => uint256)) public balanceOf;
     mapping(address target => bool) public blockedTargets;
+    mapping(address vault => RewardSplit) private _gaugeRewardSplit;
 
     // Variables
     address private _treasury;
     bool private _shouldPerpetuallyLock;
     address private _swapAndLock;
+    address private _coveYfiRewardForwarder;
 
     event LockYfi(address indexed sender, uint256 amount);
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
@@ -67,6 +68,7 @@ contract YearnStakingDelegate is
     event GaugeRewardSplitSet(address indexed gauge, RewardSplit split);
     event SwapAndLockSet(address swapAndLockContract);
     event TreasurySet(address newTreasury);
+    event CoveYfiRewardForwarderSet(address forwarder);
     event Deposit(address indexed sender, address indexed gauge, uint256 amount);
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
 
@@ -191,7 +193,9 @@ contract YearnStakingDelegate is
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Interactions
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLockContract, _treasury, gaugeRewardSplit[gauge]);
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(
+            swapAndLockContract, _treasury, _coveYfiRewardForwarder, _gaugeRewardSplit[gauge]
+        );
     }
 
     /**
@@ -240,6 +244,15 @@ contract YearnStakingDelegate is
         return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
     }
 
+    function setCoveYfiRewardForwarder(address forwarder) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Checks
+        if (forwarder == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        // Effects
+        _setCoveYfiRewardForwarder(forwarder);
+    }
+
     /**
      * @notice Set treasury address. This address will receive a portion of the rewards
      * @param treasury_ address to receive rewards
@@ -270,20 +283,22 @@ contract YearnStakingDelegate is
      * @notice Set the reward split percentages
      * @param gauge address of the gauge token
      * @param treasuryPct percentage of rewards to treasury
+     * @param coveYfiPct percentage of rewards to coveYFI Reward Forwarder
      * @param userPct percentage of rewards to user
      * @param veYfiPct percentage of rewards to veYFI
      * @dev Sum of percentages must equal to 1e18
      */
     function setGaugeRewardSplit(
         address gauge,
-        uint80 treasuryPct,
-        uint80 userPct,
-        uint80 veYfiPct
+        uint64 treasuryPct,
+        uint64 coveYfiPct,
+        uint64 userPct,
+        uint64 veYfiPct
     )
         external
         onlyRole(_TIMELOCK_ROLE)
     {
-        _setGaugeRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
+        _setGaugeRewardSplit(gauge, treasuryPct, coveYfiPct, userPct, veYfiPct);
     }
 
     /**
@@ -321,7 +336,8 @@ contract YearnStakingDelegate is
             revert Errors.GaugeRewardsAlreadyAdded();
         }
         // Effects
-        _setGaugeRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
+        // 0% to treasury, 0% to coveYfi, 100% to user, 0% to SwapAndLock for increasing veYFI lock
+        _setGaugeRewardSplit(gauge, 0, 0, 1e18, 0);
         // Effects & Interactions
         _setGaugeRewards(gauge, stakingDelegateRewards);
     }
@@ -445,6 +461,10 @@ contract YearnStakingDelegate is
         return result;
     }
 
+    function getGaugeRewardSplit(address gauge) external view returns (RewardSplit memory) {
+        return _gaugeRewardSplit[gauge];
+    }
+
     /**
      * @notice Get the address of the treasury
      * @return The address of the treasury
@@ -498,6 +518,11 @@ contract YearnStakingDelegate is
         emit TreasurySet(treasury_);
     }
 
+    function _setCoveYfiRewardForwarder(address forwarder) internal {
+        _coveYfiRewardForwarder = forwarder;
+        emit CoveYfiRewardForwarderSet(forwarder);
+    }
+
     /**
      * @dev Internal function to set gauge rewards and reward receiver.
      * @param gauge Address of the gauge.
@@ -534,12 +559,21 @@ contract YearnStakingDelegate is
      * @param userPct Percentage of rewards to the user.
      * @param lockPct Percentage of rewards to lock in veYFI.
      */
-    function _setGaugeRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
-        if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
+    function _setGaugeRewardSplit(
+        address gauge,
+        uint64 treasuryPct,
+        uint64 coveYfiPct,
+        uint64 userPct,
+        uint64 lockPct
+    )
+        internal
+    {
+        if (uint256(treasuryPct) + coveYfiPct + userPct + lockPct != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
-        RewardSplit memory newRewardSplit = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
-        gaugeRewardSplit[gauge] = newRewardSplit;
+        RewardSplit memory newRewardSplit =
+            RewardSplit({ treasury: treasuryPct, coveYfi: coveYfiPct, user: userPct, lock: lockPct });
+        _gaugeRewardSplit[gauge] = newRewardSplit;
         emit GaugeRewardSplitSet(gauge, newRewardSplit);
     }
 
