@@ -5,7 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -14,7 +14,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
  * @notice CoveYFI is a tokenized version of veYFI, commonly referred to as a liquid locker.
  * @dev Extends the ERC-20 standard with permit, pausable, ownable, and rescuable functionality.
  */
-contract CoveYFI is ERC20Permit, Rescuable, AccessControl {
+contract CoveYFI is ERC20Permit, Rescuable, AccessControlEnumerable {
     // Libraries
     using SafeERC20 for IERC20;
 

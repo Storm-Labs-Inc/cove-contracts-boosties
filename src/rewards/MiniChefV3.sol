@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.sol";
 import { SelfPermit } from "src/deps/uniswap/v3-periphery/base/SelfPermit.sol";
@@ -17,7 +17,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * It supports multiple reward tokens through external rewarder contracts and includes emergency withdrawal
  * functionality.
  */
-contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
+contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit {
     using SafeERC20 for IERC20;
 
     /**

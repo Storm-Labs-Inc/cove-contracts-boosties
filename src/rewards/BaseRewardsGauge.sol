@@ -11,7 +11,8 @@ import {
 import { ERC20PermitUpgradeable } from
     "@openzeppelin-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
 
@@ -25,7 +26,7 @@ abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
     ERC4626Upgradeable,
     ERC20PermitUpgradeable,
-    AccessControlUpgradeable,
+    AccessControlEnumerableUpgradeable,
     ReentrancyGuardUpgradeable
 {
     using SafeERC20 for IERC20;

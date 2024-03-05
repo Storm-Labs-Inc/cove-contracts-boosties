@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { ERC20Permit, ERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { Errors } from "src/libraries/Errors.sol";
@@ -12,9 +12,9 @@ import { Errors } from "src/libraries/Errors.sol";
  * @notice ERC20 token with governance features including roles, pausability, and permit functionality.
  * @dev This token includes roles for minting and pausing, as well as the ability to set transfer allowances via
  * signatures.
- * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControl, Pausable, and Multicall contracts.
+ * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControlEnumerable, Pausable, and Multicall contracts.
  */
-contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
+contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall {
     /// @dev Initial delay before inflation starts.
     uint256 private constant _INITIAL_INFLATION_DELAY = 3 * 52 weeks;
     /// @dev Initial supply of tokens.
