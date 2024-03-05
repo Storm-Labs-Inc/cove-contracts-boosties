@@ -41,8 +41,8 @@ abstract contract BaseRewardsGauge is
         uint256 leftOver;
     }
 
-    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 public constant MAX_REWARDS = 8;
     uint256 internal constant _WEEK = 1 weeks;
     uint256 internal constant _PRECISION = 1e18;
@@ -84,8 +84,8 @@ abstract contract BaseRewardsGauge is
         __ERC4626_init(IERC20(asset_));
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MANAGER_ROLE, msg.sender);
-        _grantRole(PAUSER_ROLE, msg.sender);
+        _grantRole(_MANAGER_ROLE, msg.sender);
+        _grantRole(_PAUSER_ROLE, msg.sender);
     }
 
     /**
@@ -168,8 +168,7 @@ abstract contract BaseRewardsGauge is
      * @param rewardToken The address of the reward token to add.
      * @param distributor The address of the distributor for the reward token.
      */
-    function addReward(address rewardToken, address distributor) external {
-        _checkRole(MANAGER_ROLE);
+    function addReward(address rewardToken, address distributor) external onlyRole(_MANAGER_ROLE) {
         if (rewardToken == address(0) || distributor == address(0)) {
             revert ZeroAddress();
         }
@@ -246,18 +245,16 @@ abstract contract BaseRewardsGauge is
     }
 
     /**
-     * @dev Sets the paused to true callable only by PAUSER_ROLE when the contract is not paused.
+     * @dev Sets the paused to true callable only by _PAUSER_ROLE when the contract is not paused.
      */
-    function pause() external {
-        _checkRole(PAUSER_ROLE);
+    function pause() external onlyRole(_PAUSER_ROLE) {
         _pause();
     }
 
     /**
-     * @dev Sets the paused to false callable only by PAUSER_ROLE when the contract is paused.
+     * @dev Sets the paused to false callable only by _PAUSER_ROLE when the contract is paused.
      */
-    function unpause() external {
-        _checkRole(DEFAULT_ADMIN_ROLE);
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 

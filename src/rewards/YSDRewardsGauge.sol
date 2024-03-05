@@ -79,11 +79,20 @@ contract YSDRewardsGauge is BaseRewardsGauge {
      * @param assets The amount of assets to deposit.
      * @param shares The amount of shares to mint.
      */
-    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+    function _deposit(
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    )
+        internal
+        virtual
+        override(BaseRewardsGauge)
+    {
         if (totalAssets() + assets > maxTotalAssets()) {
             revert MaxTotalAssetsExceeded();
         }
-        super._deposit(caller, receiver, assets, shares);
+        BaseRewardsGauge._deposit(caller, receiver, assets, shares);
         IYearnStakingDelegate(yearnStakingDelegate).deposit(asset(), assets);
     }
 

@@ -40,17 +40,17 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.startPrank(admin);
         rewardsGauge.initialize(address(dummyGaugeAsset));
         // setup roles
-        rewardsGauge.grantRole(rewardsGauge.MANAGER_ROLE(), manager);
-        rewardsGauge.renounceRole(rewardsGauge.MANAGER_ROLE(), admin);
-        rewardsGauge.grantRole(rewardsGauge.PAUSER_ROLE(), pauser);
-        rewardsGauge.renounceRole(rewardsGauge.PAUSER_ROLE(), admin);
+        rewardsGauge.grantRole(_MANAGER_ROLE, manager);
+        rewardsGauge.renounceRole(_MANAGER_ROLE, admin);
+        rewardsGauge.grantRole(_PAUSER_ROLE, pauser);
+        rewardsGauge.renounceRole(_PAUSER_ROLE, admin);
         vm.stopPrank();
     }
 
     function test_initialize() public {
         assertTrue(rewardsGauge.hasRole(rewardsGauge.DEFAULT_ADMIN_ROLE(), admin), "admin should have admin role");
-        assertTrue(rewardsGauge.hasRole(rewardsGauge.MANAGER_ROLE(), manager), "manager should have manager role");
-        assertTrue(rewardsGauge.hasRole(rewardsGauge.PAUSER_ROLE(), pauser), "pauser should have pauser role");
+        assertTrue(rewardsGauge.hasRole(_MANAGER_ROLE, manager), "manager should have manager role");
+        assertTrue(rewardsGauge.hasRole(_PAUSER_ROLE, pauser), "pauser should have pauser role");
         assertEq(rewardsGauge.asset(), address(dummyGaugeAsset), "asset should be set");
     }
 
@@ -100,7 +100,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
     }
 
     function test_addReward_revertWhen_notManager() public {
-        vm.expectRevert(_formatAccessControlError(address(this), rewardsGauge.MANAGER_ROLE()));
+        vm.expectRevert(_formatAccessControlError(address(this), _MANAGER_ROLE));
         rewardsGauge.addReward(address(1), address(2));
     }
 
@@ -198,12 +198,12 @@ contract ERC20RewardsGauge_Test is BaseTest {
     }
 
     function test_pause_revertWhen_notPauser() public {
-        vm.expectRevert(_formatAccessControlError(address(this), rewardsGauge.PAUSER_ROLE()));
+        vm.expectRevert(_formatAccessControlError(address(this), _PAUSER_ROLE));
         rewardsGauge.pause();
     }
 
     function test_unpause_revertWhen_notAdmin() public {
-        vm.expectRevert(_formatAccessControlError(address(this), rewardsGauge.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(address(this), DEFAULT_ADMIN_ROLE));
         rewardsGauge.unpause();
     }
 
@@ -264,7 +264,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         assertEq(rewardData.integral, 0);
         assertEq(rewardData.leftOver, rewardAmount0 % _WEEK);
         // warp to halfway through the reward period
-        vm.warp(block.timestamp + (periodFinish / 2));
+        vm.warp(block.timestamp + (rewardData.periodFinish / 2));
         // deposit another round of rewards
         rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount1);
 
@@ -283,7 +283,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.assume(distributor != address(0));
         vm.assume(user != distributor);
         vm.assume(!rewardsGauge.hasRole(_MANAGER_ROLE, user));
-        vm.prank(admin);
+        vm.prank(manager);
         rewardsGauge.addReward(address(dummyRewardToken), distributor);
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.Unauthorized.selector));

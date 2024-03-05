@@ -28,6 +28,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     // Addresses
     address public alice;
     address public manager;
+    address public pauser;
     address public wrappedStrategy;
     address public treasury;
 
@@ -38,6 +39,8 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         alice = createUser("alice");
         // create manager of the yearnStakingDelegate
         manager = createUser("manager");
+        // create pauser of the yearnStakingDelegate
+        pauser = createUser("pauser");
         // create an address that will act as a wrapped strategy
         wrappedStrategy = createUser("wrappedStrategy");
         // create an address that will act as a treasury
@@ -51,7 +54,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
 
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
-        yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, manager);
+        yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, manager, pauser);
         stakingDelegateRewards = setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate));
         swapAndLock = setUpSwapAndLock(admin, address(yearnStakingDelegate));
 
@@ -115,10 +118,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_constructor(address noAdminRole, address noManagerRole, address anyGauge) public {
-        vm.assume(noAdminRole != admin);
-        // manager role is given to admin and manager
-        vm.assume(noManagerRole != manager && noManagerRole != admin);
+    function testFuzz_constructor(address anyGauge) public {
         // Check for storage variables default values
         assertEq(yearnStakingDelegate.yfi(), MAINNET_YFI);
         assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
@@ -129,10 +129,9 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(userSplit, 0);
         assertEq(lockSplit, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), manager));
-        assertTrue(!yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), noManagerRole));
+        assertTrue(yearnStakingDelegate.hasRole(_MANAGER_ROLE, manager));
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
+        assertTrue(yearnStakingDelegate.hasRole(_PAUSER_ROLE, pauser));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }

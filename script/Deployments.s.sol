@@ -32,6 +32,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     address public admin;
     address public treasury;
     address public manager;
+    address public pauser;
 
     address[] public coveYearnStrategies;
 
@@ -46,11 +47,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
         admin = vm.envOr("ADMIN_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
+        pauser = vm.envOr("PAUSER_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
         treasury = admin;
         manager = broadcaster;
 
         vm.label(admin, "admin");
         vm.label(manager, "manager");
+        vm.label(pauser, "pauser");
 
         _labelEthereumAddresses();
         // Deploy Master Registry
@@ -96,7 +99,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         address gaugeRewardReceiverImpl =
             address(deployer.deploy_GaugeRewardReceiver("GaugeRewardReceiverImplementation", options));
         YearnStakingDelegate ysd = deployer.deploy_YearnStakingDelegate(
-            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, options
+            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, pauser, options
         );
         address stakingDelegateRewards = address(
             deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd), options)
@@ -304,6 +307,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 name: "MiniChefV3",
                 rewardToken_: IERC20(deployer.getAddress("CoveToken")),
                 admin: broadcaster,
+                pauser: pauser,
                 options: options
             })
         );
