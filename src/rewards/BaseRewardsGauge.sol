@@ -386,7 +386,7 @@ abstract contract BaseRewardsGauge is
 
     /**
      * @dev Handles all flow of deposits for the gauge, includes a check if deposits are paused before depositing.
-     * This function is disabled if the contract is paused.
+     * Deposits can be paused in case of emergencies by the admin or pauser roles.
      */
     function _deposit(
         address caller,

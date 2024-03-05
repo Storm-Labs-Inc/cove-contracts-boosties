@@ -333,7 +333,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
 
     /**
      * @notice Deposit LP tokens to MCV3 for REWARD_TOKEN allocation.
-     * @dev This function is disabled if the contract is paused.
+     * @dev Deposits can be paused in case of emergencies by the admin or pauser roles.
      * @param pid The index of the pool. See `_poolInfo`.
      * @param amount LP token amount to deposit.
      * @param to The receiver of `amount` deposit benefit.
