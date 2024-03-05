@@ -190,6 +190,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.setRewardForwarderImplementation(address(0));
     }
 
+    function test_setRewardForwarderImplementation_revertWhen_notContract() public {
+        vm.expectRevert(Errors.AddressNotContract.selector);
+        factory.setRewardForwarderImplementation(address(1));
+    }
+
     function test_setBaseRewardsGaugeImplementation() public {
         ERC20RewardsGauge newBaseRewardsGaugeImpl = new ERC20RewardsGauge();
         factory.setERC20RewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
@@ -208,6 +213,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         factory.setERC20RewardsGaugeImplementation(address(0));
     }
 
+    function test_setBaseRewardsGaugeImplementation_revertWhen_notContract() public {
+        vm.expectRevert(Errors.AddressNotContract.selector);
+        factory.setERC20RewardsGaugeImplementation(address(1));
+    }
+
     function test_setYsdRewardsGaugeImplementation() public {
         YSDRewardsGauge newYsdRewardsGaugeImpl = new YSDRewardsGauge();
         factory.setYsdRewardsGaugeImplementation(address(newYsdRewardsGaugeImpl));
@@ -224,6 +234,11 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     function test_setYsdRewardsGaugeImplementation_revertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         factory.setYsdRewardsGaugeImplementation(address(0));
+    }
+
+    function test_setYsdRewardsGaugeImplementation_revertWhen_notContract() public {
+        vm.expectRevert(Errors.AddressNotContract.selector);
+        factory.setYsdRewardsGaugeImplementation(address(1));
     }
 
     function test_setTreasuryMultisig() public {

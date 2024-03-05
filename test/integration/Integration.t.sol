@@ -111,7 +111,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         {
             vm.startPrank(admin);
             // CoveToken
-            coveToken = new CoveToken(admin, block.timestamp);
+            coveToken = new CoveToken(admin);
             // RewardsGauges
             ERC20RewardsGauge erc20RewardsGaugeImplementation = new ERC20RewardsGauge();
             YSDRewardsGauge ysdRewardsGaugeImplementation = new YSDRewardsGauge();
