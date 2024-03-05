@@ -102,6 +102,7 @@ library Errors {
     error LPTokenDoesNotMatchPoolId();
     error InsufficientBalance();
     error LPTokenAlreadyAdded();
+    error RewardRateTooHigh();
 
     /// Yearn4626RouterExt ///
     error InsufficientShares();
@@ -124,6 +125,9 @@ library Errors {
     error MintingAllowedTooEarly();
     /// @dev Error for when the mint amount exceeds the cap.
     error InflationTooLarge();
-    error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
+    error AccessControlEnumerableUnauthorizedAccount(address account, bytes32 neededRole);
     error ExpectedPause();
+
+    /// COVE YEARN GAUGE FACTORY ///
+    error AddressNotContract();
 }

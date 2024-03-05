@@ -34,6 +34,16 @@ contract MiniChefV3_Test is BaseTest {
         assertTrue(miniChef.hasRole(miniChef.DEFAULT_ADMIN_ROLE(), address(this)), "admin role not set");
     }
 
+    function test_constructor_revertWhen_RewardTokenIsZero() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new MiniChefV3(IERC20(address(0)), address(this));
+    }
+
+    function test_constructor_revertWhen_AdminIsZero() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new MiniChefV3(IERC20(address(rewardToken)), address(0));
+    }
+
     function test_poolLength() public {
         assertEq(miniChef.poolLength(), 0, "pool length not 0");
         for (uint160 i = 1; i <= 100; i++) {
@@ -86,6 +96,11 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
     }
 
+    function test_add_revertWhen_LPTokenIsZero() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        miniChef.add(1000, IERC20(address(0)), IMiniChefV3Rewarder(address(0)));
+    }
+
     function test_set() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint64 allocPoint = 500;
@@ -134,13 +149,21 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     function testFuzz_setRewardPerSecond(uint256 rate) public {
+        rate = bound(rate, 0, miniChef.MAX_REWARD_TOKEN_PER_SECOND());
         miniChef.setRewardPerSecond(rate);
         assertEq(miniChef.rewardPerSecond(), rate, "Reward per second not set correctly");
     }
 
     function testFuzz_setRewardPerSecond_revertWhen_CallerIsNotAdmin(uint256 rate) public {
+        rate = bound(rate, 0, miniChef.MAX_REWARD_TOKEN_PER_SECOND());
         vm.expectRevert(_formatAccessControlError(bob, miniChef.DEFAULT_ADMIN_ROLE()));
         vm.startPrank(bob);
+        miniChef.setRewardPerSecond(rate);
+    }
+
+    function testFuzz_setRewardPerSecond_revertWhen_RewardRateTooHigh(uint256 rate) public {
+        rate = bound(rate, miniChef.MAX_REWARD_TOKEN_PER_SECOND() + 1, type(uint128).max);
+        vm.expectRevert(Errors.RewardRateTooHigh.selector);
         miniChef.setRewardPerSecond(rate);
     }
 
@@ -191,6 +214,13 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
     }
 
+    function test_deposit_revertWhen_ZeroAmount() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 pid = miniChef.poolLength() - 1;
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        miniChef.deposit(pid, 0, alice);
+    }
+
     function test_withdraw() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
@@ -220,6 +250,18 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
         vm.expectCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector, pid, alice, alice, 0, 0));
         miniChef.withdraw(pid, amount, alice);
+    }
+
+    function test_withdraw_revertWhen_ZeroAmount() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        miniChef.withdraw(pid, 0, alice);
     }
 
     function test_emergencyWithdraw() public {

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { YSDRewardsGauge } from "src/rewards/YSDRewardsGauge.sol";
@@ -18,7 +19,7 @@ import { Errors } from "src/libraries/Errors.sol";
  * non-auto-compounding gauges.
  * It also manages the reward forwarder implementations and various administrative roles.
  */
-contract CoveYearnGaugeFactory is AccessControl {
+contract CoveYearnGaugeFactory is AccessControlEnumerable {
     struct GaugeInfoStored {
         address coveYearnStrategy;
         address autoCompoundingGauge;
@@ -296,12 +297,18 @@ contract CoveYearnGaugeFactory is AccessControl {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
         }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
+        }
         rewardForwarderImpl = impl;
     }
 
     function _setERC20RewardsGaugeImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
+        }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
         }
         erc20RewardsGaugeImpl = impl;
     }
@@ -316,6 +323,9 @@ contract CoveYearnGaugeFactory is AccessControl {
     function _setYsdRewardsGaugeImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
+        }
+        if (!Address.isContract(impl)) {
+            revert Errors.AddressNotContract();
         }
         ysdRewardsGaugeImpl = impl;
     }

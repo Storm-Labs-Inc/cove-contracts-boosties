@@ -11,7 +11,8 @@ import {
 import { ERC20PermitUpgradeable } from
     "@openzeppelin-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
 
@@ -25,7 +26,7 @@ abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
     ERC4626Upgradeable,
     ERC20PermitUpgradeable,
-    AccessControlUpgradeable,
+    AccessControlEnumerableUpgradeable,
     ReentrancyGuardUpgradeable
 {
     using SafeERC20 for IERC20;
@@ -63,6 +64,10 @@ abstract contract BaseRewardsGauge is
     error RewardAmountTooLow();
     error ZeroAddress();
     error RewardCannotBeAsset();
+
+    event RewardTokenAdded(address rewardToken, address distributor);
+    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
+    event RewardDistributorSet(address rewardToken, address distributor);
 
     constructor() payable {
         _disableInitializers();
@@ -181,6 +186,7 @@ abstract contract BaseRewardsGauge is
             revert RewardTokenAlreadyAdded();
         }
 
+        emit RewardTokenAdded(rewardToken, distributor);
         _rewardData[rewardToken].distributor = distributor;
         rewardTokens.push(rewardToken);
     }
@@ -203,6 +209,7 @@ abstract contract BaseRewardsGauge is
             revert InvalidDistributorAddress();
         }
 
+        emit RewardDistributorSet(rewardToken, distributor);
         _rewardData[rewardToken].distributor = distributor;
     }
 
@@ -234,6 +241,7 @@ abstract contract BaseRewardsGauge is
         if (newRate <= 0) {
             revert RewardAmountTooLow();
         }
+        emit RewardTokenDeposited(rewardToken, amount, newRate, block.timestamp);
         _rewardData[rewardToken].rate = newRate;
         _rewardData[rewardToken].lastUpdate = block.timestamp;
         _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;

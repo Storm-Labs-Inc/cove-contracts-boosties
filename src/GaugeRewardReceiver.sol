@@ -6,7 +6,8 @@ import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
-import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol";
 import { Errors } from "src/libraries/Errors.sol";
@@ -17,7 +18,7 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
  * @notice Contract to receive rewards from a Yearn gauge and distribute them according to specified splits.
  * @dev Inherits from Clone and ReentrancyGuardUpgradeable for creating clones acts and preventing reentrancy attacks.
  */
-contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, AccessControlUpgradeable {
+contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, AccessControlEnumerableUpgradeable {
     // Libraries
     using SafeERC20 for IERC20;
 

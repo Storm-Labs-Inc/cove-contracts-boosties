@@ -59,9 +59,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         deployYearnStakingDelegateStack();
         // Deploy Yearn4626RouterExt
         deployYearn4626RouterExt();
-        // Deploy Cove Token with minting allowed after 3 years
-        uint256 mintingAllowedAfter = block.timestamp + 3 * 365 days;
-        deployCoveToken(mintingAllowedAfter);
+        // Deploy Cove Token
+        deployCoveToken();
         // Allow admin, and manager, and sablier batch contract, and the vesting contract to transfer cove tokens
         address[] memory allowedSenders = new address[](4);
         allowedSenders[0] = admin;
@@ -250,13 +249,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return masterRegistry;
     }
 
-    function deployCoveToken(uint256 mintingAllowedAfter)
-        public
-        broadcast
-        deployIfMissing("CoveToken")
-        returns (address)
-    {
-        address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, mintingAllowedAfter, options));
+    function deployCoveToken() public broadcast deployIfMissing("CoveToken") returns (address) {
+        address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, options));
         return cove;
     }
 
