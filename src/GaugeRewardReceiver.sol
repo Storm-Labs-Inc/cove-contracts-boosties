@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { Clone } from "lib/clones-with-immutable-args/src/Clone.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
