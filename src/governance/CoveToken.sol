@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { ERC20Permit, ERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { Errors } from "src/libraries/Errors.sol";
@@ -12,13 +12,15 @@ import { Errors } from "src/libraries/Errors.sol";
  * @notice ERC20 token with governance features including roles, pausability, and permit functionality.
  * @dev This token includes roles for minting and pausing, as well as the ability to set transfer allowances via
  * signatures.
- * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControl, Pausable, and Multicall contracts.
+ * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControlEnumerable, Pausable, and Multicall contracts.
  */
-contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
+contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall {
+    /// @dev Initial delay before inflation starts.
+    uint256 private constant _INITIAL_INFLATION_DELAY = 3 * 52 weeks;
     /// @dev Initial supply of tokens.
     uint256 private constant _INITIAL_SUPPLY = 1_000_000_000 ether;
     /// @dev Minimum time interval between mints.
-    uint256 private constant _MIN_MINT_INTERVAL = 365 days;
+    uint256 private constant _MIN_MINT_INTERVAL = 52 weeks;
     /// @dev Numerator for calculating mint cap.
     uint256 private constant _MINT_CAP_NUMERATOR = 600;
     /// @dev Denominator for calculating mint cap.
@@ -60,20 +62,11 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Deploys this contract with the initial owner and minting allowed after a specified time.
      * @dev The contract is paused upon deployment and the initial supply is minted to the owner.
      * @param owner_ The address of the initial owner.
-     * @param mintingAllowedAfter_ The timestamp after which minting is allowed.
      */
-    constructor(
-        address owner_,
-        uint256 mintingAllowedAfter_
-    )
-        payable
-        ERC20Permit("CoveToken")
-        ERC20("CoveToken", "COVE")
-    {
+    constructor(address owner_) payable ERC20Permit("CoveToken") ERC20("CoveToken", "COVE") {
         // Checks
-        // slither-disable-next-line timestamp
-        if (mintingAllowedAfter_ < block.timestamp) {
-            revert Errors.MintingAllowedTooEarly();
+        if (owner_ == address(0)) {
+            revert Errors.ZeroAddress();
         }
         // Effects
         OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
@@ -83,7 +76,6 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
         _pause(); // Pause the contract
         _grantRole(DEFAULT_ADMIN_ROLE, owner_);
-        mintingAllowedAfter = mintingAllowedAfter_; // Set the time delay for the first mint
     }
 
     /**

@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { IFlashLoanProvider } from "src/interfaces/deps/balancer/IFlashLoanProvider.sol";
 import { IRedemption } from "src/interfaces/deps/yearn/veYFI/IRedemption.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -25,7 +25,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
  * the minimum amount of YFI that should be redeemed for their dYFI. The minimum amount of YFI at a given time can be
  * calculated using the `minYfiRedeem(uint256 dYfiAmount)` function.
  */
-contract DYFIRedeemer is IDYFIRedeemer, AccessControl, ReentrancyGuard, Pausable {
+contract DYFIRedeemer is IDYFIRedeemer, AccessControlEnumerable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     address private constant _REDEMPTION = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;

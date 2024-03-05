@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { IAccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IAccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
-interface IStakingDelegateRewards is IAccessControl {
+interface IStakingDelegateRewards is IAccessControlEnumerable {
     function getReward(address stakingToken) external;
     function setRewardReceiver(address receiver) external;
 }
