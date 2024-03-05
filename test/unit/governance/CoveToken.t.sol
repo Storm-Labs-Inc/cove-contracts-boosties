@@ -30,11 +30,12 @@ contract CoveToken_Test is BaseTest {
     }
 
     function test_initialize() public {
-        require(coveToken.hasRole(coveToken.DEFAULT_ADMIN_ROLE(), owner), "Owner should have DEFAULT_ADMIN_ROLE");
+        assertTrue(coveToken.hasRole(coveToken.DEFAULT_ADMIN_ROLE(), owner), "Owner should have DEFAULT_ADMIN_ROLE");
+        assertTrue(coveToken.hasRole(TIMELOCK_ROLE, owner), "Owner should have TIMELOCK_ROLE");
         assertEq(
             coveToken.mintingAllowedAfter(), block.timestamp + 3 * 52 weeks, "Minting should be allowed after 3 years"
         );
-        require(coveToken.allowedSender(owner), "Owner should be allowed to transfer");
+        assertTrue(coveToken.allowedSender(owner), "Owner should be allowed to transfer");
         assertEq(coveToken.paused(), true, "Contract should be paused");
         assertEq(coveToken.balanceOf(owner), 1_000_000_000 ether, "Owner should have initial supply");
     }
@@ -315,5 +316,12 @@ contract CoveToken_Test is BaseTest {
         vm.expectEmit(false, false, false, true);
         emit ReceiverDisallowed(address(alice), 5);
         coveToken.removeAllowedReceiver(address(alice));
+    }
+
+    function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
+        coveToken.grantRole(DEFAULT_ADMIN_ROLE, alice);
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
+        vm.prank(alice);
+        coveToken.grantRole(TIMELOCK_ROLE, alice);
     }
 }

@@ -33,6 +33,7 @@ contract MiniChefV3_Test is BaseTest {
     function test_constructor() public {
         assertEq(address(miniChef.REWARD_TOKEN()), address(rewardToken), "rewardToken not set");
         assertTrue(miniChef.hasRole(miniChef.DEFAULT_ADMIN_ROLE(), address(this)), "admin role not set");
+        assertTrue(miniChef.hasRole(TIMELOCK_ROLE, address(this)), "timelock role not set");
     }
 
     function test_constructor_revertWhen_RewardTokenIsZero() public {
@@ -523,5 +524,12 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.rescue(IERC20(randomToken), address(this), 1e18);
         assertEq(randomToken.balanceOf(address(this)), 1e18, "Random token not rescued correctly");
         assertEq(randomToken.balanceOf(address(miniChef)), 0, "Random token not transferred correctly");
+    }
+
+    function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
+        miniChef.grantRole(DEFAULT_ADMIN_ROLE, alice);
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
+        vm.prank(alice);
+        miniChef.grantRole(TIMELOCK_ROLE, alice);
     }
 }

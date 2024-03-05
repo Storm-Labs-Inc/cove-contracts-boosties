@@ -19,6 +19,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
 
     // Constants
     uint256 private constant _DEFAULT_DURATION = 7 days;
+    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     // slither-disable-start naming-convention
     address private immutable _REWARDS_TOKEN;
     address private immutable _STAKING_DELEGATE;
@@ -60,6 +61,8 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
         }
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(_TIMELOCK_ROLE, msg.sender);
+        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE);
         _REWARDS_TOKEN = rewardsToken_;
         _STAKING_DELEGATE = stakingDelegate_;
     }
@@ -165,7 +168,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @param stakingToken The address of the staking token to set the rewards duration for.
      * @param rewardsDuration_ The new duration of the rewards period.
      */
-    function setRewardsDuration(address stakingToken, uint256 rewardsDuration_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRewardsDuration(address stakingToken, uint256 rewardsDuration_) external onlyRole(_TIMELOCK_ROLE) {
         if (rewardsDuration_ == 0) {
             revert Errors.RewardDurationCannotBeZero();
         }

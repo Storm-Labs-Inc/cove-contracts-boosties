@@ -390,7 +390,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
     )
         external
         payable
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(_TIMELOCK_ROLE)
         returns (bytes memory)
     {
         // Checks

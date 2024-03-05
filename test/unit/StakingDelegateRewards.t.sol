@@ -21,6 +21,7 @@ contract StakingDelegateRewards_Test is BaseTest {
     address public rewardDistributor;
 
     uint256 public constant REWARD_AMOUNT = 1000e18;
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     function setUp() public override {
         super.setUp();
@@ -256,7 +257,7 @@ contract StakingDelegateRewards_Test is BaseTest {
     }
 
     function test_setRewardsDuration_revertWhen_CallerIsNotAdmin() public {
-        vm.expectRevert(_formatAccessControlError(alice, stakingDelegateRewards.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
         stakingDelegateRewards.setRewardsDuration(stakingToken, 1 days);
     }

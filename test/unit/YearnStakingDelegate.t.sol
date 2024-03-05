@@ -46,6 +46,9 @@ contract YearnStakingDelegate_Test is BaseTest {
     address public manager;
     address public treasury;
 
+    // Roles
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
+
     event LockYfi(address indexed sender, uint256 amount);
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
     event PerpetualLockSet(bool shouldLock);
@@ -160,9 +163,11 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(lockSplit, 0);
         // Check for roles
         assertTrue(yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), manager));
-        assertTrue(!yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), noManagerRole));
+        assertFalse(yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), noManagerRole));
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(!yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
+        assertFalse(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
+        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
+        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, noAdminRole));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }
@@ -528,8 +533,16 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function test_execute_revertWhen_CallerIsNotAdmin() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
-        vm.expectRevert(_formatAccessControlError(alice, yearnStakingDelegate.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
+    }
+
+    function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
+        vm.prank(admin);
+        yearnStakingDelegate.grantRole(DEFAULT_ADMIN_ROLE, alice);
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
+        vm.prank(alice);
+        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
     }
 }
