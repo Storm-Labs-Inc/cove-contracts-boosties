@@ -7,6 +7,8 @@ import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 import { ISignatureTransfer } from "permit2/interfaces/ISignatureTransfer.sol";
 import { IWETH9 } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
 import { IYearn4626RouterExt } from "./interfaces/IYearn4626RouterExt.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title Yearn4626Router Extension
@@ -22,6 +24,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
 
     error InsufficientShares();
     error InvalidTo();
+    error VaultMismatch();
+
+    struct Vault {
+        address vault;
+        bool isYearnVaultV2;
+    }
 
     /**
      * @notice Constructs the Yearn4626RouterExt contract.
@@ -78,5 +86,146 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     {
         if (transferDetails.to != address(this)) revert InvalidTo();
         IPermit2(_PERMIT2).permitTransferFrom(permit, transferDetails, msg.sender, signature);
+    }
+
+    /**
+     * @notice Calculate the amount of shares to be received from a series of deposits to ERC4626 vaults or Yearn Vault
+     * V2.
+     * @param vaults The array of vaults to deposit into.
+     * @param assetIn The amount of assets to deposit into the first vault.
+     */
+    function previewDeposits(
+        Vault[] calldata vaults,
+        uint256 assetIn
+    )
+        external
+        view
+        returns (uint256[] memory sharesOut)
+    {
+        sharesOut = new uint256[](vaults.length);
+        for (uint256 i; i < vaults.length;) {
+            address vaultAsset;
+            if (vaults[i].isYearnVaultV2) {
+                vaultAsset = IYearnVaultV2(vaults[i].vault).token();
+                sharesOut[i] =
+                    Math.mulDiv(assetIn, 1e18, IYearnVaultV2(vaults[i].vault).pricePerShare(), Math.Rounding.Down) - 1;
+            } else {
+                vaultAsset = IERC4626(vaults[i].vault).asset();
+                sharesOut[i] = IERC4626(vaults[i].vault).previewDeposit(assetIn);
+            }
+            if (i > 0 && vaultAsset != vaults[i - 1].vault) {
+                revert VaultMismatch();
+            }
+            assetIn = sharesOut[i];
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Calculate the amount of assets required to mint a given amount of shares from a series of deposits to
+     * ERC4626 vaults or Yearn Vault V2.
+     * @param vaults The array of vaults to deposit into.
+     * @param shareOut The amount of shares to mint from the last vault.
+     */
+    function previewMints(
+        Vault[] calldata vaults,
+        uint256 shareOut
+    )
+        external
+        view
+        returns (uint256[] memory assetsIn)
+    {
+        assetsIn = new uint256[](vaults.length);
+        for (uint256 i; i < vaults.length;) {
+            address vaultAsset;
+            if (vaults[i].isYearnVaultV2) {
+                vaultAsset = IYearnVaultV2(vaults[i].vault).token();
+                assetsIn[i] =
+                    Math.mulDiv(shareOut, IYearnVaultV2(vaults[i].vault).pricePerShare(), 1e18, Math.Rounding.Up) + 1;
+            } else {
+                vaultAsset = IERC4626(vaults[i].vault).asset();
+                assetsIn[i] = IERC4626(vaults[i].vault).previewMint(shareOut);
+            }
+            if (i > 0 && vaultAsset != vaults[i - 1].vault) {
+                revert VaultMismatch();
+            }
+            shareOut = assetsIn[i];
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Calculate the amount of shares required to withdraw a given amount of assets from a series of withdraws
+     * from
+     * ERC4626 vaults or Yearn Vault V2.
+     * @param vaults The array of vaults to withdraw from.
+     * @param assetOut The amount of assets to withdraw from the last vault.
+     */
+    function previewWithdraws(
+        Vault[] calldata vaults,
+        uint256 assetOut
+    )
+        external
+        view
+        returns (uint256[] memory sharesIn)
+    {
+        sharesIn = new uint256[](vaults.length);
+        for (uint256 i; i < vaults.length;) {
+            address vaultAsset;
+            if (vaults[i].isYearnVaultV2) {
+                vaultAsset = IYearnVaultV2(vaults[i].vault).token();
+                sharesIn[i] =
+                    Math.mulDiv(assetOut, 1e18, IYearnVaultV2(vaults[i].vault).pricePerShare(), Math.Rounding.Down) - 1;
+            } else {
+                vaultAsset = IERC4626(vaults[i].vault).asset();
+                sharesIn[i] = IERC4626(vaults[i].vault).previewWithdraw(assetOut);
+            }
+            if (i < vaults.length - 1 && vaultAsset != vaults[i + 1].vault) {
+                revert VaultMismatch();
+            }
+            assetOut = sharesIn[i];
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Calculate the amount of assets to be received from a series of withdraws from ERC4626 vaults or Yearn
+     * Vault V2.
+     * @param vaults The array of vaults to withdraw from.
+     * @param shareIn The amount of shares to withdraw from the first vault.
+     */
+    function previewRedeems(
+        Vault[] calldata vaults,
+        uint256 shareIn
+    )
+        external
+        view
+        returns (uint256[] memory assetsOut)
+    {
+        assetsOut = new uint256[](vaults.length);
+        for (uint256 i; i < vaults.length;) {
+            address vaultAsset;
+            if (vaults[i].isYearnVaultV2) {
+                vaultAsset = IYearnVaultV2(vaults[i].vault).token();
+                assetsOut[i] =
+                    Math.mulDiv(shareIn, IYearnVaultV2(vaults[i].vault).pricePerShare(), 1e18, Math.Rounding.Up) + 1;
+            } else {
+                vaultAsset = IERC4626(vaults[i].vault).asset();
+                assetsOut[i] = IERC4626(vaults[i].vault).previewRedeem(shareIn);
+            }
+            if (i < vaults.length - 1 && vaultAsset != vaults[i + 1].vault) {
+                revert VaultMismatch();
+            }
+            shareIn = assetsOut[i];
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

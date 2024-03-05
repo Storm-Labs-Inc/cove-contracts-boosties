@@ -27,6 +27,50 @@ contract Router_ForkedTest is BaseTest {
         (user, userPriv) = createUserAndKey("user");
     }
 
+    function test_previewDeposits() public {
+        uint256 assetAmount = 1 ether;
+        Yearn4626RouterExt.Vault[] memory previewDeposit = new Yearn4626RouterExt.Vault[](2);
+        previewDeposit[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
+        previewDeposit[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
+
+        uint256[] memory shares = router.previewDeposits(previewDeposit, assetAmount);
+        assertEq(shares[0], 949_289_266_142_683_599);
+        assertEq(shares[1], 949_289_266_142_683_599);
+    }
+
+    function test_previewMints() public {
+        uint256 shareOutAmount = 949_289_266_142_683_599;
+        Yearn4626RouterExt.Vault[] memory previewMint = new Yearn4626RouterExt.Vault[](2);
+        previewMint[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
+        previewMint[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
+
+        uint256[] memory assets = router.previewMints(previewMint, shareOutAmount);
+        assertEq(assets[0], 1 ether);
+        assertEq(assets[1], 1 ether);
+    }
+
+    function test_previewWithdraws() public {
+        uint256 assetOutAmount = 1 ether;
+        Yearn4626RouterExt.Vault[] memory previewWithdraw = new Yearn4626RouterExt.Vault[](2);
+        previewWithdraw[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
+        previewWithdraw[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
+
+        uint256[] memory shares = router.previewWithdraws(previewWithdraw, assetOutAmount);
+        assertEq(shares[0], 1 ether);
+        assertEq(shares[1], 949_289_266_142_683_599);
+    }
+
+    function test_previewRedeems() public {
+        uint256 shareOutAmount = 949_289_266_142_683_599;
+        Yearn4626RouterExt.Vault[] memory previewRedeem = new Yearn4626RouterExt.Vault[](2);
+        previewRedeem[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
+        previewRedeem[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
+
+        uint256[] memory assets = router.previewRedeems(previewRedeem, shareOutAmount);
+        assertEq(assets[0], 949_289_266_142_683_599);
+        assertEq(assets[1], 1 ether);
+    }
+
     function test_curveLpTokenToYearnGauge() public {
         uint256 depositAmount = 1 ether;
         airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount);
@@ -53,7 +97,7 @@ contract Router_ForkedTest is BaseTest {
             address(router),
             // When depositing into vaults, the shares may be less than the deposit amount
             // For yearn v2 vaults, use pricePerShare to calculate the shares
-            // 1e18 * depositAmount / YearnVaultV2.pricePerShare()
+            // 1e18 * depositAmount / YearnVaultV2.pricePerShare() - 1
             949_289_266_142_683_599
         );
         data[4] = abi.encodeWithSelector(

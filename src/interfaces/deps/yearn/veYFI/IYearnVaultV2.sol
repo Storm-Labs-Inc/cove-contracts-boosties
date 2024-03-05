@@ -6,4 +6,5 @@ interface IYearnVaultV2 {
     function token() external view returns (address);
     function deposit(uint256 _amount, address _recipient) external returns (uint256 shares);
     function deposit(uint256 _amount) external returns (uint256 shares);
+    function pricePerShare() external view returns (uint256);
 }
