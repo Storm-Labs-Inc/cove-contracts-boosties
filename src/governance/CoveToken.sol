@@ -46,15 +46,17 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     mapping(address => bool) public allowedTransferee;
     /// @notice Mapping to track addresses allowed to initiate transfers.
     mapping(address => bool) public allowedTransferrer;
+    /// @notice State variable to make the events orderable for external observers if they are called in the same block.
+    uint256 private _eventId;
 
     /// @dev Emitted when a transferrer is allowed.
-    event TransferrerAllowed(address indexed target);
+    event TransferrerAllowed(address indexed target, uint256 eventId);
     /// @dev Emitted when a transferrer is disallowed.
-    event TransferrerDisallowed(address indexed target);
+    event TransferrerDisallowed(address indexed target, uint256 eventId);
     /// @dev Emitted when a transferee is allowed.
-    event TransfereeAllowed(address indexed target);
+    event TransfereeAllowed(address indexed target, uint256 eventId);
     /// @dev Emitted when a transferee is disallowed.
-    event TransfereeDisallowed(address indexed target);
+    event TransfereeDisallowed(address indexed target, uint256 eventId);
 
     /**
      * @notice Deploys this contract with the initial owner and minting allowed after a specified time.
@@ -149,22 +151,26 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
 
     function _addToAllowedTransferee(address target) internal {
         allowedTransferee[target] = true;
-        emit TransfereeAllowed(target);
+        emit TransfereeAllowed(target, _eventId);
+        ++_eventId;
     }
 
     function _removeFromAllowedTransferee(address target) internal {
         allowedTransferee[target] = false;
-        emit TransfereeDisallowed(target);
+        emit TransfereeDisallowed(target, _eventId);
+        ++_eventId;
     }
 
     function _addToAllowedTransferrer(address target) internal {
         allowedTransferrer[target] = true;
-        emit TransferrerAllowed(target);
+        emit TransferrerAllowed(target, _eventId);
+        ++_eventId;
     }
 
     function _removeFromAllowedTransferrer(address target) internal {
         allowedTransferrer[target] = false;
-        emit TransferrerDisallowed(target);
+        emit TransferrerDisallowed(target, _eventId);
+        ++_eventId;
     }
 
     /**

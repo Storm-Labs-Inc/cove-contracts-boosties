@@ -13,6 +13,11 @@ contract CoveToken_Test is BaseTest {
     bytes32 public minterRole = keccak256("MINTER_ROLE");
     uint256 public deployTimestamp;
 
+    event TransferrerAllowed(address indexed target, uint256 eventId);
+    event TransferrerDisallowed(address indexed target, uint256 eventId);
+    event TransfereeAllowed(address indexed target, uint256 eventId);
+    event TransfereeDisallowed(address indexed target, uint256 eventId);
+
     function setUp() public override {
         owner = createUser("Owner");
         alice = createUser("Alice");
@@ -272,5 +277,26 @@ contract CoveToken_Test is BaseTest {
         vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
         vm.startPrank(user);
         coveToken.removeAllowedTransferrer(user);
+    }
+
+    function test_events_eventIdIncrements() public {
+        vm.startPrank(owner);
+
+        vm.expectEmit(false, false, false, true);
+        // initialize adds the zero address and owner as transferrers so eventId starts at 2
+        emit TransferrerAllowed(address(alice), 2);
+        coveToken.addAllowedTransferrer(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit TransferrerDisallowed(address(alice), 3);
+        coveToken.removeAllowedTransferrer(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit TransfereeAllowed(address(alice), 4);
+        coveToken.addAllowedTransferee(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit TransfereeDisallowed(address(alice), 5);
+        coveToken.removeAllowedTransferee(address(alice));
     }
 }
