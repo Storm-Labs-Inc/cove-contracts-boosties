@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { IFlashLoanProvider } from "src/interfaces/deps/balancer/IFlashLoanProvider.sol";
 import { IRedemption } from "src/interfaces/deps/yearn/veYFI/IRedemption.sol";
