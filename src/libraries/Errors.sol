@@ -117,6 +117,8 @@ library Errors {
 
     /// @dev Error for when a transfer is attempted before it is allowed.
     error TransferNotAllowedYet();
+    /// @dev Error for when an address is being added as both a sender and a receiver.
+    error CannotBeBothSenderAndReceiver();
     /// @dev Error for when an unpause is attempted too early.
     error UnpauseTooEarly();
     /// @dev Error for when the pause period is too long.
