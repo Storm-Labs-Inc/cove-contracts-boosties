@@ -229,9 +229,10 @@ contract ERC20RewardsGauge_Test is BaseTest {
         assertEq(newRewardData.leftOver, (leftoverReward + rewardAmount1) % _WEEK, "leftOver should be updated");
     }
 
-    function test_depositRewardToken_revertWhen_unauthorized(address distributor, address user) public {
+    function test_depositRewardToken_revertWhen_Unauthorized(address distributor, address user) public {
         vm.assume(distributor != address(0));
         vm.assume(user != distributor);
+        vm.assume(!rewardsGauge.hasRole(_MANAGER_ROLE, user));
         vm.prank(admin);
         rewardsGauge.addReward(address(dummyRewardToken), distributor);
         vm.prank(user);

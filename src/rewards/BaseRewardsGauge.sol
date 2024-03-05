@@ -213,7 +213,7 @@ abstract contract BaseRewardsGauge is
      * @param amount amount of reward tokens to deposit
      */
     function depositRewardToken(address rewardToken, uint256 amount) external nonReentrant {
-        if (msg.sender != _rewardData[rewardToken].distributor) {
+        if (!(msg.sender == rewardData[rewardToken].distributor || hasRole(_MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
 
