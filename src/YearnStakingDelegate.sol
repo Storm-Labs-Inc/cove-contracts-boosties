@@ -52,6 +52,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
     address private _treasury;
     bool private _shouldPerpetuallyLock;
     address private _swapAndLock;
+    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     event LockYfi(address indexed sender, uint256 amount);
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
@@ -92,8 +93,10 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
         blockedTargets[_DYFI_REWARD_POOL] = true;
         blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
         blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
+        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(_MANAGER_ROLE, admin);
+        _grantRole(_TIMELOCK_ROLE, admin);
         _grantRole(_MANAGER_ROLE, manager);
 
         // Interactions
@@ -224,7 +227,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
      * @notice Set treasury address. This address will receive a portion of the rewards
      * @param treasury_ address to receive rewards
      */
-    function setTreasury(address treasury_) external onlyRole(_MANAGER_ROLE) {
+    function setTreasury(address treasury_) external onlyRole(_TIMELOCK_ROLE) {
         // Checks
         if (treasury_ == address(0)) {
             revert Errors.ZeroAddress();
@@ -237,7 +240,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
      * @notice Sets the address for the SwapAndLock contract.
      * @param newSwapAndLock Address of the SwapAndLock contract.
      */
-    function setSwapAndLock(address newSwapAndLock) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSwapAndLock(address newSwapAndLock) external onlyRole(_TIMELOCK_ROLE) {
         // Checks
         if (newSwapAndLock == address(0)) {
             revert Errors.ZeroAddress();
@@ -261,7 +264,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
         uint80 veYfiPct
     )
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(_TIMELOCK_ROLE)
     {
         _setGaugeRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
     }
@@ -271,7 +274,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
      * @param id name of the space in snapshot to apply delegation. For yearn it is "veyfi.eth"
      * @param delegate address to delegate voting power to
      */
-    function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(_TIMELOCK_ROLE) {
         // Checks
         if (delegate == address(0)) {
             revert Errors.ZeroAddress();
@@ -317,7 +320,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
     )
         external
         nonReentrant
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(_TIMELOCK_ROLE)
     {
         // Checks
         if (gauge == address(0) || stakingDelegateRewards == address(0)) {
@@ -338,14 +341,14 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
      * @notice Set perpetual lock status
      * @param lock if true, lock YFI for 4 years after each harvest
      */
-    function setPerpetualLock(bool lock) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setPerpetualLock(bool lock) external onlyRole(_TIMELOCK_ROLE) {
         _setPerpetualLock(lock);
     }
 
     /**
      * @notice early unlock veYFI and send YFI to treasury
      */
-    function earlyUnlock() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function earlyUnlock() external onlyRole(_TIMELOCK_ROLE) {
         // Checks
         if (_shouldPerpetuallyLock) {
             revert Errors.PerpetualLockEnabled();

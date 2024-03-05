@@ -12,6 +12,7 @@ contract MiniChefV3_Test is BaseTest {
     MiniChefV3 public miniChef;
     ERC20Mock public rewardToken;
     ERC20Mock public lpToken;
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     // Addresses
     address public alice;
@@ -84,8 +85,8 @@ contract MiniChefV3_Test is BaseTest {
         assertEq(miniChef.getPoolInfo(newPoolLength - 1).allocPoint, allocPoint, "AllocPoint not set correctly");
     }
 
-    function test_add_revertWhen_CallerIsNotAdmin() public {
-        vm.expectRevert(_formatAccessControlError(bob, miniChef.DEFAULT_ADMIN_ROLE()));
+    function test_add_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(bob, TIMELOCK_ROLE));
         vm.startPrank(bob);
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
     }
@@ -116,10 +117,10 @@ contract MiniChefV3_Test is BaseTest {
         assertEq(address(miniChef.rewarder(pid)), address(newRewarder), "Rewarder is not overwritten");
     }
 
-    function test_set_revertWhen_CallerIsNotAdmin() public {
+    function test_set_revertWhen_CallerIsNotTimelock() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
-        vm.expectRevert(_formatAccessControlError(bob, miniChef.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(bob, TIMELOCK_ROLE));
         vm.startPrank(bob);
         miniChef.set(pid, 1000, lpToken, IMiniChefV3Rewarder(address(0)), false);
     }
@@ -154,9 +155,9 @@ contract MiniChefV3_Test is BaseTest {
         assertEq(miniChef.rewardPerSecond(), rate, "Reward per second not set correctly");
     }
 
-    function testFuzz_setRewardPerSecond_revertWhen_CallerIsNotAdmin(uint256 rate) public {
+    function testFuzz_setRewardPerSecond_revertWhen_CallerIsNotTimelock(uint256 rate) public {
         rate = bound(rate, 0, miniChef.MAX_REWARD_TOKEN_PER_SECOND());
-        vm.expectRevert(_formatAccessControlError(bob, miniChef.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(bob, TIMELOCK_ROLE));
         vm.startPrank(bob);
         miniChef.setRewardPerSecond(rate);
     }
