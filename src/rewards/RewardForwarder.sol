@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
 
@@ -12,7 +13,7 @@ import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
  * @dev This contract is responsible for forwarding reward tokens to a rewards gauge and optionally to a treasury.
  * It allows for a portion of the rewards to be redirected to a treasury address.
  */
-contract RewardForwarder is AccessControlUpgradeable {
+contract RewardForwarder is AccessControlEnumerableUpgradeable {
     using SafeERC20 for IERC20;
 
     uint256 private constant _MAX_BPS = 10_000;
