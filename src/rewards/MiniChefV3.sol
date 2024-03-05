@@ -79,7 +79,9 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
     event LogRewardPerSecond(uint256 rewardPerSecond);
     event LogRewardCommitted(uint256 amount);
-    event LogRewarderEmergencyWithdrawFaulty(uint256 indexed pid, address indexed user, address to, uint256 amount);
+    event LogRewarderEmergencyWithdrawFaulty(
+        address indexed user, uint256 indexed pid, uint256 amount, address indexed to
+    );
 
     /**
      * @dev Constructs the MiniChefV3 contract with a specified reward token and admin address.
@@ -421,8 +423,7 @@ contract MiniChefV3 is Multicall, AccessControl, Rescuable, SelfPermit {
         if (address(_rewarder) != address(0)) {
             try _rewarder.onReward(pid, msg.sender, to, 0, 0) { }
             catch {
-                // slither-disable-next-line reentrancy-events
-                emit LogRewarderEmergencyWithdrawFaulty(pid, msg.sender, to, amount);
+                emit LogRewarderEmergencyWithdrawFaulty(msg.sender, pid, amount, to);
             }
         }
     }
