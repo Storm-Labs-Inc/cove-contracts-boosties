@@ -19,7 +19,7 @@ import { CoveToken } from "src/governance/CoveToken.sol";
 import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -425,47 +425,55 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
         _verifyRole("YearnStakingDelegate", _MANAGER_ROLE, manager);
         _verifyRole("YearnStakingDelegate", _PAUSER_ROLE, manager);
-        _verifyMissingRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, broadcaster);
-        _verifyMissingRole("YearnStakingDelegate", _MANAGER_ROLE, broadcaster);
+        _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", _MANAGER_ROLE, 2);
+        _verifyRoleCount("YearnStakingDelegate", _PAUSER_ROLE, 1);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
-        _verifyMissingRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);
         /// DYFIRedeemer
         _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
-        _verifyMissingRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRoleCount("DYFIRedeemer", DEFAULT_ADMIN_ROLE, 1);
         /// CoveYFI
-        _verifyMissingRole("CoveYFI", DEFAULT_ADMIN_ROLE, broadcaster);
         _verifyRole("CoveYFI", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRoleCount("CoveYFI", DEFAULT_ADMIN_ROLE, 1);
         /// MasterRegistry
         _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
         _verifyRole("MasterRegistry", _MANAGER_ROLE, broadcaster);
-        _verifyMissingRole("MasterRegistry", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRoleCount("MasterRegistry", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("MasterRegistry", _MANAGER_ROLE, 2);
         /// DYFIRedeemer
         _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
-        _verifyMissingRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRoleCount("DYFIRedeemer", DEFAULT_ADMIN_ROLE, 1);
         /// CoveToken
         _verifyRole("CoveToken", DEFAULT_ADMIN_ROLE, admin);
-        _verifyMissingRole("CoveToken", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRoleCount("CoveToken", DEFAULT_ADMIN_ROLE, 1);
         /// MiniChefV3
         _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
         _verifyRole("MiniChefV3", _PAUSER_ROLE, pauser);
-        _verifyMissingRole("MiniChefV3", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRoleCount("MiniChefV3", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("MiniChefV3", _PAUSER_ROLE, 1);
         /// CoveYearnGaugeFactory
         _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
         _verifyRole("CoveYearnGaugeFactory", _MANAGER_ROLE, broadcaster);
+        _verifyRoleCount("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("CoveYearnGaugeFactory", _MANAGER_ROLE, 1);
         /// SwapAndLock
         _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
-        _verifyMissingRole("SwapAndLock", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRoleCount("SwapAndLock", DEFAULT_ADMIN_ROLE, 1);
     }
 
     function _verifyRole(string memory contractName, bytes32 role, address user) internal view {
-        AccessControl contractInstance = AccessControl(deployer.getAddress(contractName));
+        AccessControlEnumerable contractInstance = AccessControlEnumerable(deployer.getAddress(contractName));
         require(contractInstance.hasRole(role, user), string.concat("Incorrect role for: ", contractName));
     }
 
-    function _verifyMissingRole(string memory contractName, bytes32 role, address user) internal view {
-        AccessControl contractInstance = AccessControl(deployer.getAddress(contractName));
-        require(!contractInstance.hasRole(role, user), string.concat("Incorrect missing role for: ", contractName));
+    function _verifyRoleCount(string memory contractName, bytes32 role, uint256 count) internal view {
+        AccessControlEnumerable contractInstance = AccessControlEnumerable(deployer.getAddress(contractName));
+        require(
+            contractInstance.getRoleMemberCount(role) == count,
+            string.concat("Incorrect role count for: ", contractName)
+        );
     }
 
     function getCurrentDeployer() external view returns (Deployer) {
