@@ -10,7 +10,6 @@ contract CoveToken_Test is BaseTest {
     address public owner;
     address public alice;
     address public bob;
-    bytes32 public minterRole = keccak256("MINTER_ROLE");
     uint256 public deployTimestamp;
 
     event SenderAllowed(address indexed target, uint256 eventId);
@@ -25,15 +24,16 @@ contract CoveToken_Test is BaseTest {
         coveToken = new CoveToken(owner);
         deployTimestamp = block.timestamp;
         vm.prank(owner);
-        coveToken.grantRole(minterRole, owner);
+        coveToken.grantRole(_MINTER_ROLE, owner);
     }
 
     function test_initialize() public {
-        require(coveToken.hasRole(coveToken.DEFAULT_ADMIN_ROLE(), owner), "Owner should have DEFAULT_ADMIN_ROLE");
+        assertTrue(coveToken.hasRole(coveToken.DEFAULT_ADMIN_ROLE(), owner), "Owner should have DEFAULT_ADMIN_ROLE");
+        assertTrue(coveToken.hasRole(_TIMELOCK_ROLE, owner), "Owner should have TIMELOCK_ROLE");
         assertEq(
             coveToken.mintingAllowedAfter(), block.timestamp + 3 * 52 weeks, "Minting should be allowed after 3 years"
         );
-        require(coveToken.allowedSender(owner), "Owner should be allowed to transfer");
+        assertTrue(coveToken.allowedSender(owner), "Owner should be allowed to transfer");
         assertEq(coveToken.paused(), true, "Contract should be paused");
         assertEq(coveToken.balanceOf(owner), 1_000_000_000 ether, "Owner should have initial supply");
     }
@@ -49,7 +49,7 @@ contract CoveToken_Test is BaseTest {
             "Available supply to mint should be 6% of the current supply"
         );
         vm.startPrank(owner);
-        coveToken.grantRole(minterRole, owner);
+        coveToken.grantRole(_MINTER_ROLE, owner);
         coveToken.mint(owner, coveToken.availableSupplyToMint());
         assertEq(
             coveToken.totalSupply(),
@@ -95,7 +95,7 @@ contract CoveToken_Test is BaseTest {
     function testFuzz_mint_revertWhen_notMinter(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, 0, coveToken.availableSupplyToMint());
-        vm.expectRevert(_formatAccessControlError(alice, minterRole));
+        vm.expectRevert(_formatAccessControlError(alice, _MINTER_ROLE));
         vm.startPrank(alice);
         coveToken.mint(alice, amount);
     }
@@ -185,9 +185,9 @@ contract CoveToken_Test is BaseTest {
         coveToken.addAllowedReceiver(user);
     }
 
-    function testFuzz_addAllowedReceiver_revertWhen_notAdmin(address user) public {
+    function testFuzz_addAllowedReceiver_revertWhen_CallerIsNotTimelock(address user) public {
         vm.assume(user != address(0) && user != owner);
-        vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(user, _TIMELOCK_ROLE));
         vm.startPrank(user);
         coveToken.addAllowedReceiver(user);
     }
@@ -220,11 +220,11 @@ contract CoveToken_Test is BaseTest {
         coveToken.transfer(user, amount);
     }
 
-    function testFuzz_removeFromAllowedReceiver_revertWhen_notAdmin(address user) public {
+    function testFuzz_removeFromAllowedReceiver_revertWhen_CallerIsNotTimelock(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(owner);
         coveToken.addAllowedReceiver(user);
-        vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(user, _TIMELOCK_ROLE));
         vm.startPrank(user);
         coveToken.removeAllowedReceiver(user);
     }
@@ -263,10 +263,10 @@ contract CoveToken_Test is BaseTest {
         coveToken.transfer(owner, amount);
     }
 
-    function testFuzz_addAllowedSender_revertWhen_notAdmin(address user) public {
+    function testFuzz_addAllowedSender_revertWhen_CallerIsNotTimelock(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(user);
-        vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(user, _TIMELOCK_ROLE));
         coveToken.addAllowedSender(user);
     }
 
@@ -286,11 +286,11 @@ contract CoveToken_Test is BaseTest {
         coveToken.transfer(alice, amount);
     }
 
-    function testFuzz_removeFromAllowedSender_revertWhen_notAdmin(address user) public {
+    function testFuzz_removeFromAllowedSender_revertWhen_CallerIsNotTimelock(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(owner);
         coveToken.addAllowedSender(user);
-        vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(user, _TIMELOCK_ROLE));
         vm.startPrank(user);
         coveToken.removeAllowedSender(user);
     }
@@ -314,5 +314,13 @@ contract CoveToken_Test is BaseTest {
         vm.expectEmit(false, false, false, true);
         emit ReceiverDisallowed(address(alice), 5);
         coveToken.removeAllowedReceiver(address(alice));
+    }
+
+    function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
+        vm.prank(owner);
+        coveToken.grantRole(DEFAULT_ADMIN_ROLE, alice);
+        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
+        vm.prank(alice);
+        coveToken.grantRole(_TIMELOCK_ROLE, alice);
     }
 }
