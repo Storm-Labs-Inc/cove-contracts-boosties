@@ -192,9 +192,17 @@ contract YearnStakingDelegate is
         if (gaugeRewardReceiver == address(0)) {
             revert Errors.GaugeRewardsNotYetAdded();
         }
+        address treasury_ = _treasury;
+        if (treasury_ == address(0)) {
+            revert Errors.TreasuryNotSet();
+        }
+        address coveYfiRewardForwarder_ = _coveYfiRewardForwarder;
+        if (coveYfiRewardForwarder_ == address(0)) {
+            revert Errors.CoveYfiRewardForwarderNotSet();
+        }
         // Interactions
         return GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLockContract, _treasury, _coveYfiRewardForwarder, _gaugeRewardSplit[gauge]
+            swapAndLockContract, treasury_, coveYfiRewardForwarder_, _gaugeRewardSplit[gauge]
         );
     }
 
@@ -213,7 +221,7 @@ contract YearnStakingDelegate is
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        IERC20(_YFI).safeTransfer(rewardForwarder, IERC20(_D_YFI).balanceOf(address(this)));
+        IERC20(_D_YFI).safeTransfer(rewardForwarder, IERC20(_D_YFI).balanceOf(address(this)));
     }
 
     /**
@@ -254,7 +262,7 @@ contract YearnStakingDelegate is
         return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
     }
 
-    function setCoveYfiRewardForwarder(address forwarder) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setCoveYfiRewardForwarder(address forwarder) external onlyRole(_TIMELOCK_ROLE) {
         // Checks
         if (forwarder == address(0)) {
             revert Errors.ZeroAddress();
@@ -465,6 +473,14 @@ contract YearnStakingDelegate is
      */
     function treasury() external view returns (address) {
         return _treasury;
+    }
+
+    /**
+     * @notice Get the address of the stored CoveYFI Reward Forwarder
+     * @return The address of the CoveYFI Reward Forwarder
+     */
+    function coveYfiRewardForwarder() external view returns (address) {
+        return _coveYfiRewardForwarder;
     }
 
     /**

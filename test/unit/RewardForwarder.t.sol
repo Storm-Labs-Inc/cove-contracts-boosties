@@ -49,17 +49,11 @@ contract RewardForwarder_Test is BaseTest {
         assertEq(token.allowance(address(rewardForwarder), destination), type(uint256).max);
     }
 
-    function test_forwardRewardToken() public {
-        airdrop(IERC20(token), address(rewardForwarder), 1000);
-
-        // approve reward token
+    function testFuzz_forwardRewardToken(uint256 amount) public {
+        airdrop(IERC20(token), address(rewardForwarder), amount);
+        // approve reward token and forward it
         rewardForwarder.approveRewardToken(address(token));
-        // so the entire balance should be forwarded to the destination
-        assertEq(token.balanceOf(destination), 1000);
-
-        airdrop(IERC20(token), address(rewardForwarder), 1000);
-
         rewardForwarder.forwardRewardToken(address(token));
-        assertEq(token.balanceOf(destination), 2000);
+        assertEq(token.balanceOf(destination), amount);
     }
 }

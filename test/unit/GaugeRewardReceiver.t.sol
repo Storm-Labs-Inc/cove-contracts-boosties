@@ -99,19 +99,22 @@ contract GaugeRewardReceiver_Test is BaseTest {
         GaugeRewardReceiver(gaugeRewardReceiver).harvest(SWAP_AND_LOCK, TREASURY, coveYfiRewardForwarder, rewardSplit);
 
         uint256 expectedTreasuryAmount = rewardSplit.treasury * totalRewardAmount / 1e18;
+        uint256 expectedCoveYfiRewardForwarderAmount = rewardSplit.coveYfi * totalRewardAmount / 1e18;
         uint256 expectedSwapAndLockAmount = rewardSplit.lock * totalRewardAmount / 1e18;
-        uint256 expectedStrategyAmount = totalRewardAmount - expectedTreasuryAmount - expectedSwapAndLockAmount;
+        uint256 expectedStrategyAmount = totalRewardAmount - expectedTreasuryAmount
+            - expectedCoveYfiRewardForwarderAmount - expectedSwapAndLockAmount;
 
         assertEq(IERC20(rewardToken).balanceOf(gaugeRewardReceiver), 0);
         assertEq(IERC20(rewardToken).balanceOf(TREASURY), expectedTreasuryAmount);
+        assertEq(IERC20(rewardToken).balanceOf(coveYfiRewardForwarder), expectedCoveYfiRewardForwarderAmount);
         assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
         assertEq(IERC20(rewardToken).balanceOf(SWAP_AND_LOCK), expectedSwapAndLockAmount);
     }
 
-    function testFuzz_harvest(uint256 amount, uint64 treasurySplit, uint64 coveYfiSplit, uint64 strategySplit) public {
+    function testFuzz_harvest(uint256 amount, uint64 treasurySplit, uint64 coveYfiSplit, uint64 lockSplit) public {
         vm.assume(amount < type(uint256).max / 1e18);
-        vm.assume(uint256(treasurySplit) + strategySplit + coveYfiSplit < 1e18);
-        uint64 lockSplit = 1e18 - treasurySplit - strategySplit;
+        vm.assume(uint256(treasurySplit) + lockSplit + coveYfiSplit < 1e18);
+        uint64 userSplit = 1e18 - treasurySplit - coveYfiSplit - lockSplit;
 
         gaugeRewardReceiver = _deployCloneWithArgs(STAKING_DELEGATE, gauge, rewardToken, stakingDelegateRewards);
         GaugeRewardReceiver(gaugeRewardReceiver).initialize(admin);
@@ -122,15 +125,18 @@ contract GaugeRewardReceiver_Test is BaseTest {
             SWAP_AND_LOCK,
             TREASURY,
             coveYfiRewardForwarder,
-            IYearnStakingDelegate.RewardSplit(treasurySplit, coveYfiSplit, strategySplit, lockSplit)
+            IYearnStakingDelegate.RewardSplit(treasurySplit, coveYfiSplit, userSplit, lockSplit)
         );
 
         uint256 expectedTreasuryAmount = treasurySplit * amount / 1e18;
+        uint256 expectedCoveYfiRewardForwarderAmount = coveYfiSplit * amount / 1e18;
         uint256 expectedSwapAndLockAmount = lockSplit * amount / 1e18;
-        uint256 expectedStrategyAmount = amount - expectedTreasuryAmount - expectedSwapAndLockAmount;
+        uint256 expectedStrategyAmount =
+            amount - expectedTreasuryAmount - expectedCoveYfiRewardForwarderAmount - expectedSwapAndLockAmount;
 
         assertEq(IERC20(rewardToken).balanceOf(gaugeRewardReceiver), 0);
         assertEq(IERC20(rewardToken).balanceOf(TREASURY), expectedTreasuryAmount);
+        assertEq(IERC20(rewardToken).balanceOf(coveYfiRewardForwarder), expectedCoveYfiRewardForwarderAmount);
         assertEq(IERC20(rewardToken).balanceOf(stakingDelegateRewards), expectedStrategyAmount);
         assertEq(IERC20(rewardToken).balanceOf(SWAP_AND_LOCK), expectedSwapAndLockAmount);
     }

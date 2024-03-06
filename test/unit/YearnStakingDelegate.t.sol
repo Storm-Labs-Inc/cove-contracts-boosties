@@ -33,6 +33,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     address public yfiRewardPool;
     address public dYfiRewardPool;
     address public mockTarget;
+    address public coveYfiRewardForwarder;
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
@@ -53,6 +54,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     event GaugeRewardSplitSet(address indexed gauge, IYearnStakingDelegate.RewardSplit split);
     event SwapAndLockSet(address swapAndLockContract);
     event TreasurySet(address newTreasury);
+    event CoveYfiRewardForwarderSet(address forwarder);
     event Deposit(address indexed sender, address indexed gauge, uint256 amount);
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
 
@@ -65,8 +67,10 @@ contract YearnStakingDelegate_Test is BaseTest {
         timelock = createUser("timelock");
         // create pauser of the yearnStakingDelegate
         pauser = createUser("pauser");
-        // create an address that will act as a treasury
+        // create an address that will act as the treasury
         treasury = createUser("treasury");
+        // create an address that will act as the coveYfiRewardForwarder
+        coveYfiRewardForwarder = createUser("coveYfiRewardForwarder");
 
         // Deploy base asset
         baseAsset = address(new ERC20Mock());
@@ -117,6 +121,13 @@ contract YearnStakingDelegate_Test is BaseTest {
         emit SwapAndLockSet(swapAndLock);
         vm.prank(timelock);
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
+    }
+
+    function _setCoveYfiRewardForwarder(address forwarder) internal {
+        vm.expectEmit();
+        emit CoveYfiRewardForwarderSet(forwarder);
+        vm.prank(timelock);
+        yearnStakingDelegate.setCoveYfiRewardForwarder(forwarder);
     }
 
     function _setGaugeRewardSplit(
@@ -396,17 +407,29 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_claimBoostRewards() public {
+        _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
         airdrop(IERC20(dYfi), dYfiRewardPool, DYFI_REWARD_AMOUNT);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimBoostRewards();
-        assertEq(IERC20(dYfi).balanceOf(treasury), DYFI_REWARD_AMOUNT, "claimBoostRewards failed");
+        assertEq(IERC20(dYfi).balanceOf(coveYfiRewardForwarder), DYFI_REWARD_AMOUNT, "claimBoostRewards failed");
+    }
+
+    function test_claimBoostRewards_revertWhen_CoveYfiRewardForwarderNotSet() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
+        yearnStakingDelegate.claimBoostRewards();
     }
 
     function test_claimExitRewards() public {
+        _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
         airdrop(IERC20(yfi), yfiRewardPool, YFI_REWARD_AMOUNT);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimExitRewards();
-        assertEq(IERC20(yfi).balanceOf(treasury), YFI_REWARD_AMOUNT, "claimExitRewards failed");
+        assertEq(IERC20(yfi).balanceOf(coveYfiRewardForwarder), YFI_REWARD_AMOUNT, "claimExitRewards failed");
+    }
+
+    function test_claimExitRewards_revertWhen_CoveYfiRewardForwarderNotSet() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
+        yearnStakingDelegate.claimExitRewards();
     }
 
     function testFuzz_setTreasury(address newTreasury) public {

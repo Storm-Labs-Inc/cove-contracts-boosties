@@ -17,6 +17,7 @@ interface IYearnStakingDelegate {
     function withdraw(address gauge, uint256 amount, address receiver) external;
     function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory);
     function harvest(address vault) external returns (uint256);
+    function setCoveYfiRewardForwarder(address forwarder) external;
     function setGaugeRewardSplit(
         address gauge,
         uint64 treasuryPct,

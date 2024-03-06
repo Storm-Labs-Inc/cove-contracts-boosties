@@ -87,6 +87,11 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
     }
 
+    function _setCoveYfiRewardForwarder() internal {
+        vm.prank(timelock);
+        yearnStakingDelegate.setCoveYfiRewardForwarder(coveYfiRewardFowarder);
+    }
+
     function _setGaugeRewardSplit(
         address gauge_,
         uint64 treasurySplit,
@@ -316,6 +321,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     function test_harvest_passWhen_NoVeYFI() public {
         _setSwapAndLock();
         _setGaugeRewards();
+        _setCoveYfiRewardForwarder();
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
@@ -336,6 +342,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _lockYfiForYSD(1e18);
         _setSwapAndLock();
         _setGaugeRewards();
+        _setCoveYfiRewardForwarder();
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         address bob = createUser("bob");
         _airdropGaugeTokens(bob, 1e18);
@@ -361,6 +368,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _lockYfiForYSD(ALICE_YFI);
         _setSwapAndLock();
         _setGaugeRewards();
+        _setCoveYfiRewardForwarder();
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
@@ -381,6 +389,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _lockYfiForYSD(1e18);
         _setSwapAndLock();
         _setGaugeRewards();
+        _setCoveYfiRewardForwarder();
         _setGaugeRewardSplit(gauge, 0.1e18, 0.2e18, 0.3e18, 0.4e18);
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
@@ -391,23 +400,30 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertGt(totalRewardAmount, 0, "harvest failed");
 
         // Calculate split amounts strategy split amount
-        uint256 estimatedTreasurySplit = totalRewardAmount * 0.3e18 / 1e18;
+        uint256 estimatedTreasurySplit = totalRewardAmount * 0.1e18 / 1e18;
+        uint256 estimatedRewardForwarderSplit = totalRewardAmount * 0.2e18 / 1e18;
         uint256 estimatedVeYfiSplit = totalRewardAmount * 0.4e18 / 1e18;
-        uint256 estimatedUserSplit = totalRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
-
-        uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards);
-        assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
+        uint256 estimatedUserSplit =
+            totalRewardAmount - estimatedTreasurySplit - estimatedRewardForwarderSplit - estimatedVeYfiSplit;
 
         uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
         assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");
 
+        uint256 rewardForwarderBalance = IERC20(MAINNET_DYFI).balanceOf(coveYfiRewardFowarder);
+        assertEq(rewardForwarderBalance, estimatedRewardForwarderSplit, "reward forwarder split is incorrect");
+
         uint256 swapAndLockBalance = IERC20(MAINNET_DYFI).balanceOf(address(swapAndLock));
         assertEq(swapAndLockBalance, estimatedVeYfiSplit, "veYfi split is incorrect");
+
+        uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(stakingDelegateRewards);
+        assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
     }
 
     function test_claimBoostRewards() public {
         _lockYfiForYSD(10e18);
         vm.warp(block.timestamp + 1 weeks);
+        vm.prank(timelock);
+        yearnStakingDelegate.setCoveYfiRewardForwarder(coveYfiRewardFowarder);
         yearnStakingDelegate.claimBoostRewards();
         uint256 balanceBefore = IERC20(MAINNET_DYFI).balanceOf(treasury);
         // Alice deposits some vault tokens to a yearn gauge without any veYFI
@@ -423,16 +439,25 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 1 weeks);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimBoostRewards();
-        uint256 balanceAfter = IERC20(MAINNET_DYFI).balanceOf(treasury);
+        uint256 balanceAfter = IERC20(MAINNET_DYFI).balanceOf(coveYfiRewardFowarder);
         assertGt(balanceAfter, balanceBefore, "claimBoostRewards failed");
+    }
+
+    function test_claimBoostRewards_revertWhen_CoveYfiRewardFowarderNotSet() public {
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
+        yearnStakingDelegate.claimBoostRewards();
+        vm.stopPrank();
     }
 
     function test_claimExitRewards() public {
         // Lock YFI for YSD
         _lockYfiForYSD(10e18);
         vm.warp(block.timestamp + 1 weeks);
+        vm.prank(timelock);
+        yearnStakingDelegate.setCoveYfiRewardForwarder(coveYfiRewardFowarder);
         yearnStakingDelegate.claimExitRewards();
-        uint256 balanceBefore = IERC20(MAINNET_YFI).balanceOf(treasury);
+        uint256 balanceBefore = IERC20(MAINNET_YFI).balanceOf(coveYfiRewardFowarder);
         // Lock YFI for the user
         _lockYfiForUser(alice, 10e18, 8 * 52 weeks);
         // Another user early exits
@@ -442,9 +467,16 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 1 weeks);
         // Claim exit rewards
         yearnStakingDelegate.claimExitRewards();
-        uint256 balanceAfter = IERC20(MAINNET_YFI).balanceOf(treasury);
-        // Assert the treasury balance is increased by the expected amount
+        uint256 balanceAfter = IERC20(MAINNET_YFI).balanceOf(coveYfiRewardFowarder);
+        // Assert the coveYfiRewardFowarder balance is increased by the expected amount
         assertGt(balanceAfter, balanceBefore, "claimBoostRewards failed");
+    }
+
+    function test_claimExitRewards_revertWhen_CoveYfiRewardFowarderNotSet() public {
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
+        yearnStakingDelegate.claimExitRewards();
+        vm.stopPrank();
     }
 
     function test_setSnapshotDelegate() public {
@@ -497,8 +529,9 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c, d);
         IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.getGaugeRewardSplit(gauge);
         assertEq(rewardSplit.treasury, a, "setGaugeRewardSplit failed, treasury split is incorrect");
-        assertEq(rewardSplit.user, b, "setGaugeRewardSplit failed, user split is incorrect");
-        assertEq(rewardSplit.lock, c, "setGaugeRewardSplit failed, lock split is incorrect");
+        assertEq(rewardSplit.coveYfi, b, "setGaugeRewardSplit failed, coveYfi split is incorrect");
+        assertEq(rewardSplit.user, c, "setGaugeRewardSplit failed, user split is incorrect");
+        assertEq(rewardSplit.lock, d, "setGaugeRewardSplit failed, lock split is incorrect");
     }
 
     function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(
