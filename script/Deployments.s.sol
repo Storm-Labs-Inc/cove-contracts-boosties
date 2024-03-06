@@ -356,6 +356,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 ysdRewardsGaugeImpl,
                 treasury,
                 admin,
+                manager,
+                pauser,
                 options
             )
         );
@@ -422,6 +424,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         /// YearnStakingDelegate
         _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
         _verifyRole("YearnStakingDelegate", _MANAGER_ROLE, manager);
+        _verifyRole("YearnStakingDelegate", _PAUSER_ROLE, manager);
         _verifyMissingRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, broadcaster);
         _verifyMissingRole("YearnStakingDelegate", _MANAGER_ROLE, broadcaster);
         /// StakingDelegateRewards
@@ -445,6 +448,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyMissingRole("CoveToken", DEFAULT_ADMIN_ROLE, broadcaster);
         /// MiniChefV3
         _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("MiniChefV3", _PAUSER_ROLE, pauser);
         _verifyMissingRole("MiniChefV3", DEFAULT_ADMIN_ROLE, broadcaster);
         /// CoveYearnGaugeFactory
         _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);

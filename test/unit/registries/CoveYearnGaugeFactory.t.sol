@@ -31,6 +31,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
 
     address public treasuryMultisig;
     address public gaugeAdmin;
+    address public gaugeManager;
+    address public gaugePauser;
 
     function setUp() public override {
         cove = new ERC20Mock();
@@ -58,6 +60,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
 
         treasuryMultisig = createUser("treasuryMultisig");
         gaugeAdmin = createUser("gaugeAdmin");
+        gaugeManager = createUser("gaugeManager");
+        gaugePauser = createUser("gaugePauser");
 
         factory = new CoveYearnGaugeFactory({
             factoryAdmin: address(this),
@@ -67,7 +71,9 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
             erc20RewardsGaugeImpl_: address(erc20RewardsGaugeImpl),
             ysdRewardsGaugeImpl_: address(ysdRewardsGaugeImpl),
             treasuryMultisig_: treasuryMultisig,
-            gaugeAdmin_: gaugeAdmin
+            gaugeAdmin_: gaugeAdmin,
+            gaugeManager_: gaugeManager,
+            gaugePauser_: gaugePauser
         });
     }
 
@@ -81,6 +87,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertEq(factory.ysdRewardsGaugeImpl(), address(ysdRewardsGaugeImpl));
         assertEq(factory.treasuryMultisig(), treasuryMultisig);
         assertEq(factory.gaugeAdmin(), gaugeAdmin);
+        assertEq(factory.gaugeManager(), gaugeManager);
+        assertEq(factory.gaugePauser(), gaugePauser);
     }
 
     function test_deployCoveGauges() public {
@@ -273,5 +281,27 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     function test_setGaugeAdmin_revertWhen_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         factory.setGaugeAdmin(address(0));
+    }
+
+    function test_setGaugeManager() public {
+        address newGaugeManager = createUser("newManager");
+        factory.setGaugeManager(newGaugeManager);
+        assertEq(factory.gaugeManager(), newGaugeManager);
+    }
+
+    function test_setGaugeManager_revertWhen_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        factory.setGaugeManager(address(0));
+    }
+
+    function test_setGaugePauser() public {
+        address newGaugePauser = createUser("newPauser");
+        factory.setGaugePauser(newGaugePauser);
+        assertEq(factory.gaugePauser(), newGaugePauser);
+    }
+
+    function test_setGaugePauser_revertWhen_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        factory.setGaugePauser(address(0));
     }
 }

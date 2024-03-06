@@ -11,6 +11,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 
 /**
  * @title Cove Yearn Gauge Factory
@@ -19,7 +20,7 @@ import { Errors } from "src/libraries/Errors.sol";
  * non-auto-compounding gauges.
  * It also manages the reward forwarder implementations and various administrative roles.
  */
-contract CoveYearnGaugeFactory is AccessControlEnumerable {
+contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
     struct GaugeInfoStored {
         address coveYearnStrategy;
         address autoCompoundingGauge;
@@ -44,6 +45,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
     }
 
     bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
     address private constant _DYFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     // slither-disable-start naming-convention
     address public immutable YEARN_STAKING_DELEGATE;
@@ -54,6 +56,8 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
     address public ysdRewardsGaugeImpl;
     address public treasuryMultisig;
     address public gaugeAdmin;
+    address public gaugeManager;
+    address public gaugePauser;
 
     address[] public supportedYearnGauges;
     mapping(address => GaugeInfoStored) public yearnGaugeInfoStored;
@@ -82,7 +86,9 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
         address erc20RewardsGaugeImpl_,
         address ysdRewardsGaugeImpl_,
         address treasuryMultisig_,
-        address gaugeAdmin_
+        address gaugeAdmin_,
+        address gaugeManager_,
+        address gaugePauser_
     )
         payable
     {
@@ -94,6 +100,8 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
         _setYsdRewardsGaugeImplementation(ysdRewardsGaugeImpl_);
         _setTreasuryMultisig(treasuryMultisig_);
         _setGaugeAdmin(gaugeAdmin_);
+        _setGaugeManager(gaugeManager_);
+        _setGaugePauser(gaugePauser_);
         _grantRole(DEFAULT_ADMIN_ROLE, factoryAdmin);
         _grantRole(_MANAGER_ROLE, factoryAdmin);
     }
@@ -185,6 +193,8 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
         }
         // Cache storage vars as memory vars
         address gaugeAdmin_ = gaugeAdmin;
+        address gaugeManager_ = gaugeManager;
+        address gaugePauser_ = gaugePauser;
         address rewardForwarderImpl_ = rewardForwarderImpl;
         address treasuryMultisig_ = treasuryMultisig;
 
@@ -218,9 +228,11 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
             coveStratGauge.addReward(COVE, address(forwarder));
             // Replace admin and manager for the auto-compounding gauge
             coveStratGauge.grantRole(DEFAULT_ADMIN_ROLE, gaugeAdmin_);
-            coveStratGauge.grantRole(_MANAGER_ROLE, gaugeAdmin_);
+            coveStratGauge.grantRole(_MANAGER_ROLE, gaugeManager_);
+            coveStratGauge.grantRole(_PAUSER_ROLE, gaugePauser_);
             coveStratGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
             coveStratGauge.renounceRole(_MANAGER_ROLE, address(this));
+            coveStratGauge.renounceRole(_PAUSER_ROLE, address(this));
         }
 
         // Initialize the non-auto-compounding gauge
@@ -242,9 +254,11 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
             coveYsdGauge.addReward(_DYFI, address(forwarder));
             // Replace admin and manager for the non-auto-compounding gauge
             coveYsdGauge.grantRole(DEFAULT_ADMIN_ROLE, gaugeAdmin_);
-            coveYsdGauge.grantRole(_MANAGER_ROLE, gaugeAdmin_);
+            coveYsdGauge.grantRole(_MANAGER_ROLE, gaugeManager_);
+            coveYsdGauge.grantRole(_PAUSER_ROLE, gaugePauser_);
             coveYsdGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
             coveYsdGauge.renounceRole(_MANAGER_ROLE, address(this));
+            coveYsdGauge.renounceRole(_PAUSER_ROLE, address(this));
         }
     }
 
@@ -293,6 +307,24 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
         _setGaugeAdmin(admin);
     }
 
+    /**
+     * @notice Sets the gauge manager address.
+     * @dev Can only be called by the admin role. Reverts if the new gauge manager address is the zero address.
+     * @param manager The new gauge manager address.
+     */
+    function setGaugeManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setGaugeManager(manager);
+    }
+
+    /**
+     * @notice Sets the gauge pauser address.
+     * @dev Can only be called by the admin role. Reverts if the new gauge pauser address is the zero address.
+     * @param pauser The new gauge pauser address.
+     */
+    function setGaugePauser(address pauser) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setGaugePauser(pauser);
+    }
+
     function _setRewardForwarderImplementation(address impl) internal {
         if (impl == address(0)) {
             revert Errors.ZeroAddress();
@@ -335,5 +367,19 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable {
             revert Errors.ZeroAddress();
         }
         gaugeAdmin = admin;
+    }
+
+    function _setGaugeManager(address manager) internal {
+        if (manager == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        gaugeManager = manager;
+    }
+
+    function _setGaugePauser(address pauser) internal {
+        if (pauser == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        gaugePauser = pauser;
     }
 }
