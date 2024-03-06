@@ -15,6 +15,7 @@ import { AccessControlEnumerableUpgradeable } from
     "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
+import { PausableUpgradeable } from "@openzeppelin-upgradeable/contracts/security/PausableUpgradeable.sol";
 
 /**
  * @title Base Rewards Gauge
@@ -27,7 +28,8 @@ abstract contract BaseRewardsGauge is
     ERC4626Upgradeable,
     ERC20PermitUpgradeable,
     AccessControlEnumerableUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -40,10 +42,11 @@ abstract contract BaseRewardsGauge is
         uint256 leftOver;
     }
 
+    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 public constant MAX_REWARDS = 8;
     uint256 internal constant _WEEK = 1 weeks;
     uint256 internal constant _PRECISION = 1e18;
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     // For tracking external rewards
     address[] public rewardTokens;
@@ -87,6 +90,7 @@ abstract contract BaseRewardsGauge is
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(_MANAGER_ROLE, msg.sender);
+        _grantRole(_PAUSER_ROLE, msg.sender);
     }
 
     /**
@@ -170,8 +174,7 @@ abstract contract BaseRewardsGauge is
      * @param rewardToken The address of the reward token to add.
      * @param distributor The address of the distributor for the reward token.
      */
-    function addReward(address rewardToken, address distributor) external {
-        _checkRole(_MANAGER_ROLE);
+    function addReward(address rewardToken, address distributor) external onlyRole(_MANAGER_ROLE) {
         if (rewardToken == address(0) || distributor == address(0)) {
             revert ZeroAddress();
         }
@@ -253,6 +256,23 @@ abstract contract BaseRewardsGauge is
         _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
         // slither-disable-next-line weak-prng
         reward.leftOver = amount % _WEEK;
+    }
+
+    /**
+     * @dev Pauses the contract. Only callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
+     */
+    function pause() external {
+        if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
+            revert Unauthorized();
+        }
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract. Only callable by DEFAULT_ADMIN_ROLE.
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     /**
@@ -362,6 +382,24 @@ abstract contract BaseRewardsGauge is
                 IERC20(token).safeTransfer(receiver, totalClaimable);
             }
         }
+    }
+
+    /**
+     * @dev Handles all flow of deposits for the gauge, includes a check if deposits are paused before depositing.
+     * Deposits can be paused in case of emergencies by the admin or pauser roles.
+     */
+    function _deposit(
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    )
+        internal
+        virtual
+        override(ERC4626Upgradeable)
+        whenNotPaused
+    {
+        super._deposit(caller, receiver, assets, shares);
     }
 
     /**

@@ -44,10 +44,8 @@ contract YearnStakingDelegate_Test is BaseTest {
     address public admin;
     address public alice;
     address public manager;
+    address public pauser;
     address public treasury;
-
-    // Roles
-    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     event LockYfi(address indexed sender, uint256 amount);
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
@@ -65,6 +63,8 @@ contract YearnStakingDelegate_Test is BaseTest {
         alice = createUser("alice");
         // create manager of the yearnStakingDelegate
         manager = createUser("manager");
+        // create pauser of the yearnStakingDelegate
+        pauser = createUser("pauser");
         // create an address that will act as a treasury
         treasury = createUser("treasury");
 
@@ -88,7 +88,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         mockTarget = address(new MockTarget());
 
         address receiver = address(new MockGaugeRewardReceiver());
-        yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, manager);
+        yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, manager, pauser);
         stakingDelegateRewards = address(new MockStakingDelegateRewards(dYfi));
         swapAndLock = createUser("swapAndLock");
 
@@ -148,10 +148,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_constructor(address noAdminRole, address noManagerRole, address anyGauge) public {
-        vm.assume(noAdminRole != admin);
-        // manager role is given to admin and manager
-        vm.assume(noManagerRole != manager && noManagerRole != admin);
+    function testFuzz_constructor(address anyGauge) public {
         // Check for storage variables default values
         assertEq(yearnStakingDelegate.yfi(), MAINNET_YFI);
         assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
@@ -162,14 +159,32 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(userSplit, 0);
         assertEq(lockSplit, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), manager));
-        assertFalse(yearnStakingDelegate.hasRole(keccak256("MANAGER_ROLE"), noManagerRole));
+        assertTrue(yearnStakingDelegate.hasRole(_MANAGER_ROLE, manager));
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
-        assertFalse(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), noAdminRole));
-        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
-        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, noAdminRole));
+        assertTrue(yearnStakingDelegate.hasRole(_PAUSER_ROLE, pauser));
+        assertTrue(yearnStakingDelegate.hasRole(_TIMELOCK_ROLE, admin));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
+    }
+
+    function test_unPause() public {
+        vm.prank(pauser);
+        yearnStakingDelegate.pause();
+        assertTrue(yearnStakingDelegate.paused(), "contract not paused");
+        vm.prank(admin);
+        yearnStakingDelegate.unpause();
+        assertFalse(yearnStakingDelegate.paused(), "contract not unpaused");
+    }
+
+    function test_pause_revertWhen_notPauser() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector));
+        yearnStakingDelegate.pause();
+    }
+
+    function test_unpause_revertWhen_notAdmin() public {
+        vm.expectRevert(_formatAccessControlError(address(this), yearnStakingDelegate.DEFAULT_ADMIN_ROLE()));
+        yearnStakingDelegate.unpause();
     }
 
     function test_lockYFI() public {
@@ -193,6 +208,14 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockDisabled.selector));
         yearnStakingDelegate.lockYfi(lockAmount);
+    }
+
+    function test_lockYfi_revertWhen_Paused() public {
+        vm.prank(admin);
+        yearnStakingDelegate.pause();
+        assertTrue(yearnStakingDelegate.paused());
+        vm.expectRevert("Pausable: paused");
+        yearnStakingDelegate.lockYfi(1e18);
     }
 
     function test_setPerpetualLock() public {
@@ -274,6 +297,28 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.deposit(testGauge, 0);
     }
 
+    function test_deposit_revertWhen_Paused() public {
+        vm.prank(pauser);
+        yearnStakingDelegate.pause();
+        assertTrue(yearnStakingDelegate.paused());
+        vm.expectRevert("Pausable: paused");
+        yearnStakingDelegate.deposit(testGauge, 1e18);
+    }
+
+    function testFuzz_deposit_passWhen_unpaused(uint256 amount) public {
+        vm.assume(amount > 0);
+
+        vm.prank(pauser);
+        yearnStakingDelegate.pause();
+        assertTrue(yearnStakingDelegate.paused());
+        vm.prank(admin);
+        yearnStakingDelegate.unpause();
+        assertTrue(!yearnStakingDelegate.paused());
+        _setGaugeRewards();
+        _depositGaugeTokensToYSD(alice, amount);
+        assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
+    }
+
     function testFuzz_withdraw(uint256 amount) public {
         vm.assume(amount > 0);
         _setGaugeRewards();
@@ -298,6 +343,28 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAmount.selector));
         yearnStakingDelegate.withdraw(testGauge, 0);
+    }
+
+    function testFuzz_withdraw_passWhen_Paused(uint256 amount) public {
+        vm.assume(amount > 0);
+        _setGaugeRewards();
+        _depositGaugeTokensToYSD(alice, amount);
+        vm.prank(pauser);
+        yearnStakingDelegate.pause();
+
+        // Start withdraw process
+        vm.startPrank(alice);
+        vm.expectEmit();
+        emit Withdraw(alice, testGauge, amount);
+        yearnStakingDelegate.withdraw(testGauge, amount);
+        vm.stopPrank();
+
+        // Check the yearn staking delegate has released the gauge tokens
+        assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), 0, "withdraw failed");
+        // Check the accounting is correct
+        assertEq(yearnStakingDelegate.balanceOf(alice, testGauge), 0, "withdraw failed");
+        // Check that wrappedStrategy has received the vault tokens
+        assertEq(IERC20(testGauge).balanceOf(alice), amount, "withdraw failed");
     }
 
     function test_harvest_revertWhen_SwapAndLockNotSet() public {
@@ -533,7 +600,7 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function test_execute_revertWhen_CallerIsNotTimelock() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
-        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
         vm.prank(alice);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
@@ -541,8 +608,8 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
         vm.prank(admin);
         yearnStakingDelegate.grantRole(DEFAULT_ADMIN_ROLE, alice);
-        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
         vm.prank(alice);
-        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
+        yearnStakingDelegate.grantRole(_TIMELOCK_ROLE, alice);
     }
 }

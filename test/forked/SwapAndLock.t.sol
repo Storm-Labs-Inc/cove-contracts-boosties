@@ -19,7 +19,7 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
         super.setUp();
         redeemCaller = createUser("redeemCaller");
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
-        yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin);
+        yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin, admin);
         swapAndLock = setUpSwapAndLock(admin, yearnStakingDelegate);
         dYfiRedeemer = setUpDYfiRedeemer(admin);
         vm.startPrank(admin);
