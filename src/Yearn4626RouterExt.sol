@@ -94,6 +94,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @param vaults The array of vaults to deposit into.
      * @param assetIn The amount of assets to deposit into the first vault.
      */
+    // slither-disable-start calls-loop
     function previewDeposits(
         Vault[] calldata vaults,
         uint256 assetIn
