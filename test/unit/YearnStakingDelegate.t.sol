@@ -43,7 +43,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     // Addresses
     address public admin;
     address public alice;
-    address public manager;
+    address public timelock;
     address public pauser;
     address public treasury;
 
@@ -61,8 +61,8 @@ contract YearnStakingDelegate_Test is BaseTest {
         admin = createUser("admin");
         // create alice who will be lock YFI via the yearnStakingDelegate
         alice = createUser("alice");
-        // create manager of the yearnStakingDelegate
-        manager = createUser("manager");
+        // create timelock address for the yearnStakingDelegate
+        timelock = createUser("timelock");
         // create pauser of the yearnStakingDelegate
         pauser = createUser("pauser");
         // create an address that will act as a treasury
@@ -88,7 +88,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         mockTarget = address(new MockTarget());
 
         address receiver = address(new MockGaugeRewardReceiver());
-        yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, manager, pauser);
+        yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, pauser, timelock);
         stakingDelegateRewards = address(new MockStakingDelegateRewards(dYfi));
         swapAndLock = createUser("swapAndLock");
 
@@ -107,7 +107,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.stopPrank();
     }
 
-    function _setGaugeRewards() internal {
+    function _addTestGaugeRewards() internal {
         vm.prank(admin);
         yearnStakingDelegate.addGaugeRewards(testGauge, stakingDelegateRewards);
     }
@@ -115,12 +115,12 @@ contract YearnStakingDelegate_Test is BaseTest {
     function _setSwapAndLock() internal {
         vm.expectEmit();
         emit SwapAndLockSet(swapAndLock);
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
     }
 
     function _setGaugeRewardSplit(address gauge, uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) internal {
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, userSplit, lockSplit);
     }
 
@@ -159,15 +159,14 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(userSplit, 0);
         assertEq(lockSplit, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(_MANAGER_ROLE, manager));
         assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(yearnStakingDelegate.hasRole(_PAUSER_ROLE, pauser));
-        assertTrue(yearnStakingDelegate.hasRole(_TIMELOCK_ROLE, admin));
+        assertTrue(yearnStakingDelegate.hasRole(_TIMELOCK_ROLE, timelock));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }
 
-    function test_unPause() public {
+    function test_unpause() public {
         vm.prank(pauser);
         yearnStakingDelegate.pause();
         assertTrue(yearnStakingDelegate.paused(), "contract not paused");
@@ -201,7 +200,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_lockYFI_revertWhen_PerpetualLockDisabled() public {
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setPerpetualLock(false);
         uint256 lockAmount = 1e18;
         airdrop(ERC20(MAINNET_YFI), alice, lockAmount);
@@ -221,13 +220,13 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_setPerpetualLock() public {
         vm.expectEmit();
         emit PerpetualLockSet(false);
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setPerpetualLock(false);
         assertTrue(!yearnStakingDelegate.shouldPerpetuallyLock());
 
         vm.expectEmit();
         emit PerpetualLockSet(true);
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setPerpetualLock(true);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
     }
@@ -235,7 +234,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_earlyUnlock() public {
         _lockYfiForYSD(alice, 1e18);
 
-        vm.startPrank(admin);
+        vm.startPrank(timelock);
         yearnStakingDelegate.setPerpetualLock(false);
         yearnStakingDelegate.earlyUnlock();
         vm.stopPrank();
@@ -249,7 +248,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.assume(lockAmount > 0);
         _lockYfiForYSD(alice, lockAmount);
 
-        vm.startPrank(admin);
+        vm.startPrank(timelock);
         yearnStakingDelegate.setPerpetualLock(false);
         yearnStakingDelegate.earlyUnlock();
         vm.stopPrank();
@@ -262,14 +261,22 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_earlyUnlock_revertWhen_PerpeutalLockEnabled() public {
         _lockYfiForYSD(alice, 1e18);
 
-        vm.startPrank(admin);
+        vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.PerpetualLockEnabled.selector));
+        yearnStakingDelegate.earlyUnlock();
+    }
+
+    function test_earlyUnlock_revertWhen_CallerIsNotTimelock() public {
+        _lockYfiForYSD(alice, 1e18);
+
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.prank(admin);
         yearnStakingDelegate.earlyUnlock();
     }
 
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount > 0);
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         _depositGaugeTokensToYSD(alice, amount);
 
         // Check the yearn staking delegate has received the gauge tokens
@@ -314,14 +321,14 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.prank(admin);
         yearnStakingDelegate.unpause();
         assertTrue(!yearnStakingDelegate.paused());
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         _depositGaugeTokensToYSD(alice, amount);
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
     }
 
     function testFuzz_withdraw(uint256 amount) public {
         vm.assume(amount > 0);
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         _depositGaugeTokensToYSD(alice, amount);
 
         // Start withdraw process
@@ -347,7 +354,7 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function testFuzz_withdraw_passWhen_Paused(uint256 amount) public {
         vm.assume(amount > 0);
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         _depositGaugeTokensToYSD(alice, amount);
         vm.prank(pauser);
         yearnStakingDelegate.pause();
@@ -368,7 +375,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_harvest_revertWhen_SwapAndLockNotSet() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         vm.expectRevert(abi.encodeWithSelector(Errors.SwapAndLockNotSet.selector));
         yearnStakingDelegate.harvest(testGauge);
     }
@@ -397,30 +404,42 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.assume(newTreasury != address(0));
         vm.expectEmit();
         emit TreasurySet(newTreasury);
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setTreasury(newTreasury);
         assertEq(yearnStakingDelegate.treasury(), newTreasury, "setTreasury failed");
     }
 
     function test_setTreasury_revertWhen_ZeroAddress() public {
-        vm.startPrank(admin);
+        vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         yearnStakingDelegate.setTreasury(address(0));
         vm.stopPrank();
     }
 
+    function test_setTreasury_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.setTreasury(admin);
+    }
+
     function testFuzz_setSwapAndLock(address newSwapAndLock) public {
         vm.assume(newSwapAndLock != address(0));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setSwapAndLock(newSwapAndLock);
         assertEq(yearnStakingDelegate.swapAndLock(), newSwapAndLock, "setSwapAndLock failed");
     }
 
     function test_setSwapAndLock_revertWhen_ZeroAddress() public {
-        vm.startPrank(admin);
+        vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         yearnStakingDelegate.setSwapAndLock(address(0));
         vm.stopPrank();
+    }
+
+    function test_setSwapAndLock_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.setSwapAndLock(admin);
     }
 
     function testFuzz_setGaugeRewardSplit(uint80 a, uint80 b) public {
@@ -429,7 +448,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         uint80 c = 1e18 - a - b;
         vm.expectEmit();
         emit GaugeRewardSplitSet(testGauge, IYearnStakingDelegate.RewardSplit(a, b, c));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c);
         (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(testGauge);
         assertEq(treasurySplit, a, "setGaugeRewardSplit failed, treasury split is incorrect");
@@ -439,14 +458,20 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {
         vm.assume(uint256(a) + b + c != 1e18);
-        vm.startPrank(admin);
+        vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
         yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c);
         vm.stopPrank();
     }
 
+    function test_setGaugeRewardSplit_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, 1e18, 0, 0);
+    }
+
     function test_addGaugeRewards() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         assertEq(yearnStakingDelegate.gaugeStakingRewards(testGauge), stakingDelegateRewards, "addGaugeRewards failed");
     }
 
@@ -463,16 +488,22 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_addGaugeRewards_revertWhen_GaugeRewardsAlreadyAdded() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         vm.expectRevert(abi.encodeWithSelector(Errors.GaugeRewardsAlreadyAdded.selector));
         vm.prank(admin);
         yearnStakingDelegate.addGaugeRewards(testGauge, stakingDelegateRewards);
     }
 
+    function test_addGaugeRewards_revertWhen_CallerIsNotAdmin() public {
+        vm.expectRevert(_formatAccessControlError(alice, DEFAULT_ADMIN_ROLE));
+        vm.prank(alice);
+        yearnStakingDelegate.addGaugeRewards(testGauge, stakingDelegateRewards);
+    }
+
     function test_updateGaugeRewards() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         address newStakingDelegateRewards = address(new MockStakingDelegateRewards(dYfi));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.updateGaugeRewards(testGauge, newStakingDelegateRewards);
         assertEq(
             yearnStakingDelegate.gaugeStakingRewards(testGauge), newStakingDelegateRewards, "updateGaugeRewards failed"
@@ -481,31 +512,37 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function test_updateGaugeRewards_revertWhen_GaugeZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.updateGaugeRewards(address(0), stakingDelegateRewards);
     }
 
     function test_updateGaugeRewards_revertWhen_StakingDelegateRewardsZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.updateGaugeRewards(testGauge, address(0));
     }
 
     function test_updateGaugeRewards_revertWhen_GaugeRewardsNotYetAdded() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.GaugeRewardsNotYetAdded.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.updateGaugeRewards(testGauge, stakingDelegateRewards);
     }
 
     function test_updateGaugeRewards_revertWhen_GaugeRewardsAlreadyAdded() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         vm.expectRevert(abi.encodeWithSelector(Errors.GaugeRewardsAlreadyAdded.selector));
+        vm.prank(timelock);
+        yearnStakingDelegate.updateGaugeRewards(testGauge, stakingDelegateRewards);
+    }
+
+    function test_updateGaugeRewards_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.updateGaugeRewards(testGauge, stakingDelegateRewards);
     }
 
     function test_execute() public {
-        vm.prank(admin);
+        vm.prank(timelock);
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
         assertEq(MockTarget(payable(mockTarget)).value(), 1 ether, "execute failed");
@@ -514,7 +551,7 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function test_execute_passWhen_ZeroValue() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 0 }(mockTarget, data, 0);
         assertEq(MockTarget(payable(mockTarget)).value(), 0, "execute failed");
         assertEq(MockTarget(payable(mockTarget)).data(), data, "execute failed");
@@ -524,7 +561,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.assume(selector != MockTarget.fail.selector);
         bytes memory fullData = abi.encodeWithSelector(selector, data, data2);
         assertEq(fullData.length, 68, "data packing failed");
-        hoax(admin, value);
+        hoax(timelock, value);
         yearnStakingDelegate.execute{ value: value }(mockTarget, fullData, value);
         assertEq(MockTarget(payable(mockTarget)).value(), value, "execute failed");
         assertEq(MockTarget(payable(mockTarget)).data(), fullData, "execute failed");
@@ -533,75 +570,75 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_execute_revertWhen_TargetIsYFI_ExecutionNotAllowed() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(yfi, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsDYFI_ExecutionNotAllowed() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(dYfi, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsGaugeToken_ExecutionNotAllowed() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(testGauge, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsRewardReceiver_ExecutionNotAllowed() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         address target = yearnStakingDelegate.gaugeRewardReceivers(testGauge);
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(target, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsStakingRewards_ExecutionNotAllowed() public {
-        _setGaugeRewards();
+        _addTestGaugeRewards();
         address target = yearnStakingDelegate.gaugeStakingRewards(testGauge);
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(target, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsVeYFI_ExecutionNotAllowed() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(veYfi, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsYFIRewardPool_ExecutionNotAllowed() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(yfiRewardPool, data, 1 ether);
     }
 
     function test_execute_revertWhen_TargetIsDYFIRewardPool_ExecutionNotAllowed() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionNotAllowed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(dYfiRewardPool, data, 1 ether);
     }
 
     function test_execute_revertWhen_ExecutionFailed() public {
         bytes memory data = abi.encodeWithSelector(MockTarget.fail.selector);
         vm.expectRevert(abi.encodeWithSelector(Errors.ExecutionFailed.selector));
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
 
     function test_execute_revertWhen_CallerIsNotTimelock() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
-        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
-        vm.prank(alice);
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.prank(admin);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
 

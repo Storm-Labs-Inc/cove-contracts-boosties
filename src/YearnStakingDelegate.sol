@@ -35,15 +35,14 @@ contract YearnStakingDelegate is
 
     // Constants
     // slither-disable-start naming-convention
-    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
     address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     address private constant _VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
     address private constant _SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
-    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     // Immutables
     address private immutable _GAUGE_REWARD_RECEIVER_IMPL;
@@ -76,15 +75,16 @@ contract YearnStakingDelegate is
      * @param gaugeRewardReceiverImpl Address of the GaugeRewardReceiver implementation.
      * @param treasury_ Address of the treasury.
      * @param admin Address of the admin.
-     * @param manager Address of the manager.
+     * @param pauser Address of the pauser.
+     * @param timelock Address of the timelock.
      */
     // slither-disable-next-line locked-ether
     constructor(
         address gaugeRewardReceiverImpl,
         address treasury_,
         address admin,
-        address manager,
-        address pauser
+        address pauser,
+        address timelock
     )
         payable
     {
@@ -92,7 +92,7 @@ contract YearnStakingDelegate is
         // Check for zero addresses
         if (
             gaugeRewardReceiverImpl == address(0) || treasury_ == address(0) || admin == address(0)
-                || manager == address(0) || pauser == address(0)
+                || pauser == address(0) || timelock == address(0)
         ) {
             revert Errors.ZeroAddress();
         }
@@ -111,9 +111,7 @@ contract YearnStakingDelegate is
         blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
         _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_MANAGER_ROLE, admin);
-        _grantRole(_TIMELOCK_ROLE, admin);
-        _grantRole(_MANAGER_ROLE, manager);
+        _grantRole(_TIMELOCK_ROLE, timelock);
         _grantRole(_PAUSER_ROLE, pauser);
 
         // Interactions
