@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,10 +11,10 @@ import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
 /**
  * @title SwapAndLock
  * @dev This contract is designed to swap dYFI tokens to YFI and lock them in the YearnStakingDelegate.
- * It inherits from ISwapAndLock, CurveRouterSwapper, and AccessControl to leverage swapping functionality
+ * It inherits from ISwapAndLock, CurveRouterSwapper, and AccessControlEnumerable to leverage swapping functionality
  * and role-based access control.
  */
-contract SwapAndLock is ISwapAndLock, AccessControl {
+contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     // Libraries
     using SafeERC20 for IERC20;
 

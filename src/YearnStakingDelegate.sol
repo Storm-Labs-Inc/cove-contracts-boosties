@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
@@ -7,10 +7,11 @@ import { IDYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IDYfiRewardPool
 import { IYfiRewardPool } from "src/interfaces/deps/yearn/veYFI/IYfiRewardPool.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { Rescuable } from "src/Rescuable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { ClonesWithImmutableArgs } from "lib/clones-with-immutable-args/src/ClonesWithImmutableArgs.sol";
 import { GaugeRewardReceiver } from "src/GaugeRewardReceiver.sol";
 import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
@@ -19,9 +20,15 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
 /**
  * @title YearnStakingDelegate
  * @notice Contract for staking yearn gauge tokens, managing rewards, and delegating voting power.
- * @dev Inherits from IYearnStakingDelegate, AccessControl, ReentrancyGuard, and Rescuable.
+ * @dev Inherits from IYearnStakingDelegate, AccessControlEnumerable, ReentrancyGuard, and Rescuable.
  */
-contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, ReentrancyGuard, Rescuable {
+contract YearnStakingDelegate is
+    IYearnStakingDelegate,
+    AccessControlEnumerable,
+    ReentrancyGuard,
+    Rescuable,
+    Pausable
+{
     // Libraries
     using SafeERC20 for IERC20;
     using ClonesWithImmutableArgs for address;
@@ -29,6 +36,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
     // Constants
     // slither-disable-start naming-convention
     bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
@@ -70,12 +78,20 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      * @param manager Address of the manager.
      */
     // slither-disable-next-line locked-ether
-    constructor(address gaugeRewardReceiverImpl, address treasury_, address admin, address manager) payable {
+    constructor(
+        address gaugeRewardReceiverImpl,
+        address treasury_,
+        address admin,
+        address manager,
+        address pauser
+    )
+        payable
+    {
         // Checks
         // Check for zero addresses
         if (
             gaugeRewardReceiverImpl == address(0) || treasury_ == address(0) || admin == address(0)
-                || manager == address(0)
+                || manager == address(0) || pauser == address(0)
         ) {
             revert Errors.ZeroAddress();
         }
@@ -95,6 +111,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(_MANAGER_ROLE, admin);
         _grantRole(_MANAGER_ROLE, manager);
+        _grantRole(_PAUSER_ROLE, pauser);
 
         // Interactions
         // Max approve YFI to veYFI so we can lock it later
@@ -103,10 +120,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /**
      * @notice Deposits a specified amount of gauge tokens into this staking delegate.
+     * @dev Deposits can be paused in case of emergencies by the admin or pauser roles.
      * @param gauge The address of the gauge token to deposit.
      * @param amount The amount of tokens to deposit.
      */
-    function deposit(address gauge, uint256 amount) external {
+    function deposit(address gauge, uint256 amount) external whenNotPaused {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();
@@ -203,10 +221,11 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
 
     /**
      * @notice Locks YFI tokens in the veYFI contract.
+     * @dev Locking YFI can be paused in case of emergencies by the admin or pauser roles.
      * @param amount Amount of YFI tokens to lock.
      * @return The locked balance information.
      */
-    function lockYfi(uint256 amount) external returns (IVotingYFI.LockedBalance memory) {
+    function lockYfi(uint256 amount) external whenNotPaused returns (IVotingYFI.LockedBalance memory) {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();
@@ -369,6 +388,23 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControl, Reentranc
      */
     function rescueDYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _rescueDYfi();
+    }
+
+    /**
+     * @dev Pauses the contract. Only callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
+     */
+    function pause() external {
+        if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
+            revert Errors.Unauthorized();
+        }
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract. Only callable by DEFAULT_ADMIN_ROLE.
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     /**

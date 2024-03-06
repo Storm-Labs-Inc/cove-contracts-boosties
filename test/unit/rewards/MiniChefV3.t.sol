@@ -16,22 +16,35 @@ contract MiniChefV3_Test is BaseTest {
     // Addresses
     address public alice;
     address public bob;
+    address public pauser;
 
     function setUp() public override {
         super.setUp();
 
         alice = createUser("alice");
         bob = createUser("bob");
+        pauser = createUser("pauser");
 
         rewardToken = new ERC20Mock();
         lpToken = new ERC20Mock();
 
-        miniChef = new MiniChefV3(IERC20(address(rewardToken)), address(this));
+        miniChef = new MiniChefV3(IERC20(address(rewardToken)), address(this), pauser);
     }
 
     function test_constructor() public {
         assertEq(address(miniChef.REWARD_TOKEN()), address(rewardToken), "rewardToken not set");
         assertTrue(miniChef.hasRole(miniChef.DEFAULT_ADMIN_ROLE(), address(this)), "admin role not set");
+        assertTrue(miniChef.hasRole(_PAUSER_ROLE, pauser), "pauser role not set");
+    }
+
+    function test_constructor_revertWhen_RewardTokenIsZero() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new MiniChefV3(IERC20(address(0)), address(this), address(this));
+    }
+
+    function test_constructor_revertWhen_AdminIsZero() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new MiniChefV3(IERC20(address(rewardToken)), address(0), address(this));
     }
 
     function test_poolLength() public {
@@ -61,6 +74,26 @@ contract MiniChefV3_Test is BaseTest {
         assertTrue(miniChef.isLPTokenAdded(IERC20(lpToken)), "lpToken not added");
     }
 
+    function test_unPause() public {
+        vm.prank(pauser);
+        miniChef.pause();
+        assertTrue(miniChef.paused(), "contract not paused");
+        miniChef.unpause();
+        assertFalse(miniChef.paused(), "contract not unpaused");
+    }
+
+    function test_pause_revertWhen_notPauser() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector));
+        miniChef.pause();
+    }
+
+    function test_unpause_revertWhen_notAdmin() public {
+        vm.startPrank(alice);
+        vm.expectRevert(_formatAccessControlError(alice, miniChef.DEFAULT_ADMIN_ROLE()));
+        miniChef.unpause();
+    }
+
     function test_add() public {
         uint64 allocPoint = 1000;
         IERC20 newLpToken = IERC20(address(new ERC20Mock()));
@@ -84,6 +117,11 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         vm.expectRevert(Errors.LPTokenAlreadyAdded.selector);
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+    }
+
+    function test_add_revertWhen_LPTokenIsZero() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        miniChef.add(1000, IERC20(address(0)), IMiniChefV3Rewarder(address(0)));
     }
 
     function test_set() public {
@@ -134,13 +172,21 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     function testFuzz_setRewardPerSecond(uint256 rate) public {
+        rate = bound(rate, 0, miniChef.MAX_REWARD_TOKEN_PER_SECOND());
         miniChef.setRewardPerSecond(rate);
         assertEq(miniChef.rewardPerSecond(), rate, "Reward per second not set correctly");
     }
 
     function testFuzz_setRewardPerSecond_revertWhen_CallerIsNotAdmin(uint256 rate) public {
+        rate = bound(rate, 0, miniChef.MAX_REWARD_TOKEN_PER_SECOND());
         vm.expectRevert(_formatAccessControlError(bob, miniChef.DEFAULT_ADMIN_ROLE()));
         vm.startPrank(bob);
+        miniChef.setRewardPerSecond(rate);
+    }
+
+    function testFuzz_setRewardPerSecond_revertWhen_RewardRateTooHigh(uint256 rate) public {
+        rate = bound(rate, miniChef.MAX_REWARD_TOKEN_PER_SECOND() + 1, type(uint128).max);
+        vm.expectRevert(Errors.RewardRateTooHigh.selector);
         miniChef.setRewardPerSecond(rate);
     }
 
@@ -191,6 +237,24 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
     }
 
+    function test_deposit_revertWhen_Paused() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 pid = miniChef.poolLength() - 1;
+        vm.prank(pauser);
+        miniChef.pause();
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.expectRevert("Pausable: paused");
+        miniChef.deposit(pid, amount, alice);
+    }
+
+    function test_deposit_revertWhen_ZeroAmount() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 pid = miniChef.poolLength() - 1;
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        miniChef.deposit(pid, 0, alice);
+    }
+
     function test_withdraw() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
@@ -220,6 +284,18 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
         vm.expectCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector, pid, alice, alice, 0, 0));
         miniChef.withdraw(pid, amount, alice);
+    }
+
+    function test_withdraw_revertWhen_ZeroAmount() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        miniChef.withdraw(pid, 0, alice);
     }
 
     function test_emergencyWithdraw() public {
@@ -253,6 +329,22 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
         vm.expectCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector, pid, alice, alice, 0, 0));
         miniChef.emergencyWithdraw(pid, alice);
+    }
+
+    function test_emergencyWithdraw_passWhen_RewarderIsFaulty() public {
+        IMiniChefV3Rewarder rewarder = IMiniChefV3Rewarder(address(0xbeef));
+        vm.mockCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector), "");
+
+        miniChef.add(1000, lpToken, rewarder);
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        vm.mockCallRevert(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector), "");
+        miniChef.emergencyWithdraw(pid, alice);
+        assertEq(lpToken.balanceOf(alice), amount, "LP tokens not returned to user after emergency withdrawal");
     }
 
     function test_harvest() public {
