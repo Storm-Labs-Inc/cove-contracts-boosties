@@ -73,7 +73,7 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
 
     function test_constructor() public {
         assertTrue(factory.hasRole(factory.DEFAULT_ADMIN_ROLE(), address(this)));
-        assertTrue(factory.hasRole(MANAGER_ROLE, address(this)));
+        assertTrue(factory.hasRole(_MANAGER_ROLE, address(this)));
         assertEq(factory.YEARN_STAKING_DELEGATE(), address(mockYearnStakingDelegate));
         assertEq(factory.COVE(), address(cove));
         assertEq(factory.rewardForwarderImpl(), address(rewardForwarderImpl));
@@ -154,8 +154,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     }
 
     function test_deployCoveGauges_revertWhen_notManager() public {
-        factory.revokeRole(MANAGER_ROLE, address(this));
-        vm.expectRevert(_formatAccessControlError(address(this), MANAGER_ROLE));
+        factory.revokeRole(_MANAGER_ROLE, address(this));
+        vm.expectRevert(_formatAccessControlError(address(this), _MANAGER_ROLE));
         factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
     }
 

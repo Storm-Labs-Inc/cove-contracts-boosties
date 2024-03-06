@@ -119,7 +119,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
 
         // Move admin roles to the admin multisig
         ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
-        ysd.grantRole(MANAGER_ROLE, admin);
+        ysd.grantRole(_MANAGER_ROLE, admin);
         SwapAndLock(swapAndLock).grantRole(DEFAULT_ADMIN_ROLE, admin);
         SwapAndLock(swapAndLock).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
     }
@@ -279,13 +279,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
         coveRewardsGauge.grantRole(DEFAULT_ADMIN_ROLE, admin);
-        coveRewardsGauge.grantRole(MANAGER_ROLE, manager);
+        coveRewardsGauge.grantRole(_MANAGER_ROLE, manager);
         coveRewardsGauge.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        coveRewardsGauge.renounceRole(MANAGER_ROLE, broadcaster);
+        coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
         coveRewardsGaugeRewardForwarder.grantRole(DEFAULT_ADMIN_ROLE, admin);
         coveRewardsGaugeRewardForwarder.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         ysd.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        ysd.renounceRole(MANAGER_ROLE, broadcaster);
+        ysd.renounceRole(_MANAGER_ROLE, broadcaster);
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
@@ -421,9 +421,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Verify roles have been properly set
         /// YearnStakingDelegate
         _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("YearnStakingDelegate", MANAGER_ROLE, manager);
+        _verifyRole("YearnStakingDelegate", _MANAGER_ROLE, manager);
         _verifyMissingRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, broadcaster);
-        _verifyMissingRole("YearnStakingDelegate", MANAGER_ROLE, broadcaster);
+        _verifyMissingRole("YearnStakingDelegate", _MANAGER_ROLE, broadcaster);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, broadcaster);
@@ -435,7 +435,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRole("CoveYFI", DEFAULT_ADMIN_ROLE, admin);
         /// MasterRegistry
         _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("MasterRegistry", MANAGER_ROLE, broadcaster);
+        _verifyRole("MasterRegistry", _MANAGER_ROLE, broadcaster);
         _verifyMissingRole("MasterRegistry", DEFAULT_ADMIN_ROLE, broadcaster);
         /// DYFIRedeemer
         _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
@@ -448,7 +448,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyMissingRole("MiniChefV3", DEFAULT_ADMIN_ROLE, broadcaster);
         /// CoveYearnGaugeFactory
         _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
-        _verifyRole("CoveYearnGaugeFactory", MANAGER_ROLE, broadcaster);
+        _verifyRole("CoveYearnGaugeFactory", _MANAGER_ROLE, broadcaster);
         /// SwapAndLock
         _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
         _verifyMissingRole("SwapAndLock", DEFAULT_ADMIN_ROLE, broadcaster);
