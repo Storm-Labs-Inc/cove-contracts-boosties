@@ -20,7 +20,7 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         bob = createUser("bob");
 
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
-        yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin);
+        yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin, admin);
 
         coveYFI = new CoveYFI(yearnStakingDelegate, admin);
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { IYearnStakingDelegate } from "../interfaces/IYearnStakingDelegate.sol";
 import { IStakingDelegateRewards } from "../interfaces/IStakingDelegateRewards.sol";
@@ -87,12 +87,12 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     )
         internal
         virtual
-        override(ERC4626Upgradeable)
+        override(BaseRewardsGauge)
     {
         if (totalAssets() + assets > maxTotalAssets()) {
             revert MaxTotalAssetsExceeded();
         }
-        super._deposit(caller, receiver, assets, shares);
+        BaseRewardsGauge._deposit(caller, receiver, assets, shares);
         IYearnStakingDelegate(yearnStakingDelegate).deposit(asset(), assets);
     }
 

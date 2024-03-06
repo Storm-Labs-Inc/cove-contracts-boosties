@@ -84,14 +84,21 @@ contract RewardForwarder_Test is BaseTest {
 
     function test_forwardRewardToken() public {
         airdrop(IERC20(token), address(rewardForwarder), 1000);
-        vm.prank(admin);
-        // set treasury split
-        rewardForwarder.setTreasuryBps(address(token), 1000);
+
         // approve reward token
         rewardForwarder.approveRewardToken(address(token));
-        // forward reward token
+        // set treasury split
+        vm.prank(admin);
+        // setTreasuryBps calls forwardRewardToken before updating the rate
+        rewardForwarder.setTreasuryBps(address(token), 1000);
+        // so the entire balance should be forwarded to the destination
+        assertEq(token.balanceOf(destination), 1000);
+
+        airdrop(IERC20(token), address(rewardForwarder), 1000);
+
+        // forward reward tokens with the new rate
         rewardForwarder.forwardRewardToken(address(token));
         assertEq(token.balanceOf(treasury), 100);
-        assertEq(token.balanceOf(destination), 900);
+        assertEq(token.balanceOf(destination), 1900);
     }
 }

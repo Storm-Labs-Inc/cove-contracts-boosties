@@ -13,11 +13,16 @@ contract CoveToken_Test is BaseTest {
     bytes32 public minterRole = keccak256("MINTER_ROLE");
     uint256 public deployTimestamp;
 
+    event SenderAllowed(address indexed target, uint256 eventId);
+    event SenderDisallowed(address indexed target, uint256 eventId);
+    event ReceiverAllowed(address indexed target, uint256 eventId);
+    event ReceiverDisallowed(address indexed target, uint256 eventId);
+
     function setUp() public override {
         owner = createUser("Owner");
         alice = createUser("Alice");
         bob = createUser("Bob");
-        coveToken = new CoveToken(owner, block.timestamp + 365 days);
+        coveToken = new CoveToken(owner);
         deployTimestamp = block.timestamp;
         vm.prank(owner);
         coveToken.grantRole(minterRole, owner);
@@ -25,15 +30,12 @@ contract CoveToken_Test is BaseTest {
 
     function test_initialize() public {
         require(coveToken.hasRole(coveToken.DEFAULT_ADMIN_ROLE(), owner), "Owner should have DEFAULT_ADMIN_ROLE");
-        assertEq(coveToken.mintingAllowedAfter(), block.timestamp + 365 days);
-        require(coveToken.allowedTransferrer(owner), "Owner should be allowed to transfer");
+        assertEq(
+            coveToken.mintingAllowedAfter(), block.timestamp + 3 * 52 weeks, "Minting should be allowed after 3 years"
+        );
+        require(coveToken.allowedSender(owner), "Owner should be allowed to transfer");
         assertEq(coveToken.paused(), true, "Contract should be paused");
         assertEq(coveToken.balanceOf(owner), 1_000_000_000 ether, "Owner should have initial supply");
-    }
-
-    function test_initialize_revertsWhen_mintingAllowedTooEarly() public {
-        vm.expectRevert(Errors.MintingAllowedTooEarly.selector);
-        new CoveToken(owner, block.timestamp - 1);
     }
 
     function test_availableSupplyToMint() public {
@@ -74,7 +76,7 @@ contract CoveToken_Test is BaseTest {
         assertEq(coveToken.balanceOf(alice), balanceBefore + amount, "Alice should have received the minted tokens");
     }
 
-    function testFuzz_mint_revertsWhen_inflationTooEarly(uint256 amount) public {
+    function testFuzz_mint_revertWhen_inflationTooEarly(uint256 amount) public {
         vm.assume(amount > 0);
         vm.warp(coveToken.mintingAllowedAfter() - 1);
         vm.expectRevert(Errors.InflationTooLarge.selector);
@@ -82,7 +84,7 @@ contract CoveToken_Test is BaseTest {
         coveToken.mint(alice, amount);
     }
 
-    function testFuzz_mint_revertsWhen_inflationTooLarge(uint256 amount) public {
+    function testFuzz_mint_revertWhen_inflationTooLarge(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, coveToken.availableSupplyToMint() + 1, type(uint256).max);
         vm.expectRevert(Errors.InflationTooLarge.selector);
@@ -90,7 +92,7 @@ contract CoveToken_Test is BaseTest {
         coveToken.mint(alice, amount);
     }
 
-    function testFuzz_mint_revertsWhen_notMinter(uint256 amount) public {
+    function testFuzz_mint_revertWhen_notMinter(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, 0, coveToken.availableSupplyToMint());
         vm.expectRevert(_formatAccessControlError(alice, minterRole));
@@ -143,7 +145,7 @@ contract CoveToken_Test is BaseTest {
         assertEq(coveToken.balanceOf(user2), amount);
     }
 
-    function test_unpause_revertsWhen_tooEarly() public {
+    function test_unpause_revertWhen_tooEarly() public {
         vm.prank(owner);
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         coveToken.unpause();
@@ -153,19 +155,19 @@ contract CoveToken_Test is BaseTest {
         coveToken.unpause();
     }
 
-    function test_unpause_revertsWhen_notAdmin() public {
+    function test_unpause_revertWhen_notAdmin() public {
         vm.warp(coveToken.OWNER_CAN_UNPAUSE_AFTER());
         vm.expectRevert(Errors.UnpauseTooEarly.selector);
         vm.startPrank(alice);
         coveToken.unpause();
     }
 
-    function testFuzz_addAllowedTransferee(uint256 amount) public {
+    function testFuzz_addAllowedReceiver(uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         amount = bound(amount, 0, coveToken.availableSupplyToMint());
         vm.startPrank(owner);
-        coveToken.addAllowedTransferee(alice);
-        assertTrue(coveToken.allowedTransferee(alice));
+        coveToken.addAllowedReceiver(alice);
+        assertTrue(coveToken.allowedReceiver(alice));
         vm.stopPrank();
         uint256 balanceBefore = coveToken.balanceOf(alice);
         vm.prank(owner);
@@ -175,17 +177,25 @@ contract CoveToken_Test is BaseTest {
         assertEq(coveToken.balanceOf(alice), balanceBefore + amount);
     }
 
-    function testFuzz_addAllowedTransferee_revertsWhen_notAdmin(address user) public {
+    function testFuzz_addAllowedReceiver_revertWhen_CannotBeBothSenderAndReceiver(address user) public {
+        vm.assume(user != address(0) && user != owner);
+        vm.startPrank(owner);
+        coveToken.addAllowedSender(user);
+        vm.expectRevert(Errors.CannotBeBothSenderAndReceiver.selector);
+        coveToken.addAllowedReceiver(user);
+    }
+
+    function testFuzz_addAllowedReceiver_revertWhen_notAdmin(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
         vm.startPrank(user);
-        coveToken.addAllowedTransferee(user);
+        coveToken.addAllowedReceiver(user);
     }
 
-    function testFuzz_transfer_revertsWhen_notAllowedTransferee(uint256 amount) public {
+    function testFuzz_transfer_revertWhen_notAllowedReceiver(uint256 amount) public {
         amount = bound(amount, 0, 1_000_000_000 ether);
         assertTrue(coveToken.paused(), "Contract should be paused");
-        assertTrue(!coveToken.allowedTransferee(alice), "Alice should not be allowed to receive transfer");
+        assertTrue(!coveToken.allowedReceiver(alice), "Alice should not be allowed to receive transfer");
         vm.prank(owner);
         coveToken.transfer(bob, amount);
         vm.expectRevert(Errors.TransferNotAllowedYet.selector);
@@ -193,16 +203,16 @@ contract CoveToken_Test is BaseTest {
         coveToken.transfer(alice, amount);
     }
 
-    function testFuzz_removeAllowedTransferee(address user, uint256 amount) public {
+    function testFuzz_removeAllowedReceiver(address user, uint256 amount) public {
         vm.assume(user != address(0) && user != owner);
         amount = bound(amount, 1, 1_000_000_000 ether);
         vm.startPrank(owner);
-        coveToken.addAllowedTransferee(user);
-        assertTrue(coveToken.allowedTransferee(user), "User should be allowed to receive transfer");
-        coveToken.removeAllowedTransferee(user);
-        assertTrue(!coveToken.allowedTransferee(user), "User should not be allowed to receive transfer");
+        coveToken.addAllowedReceiver(user);
+        assertTrue(coveToken.allowedReceiver(user), "User should be allowed to receive transfer");
+        coveToken.removeAllowedReceiver(user);
+        assertTrue(!coveToken.allowedReceiver(user), "User should not be allowed to receive transfer");
         assertTrue(coveToken.paused(), "Contract should be paused");
-        assertTrue(!coveToken.allowedTransferrer(alice), "User should not be allowed to send transfer");
+        assertTrue(!coveToken.allowedSender(alice), "User should not be allowed to send transfer");
         coveToken.transfer(alice, amount);
         vm.stopPrank();
         vm.expectRevert(Errors.TransferNotAllowedYet.selector);
@@ -210,34 +220,42 @@ contract CoveToken_Test is BaseTest {
         coveToken.transfer(user, amount);
     }
 
-    function testFuzz_removeFromAllowedTransferee_revertsWhen_notAdmin(address user) public {
+    function testFuzz_removeFromAllowedReceiver_revertWhen_notAdmin(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(owner);
-        coveToken.addAllowedTransferee(user);
+        coveToken.addAllowedReceiver(user);
         vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
         vm.startPrank(user);
-        coveToken.removeAllowedTransferee(user);
+        coveToken.removeAllowedReceiver(user);
     }
 
-    function testFuzz_addAllowedTransferrer(address user, uint256 amount) public {
+    function testFuzz_addAllowedSender(address user, uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         vm.assume(user != address(0) && user != owner);
         amount = bound(amount, 0, coveToken.availableSupplyToMint());
         vm.startPrank(owner);
-        coveToken.addAllowedTransferrer(user);
-        assertTrue(coveToken.allowedTransferrer(user), "User should be allowed to transfer");
+        coveToken.addAllowedSender(user);
+        assertTrue(coveToken.allowedSender(user), "User should be allowed to transfer");
         coveToken.mint(user, amount);
         vm.stopPrank();
         vm.prank(user);
         assertTrue(coveToken.transfer(bob, amount), "User should be able to transfer");
     }
 
-    function testFuzz_transfer_revertsWhen_notAllowedTransferrer(address user, uint256 amount) public {
+    function testFuzz_addAllowedSender_revertWhen_CannotBeBothSenderAndReceiver(address user) public {
+        vm.assume(user != address(0) && user != owner);
+        vm.startPrank(owner);
+        coveToken.addAllowedReceiver(user);
+        vm.expectRevert(Errors.CannotBeBothSenderAndReceiver.selector);
+        coveToken.addAllowedSender(user);
+    }
+
+    function testFuzz_transfer_revertWhen_notAllowedSender(address user, uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         vm.assume(user != address(0) && user != owner);
         amount = bound(amount, 0, coveToken.availableSupplyToMint());
         vm.startPrank(owner);
-        coveToken.addAllowedTransferee(user);
+        coveToken.addAllowedReceiver(user);
         coveToken.mint(user, amount);
         vm.stopPrank();
         vm.prank(user);
@@ -245,22 +263,22 @@ contract CoveToken_Test is BaseTest {
         coveToken.transfer(owner, amount);
     }
 
-    function testFuzz_addAllowedTransferrer_revertsWhen_notAdmin(address user) public {
+    function testFuzz_addAllowedSender_revertWhen_notAdmin(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(user);
         vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
-        coveToken.addAllowedTransferrer(user);
+        coveToken.addAllowedSender(user);
     }
 
-    function testFuzz_removeAllowedTransferrer(address user, uint256 amount) public {
+    function testFuzz_removeAllowedSender(address user, uint256 amount) public {
         vm.warp(coveToken.mintingAllowedAfter());
         vm.assume(user != address(0) && user != owner);
         amount = bound(amount, 0, coveToken.availableSupplyToMint());
         vm.startPrank(owner);
-        coveToken.addAllowedTransferrer(user);
-        assertTrue(coveToken.allowedTransferrer(user), "User should be allowed to transfer");
-        coveToken.removeAllowedTransferrer(user);
-        assertTrue(!coveToken.allowedTransferrer(user), "User should not be allowed to transfer");
+        coveToken.addAllowedSender(user);
+        assertTrue(coveToken.allowedSender(user), "User should be allowed to transfer");
+        coveToken.removeAllowedSender(user);
+        assertTrue(!coveToken.allowedSender(user), "User should not be allowed to transfer");
         coveToken.transfer(user, amount);
         vm.expectRevert(Errors.TransferNotAllowedYet.selector);
         vm.stopPrank();
@@ -268,12 +286,33 @@ contract CoveToken_Test is BaseTest {
         coveToken.transfer(alice, amount);
     }
 
-    function testFuzz_removeFromAllowedTransferrer_revertsWhen_notAdmin(address user) public {
+    function testFuzz_removeFromAllowedSender_revertWhen_notAdmin(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(owner);
-        coveToken.addAllowedTransferrer(user);
+        coveToken.addAllowedSender(user);
         vm.expectRevert(_formatAccessControlError(user, coveToken.DEFAULT_ADMIN_ROLE()));
         vm.startPrank(user);
-        coveToken.removeAllowedTransferrer(user);
+        coveToken.removeAllowedSender(user);
+    }
+
+    function test_events_eventIdIncrements() public {
+        vm.startPrank(owner);
+
+        vm.expectEmit(false, false, false, true);
+        // initialize adds the zero address and owner as transferrers so eventId starts at 2
+        emit SenderAllowed(address(alice), 2);
+        coveToken.addAllowedSender(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit SenderDisallowed(address(alice), 3);
+        coveToken.removeAllowedSender(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit ReceiverAllowed(address(alice), 4);
+        coveToken.addAllowedReceiver(address(alice));
+
+        vm.expectEmit(false, false, false, true);
+        emit ReceiverDisallowed(address(alice), 5);
+        coveToken.removeAllowedReceiver(address(alice));
     }
 }
