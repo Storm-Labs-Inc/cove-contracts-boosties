@@ -20,6 +20,7 @@ import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -39,25 +40,31 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     address[] public coveYearnStrategies;
 
     // Expected cove token balances after deployment
+    // TODO: Update the expected balances before prod deployment
     uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether;
     uint256 public constant COVE_BALANCE_LINEAR_VESTING = 1_000_000 ether;
     uint256 public constant COVE_BALANCE_MULTISIG = 998_000_000 ether;
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
-    // Constants
-    uint256 private constant _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
+    // TimelockController configuration
+    uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
+    // RewardForwarder configuration
+    uint256 public constant COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
         admin = vm.envOr("ADMIN_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
         manager = vm.envOr("DEV_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
         pauser = vm.envOr("PAUSER_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 3)));
-        timeLock = vm.envOr("TIMELOCK_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 4)));
-        treasury = admin;
+        treasury = admin; // TODO: Determine treasury multisig before prod deployment
 
         vm.label(admin, "admin");
         vm.label(manager, "manager");
         vm.label(pauser, "pauser");
         vm.label(timeLock, "timeLock");
+
+        deployTimelockController();
+
+        timeLock = deployer.getAddress("TimelockController");
 
         _labelEthereumAddresses();
         // Deploy Master Registry
@@ -96,6 +103,24 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         registerContractsInMasterRegistry();
         // Verify the state of the deployment
         verifyPostDeploymentState();
+    }
+
+    function deployTimelockController() public broadcast deployIfMissing("TimelockController") {
+        // Only admin can propose new transactions
+        address[] memory proposers = new address[](1);
+        proposers[0] = admin;
+        // Admin, manager, and broadcaster can execute proposed transactions
+        address[] memory executors = new address[](3);
+        executors[0] = admin;
+        executors[1] = manager;
+        executors[2] = broadcaster;
+        // Deploy and save the TimelockController
+        address timelockController = address(
+            new TimelockController{ salt: bytes32(options.salt) }(
+                COVE_TIMELOCK_CONTROLLER_MIN_DELAY, proposers, executors, address(0)
+            )
+        );
+        deployer.save("TimelockController", timelockController, "TimelockController.sol:TimelockController");
     }
 
     function deployYearnStakingDelegateStack() public broadcast deployIfMissing("YearnStakingDelegate") {
@@ -280,7 +305,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveRewardsGaugeRewardForwarder.initialize(broadcaster, treasury, address(coveRewardsGauge));
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
-        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
+        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
