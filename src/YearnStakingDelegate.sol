@@ -199,29 +199,39 @@ contract YearnStakingDelegate is
     }
 
     /**
-     * @notice Claim dYFI rewards from the reward pool and transfer them to the treasury
+     * @notice Claim dYFI rewards from the reward pool and transfer them to the CoveYFI Reward Forwarder
      */
     function claimBoostRewards() external {
+        // Checks
+        address rewardForwarder = _coveYfiRewardForwarder;
+        if (rewardForwarder == address(0)) {
+            revert Errors.CoveYfiRewardForwarderNotSet();
+        }
         // Interactions
         // Ignore the returned amount and use the balance instead to ensure we capture
         // any rewards claimed for this contract by other addresses
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        _rescueDYfi();
+        IERC20(_YFI).safeTransfer(rewardForwarder, IERC20(_D_YFI).balanceOf(address(this)));
     }
 
     /**
-     * @notice Claim YFI rewards from the reward pool and transfer them to the treasury
+     * @notice Claim YFI rewards from the reward pool and transfer them to the CoveYFI Reward Forwarder
      */
     function claimExitRewards() external {
+        // Checks
+        address rewardForwarder = _coveYfiRewardForwarder;
+        if (rewardForwarder == address(0)) {
+            revert Errors.CoveYfiRewardForwarderNotSet();
+        }
         // Interactions
         // Ignore the returned amount and use the balance instead to ensure we capture
         // any rewards claimed for this contract by other addresses
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IYfiRewardPool(_YFI_REWARD_POOL).claim();
-        _rescueYfi();
+        IERC20(_YFI).safeTransfer(rewardForwarder, IERC20(_YFI).balanceOf(address(this)));
     }
 
     /**
@@ -389,22 +399,6 @@ contract YearnStakingDelegate is
         // Interactions
         IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(_VE_YFI).withdraw();
         IERC20(_YFI).safeTransfer(_treasury, withdrawn.amount);
-    }
-
-    /**
-     * @notice Rescue YFI tokens from the contract
-     * @dev Should only be called if a breaking change occurs to the reward pool contract
-     */
-    function rescueYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueYfi();
-    }
-
-    /**
-     * @notice Rescue dYFI tokens from the contract
-     * @dev Should only be called if a breaking change occurs to the reward pool contract
-     */
-    function rescueDYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueDYfi();
     }
 
     /**
@@ -602,7 +596,6 @@ contract YearnStakingDelegate is
      */
     function _rescueYfi() internal {
         // Interactions
-        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
     }
 
     /**

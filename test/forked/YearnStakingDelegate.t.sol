@@ -31,6 +31,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     address public pauser;
     address public wrappedStrategy;
     address public treasury;
+    address public coveYfiRewardFowarder;
 
     function setUp() public override {
         super.setUp();
@@ -45,6 +46,8 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         wrappedStrategy = createUser("wrappedStrategy");
         // create an address that will act as a treasury
         treasury = createUser("treasury");
+        // create an address that will act as a coveYfiRewardFowarder
+        coveYfiRewardFowarder = createUser("coveYfiRewardFowarder");
 
         vault = MAINNET_WETH_YETH_POOL_VAULT;
 
@@ -511,27 +514,5 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
         yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c, d);
         vm.stopPrank();
-    }
-
-    function test_rescueYfi() public {
-        // give contract YFI tokens
-        airdrop(ERC20(MAINNET_YFI), address(yearnStakingDelegate), 1e18);
-        uint256 balanceBefore = IERC20(MAINNET_YFI).balanceOf(treasury);
-        vm.prank(admin);
-        yearnStakingDelegate.rescueYfi();
-        uint256 balanceAfter = IERC20(MAINNET_YFI).balanceOf(treasury);
-        // Assert the treasury balance is increased by the expected amount
-        assertGt(balanceAfter, balanceBefore, "YFI rescue failed");
-    }
-
-    function test_rescueDYfi() public {
-        // give contract dYFI tokens
-        airdrop(ERC20(MAINNET_DYFI), address(yearnStakingDelegate), 1e18);
-        uint256 balanceBefore = IERC20(MAINNET_DYFI).balanceOf(treasury);
-        vm.prank(admin);
-        yearnStakingDelegate.rescueDYfi();
-        uint256 balanceAfter = IERC20(MAINNET_DYFI).balanceOf(treasury);
-        // Assert the treasury balance is increased by the expected amount
-        assertGt(balanceAfter, balanceBefore, "DYFI rescue failed");
     }
 }
