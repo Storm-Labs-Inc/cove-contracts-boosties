@@ -256,7 +256,7 @@ contract StakingDelegateRewards_Test is BaseTest {
         assertEq(stakingDelegateRewards.rewardsDuration(stakingToken), 1 days);
     }
 
-    function test_setRewardsDuration_revertWhen_CallerIsNotAdmin() public {
+    function test_setRewardsDuration_revertWhen_CallerIsNotTimelock() public {
         vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
         vm.prank(alice);
         stakingDelegateRewards.setRewardsDuration(stakingToken, 1 days);
