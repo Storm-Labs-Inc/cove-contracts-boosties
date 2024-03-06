@@ -35,6 +35,7 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
     address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     address private constant _VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
     address private constant _SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     // Immutables
     address private immutable _GAUGE_REWARD_RECEIVER_IMPL;
@@ -52,7 +53,6 @@ contract YearnStakingDelegate is IYearnStakingDelegate, AccessControlEnumerable,
     address private _treasury;
     bool private _shouldPerpetuallyLock;
     address private _swapAndLock;
-    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     event LockYfi(address indexed sender, uint256 amount);
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
