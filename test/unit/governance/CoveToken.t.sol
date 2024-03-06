@@ -319,6 +319,7 @@ contract CoveToken_Test is BaseTest {
     }
 
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
+        vm.prank(owner);
         coveToken.grantRole(DEFAULT_ADMIN_ROLE, alice);
         vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);

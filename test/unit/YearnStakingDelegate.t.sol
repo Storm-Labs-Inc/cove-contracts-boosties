@@ -531,7 +531,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
 
-    function test_execute_revertWhen_CallerIsNotAdmin() public {
+    function test_execute_revertWhen_CallerIsNotTimelock() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
         vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
