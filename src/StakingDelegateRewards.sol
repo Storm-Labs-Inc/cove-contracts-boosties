@@ -53,7 +53,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @param stakingDelegate_ The address of the staking delegate contract.
      */
     // slither-disable-next-line locked-ether
-    constructor(address rewardsToken_, address stakingDelegate_, address admin) payable {
+    constructor(address rewardsToken_, address stakingDelegate_, address admin, address timeLock) payable {
         // Checks
         // Check for zero addresses
         if (rewardsToken_ == address(0) || stakingDelegate_ == address(0)) {
@@ -61,7 +61,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
         }
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_TIMELOCK_ROLE, msg.sender); // This role must be revoked after granting it to the timelock
+        _grantRole(_TIMELOCK_ROLE, timeLock); // This role must be revoked after granting it to the timelock
         _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
         _REWARDS_TOKEN = rewardsToken_;
         _STAKING_DELEGATE = stakingDelegate_;

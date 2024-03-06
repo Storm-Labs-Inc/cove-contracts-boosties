@@ -159,7 +159,8 @@ contract YearnV3BaseTest is BaseTest {
         returns (address)
     {
         vm.prank(owner);
-        address stakingDelegateRewards = address(new StakingDelegateRewards(rewardToken, yearnStakingDelegate, owner));
+        address stakingDelegateRewards =
+            address(new StakingDelegateRewards(rewardToken, yearnStakingDelegate, owner, owner));
         vm.label(stakingDelegateRewards, "StakingDelegateRewards");
         return stakingDelegateRewards;
     }

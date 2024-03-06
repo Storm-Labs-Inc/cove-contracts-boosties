@@ -35,7 +35,7 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingToken = address(new ERC20Mock());
 
         vm.prank(admin);
-        stakingDelegateRewards = new StakingDelegateRewards(rewardToken, yearnStakingDelegate, admin);
+        stakingDelegateRewards = new StakingDelegateRewards(rewardToken, yearnStakingDelegate, admin, admin);
     }
 
     function _calculateEarned(
@@ -72,7 +72,7 @@ contract StakingDelegateRewards_Test is BaseTest {
         vm.assume(nonDeployer != deployer);
 
         vm.prank(deployer);
-        stakingDelegateRewards = new StakingDelegateRewards(rewardToken_, stakingDelegate_, deployer);
+        stakingDelegateRewards = new StakingDelegateRewards(rewardToken_, stakingDelegate_, deployer, deployer);
         assertEq(stakingDelegateRewards.rewardToken(), rewardToken_);
         assertEq(stakingDelegateRewards.stakingDelegate(), stakingDelegate_);
         assertEq(stakingDelegateRewards.hasRole(stakingDelegateRewards.DEFAULT_ADMIN_ROLE(), deployer), true);
@@ -84,10 +84,10 @@ contract StakingDelegateRewards_Test is BaseTest {
         address zeroAddress = address(0);
         address nonZeroAddress = address(1);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new StakingDelegateRewards(zeroAddress, nonZeroAddress, admin);
+        new StakingDelegateRewards(zeroAddress, nonZeroAddress, admin, admin);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new StakingDelegateRewards(nonZeroAddress, zeroAddress, admin);
+        new StakingDelegateRewards(nonZeroAddress, zeroAddress, admin, admin);
     }
 
     function test_addStakingToken() public {
