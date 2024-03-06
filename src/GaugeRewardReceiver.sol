@@ -62,7 +62,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ac
         if (msg.sender != stakingDelegate()) {
             revert Errors.NotAuthorized();
         }
-        if (rewardSplit.lock + rewardSplit.treasury + rewardSplit.user != 1e18) {
+        if (rewardSplit.treasury + rewardSplit.coveYfi + rewardSplit.user + rewardSplit.lock != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
         // Read pending dYFI rewards from the gauge
@@ -73,22 +73,22 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ac
         uint256 totalRewardsAmount = IERC20(rewardToken()).balanceOf(address(this));
 
         // Calculate the amount of rewards to distribute
-        uint256 swapAndLockAmount = totalRewardsAmount * uint256(rewardSplit.lock) / 1e18;
         uint256 treasuryAmount = totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18;
         uint256 coveYfiAmount = totalRewardsAmount * uint256(rewardSplit.coveYfi) / 1e18;
+        uint256 swapAndLockAmount = totalRewardsAmount * uint256(rewardSplit.lock) / 1e18;
         uint256 userAmount = totalRewardsAmount - swapAndLockAmount - treasuryAmount - coveYfiAmount;
 
         // Transfer rewards to the treasury
         if (rewardSplit.treasury != 0) {
             IERC20(rewardToken()).safeTransfer(treasury, treasuryAmount);
         }
-        // Transfer rewards to the swap and lock contract
-        if (swapAndLockAmount != 0) {
-            IERC20(rewardToken()).safeTransfer(swapAndLock, swapAndLockAmount);
-        }
         // Transfer rewards to the coveYFI reward forwarder
         if (coveYfiAmount != 0) {
             IERC20(rewardToken()).safeTransfer(coveYfiRewardForwarder, coveYfiAmount);
+        }
+        // Transfer rewards to the swap and lock contract
+        if (swapAndLockAmount != 0) {
+            IERC20(rewardToken()).safeTransfer(swapAndLock, swapAndLockAmount);
         }
         // Transfer rewards to the staking delegate rewards contract
         if (userAmount != 0) {

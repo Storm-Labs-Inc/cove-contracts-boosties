@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.18;
 
-import { AccessControlEnumerableUpgradeable } from
-    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
-
+import { Errors } from "src/libraries/Errors.sol";
+import { Initializable } from "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 /**
  * @title Reward Forwarder
  * @notice Forwards reward tokens from the contract to a designated destination and treasury with specified basis
@@ -13,37 +12,23 @@ import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
  * @dev This contract is responsible for forwarding reward tokens to a rewards gauge and optionally to a treasury.
  * It allows for a portion of the rewards to be redirected to a treasury address.
  */
-contract RewardForwarder is AccessControlEnumerableUpgradeable {
+
+contract RewardForwarder is Initializable {
     using SafeERC20 for IERC20;
 
-    uint256 private constant _MAX_BPS = 10_000;
-
     address public rewardDestination;
-    address public treasury;
-    mapping(address => uint256) public treasuryBps;
-
-    error ZeroAddress();
-    error InvalidTreasuryBps();
-
-    event TreasurySet(address treasury);
-    event TreasuryBpsSet(address rewardToken, uint256 treasuryBps);
 
     constructor() payable {
         _disableInitializers();
     }
 
     /**
-     * @dev Initializes the contract, setting up roles and the initial configuration for the reward destination and
-     * treasury.
-     * @param admin_ The address that will be granted the default admin role.
-     * @param treasury_ The address of the treasury to which a portion of rewards may be sent.
-     * @param destination_ The destination address where the majority of rewards will be forwarded.
+     * @dev Initializes the contract with the specified reward destination.
+     * @param destination_ The destination address where the rewards will be forwarded.
      */
-    function initialize(address admin_, address treasury_, address destination_) external initializer {
-        if (destination_ == address(0)) revert ZeroAddress();
+    function initialize(address destination_) external initializer {
+        if (destination_ == address(0)) revert Errors.ZeroAddress();
         rewardDestination = destination_;
-        _setTreasury(treasury_);
-        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
     }
 
     /**
@@ -56,9 +41,8 @@ contract RewardForwarder is AccessControlEnumerableUpgradeable {
     }
 
     /**
-     * @notice Forwards the specified reward token to the reward destination and treasury.
-     * @dev Forwards all balance of the specified reward token to the reward destination, minus the portion for the
-     * treasury.
+     * @notice Forwards the specified reward token to the reward destination.
+     * @dev Forwards all balance of the specified reward token to the reward destination
      * @param rewardToken The address of the reward token to forward.
      */
     function forwardRewardToken(address rewardToken) public {

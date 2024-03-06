@@ -302,10 +302,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         );
         address coveYFI = deployer.getAddress("CoveYFI");
         coveRewardsGauge.initialize(coveYFI);
-        coveRewardsGaugeRewardForwarder.initialize(broadcaster, treasury, address(coveRewardsGauge));
+        coveRewardsGaugeRewardForwarder.initialize(address(coveRewardsGauge));
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
-        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
@@ -313,8 +312,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveRewardsGauge.grantRole(_MANAGER_ROLE, manager);
         coveRewardsGauge.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
-        coveRewardsGaugeRewardForwarder.grantRole(DEFAULT_ADMIN_ROLE, admin);
-        coveRewardsGaugeRewardForwarder.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         ysd.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         ysd.renounceRole(_TIMELOCK_ROLE, broadcaster);
     }
@@ -382,20 +379,19 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         address ysdRewardsGaugeImpl = address(deployer.deploy_YSDRewardsGauge("YSDRewardsGaugeImpl", options));
         // Deploy Gauge Factory
         address factory = address(
-            deployer.deploy_CoveYearnGaugeFactory(
-                "CoveYearnGaugeFactory",
-                broadcaster,
-                ysd,
-                cove,
-                rewardForwarderImpl,
-                erc20RewardsGaugeImpl,
-                ysdRewardsGaugeImpl,
-                treasury,
-                admin,
-                manager,
-                pauser,
-                options
-            )
+            deployer.deploy_CoveYearnGaugeFactory({
+                name: "CoveYearnGaugeFactory",
+                factoryAdmin: broadcaster,
+                ysd: ysd,
+                cove: cove,
+                rewardForwarderImpl_: rewardForwarderImpl,
+                erc20RewardsGaugeImpl_: erc20RewardsGaugeImpl,
+                ysdRewardsGaugeImpl_: ysdRewardsGaugeImpl,
+                gaugeAdmin_: admin,
+                gaugeManager_: manager,
+                gaugePauser_: pauser,
+                options: options
+            })
         );
         return factory;
     }

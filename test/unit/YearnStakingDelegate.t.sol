@@ -484,7 +484,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_setGaugeRewardSplit_revertWhen_CallerIsNotTimelock() public {
         vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
         vm.prank(admin);
-        yearnStakingDelegate.setGaugeRewardSplit(testGauge, 1e18, 0, 0);
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, 1e18, 0, 0, 0);
     }
 
     function test_addGaugeRewards() public {

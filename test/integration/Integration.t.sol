@@ -123,7 +123,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
                 address(rewardForwarderImplementation),
                 address(erc20RewardsGaugeImplementation),
                 address(ysdRewardsGaugeImplementation),
-                treasury,
                 admin,
                 admin,
                 admin
