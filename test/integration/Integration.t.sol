@@ -187,9 +187,16 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function _setGaugeRewardSplit(uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
+    function _setGaugeRewardSplit(
+        uint64 treasurySplit,
+        uint64 coveYfiSplit,
+        uint64 strategySplit,
+        uint64 veYfiSplit
+    )
+        internal
+    {
         vm.prank(admin);
-        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, strategySplit, veYfiSplit);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, coveYfiSplit, strategySplit, veYfiSplit);
     }
 
     function _lockYfiForYSD(uint256 amount) internal {
@@ -523,7 +530,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // non-fuzzing for amount to ensure reward calculation
         uint256 amount = 10e18;
         // Set the reward split for treasury and swap and lock
-        _setGaugeRewardSplit(0.3e18, 0.3e18, 0.4e18);
+        _setGaugeRewardSplit(0.1e18, 0.2e18, 0.3e18, 0.4e18);
 
         vm.prank(tpManagement);
         yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));

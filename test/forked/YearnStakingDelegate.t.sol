@@ -378,7 +378,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         _lockYfiForYSD(1e18);
         _setSwapAndLock();
         _setGaugeRewards();
-        _setGaugeRewardSplit(gauge, 0.3e18, 0.3e18, 0.4e18);
+        _setGaugeRewardSplit(gauge, 0.1e18, 0.2e18, 0.3e18, 0.4e18);
         _depositGaugeTokensToYSD(wrappedStrategy, 1e18);
         vm.warp(block.timestamp + 14 days);
 
@@ -486,23 +486,30 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_setGaugeRewardSplit(uint80 a, uint80 b) public {
+    function testFuzz_setGaugeRewardSplit(uint64 a, uint64 b, uint64 c) public {
         // Workaround for vm.assume max tries
-        vm.assume(uint256(a) + b <= 1e18);
-        uint80 c = 1e18 - a - b;
+        vm.assume(uint256(a) + b + c <= 1e18);
+        uint64 d = 1e18 - a - b - c;
         vm.prank(timelock);
-        yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c);
-        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(gauge);
-        assertEq(treasurySplit, a, "setGaugeRewardSplit failed, treasury split is incorrect");
-        assertEq(userSplit, b, "setGaugeRewardSplit failed, user split is incorrect");
-        assertEq(lockSplit, c, "setGaugeRewardSplit failed, lock split is incorrect");
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c, d);
+        IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.getGaugeRewardSplit(gauge);
+        assertEq(rewardSplit.treasury, a, "setGaugeRewardSplit failed, treasury split is incorrect");
+        assertEq(rewardSplit.user, b, "setGaugeRewardSplit failed, user split is incorrect");
+        assertEq(rewardSplit.lock, c, "setGaugeRewardSplit failed, lock split is incorrect");
     }
 
-    function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {
-        vm.assume(uint256(a) + b + c != 1e18);
+    function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(
+        uint64 a,
+        uint64 b,
+        uint64 c,
+        uint64 d
+    )
+        public
+    {
+        vm.assume(uint256(a) + b + c + d != 1e18);
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
-        yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c, d);
         vm.stopPrank();
     }
 

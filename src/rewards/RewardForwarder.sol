@@ -64,46 +64,7 @@ contract RewardForwarder is AccessControlEnumerableUpgradeable {
     function forwardRewardToken(address rewardToken) public {
         uint256 balance = IERC20(rewardToken).balanceOf(address(this));
         if (balance > 0) {
-            uint256 treasuryAmount = balance * treasuryBps[rewardToken] / _MAX_BPS;
-            if (treasuryAmount > 0) {
-                IERC20(rewardToken).safeTransfer(treasury, treasuryAmount);
-            }
-            IBaseRewardsGauge(rewardDestination).depositRewardToken(rewardToken, balance - treasuryAmount);
+            IBaseRewardsGauge(rewardDestination).depositRewardToken(rewardToken, balance);
         }
-    }
-
-    /**
-     * @notice Sets the treasury address.
-     * @dev Can only be called by an address with the default admin role.
-     * @param treasury_ The new treasury address.
-     */
-    function setTreasury(address treasury_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setTreasury(treasury_);
-    }
-
-    /**
-     * @notice Sets the basis points for the treasury for a specific reward token.
-     * @dev This function first calls forwardRewardToken before setting the new rate to ensure that it only applies to
-     *      future rewards. Can only be called by an address with the default admin role.
-     * @param rewardToken The address of the reward token for which to set the basis points.
-     * @param treasuryBps_ The number of basis points to allocate to the treasury.
-     */
-    function setTreasuryBps(address rewardToken, uint256 treasuryBps_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // slither-disable-next-line reentrancy-benign,reentrancy-events
-        this.forwardRewardToken(rewardToken);
-        _setTreasuryBps(rewardToken, treasuryBps_);
-    }
-
-    function _setTreasury(address treasury_) internal {
-        treasury = treasury_;
-        emit TreasurySet(treasury_);
-    }
-
-    function _setTreasuryBps(address rewardToken, uint256 treasuryBps_) internal {
-        if (treasuryBps_ > _MAX_BPS) {
-            revert InvalidTreasuryBps();
-        }
-        emit TreasuryBpsSet(rewardToken, treasuryBps_);
-        treasuryBps[rewardToken] = treasuryBps_;
     }
 }
