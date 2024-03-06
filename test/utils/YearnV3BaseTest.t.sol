@@ -192,14 +192,15 @@ contract YearnV3BaseTest is BaseTest {
         address rewardReceiver,
         address _treasury,
         address _admin,
-        address _manager
+        address _manager,
+        address _pauser
     )
         public
         returns (address)
     {
         vm.startPrank(admin);
         YearnStakingDelegate yearnStakingDelegate =
-            new YearnStakingDelegate(rewardReceiver, _treasury, _admin, _manager);
+            new YearnStakingDelegate(rewardReceiver, _treasury, _admin, _manager, _pauser);
         vm.label(address(yearnStakingDelegate), "YearnStakingDelegate");
         vm.stopPrank();
         return address(yearnStakingDelegate);

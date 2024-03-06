@@ -4,6 +4,7 @@ pragma solidity 0.8.18;
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.sol";
 import { SelfPermit } from "src/deps/uniswap/v3-periphery/base/SelfPermit.sol";
 import { Rescuable } from "src/Rescuable.sol";
@@ -17,7 +18,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * It supports multiple reward tokens through external rewarder contracts and includes emergency withdrawal
  * functionality.
  */
-contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit {
+contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit, Pausable {
     using SafeERC20 for IERC20;
 
     /**
@@ -73,6 +74,8 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
     /// @notice The maximum amount of REWARD_TOKEN that can be distributed per second.
     uint256 public constant MAX_REWARD_TOKEN_PER_SECOND = 100_000_000 ether / uint256(1 weeks);
     uint256 private constant _ACC_REWARD_TOKEN_PRECISION = 1e12;
+    // @notice The pauser role for the contract.
+    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
@@ -94,12 +97,13 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param rewardToken_ The ERC20 token to be used as the reward token.
      * @param admin The address that will be granted the default admin role.
      */
-    constructor(IERC20 rewardToken_, address admin) payable {
+    constructor(IERC20 rewardToken_, address admin, address pauser) payable {
         if (address(rewardToken_) == address(0) || admin == address(0)) {
             revert Errors.ZeroAddress();
         }
         REWARD_TOKEN = rewardToken_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(_PAUSER_ROLE, pauser);
     }
 
     /// @notice Returns the number of MCV3 pools.
@@ -329,11 +333,12 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
 
     /**
      * @notice Deposit LP tokens to MCV3 for REWARD_TOKEN allocation.
+     * @dev Deposits can be paused in case of emergencies by the admin or pauser roles.
      * @param pid The index of the pool. See `_poolInfo`.
      * @param amount LP token amount to deposit.
      * @param to The receiver of `amount` deposit benefit.
      */
-    function deposit(uint256 pid, uint256 amount, address to) public {
+    function deposit(uint256 pid, uint256 amount, address to) public whenNotPaused {
         if (amount == 0) {
             revert Errors.ZeroAmount();
         }
@@ -457,5 +462,22 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
                 emit LogRewarderEmergencyWithdrawFaulty(msg.sender, pid, amount, to);
             }
         }
+    }
+
+    /**
+     * @dev Pauses the contract. Only callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
+     */
+    function pause() external {
+        if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
+            revert Errors.Unauthorized();
+        }
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract. Only callable by DEFAULT_ADMIN_ROLE.
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 }

@@ -128,6 +128,7 @@ library Errors {
     /// @dev Error for when the mint amount exceeds the cap.
     error InflationTooLarge();
     error AccessControlEnumerableUnauthorizedAccount(address account, bytes32 neededRole);
+    error Unauthorized();
     error ExpectedPause();
 
     /// COVE YEARN GAUGE FACTORY ///

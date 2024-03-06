@@ -63,7 +63,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         {
             gaugeRewardReceiver = setUpGaugeRewardReceiverImplementation(admin);
             yearnStakingDelegate =
-                YearnStakingDelegate(new YearnStakingDelegate(gaugeRewardReceiver, treasury, admin, admin));
+                YearnStakingDelegate(new YearnStakingDelegate(gaugeRewardReceiver, treasury, admin, admin, admin));
             vm.label(address(yearnStakingDelegate), "yearnStakingDelegate");
             vm.label(yearnStakingDelegate.gaugeRewardReceivers(gauge), "gaugeRewardReceiver");
             stakingDelegateRewards =
@@ -131,12 +131,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = coveYearnGaugeFactory.getGaugeInfo(address(gauge));
             erc20RewardsGauge = BaseRewardsGauge(gaugeInfo.autoCompoundingGauge);
             vm.label(address(erc20RewardsGauge), "erc20RewardsGauge");
-            erc20RewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
+            erc20RewardsGauge.grantRole(_MANAGER_ROLE, tpManagement);
             baseRewardForwarder = erc20RewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(baseRewardForwarder, "baseRewardForwarder");
             ysdRewardsGauge = YSDRewardsGauge(gaugeInfo.nonAutoCompoundingGauge);
             vm.label(address(ysdRewardsGauge), "ysdRewardsGauge");
-            ysdRewardsGauge.grantRole(keccak256("MANAGER_ROLE"), tpManagement);
+            ysdRewardsGauge.grantRole(_MANAGER_ROLE, tpManagement);
             ysdRewardForwarder = ysdRewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(ysdRewardForwarder, "ysdRewardForwarder");
             // Setup Cove token to be given as a reward
