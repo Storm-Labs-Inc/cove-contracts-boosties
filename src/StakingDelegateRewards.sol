@@ -61,8 +61,8 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
         }
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(_TIMELOCK_ROLE, msg.sender);
-        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE);
+        _grantRole(_TIMELOCK_ROLE, msg.sender); // This role must be revoked after granting it to the timelock
+        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
         _REWARDS_TOKEN = rewardsToken_;
         _STAKING_DELEGATE = stakingDelegate_;
     }
