@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { ERC20Permit, ERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import { Errors } from "src/libraries/Errors.sol";
@@ -11,14 +11,18 @@ import { Errors } from "src/libraries/Errors.sol";
  * @title CoveToken
  * @notice ERC20 token with governance features including roles, pausability, and permit functionality.
  * @dev This token includes roles for minting and pausing, as well as the ability to set transfer allowances via
- * signatures.
- * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControl, Pausable, and Multicall contracts.
+ * signatures.  It also includes an allowlisting mechanism for:
+ * - Senders: Vesting contracts, treasury multisig, or rewards contracts so CoveToken can be claimed.
+ * - Receivers: For non-tokenized staking contracts like MiniChefV3 to enable staking while it is non-transferrable.
+ * It inherits from OpenZeppelin's ERC20, ERC20Permit, AccessControlEnumerable, Pausable, and Multicall contracts.
  */
-contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
+contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall {
+    /// @dev Initial delay before inflation starts.
+    uint256 private constant _INITIAL_INFLATION_DELAY = 3 * 52 weeks;
     /// @dev Initial supply of tokens.
     uint256 private constant _INITIAL_SUPPLY = 1_000_000_000 ether;
     /// @dev Minimum time interval between mints.
-    uint256 private constant _MIN_MINT_INTERVAL = 365 days;
+    uint256 private constant _MIN_MINT_INTERVAL = 52 weeks;
     /// @dev Numerator for calculating mint cap.
     uint256 private constant _MINT_CAP_NUMERATOR = 600;
     /// @dev Denominator for calculating mint cap.
@@ -41,47 +45,40 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
     // slither-disable-end naming-convention
 
     /// @notice Mapping to track addresses allowed to receive transfers.
-    mapping(address => bool) public allowedTransferee;
+    mapping(address => bool) public allowedReceiver;
     /// @notice Mapping to track addresses allowed to initiate transfers.
-    mapping(address => bool) public allowedTransferrer;
+    mapping(address => bool) public allowedSender;
+    /// @notice State variable to make the events orderable for external observers if they are called in the same block.
+    uint256 private _eventId;
 
     /// @dev Emitted when a transferrer is allowed.
-    event TransferrerAllowed(address indexed target);
+    event SenderAllowed(address indexed target, uint256 eventId);
     /// @dev Emitted when a transferrer is disallowed.
-    event TransferrerDisallowed(address indexed target);
+    event SenderDisallowed(address indexed target, uint256 eventId);
     /// @dev Emitted when a transferee is allowed.
-    event TransfereeAllowed(address indexed target);
+    event ReceiverAllowed(address indexed target, uint256 eventId);
     /// @dev Emitted when a transferee is disallowed.
-    event TransfereeDisallowed(address indexed target);
+    event ReceiverDisallowed(address indexed target, uint256 eventId);
 
     /**
      * @notice Deploys this contract with the initial owner and minting allowed after a specified time.
      * @dev The contract is paused upon deployment and the initial supply is minted to the owner.
      * @param owner_ The address of the initial owner.
-     * @param mintingAllowedAfter_ The timestamp after which minting is allowed.
      */
-    constructor(
-        address owner_,
-        uint256 mintingAllowedAfter_
-    )
-        payable
-        ERC20Permit("CoveToken")
-        ERC20("CoveToken", "COVE")
-    {
+    constructor(address owner_) payable ERC20Permit("CoveToken") ERC20("CoveToken", "COVE") {
         // Checks
-        // slither-disable-next-line timestamp
-        if (mintingAllowedAfter_ < block.timestamp) {
-            revert Errors.MintingAllowedTooEarly();
+        if (owner_ == address(0)) {
+            revert Errors.ZeroAddress();
         }
         // Effects
-        _pause(); // Pause the contract
+        mintingAllowedAfter = block.timestamp + _INITIAL_INFLATION_DELAY;
         OWNER_CAN_UNPAUSE_AFTER = block.timestamp + _OWNER_PAUSE_PERIOD;
         ANYONE_CAN_UNPAUSE_AFTER = block.timestamp + _MAX_PAUSE_PERIOD;
-        _addToAllowedTransferrer(address(0)); // Allow minting
-        _addToAllowedTransferrer(owner_); // Allow transfers from owner for distribution
+        _addToAllowedSender(address(0)); // Allow minting
+        _addToAllowedSender(owner_); // Allow transfers from owner for distribution
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
+        _pause(); // Pause the contract
         _grantRole(DEFAULT_ADMIN_ROLE, owner_);
-        mintingAllowedAfter = mintingAllowedAfter_; // Set the time delay for the first mint
     }
 
     /**
@@ -114,32 +111,32 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
      * @notice Adds an address to the list of allowed transferees.
      * @param target The address to allow.
      */
-    function addAllowedTransferee(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _addToAllowedTransferee(target);
+    function addAllowedReceiver(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _addToAllowedReceiver(target);
     }
 
     /**
      * @notice Removes an address from the list of allowed transferees.
      * @param target The address to disallow.
      */
-    function removeAllowedTransferee(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _removeFromAllowedTransferee(target);
+    function removeAllowedReceiver(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _removeFromAllowedReceiver(target);
     }
 
     /**
      * @notice Adds an address to the list of allowed transferrers.
      * @param target The address to allow.
      */
-    function addAllowedTransferrer(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _addToAllowedTransferrer(target);
+    function addAllowedSender(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _addToAllowedSender(target);
     }
 
     /**
      * @notice Removes an address from the list of allowed transferrers.
      * @param target The address to disallow.
      */
-    function removeAllowedTransferrer(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _removeFromAllowedTransferrer(target);
+    function removeAllowedSender(address target) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _removeFromAllowedSender(target);
     }
 
     /**
@@ -154,24 +151,34 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
         return (totalSupply() * _MINT_CAP_NUMERATOR) / _MINT_CAP_DENOMINATOR;
     }
 
-    function _addToAllowedTransferee(address target) internal {
-        allowedTransferee[target] = true;
-        emit TransfereeAllowed(target);
+    function _addToAllowedReceiver(address target) internal {
+        if (allowedSender[target]) {
+            revert Errors.CannotBeBothSenderAndReceiver();
+        }
+        allowedReceiver[target] = true;
+        emit ReceiverAllowed(target, _eventId);
+        ++_eventId;
     }
 
-    function _removeFromAllowedTransferee(address target) internal {
-        allowedTransferee[target] = false;
-        emit TransfereeDisallowed(target);
+    function _removeFromAllowedReceiver(address target) internal {
+        allowedReceiver[target] = false;
+        emit ReceiverDisallowed(target, _eventId);
+        ++_eventId;
     }
 
-    function _addToAllowedTransferrer(address target) internal {
-        allowedTransferrer[target] = true;
-        emit TransferrerAllowed(target);
+    function _addToAllowedSender(address target) internal {
+        if (allowedReceiver[target]) {
+            revert Errors.CannotBeBothSenderAndReceiver();
+        }
+        allowedSender[target] = true;
+        emit SenderAllowed(target, _eventId);
+        ++_eventId;
     }
 
-    function _removeFromAllowedTransferrer(address target) internal {
-        allowedTransferrer[target] = false;
-        emit TransferrerDisallowed(target);
+    function _removeFromAllowedSender(address target) internal {
+        allowedSender[target] = false;
+        emit SenderDisallowed(target, _eventId);
+        ++_eventId;
     }
 
     /**
@@ -186,8 +193,8 @@ contract CoveToken is ERC20Permit, AccessControl, Pausable, Multicall {
         // Check if the transfer is allowed
         // When paused, only allowed transferrers can transfer and only allowed transferees can receive
         if (paused()) {
-            if (!allowedTransferrer[from]) {
-                if (!allowedTransferee[to]) {
+            if (!allowedSender[from]) {
+                if (!allowedReceiver[to]) {
                     revert Errors.TransferNotAllowedYet();
                 }
             }

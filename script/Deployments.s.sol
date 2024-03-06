@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.18;
+pragma solidity 0.8.18;
 
 import { BaseDeployScript } from "script/BaseDeployScript.s.sol";
 import { console2 as console } from "forge-std/console2.sol";
@@ -32,6 +32,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     address public admin;
     address public treasury;
     address public manager;
+    address public pauser;
 
     address[] public coveYearnStrategies;
 
@@ -46,11 +47,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
         admin = vm.envOr("ADMIN_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
+        pauser = vm.envOr("PAUSER_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
         treasury = admin;
         manager = broadcaster;
 
         vm.label(admin, "admin");
         vm.label(manager, "manager");
+        vm.label(pauser, "pauser");
 
         _labelEthereumAddresses();
         // Deploy Master Registry
@@ -59,9 +62,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         deployYearnStakingDelegateStack();
         // Deploy Yearn4626RouterExt
         deployYearn4626RouterExt();
-        // Deploy Cove Token with minting allowed after 3 years
-        uint256 mintingAllowedAfter = block.timestamp + 3 * 365 days;
-        deployCoveToken(mintingAllowedAfter);
+        // Deploy Cove Token
+        deployCoveToken();
         // Allow admin, and manager, and sablier batch contract, and the vesting contract to transfer cove tokens
         address[] memory allowedSenders = new address[](4);
         allowedSenders[0] = admin;
@@ -96,7 +98,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         address gaugeRewardReceiverImpl =
             address(deployer.deploy_GaugeRewardReceiver("GaugeRewardReceiverImplementation", options));
         YearnStakingDelegate ysd = deployer.deploy_YearnStakingDelegate(
-            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, options
+            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, pauser, options
         );
         address stakingDelegateRewards = address(
             deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd), options)
@@ -250,13 +252,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return masterRegistry;
     }
 
-    function deployCoveToken(uint256 mintingAllowedAfter)
-        public
-        broadcast
-        deployIfMissing("CoveToken")
-        returns (address)
-    {
-        address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, mintingAllowedAfter, options));
+    function deployCoveToken() public broadcast deployIfMissing("CoveToken") returns (address) {
+        address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, options));
         return cove;
     }
 
@@ -293,7 +290,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         CoveToken coveToken = CoveToken(deployer.getAddress("CoveToken"));
         bytes[] memory data = new bytes[](transferrers.length);
         for (uint256 i = 0; i < transferrers.length; i++) {
-            data[i] = abi.encodeWithSelector(CoveToken.addAllowedTransferrer.selector, transferrers[i]);
+            data[i] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, transferrers[i]);
         }
         coveToken.multicall(data);
     }
@@ -304,6 +301,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 name: "MiniChefV3",
                 rewardToken_: IERC20(deployer.getAddress("CoveToken")),
                 admin: broadcaster,
+                pauser: pauser,
                 options: options
             })
         );
