@@ -196,13 +196,13 @@ contract YearnStakingDelegate is
         if (treasury_ == address(0)) {
             revert Errors.TreasuryNotSet();
         }
-        address coveYfiRewardForwarder_ = _coveYfiRewardForwarder;
-        if (coveYfiRewardForwarder_ == address(0)) {
+        address rewardForwarder = _coveYfiRewardForwarder;
+        if (rewardForwarder == address(0)) {
             revert Errors.CoveYfiRewardForwarderNotSet();
         }
         // Interactions
         return GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLockContract, treasury_, coveYfiRewardForwarder_, _gaugeRewardSplit[gauge]
+            swapAndLockContract, treasury_, rewardForwarder, _gaugeRewardSplit[gauge]
         );
     }
 
@@ -605,20 +605,5 @@ contract YearnStakingDelegate is
         // In case of error, we don't want to block the entire tx so we try-catch
         // solhint-disable-next-line no-empty-blocks
         try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
-    }
-
-    /**
-     * @dev Internal function to transfer YFI held by this contract to the treasury.
-     */
-    function _rescueYfi() internal {
-        // Interactions
-    }
-
-    /**
-     * @dev Internal function to transfer dYFI held by this contract to the treasury.
-     */
-    function _rescueDYfi() internal {
-        // Interactions
-        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
     }
 }
