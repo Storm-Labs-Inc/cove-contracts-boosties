@@ -94,7 +94,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @return sharesOut The amount of shares to be received from each deposit. The length of the array is `path.length
      * - 1`.
      */
-    // slither-disable-start calls-loop
+    // slither-disable-start calls-loop,low-level-calls
     function previewDeposits(
         address[] calldata path,
         uint256 assetIn
@@ -111,7 +111,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
-            address vaultAsset;
+            address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -159,7 +159,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
-            address vaultAsset;
+            address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -209,7 +209,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
-            address vaultAsset;
+            address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -257,7 +257,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
-            address vaultAsset;
+            address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -281,4 +281,5 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             }
         }
     }
+    // slither-disable-end calls-loop,low-level-calls
 }
