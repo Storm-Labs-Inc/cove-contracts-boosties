@@ -457,7 +457,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         require(coveToken.balanceOf(admin) == COVE_BALANCE_MULTISIG, "CoveToken balance in admin multisig is incorrect");
         // Verify deployer holds no cove tokens
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
-        // Check for Snapshot delegation
+        // Verify Snapshot delegation for "veyfi.eth" space is set to manager
         require(
             ISnapshotDelegateRegistry(MAINNET_SNAPSHOT_DELEGATE_REGISTRY).delegation(
                 deployer.getAddress("YearnStakingDelegate"), "veyfi.eth"
