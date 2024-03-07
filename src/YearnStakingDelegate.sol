@@ -270,10 +270,10 @@ contract YearnStakingDelegate is
     }
 
     /**
-    * @notice Sets the address for the CoveYFI Reward Forwarder.
-    * @dev Can only be called by an address with the _TIMELOCK_ROLE. Emits CoveYfiRewardForwarderSet event.
-    * @param forwarder The address of the new CoveYFI Reward Forwarder.
-    */
+     * @notice Sets the address for the CoveYFI Reward Forwarder.
+     * @dev Can only be called by an address with the _TIMELOCK_ROLE. Emits CoveYfiRewardForwarderSet event.
+     * @param forwarder The address of the new CoveYFI Reward Forwarder.
+     */
     function setCoveYfiRewardForwarder(address forwarder) external onlyRole(_TIMELOCK_ROLE) {
         // Checks
         if (forwarder == address(0)) {
@@ -577,18 +577,18 @@ contract YearnStakingDelegate is
     }
 
     /**
-    * @dev Internal function to set the treasury address.
-    * @param newTreasury The address of the new treasury.
-    */
+     * @dev Internal function to set the treasury address.
+     * @param newTreasury The address of the new treasury.
+     */
     function _setTreasury(address treasury_) internal {
         _treasury = treasury_;
         emit TreasurySet(treasury_);
     }
 
     /**
-    * @dev Internal function to set the CoveYFI Reward Forwarder address.
-    * @param forwarder The address of the CoveYFI Reward Forwarder.
-    */
+     * @dev Internal function to set the CoveYFI Reward Forwarder address.
+     * @param forwarder The address of the CoveYFI Reward Forwarder.
+     */
     function _setCoveYfiRewardForwarder(address forwarder) internal {
         _coveYfiRewardForwarder = forwarder;
         emit CoveYfiRewardForwarderSet(forwarder);
