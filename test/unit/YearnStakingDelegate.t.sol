@@ -447,6 +447,14 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.stopPrank();
     }
 
+    function testFuzz_setBoostRewardSplit_revertWhen_TreasuryPctTooHigh(uint128 treasuryPct) public {
+        vm.assume(treasuryPct > 0.2e18);
+        vm.assume(treasuryPct <= 1e18);
+        vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
+        vm.prank(timelock);
+        yearnStakingDelegate.setBoostRewardSplit(treasuryPct, 1e18 - treasuryPct);
+    }
+
     function test_setBoostRewardSplit_revertWhen_CallerIsNotTimelock() public {
         vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
         vm.prank(admin);
