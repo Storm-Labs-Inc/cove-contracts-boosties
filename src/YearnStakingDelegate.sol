@@ -197,10 +197,6 @@ contract YearnStakingDelegate is
         if (gaugeRewardReceiver == address(0)) {
             revert Errors.GaugeRewardsNotYetAdded();
         }
-        address treasury_ = _treasury;
-        if (treasury_ == address(0)) {
-            revert Errors.TreasuryNotSet();
-        }
         address rewardForwarder = _coveYfiRewardForwarder;
         if (rewardForwarder == address(0)) {
             revert Errors.CoveYfiRewardForwarderNotSet();

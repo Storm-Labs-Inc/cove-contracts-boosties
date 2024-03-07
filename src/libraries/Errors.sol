@@ -40,7 +40,6 @@ library Errors {
     error ExecutionNotAllowed();
     error ExecutionFailed();
     error CoveYfiRewardForwarderNotSet();
-    error TreasuryNotSet();
 
     //// STAKING DELEGATE REWARDS ////
     error RescueNotAllowed();
