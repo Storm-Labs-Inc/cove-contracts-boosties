@@ -576,11 +576,19 @@ contract YearnStakingDelegate is
         return _VE_YFI;
     }
 
+    /**
+    * @dev Internal function to set the treasury address.
+    * @param newTreasury The address of the new treasury.
+    */
     function _setTreasury(address treasury_) internal {
         _treasury = treasury_;
         emit TreasurySet(treasury_);
     }
 
+    /**
+    * @dev Internal function to set the CoveYFI Reward Forwarder address.
+    * @param forwarder The address of the CoveYFI Reward Forwarder.
+    */
     function _setCoveYfiRewardForwarder(address forwarder) internal {
         _coveYfiRewardForwarder = forwarder;
         emit CoveYfiRewardForwarderSet(forwarder);
