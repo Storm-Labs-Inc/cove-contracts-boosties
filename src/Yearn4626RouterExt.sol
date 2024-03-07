@@ -24,6 +24,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     IPermit2 private immutable _PERMIT2;
 
     error InsufficientShares();
+    error InsufficientAssets();
+    error RequiresMoreThanMaxShares();
     error InvalidTo();
     error PathIsTooShort();
     error NonVaultAddressInPath(address invalidVault);
@@ -65,6 +67,33 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if ((sharesOut = vault.deposit(amount, to)) < minSharesOut) revert InsufficientShares();
     }
 
+    function redeemVaultV2(
+        IYearnVaultV2 vault,
+        uint256 shares,
+        address to,
+        uint256 minAssetsOut
+    )
+        public
+        payable
+        returns (uint256 amountOut)
+    {
+        if ((amountOut = vault.withdraw(shares, to)) < minAssetsOut) revert InsufficientAssets();
+    }
+
+    function redeemFromRouter(
+        IERC4626 vault,
+        uint256 shares,
+        address to,
+        uint256 minAmountOut
+    )
+        public
+        payable
+        virtual
+        returns (uint256 amountOut)
+    {
+        if ((amountOut = vault.redeem(shares, to, address(this))) < minAmountOut) revert InsufficientAssets();
+    }
+
     /**
      * @notice Pulls tokens to the contract using a signature via Permit2.
      * @dev Verifies that the `to` address in `transferDetails` is the contract itself and then calls
@@ -74,7 +103,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @param transferDetails The details of the transfer, including the `to` address.
      * @param signature The signature to authorize the token transfer.
      */
-    function pullTokensWithPermit2(
+    function pullTokenWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         bytes calldata signature
@@ -90,14 +119,14 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @notice Calculate the amount of shares to be received from a series of deposits to ERC4626 vaults or Yearn Vault
      * V2.
      * @param path The array of addresses that represents the path from input token to output token
-     * @param assetIn The amount of assets to deposit into the first vault.
+     * @param assetsIn The amount of assets to deposit into the first vault.
      * @return sharesOut The amount of shares to be received from each deposit. The length of the array is `path.length
      * - 1`.
      */
     // slither-disable-start calls-loop,low-level-calls
     function previewDeposits(
         address[] calldata path,
-        uint256 assetIn
+        uint256 assetsIn
     )
         external
         view
@@ -115,13 +144,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                sharesOut[i] = IERC4626(vault).previewDeposit(assetIn);
+                sharesOut[i] = IERC4626(vault).previewDeposit(assetsIn);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
                     sharesOut[i] =
-                        Math.mulDiv(assetIn, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down) - 1;
+                        Math.mulDiv(assetsIn, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down) - 1;
                 } else {
                     revert NonVaultAddressInPath(vault);
                 }
@@ -129,7 +158,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i]) {
                 revert VaultMismatch();
             }
-            assetIn = sharesOut[i];
+            assetsIn = sharesOut[i];
             unchecked {
                 ++i;
             }
@@ -140,12 +169,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @notice Calculate the amount of assets required to mint a given amount of shares from a series of deposits to
      * ERC4626 vaults or Yearn Vault V2.
      * @param path The array of addresses that represents the path from input to output.
-     * @param shareOut The amount of shares to mint from the last vault.
+     * @param sharesOut The amount of shares to mint from the last vault.
      * @return assetsIn The amount of assets required at each step. The length of the array is `path.length - 1`.
      */
     function previewMints(
         address[] calldata path,
-        uint256 shareOut
+        uint256 sharesOut
     )
         external
         view
@@ -163,13 +192,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                assetsIn[i] = IERC4626(vault).previewMint(shareOut);
+                assetsIn[i] = IERC4626(vault).previewMint(sharesOut);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
                     assetsIn[i] =
-                        Math.mulDiv(shareOut, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up) + 1;
+                        Math.mulDiv(sharesOut, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up) + 1;
                 } else {
                     revert NonVaultAddressInPath(vault);
                 }
@@ -178,7 +207,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i]) {
                 revert VaultMismatch();
             }
-            shareOut = assetsIn[i];
+            sharesOut = assetsIn[i];
             unchecked {
                 ++i;
             }
@@ -190,12 +219,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * from
      * ERC4626 vaults or Yearn Vault V2.
      * @param path The array of addresses that represents the path from input to output.
-     * @param assetOut The amount of assets to withdraw from the last vault.
+     * @param assetsOut The amount of assets to withdraw from the last vault.
      * @return sharesIn The amount of shares required at each step. The length of the array is `path.length - 1`.
      */
     function previewWithdraws(
         address[] calldata path,
-        uint256 assetOut
+        uint256 assetsOut
     )
         external
         view
@@ -213,13 +242,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                sharesIn[i] = IERC4626(vault).previewWithdraw(assetOut);
+                sharesIn[i] = IERC4626(vault).previewWithdraw(assetsOut);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesIn[i] =
-                        Math.mulDiv(assetOut, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down) - 1;
+                    sharesIn[i] = Math.mulDiv(assetsOut, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down);
                 } else {
                     revert NonVaultAddressInPath(vault);
                 }
@@ -227,7 +255,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i + 1]) {
                 revert VaultMismatch();
             }
-            assetOut = sharesIn[i];
+            assetsOut = sharesIn[i];
             unchecked {
                 ++i;
             }
@@ -238,12 +266,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @notice Calculate the amount of assets to be received from a series of withdraws from ERC4626 vaults or Yearn
      * Vault V2.
      * @param path The array of addresses that represents the path from input to output.
-     * @param shareIn The amount of shares to withdraw from the first vault.
+     * @param sharesIn The amount of shares to withdraw from the first vault.
      * @return assetsOut The amount of assets to be received at each step. The length of the array is `path.length - 1`.
      */
     function previewRedeems(
         address[] calldata path,
-        uint256 shareIn
+        uint256 sharesIn
     )
         external
         view
@@ -261,13 +289,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                assetsOut[i] = IERC4626(vault).previewRedeem(shareIn);
+                assetsOut[i] = IERC4626(vault).previewRedeem(sharesIn);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsOut[i] =
-                        Math.mulDiv(shareIn, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up) + 1;
+                    assetsOut[i] = Math.mulDiv(sharesIn, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up);
                 } else {
                     revert NonVaultAddressInPath(vault);
                 }
@@ -275,7 +302,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i + 1]) {
                 revert VaultMismatch();
             }
-            shareIn = assetsOut[i];
+            sharesIn = assetsOut[i];
             unchecked {
                 ++i;
             }

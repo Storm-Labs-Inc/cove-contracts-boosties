@@ -16,7 +16,46 @@ interface IYearn4626RouterExt is IYearn4626Router {
         payable
         returns (uint256 sharesOut);
 
-    function pullTokensWithPermit2(
+    function redeemVaultV2(
+        IYearnVaultV2 vault,
+        uint256 shares,
+        address to,
+        uint256 minAmountOut
+    )
+        external
+        payable
+        returns (uint256 amountOut);
+
+    function previewDeposits(
+        address[] calldata path,
+        uint256 assetsIn
+    )
+        external
+        view
+        returns (uint256[] memory sharesOut);
+    function previewMints(
+        address[] calldata path,
+        uint256 sharesOut
+    )
+        external
+        view
+        returns (uint256[] memory assetsIn);
+    function previewWithdraws(
+        address[] calldata path,
+        uint256 assetsOut
+    )
+        external
+        view
+        returns (uint256[] memory sharesIn);
+    function previewRedeems(
+        address[] calldata path,
+        uint256 sharesIn
+    )
+        external
+        view
+        returns (uint256[] memory assetsOut);
+
+    function pullTokenWithPermit2(
         ISignatureTransfer.PermitTransferFrom memory permit,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         bytes calldata signature

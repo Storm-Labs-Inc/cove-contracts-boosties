@@ -134,7 +134,7 @@ contract Router_ForkedTest is BaseTest {
     }
 
     function test_previewWithdraws() public {
-        uint256 assetOutAmount = 1 ether;
+        uint256 assetOutAmount = 999_999_999_999_999_999;
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_GAUGE;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
@@ -142,7 +142,7 @@ contract Router_ForkedTest is BaseTest {
 
         uint256[] memory sharesIn = router.previewWithdraws(path, assetOutAmount);
         assertEq(sharesIn.length, 2);
-        assertEq(sharesIn[0], 1 ether);
+        assertEq(sharesIn[0], 999_999_999_999_999_999);
         assertEq(sharesIn[1], 949_289_266_142_683_599);
     }
 
@@ -196,7 +196,7 @@ contract Router_ForkedTest is BaseTest {
         (uint256[] memory assetsOut) = router.previewRedeems(path, shareInAmount);
         assertEq(assetsOut.length, 2);
         assertEq(assetsOut[0], 949_289_266_142_683_599);
-        assertEq(assetsOut[1], 1 ether);
+        assertEq(assetsOut[1], 999_999_999_999_999_999);
     }
 
     function test_previewRedeems_revertWhen_PathIsTooShort() public {
@@ -239,9 +239,9 @@ contract Router_ForkedTest is BaseTest {
         router.previewRedeems(path, shareInAmount);
     }
 
-    function test_curveLpTokenToYearnGauge() public {
+    function test_lpTokenToYearnGauge() public {
         uint256 depositAmount = 1 ether;
-        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount);
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount, false);
 
         // Generate a permit signature
         (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
@@ -283,10 +283,74 @@ contract Router_ForkedTest is BaseTest {
         );
 
         vm.prank(user);
-        router.multicall(data);
+        bytes[] memory ret = router.multicall(data);
+        assertEq(ret[0], "", "SelfPermit should return empty bytes");
+        assertEq(ret[1], "", "pullToken should return empty bytes");
+        assertEq(ret[2], "", "approve should return empty bytes");
+        assertEq(abi.decode(ret[3], (uint256)), 949_289_266_142_683_599, "depositToVaultV2 should return minted shares");
+        assertEq(ret[4], "", "approve should return empty bytes");
+        assertEq(abi.decode(ret[5], (uint256)), 949_289_266_142_683_599, "deposit should return minted shares");
 
         assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(user), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user), 949_289_266_142_683_599);
+    }
+
+    function test_yearnGaugeToLPToken() public {
+        uint256 shareAmount = 949_289_266_142_683_599;
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), user, shareAmount, false);
+
+        // Yearn gauge does not support permit signing, therefore we must use Permit2
+        // User's one time max approve Permit2.
+        vm.prank(user);
+        IERC20(MAINNET_ETH_YFI_GAUGE).approve(MAINNET_PERMIT2, _MAX_UINT256);
+
+        // Generate Permit2 Signature
+        ISignatureTransfer.PermitTransferFrom memory permit =
+            _getPermit2PermitTransferFrom(MAINNET_ETH_YFI_GAUGE, shareAmount, 0, block.timestamp + 100);
+
+        bytes memory signature = _getPermit2PermitTransferSignature(
+            permit, address(router), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
+        );
+        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
+            _getPerit2SignatureTransferDetails(address(router), shareAmount);
+
+        // Build multicall data
+        bytes[] memory data = new bytes[](5);
+        data[0] =
+            abi.encodeWithSelector(Yearn4626RouterExt.pullTokenWithPermit2.selector, permit, transferDetails, signature);
+        // Router's one time max approval for the gauge to burn the shares
+        data[1] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_GAUGE, MAINNET_ETH_YFI_GAUGE, _MAX_UINT256
+        );
+        data[2] = abi.encodeWithSelector(
+            Yearn4626RouterExt.redeemFromRouter.selector,
+            MAINNET_ETH_YFI_GAUGE,
+            shareAmount,
+            address(router),
+            // Yearn gauges return shares 1:1 with the deposit amount
+            shareAmount
+        );
+        data[3] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_VAULT_V2, MAINNET_ETH_YFI_POOL_LP_TOKEN, _MAX_UINT256
+        );
+        data[4] = abi.encodeWithSelector(
+            Yearn4626RouterExt.redeemVaultV2.selector,
+            MAINNET_ETH_YFI_VAULT_V2,
+            shareAmount,
+            address(user),
+            // When redeeming vault shares, the asset out may be different than the shares
+            // For yearn v2 vaults, use pricePerShare to calculate the asset out
+            // shareAmount * YearnVaultV2.pricePerShare() / 1e18
+            999_999_999_999_999_999
+        );
+
+        vm.prank(user);
+        bytes[] memory ret = router.multicall(data);
+        assertEq(ret[0], "", "pullTokenWithPermit2 should return empty bytes");
+        assertEq(ret[1], "", "approve should return empty bytes");
+        assertEq(abi.decode(ret[2], (uint256)), 949_289_266_142_683_599, "withdraw should return withdrawn shares");
+        assertEq(ret[3], "", "approve should return empty bytes");
+        assertEq(abi.decode(ret[4], (uint256)), 999_999_999_999_999_999, "redeemVaultV2 should return withdrawn amount");
     }
 
     function test_curveLpTokenToYearnGauge_revertWhen_insufficientShares() public {
@@ -358,7 +422,7 @@ contract Router_ForkedTest is BaseTest {
         ISignatureTransfer.SignatureTransferDetails memory transferDetails =
             _getPerit2SignatureTransferDetails(address(router), depositAmount);
         vm.prank(user);
-        router.pullTokensWithPermit2(permit, transferDetails, signature);
+        router.pullTokenWithPermit2(permit, transferDetails, signature);
         uint256 userBalanceAfter = IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user);
         assertEq(userBalanceAfter, 0, "User should have 0 token after transfer");
         assertEq(
@@ -384,6 +448,6 @@ contract Router_ForkedTest is BaseTest {
             _getPerit2SignatureTransferDetails(address(this), depositAmount);
         vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.InvalidTo.selector));
         vm.prank(user);
-        router.pullTokensWithPermit2(permit, transferDetails, signature);
+        router.pullTokenWithPermit2(permit, transferDetails, signature);
     }
 }
