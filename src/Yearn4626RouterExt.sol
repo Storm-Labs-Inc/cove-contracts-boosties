@@ -104,19 +104,20 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         returns (uint256[] memory sharesOut)
     {
         if (path.length < 2) revert PathIsTooShort();
-        sharesOut = new uint256[](path.length - 1);
-        for (uint256 i; i < sharesOut.length;) {
+        uint256 sharesOutLength = path.length - 1;
+        sharesOut = new uint256[](sharesOutLength);
+        for (uint256 i; i < sharesOutLength;) {
             address vault = path[i + 1];
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
             address vaultAsset;
-            (bool success, bytes memory data) = vault.staticcall(abi.encodeWithSelector(IERC4626.asset.selector));
+            (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
                 sharesOut[i] = IERC4626(vault).previewDeposit(assetIn);
             } else {
-                (success, data) = vault.staticcall(abi.encodeWithSelector(IYearnVaultV2.token.selector));
+                (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
                     sharesOut[i] =
@@ -151,19 +152,20 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         returns (uint256[] memory assetsIn)
     {
         if (path.length < 2) revert PathIsTooShort();
-        assetsIn = new uint256[](path.length - 1);
-        for (uint256 i; i < assetsIn.length;) {
+        uint256 assetsInLength = path.length - 1;
+        assetsIn = new uint256[](assetsInLength);
+        for (uint256 i; i < assetsInLength;) {
             address vault = path[i + 1];
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
             address vaultAsset;
-            (bool success, bytes memory data) = vault.staticcall(abi.encodeWithSelector(IERC4626.asset.selector));
+            (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
                 assetsIn[i] = IERC4626(vault).previewMint(shareOut);
             } else {
-                (success, data) = vault.staticcall(abi.encodeWithSelector(IYearnVaultV2.token.selector));
+                (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
                     assetsIn[i] =
@@ -200,19 +202,20 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         returns (uint256[] memory sharesIn)
     {
         if (path.length < 2) revert PathIsTooShort();
-        sharesIn = new uint256[](path.length - 1);
-        for (uint256 i; i < sharesIn.length;) {
+        uint256 sharesInLength = path.length - 1;
+        sharesIn = new uint256[](sharesInLength);
+        for (uint256 i; i < sharesInLength;) {
             address vault = path[i];
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
             address vaultAsset;
-            (bool success, bytes memory data) = vault.staticcall(abi.encodeWithSelector(IERC4626.asset.selector));
+            (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
                 sharesIn[i] = IERC4626(vault).previewWithdraw(assetOut);
             } else {
-                (success, data) = vault.staticcall(abi.encodeWithSelector(IYearnVaultV2.token.selector));
+                (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
                     sharesIn[i] =
@@ -247,19 +250,20 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         returns (uint256[] memory assetsOut)
     {
         if (path.length < 2) revert PathIsTooShort();
-        assetsOut = new uint256[](path.length - 1);
-        for (uint256 i; i < assetsOut.length;) {
+        uint256 assetsOutLength = path.length - 1;
+        assetsOut = new uint256[](assetsOutLength);
+        for (uint256 i; i < assetsOutLength;) {
             address vault = path[i];
             if (!Address.isContract(vault)) {
                 revert NonVaultAddressInPath(vault);
             }
             address vaultAsset;
-            (bool success, bytes memory data) = vault.staticcall(abi.encodeWithSelector(IERC4626.asset.selector));
+            (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
                 assetsOut[i] = IERC4626(vault).previewRedeem(shareIn);
             } else {
-                (success, data) = vault.staticcall(abi.encodeWithSelector(IYearnVaultV2.token.selector));
+                (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
                     assetsOut[i] =
