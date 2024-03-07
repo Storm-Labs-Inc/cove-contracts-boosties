@@ -21,6 +21,7 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -140,7 +141,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Admin transactions
         SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYFIRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
-        ysd.setSnapshotDelegate("veyfi.eth", treasury);
+        ysd.setSnapshotDelegate("veyfi.eth", manager);
         ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
@@ -440,6 +441,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     }
 
     function verifyPostDeploymentState() public view {
+        /// CoveToken initial state and balances verification
         IERC20 coveToken = IERC20(deployer.getAddress("CoveToken"));
         // Verify minichef v3 balance
         require(
@@ -455,7 +457,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         require(coveToken.balanceOf(admin) == COVE_BALANCE_MULTISIG, "CoveToken balance in admin multisig is incorrect");
         // Verify deployer holds no cove tokens
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
-        // Add more checks here
+        // Check for Snapshot delegation
+        require(
+            ISnapshotDelegateRegistry(MAINNET_SNAPSHOT_DELEGATE_REGISTRY).delegation(
+                deployer.getAddress("YearnStakingDelegate"), "veyfi.eth"
+            ) == manager,
+            "ysd.setSnapshotDelegate failed"
+        );
         // Verify roles have been properly set
         /// YearnStakingDelegate
         _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
