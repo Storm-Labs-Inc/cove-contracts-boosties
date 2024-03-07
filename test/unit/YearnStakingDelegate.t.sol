@@ -418,7 +418,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_harvest_revertWhen_CoveYfiRewardForwarderNotSet() public {
         _setSwapAndLock();
         _addTestGaugeRewards();
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setTreasury(treasury);
         vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
         yearnStakingDelegate.harvest(testGauge);
