@@ -32,6 +32,7 @@ contract BaseScript is Script, Constants {
             // (0) 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (10000.000000000000000000 ETH)
             (broadcaster, broadcasterPK) = deriveRememberKey({ mnemonic: TEST_MNEMONIC, index: 0 });
         }
+        vm.label(broadcaster, "Broadcaster");
     }
 
     modifier broadcast() {
