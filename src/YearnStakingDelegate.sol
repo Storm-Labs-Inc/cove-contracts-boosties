@@ -578,7 +578,7 @@ contract YearnStakingDelegate is
 
     /**
      * @dev Internal function to set the treasury address.
-     * @param newTreasury The address of the new treasury.
+     * @param treasury_ The address of the new treasury.
      */
     function _setTreasury(address treasury_) internal {
         _treasury = treasury_;
