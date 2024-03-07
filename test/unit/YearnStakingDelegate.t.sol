@@ -470,6 +470,12 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(yearnStakingDelegate.coveYfiRewardForwarder(), forwarder, "setCoveYfiRewardForwarder failed");
     }
 
+    function test_setCoveYfiRewardForwarder_revertWhen_ZeroAddress() public {
+        vm.prank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        yearnStakingDelegate.setCoveYfiRewardForwarder(address(0));
+    }
+
     function testFuzz_claimBoostRewards(uint128 treasuryPct) public {
         vm.assume(treasuryPct <= 0.2e18);
         uint128 coveYfiPct = 1e18 - treasuryPct;
