@@ -269,6 +269,11 @@ contract YearnStakingDelegate is
         return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
     }
 
+    /**
+    * @notice Sets the address for the CoveYFI Reward Forwarder.
+    * @dev Can only be called by an address with the _TIMELOCK_ROLE. Emits CoveYfiRewardForwarderSet event.
+    * @param forwarder The address of the new CoveYFI Reward Forwarder.
+    */
     function setCoveYfiRewardForwarder(address forwarder) external onlyRole(_TIMELOCK_ROLE) {
         // Checks
         if (forwarder == address(0)) {
