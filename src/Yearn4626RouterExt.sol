@@ -29,11 +29,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     error NonVaultAddressInPath(address invalidVault);
     error VaultMismatch();
 
-    struct Vault {
-        address vault;
-        bool isYearnVaultV2;
-    }
-
     /**
      * @notice Constructs the Yearn4626RouterExt contract.
      * @dev Sets up the router with the name for the vault, WETH address, and Permit2 contract address.
