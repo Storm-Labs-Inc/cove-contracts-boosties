@@ -12,6 +12,16 @@ interface IYearnStakingDelegate {
         uint64 lock;
     }
 
+    struct ExitRewardSplit {
+        uint128 treasury;
+        uint128 coveYfi;
+    }
+
+    struct BoostRewardSplit {
+        uint128 treasury;
+        uint128 coveYfi;
+    }
+
     function deposit(address gauge, uint256 amount) external;
     function withdraw(address gauge, uint256 amount) external;
     function withdraw(address gauge, uint256 amount, address receiver) external;
@@ -26,9 +36,14 @@ interface IYearnStakingDelegate {
         uint64 veYfiPct
     )
         external;
+
+    function setBoostRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external;
+    function setExitRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external;
     function setSwapAndLock(address swapAndLock) external;
     function balanceOf(address user, address gauge) external view returns (uint256);
     function gaugeStakingRewards(address gauge) external view returns (address);
     function gaugeRewardReceivers(address gauge) external view returns (address);
     function getGaugeRewardSplit(address gauge) external view returns (RewardSplit memory);
+    function getBoostRewardSplit() external view returns (BoostRewardSplit memory);
+    function getExitRewardSplit() external view returns (ExitRewardSplit memory);
 }

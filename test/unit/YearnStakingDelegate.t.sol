@@ -143,6 +143,16 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, coveYfiSplit, userSplit, lockSplit);
     }
 
+    function _setBoostRewardSplit(uint128 treasurySplit, uint128 coveYfiSplit) internal {
+        vm.prank(timelock);
+        yearnStakingDelegate.setBoostRewardSplit(treasurySplit, coveYfiSplit);
+    }
+
+    function _setExitRewardSplit(uint128 treasurySplit, uint128 coveYfiSplit) internal {
+        vm.prank(timelock);
+        yearnStakingDelegate.setExitRewardSplit(treasurySplit, coveYfiSplit);
+    }
+
     function _lockYfiForYSD(address from, uint256 amount) internal {
         airdrop(ERC20(MAINNET_YFI), from, amount);
         vm.prank(from);
@@ -406,12 +416,47 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.harvest(testGauge);
     }
 
-    function test_claimBoostRewards() public {
+    function testFuzz_setBoostRewardSplit(uint128 treasuryPct) public {
+        vm.assume(treasuryPct <= 0.2e18);
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setBoostRewardSplit(treasuryPct, coveYfiPct);
+        IYearnStakingDelegate.BoostRewardSplit memory rewardSplit = yearnStakingDelegate.getBoostRewardSplit();
+        assertEq(rewardSplit.treasury, treasuryPct, "setBoostRewardSplit failed, treasury split is incorrect");
+        assertEq(rewardSplit.coveYfi, coveYfiPct, "setBoostRewardSplit failed, coveYfi split is incorrect");
+    }
+
+    function testFuzz_setBoostRewardSplit_revertWhen_InvalidRewardSplit(
+        uint128 treasuryPct,
+        uint128 coveYfiPct
+    )
+        public
+    {
+        vm.assume(treasuryPct <= 0.2e18);
+        vm.assume(uint256(treasuryPct) + coveYfiPct != 1e18);
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
+        yearnStakingDelegate.setBoostRewardSplit(treasuryPct, coveYfiPct);
+        vm.stopPrank();
+    }
+
+    function test_setBoostRewardSplit_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.setBoostRewardSplit(1e18, 0);
+    }
+
+    function testFuzz_claimBoostRewards(uint128 treasuryPct) public {
+        vm.assume(treasuryPct <= 0.2e18);
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setBoostRewardSplit(treasuryPct, coveYfiPct);
         _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
         airdrop(IERC20(dYfi), dYfiRewardPool, DYFI_REWARD_AMOUNT);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimBoostRewards();
-        assertEq(IERC20(dYfi).balanceOf(coveYfiRewardForwarder), DYFI_REWARD_AMOUNT, "claimBoostRewards failed");
+        uint256 treasuryAmount = DYFI_REWARD_AMOUNT * treasuryPct / 1e18;
+        uint256 coveYfiAmount = DYFI_REWARD_AMOUNT - treasuryAmount;
+        assertEq(IERC20(dYfi).balanceOf(treasury), treasuryAmount, "claimBoostRewards failed");
+        assertEq(IERC20(dYfi).balanceOf(coveYfiRewardForwarder), coveYfiAmount, "claimBoostRewards failed");
     }
 
     function test_claimBoostRewards_revertWhen_CoveYfiRewardForwarderNotSet() public {
@@ -419,12 +464,56 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.claimBoostRewards();
     }
 
-    function test_claimExitRewards() public {
+    function testFuzz_setExitRewardSplit(uint128 treasuryPct) public {
+        vm.assume(treasuryPct <= 0.2e18);
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setExitRewardSplit(treasuryPct, coveYfiPct);
+        IYearnStakingDelegate.ExitRewardSplit memory rewardSplit = yearnStakingDelegate.getExitRewardSplit();
+        assertEq(rewardSplit.treasury, treasuryPct, "setExitRewardSplit failed, treasury split is incorrect");
+        assertEq(rewardSplit.coveYfi, coveYfiPct, "setExitRewardSplit failed, coveYfi split is incorrect");
+    }
+
+    function testFuzz_setExitRewardSplit_revertWhen_InvalidRewardSplit(
+        uint128 treasuryPct,
+        uint128 coveYfiPct
+    )
+        public
+    {
+        vm.assume(treasuryPct <= 0.2e18);
+        vm.assume(uint256(treasuryPct) + coveYfiPct != 1e18);
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
+        yearnStakingDelegate.setExitRewardSplit(treasuryPct, coveYfiPct);
+        vm.stopPrank();
+    }
+
+    function testFuzz_setExitRewardSplit_revertWhen_TreasuryPctTooHigh(uint128 treasuryPct) public {
+        vm.assume(treasuryPct > 0.2e18);
+        vm.assume(treasuryPct <= 1e18);
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
+        yearnStakingDelegate.setExitRewardSplit(treasuryPct, 1e18 - treasuryPct);
+        vm.stopPrank();
+    }
+
+    function test_setExitRewardSplit_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.setExitRewardSplit(1e18, 0);
+    }
+
+    function testFuzz_claimExitRewards(uint128 treasuryPct) public {
+        vm.assume(treasuryPct <= 0.2e18);
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setExitRewardSplit(treasuryPct, coveYfiPct);
         _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
         airdrop(IERC20(yfi), yfiRewardPool, YFI_REWARD_AMOUNT);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimExitRewards();
-        assertEq(IERC20(yfi).balanceOf(coveYfiRewardForwarder), YFI_REWARD_AMOUNT, "claimExitRewards failed");
+        uint256 treasuryAmount = YFI_REWARD_AMOUNT * treasuryPct / 1e18;
+        uint256 coveYfiAmount = YFI_REWARD_AMOUNT - treasuryAmount;
+        assertEq(IERC20(yfi).balanceOf(treasury), treasuryAmount, "claimExitRewards failed");
+        assertEq(IERC20(yfi).balanceOf(coveYfiRewardForwarder), coveYfiAmount, "claimExitRewards failed");
     }
 
     function test_claimExitRewards_revertWhen_CoveYfiRewardForwarderNotSet() public {
@@ -475,6 +564,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_setGaugeRewardSplit(uint64 a, uint64 b, uint64 c) public {
+        vm.assume(a <= 0.2e18);
         // Workaround for vm.assume max tries
         vm.assume(uint256(a) + b + c <= 1e18);
         uint64 d = 1e18 - a - b - c;

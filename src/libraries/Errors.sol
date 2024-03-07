@@ -31,6 +31,7 @@ library Errors {
     error ZeroAddress();
     error ZeroAmount();
     error InvalidRewardSplit();
+    error TreasuryPctTooHigh();
     error PerpetualLockEnabled();
     error PerpetualLockDisabled();
     error SwapAndLockNotSet();

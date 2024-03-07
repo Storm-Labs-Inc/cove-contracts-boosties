@@ -521,31 +521,49 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function testFuzz_setGaugeRewardSplit(uint64 a, uint64 b, uint64 c) public {
+    function testFuzz_setGaugeRewardSplit(uint64 treasuryPct, uint64 coveYfiPct, uint64 lockPct) public {
         // Workaround for vm.assume max tries
-        vm.assume(uint256(a) + b + c <= 1e18);
-        uint64 d = 1e18 - a - b - c;
+        vm.assume(treasuryPct <= 0.2e18);
+        vm.assume(uint256(treasuryPct) + coveYfiPct + lockPct <= 1e18);
+        uint64 userPct = 1e18 - treasuryPct - coveYfiPct - lockPct;
         vm.prank(timelock);
-        yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c, d);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasuryPct, coveYfiPct, userPct, lockPct);
         IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.getGaugeRewardSplit(gauge);
-        assertEq(rewardSplit.treasury, a, "setGaugeRewardSplit failed, treasury split is incorrect");
-        assertEq(rewardSplit.coveYfi, b, "setGaugeRewardSplit failed, coveYfi split is incorrect");
-        assertEq(rewardSplit.user, c, "setGaugeRewardSplit failed, user split is incorrect");
-        assertEq(rewardSplit.lock, d, "setGaugeRewardSplit failed, lock split is incorrect");
+        assertEq(rewardSplit.treasury, treasuryPct, "setGaugeRewardSplit failed, treasury split is incorrect");
+        assertEq(rewardSplit.coveYfi, coveYfiPct, "setGaugeRewardSplit failed, coveYfi split is incorrect");
+        assertEq(rewardSplit.user, userPct, "setGaugeRewardSplit failed, user split is incorrect");
+        assertEq(rewardSplit.lock, lockPct, "setGaugeRewardSplit failed, lock split is incorrect");
     }
 
     function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(
-        uint64 a,
-        uint64 b,
-        uint64 c,
-        uint64 d
+        uint64 treasuryPct,
+        uint64 coveYfiPct,
+        uint64 userPct,
+        uint64 lockPct
     )
         public
     {
-        vm.assume(uint256(a) + b + c + d != 1e18);
+        vm.assume(treasuryPct <= 0.2e18);
+        vm.assume(uint256(treasuryPct) + coveYfiPct + userPct + lockPct != 1e18);
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
-        yearnStakingDelegate.setGaugeRewardSplit(gauge, a, b, c, d);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasuryPct, coveYfiPct, userPct, lockPct);
+        vm.stopPrank();
+    }
+
+    function testFuzz_setGaugeRewardSplit_revertWhen_TreasuryPctTooHigh(
+        uint64 treasuryPct,
+        uint64 coveYfiPct,
+        uint64 lockPct
+    )
+        public
+    {
+        vm.assume(treasuryPct > 0.2e18);
+        vm.assume(uint128(treasuryPct) + coveYfiPct + lockPct <= 1e18);
+        uint64 userPct = 1e18 - treasuryPct - coveYfiPct - lockPct;
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasuryPct, coveYfiPct, userPct, lockPct);
         vm.stopPrank();
     }
 }
