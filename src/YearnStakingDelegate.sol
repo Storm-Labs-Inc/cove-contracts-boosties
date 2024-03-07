@@ -203,7 +203,7 @@ contract YearnStakingDelegate is
         }
         // Interactions
         return GaugeRewardReceiver(gaugeRewardReceiver).harvest(
-            swapAndLockContract, treasury_, rewardForwarder, _gaugeRewardSplit[gauge]
+            swapAndLockContract, _treasury, rewardForwarder, _gaugeRewardSplit[gauge]
         );
     }
 
