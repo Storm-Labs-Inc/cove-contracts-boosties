@@ -405,7 +405,6 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_harvest_revertWhen_SwapAndLockNotSet() public {
-        _addTestGaugeRewards();
         vm.expectRevert(abi.encodeWithSelector(Errors.SwapAndLockNotSet.selector));
         yearnStakingDelegate.harvest(testGauge);
     }
@@ -413,6 +412,15 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_harvest_revertWhen_GaugeRewardsNotYetAdded() public {
         _setSwapAndLock();
         vm.expectRevert(abi.encodeWithSelector(Errors.GaugeRewardsNotYetAdded.selector));
+        yearnStakingDelegate.harvest(testGauge);
+    }
+
+    function test_harvest_revertWhen_CoveYfiRewardForwarderNotSet() public {
+        _setSwapAndLock();
+        _addTestGaugeRewards();
+        vm.prank(admin);
+        yearnStakingDelegate.setTreasury(treasury);
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
         yearnStakingDelegate.harvest(testGauge);
     }
 
@@ -443,6 +451,15 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setBoostRewardSplit(1e18, 0);
+    }
+
+    function testFuzz_setCoveYfiRewardForwarder(address forwarder) public {
+        vm.assume(forwarder != address(0));
+        vm.expectEmit();
+        emit CoveYfiRewardForwarderSet(forwarder);
+        vm.prank(timelock);
+        yearnStakingDelegate.setCoveYfiRewardForwarder(forwarder);
+        assertEq(yearnStakingDelegate.coveYfiRewardForwarder(), forwarder, "setCoveYfiRewardForwarder failed");
     }
 
     function testFuzz_claimBoostRewards(uint128 treasuryPct) public {
