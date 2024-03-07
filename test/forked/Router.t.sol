@@ -29,50 +29,214 @@ contract Router_ForkedTest is BaseTest {
 
     function test_previewDeposits() public {
         uint256 assetInAmount = 1 ether;
-        Yearn4626RouterExt.Vault[] memory previewDeposit = new Yearn4626RouterExt.Vault[](2);
-        previewDeposit[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
-        previewDeposit[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_ETH_YFI_GAUGE;
 
-        (address assetInAddress, uint256[] memory sharesOut) = router.previewDeposits(previewDeposit, assetInAmount);
-        assertEq(assetInAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        uint256[] memory sharesOut = router.previewDeposits(path, assetInAmount);
+        assertEq(sharesOut.length, 2);
         assertEq(sharesOut[0], 949_289_266_142_683_599);
         assertEq(sharesOut[1], 949_289_266_142_683_599);
     }
 
+    function test_previewDeposits_revertWhen_PathIsTooShort() public {
+        uint256 assetInAmount = 1 ether;
+        address[] memory path = new address[](1);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+
+        vm.expectRevert(Yearn4626RouterExt.PathIsTooShort.selector);
+        router.previewDeposits(path, assetInAmount);
+    }
+
+    function test_previewDeposits_revertWhen_NonVaultAddressInPath() public {
+        uint256 assetInAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = MAINNET_YFI; // Use non 4626 address for the test
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, MAINNET_YFI));
+        router.previewDeposits(path, assetInAmount);
+    }
+
+    function test_previewDeposits_revertWhen_InvalidVaultInPath_NotAContract() public {
+        uint256 assetInAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = address(0); // Use non 4626 address for the test
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, address(0)));
+        router.previewDeposits(path, assetInAmount);
+    }
+
+    function test_previewDeposits_revertWhen_VaultMismatch() public {
+        uint256 assetInAmount = 1 ether;
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+
+        vm.expectRevert(Yearn4626RouterExt.VaultMismatch.selector);
+        router.previewDeposits(path, assetInAmount);
+    }
+
     function test_previewMints() public {
         uint256 shareOutAmount = 949_289_266_142_683_599;
-        Yearn4626RouterExt.Vault[] memory previewMint = new Yearn4626RouterExt.Vault[](2);
-        previewMint[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
-        previewMint[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_ETH_YFI_GAUGE;
 
-        (address assetInAddress, uint256[] memory assetsIn) = router.previewMints(previewMint, shareOutAmount);
-        assertEq(assetInAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        uint256[] memory assetsIn = router.previewMints(path, shareOutAmount);
+        assertEq(assetsIn.length, 2);
         assertEq(assetsIn[0], 1 ether);
         assertEq(assetsIn[1], 1 ether);
     }
 
+    function test_previewMints_revertWhen_PathIsTooShort() public {
+        uint256 shareOutAmount = 949_289_266_142_683_599;
+        address[] memory path = new address[](1);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+
+        vm.expectRevert(Yearn4626RouterExt.PathIsTooShort.selector);
+        router.previewMints(path, shareOutAmount);
+    }
+
+    function test_previewMints_revertWhen_NonVaultAddressInPath() public {
+        uint256 shareOutAmount = 949_289_266_142_683_599;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = MAINNET_YFI; // Use non 4626 address for the test
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, MAINNET_YFI));
+        router.previewMints(path, shareOutAmount);
+    }
+
+    function test_previewMints_revertWhen_InvalidVaultInPath_NotAContract() public {
+        uint256 shareOutAmount = 949_289_266_142_683_599;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = address(0); // Use non 4626 address for the test
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, address(0)));
+        router.previewMints(path, shareOutAmount);
+    }
+
+    function test_previewMints_revertWhen_VaultMismatch() public {
+        uint256 shareOutAmount = 949_289_266_142_683_599;
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+
+        vm.expectRevert(Yearn4626RouterExt.VaultMismatch.selector);
+        router.previewMints(path, shareOutAmount);
+    }
+
     function test_previewWithdraws() public {
         uint256 assetOutAmount = 1 ether;
-        Yearn4626RouterExt.Vault[] memory previewWithdraw = new Yearn4626RouterExt.Vault[](2);
-        previewWithdraw[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
-        previewWithdraw[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
 
-        (address assetOutAddress, uint256[] memory sharesIn) = router.previewWithdraws(previewWithdraw, assetOutAmount);
-        assertEq(assetOutAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        uint256[] memory sharesIn = router.previewWithdraws(path, assetOutAmount);
+        assertEq(sharesIn.length, 2);
         assertEq(sharesIn[0], 1 ether);
         assertEq(sharesIn[1], 949_289_266_142_683_599);
     }
 
+    function test_previewWithdraws_revertWhen_PathIsTooShort() public {
+        uint256 assetOutAmount = 1 ether;
+        address[] memory path = new address[](1);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+
+        vm.expectRevert(Yearn4626RouterExt.PathIsTooShort.selector);
+        router.previewWithdraws(path, assetOutAmount);
+    }
+
+    function test_previewWithdraws_revertWhen_NonVaultAddressInPath() public {
+        uint256 assetOutAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_YFI; // Use non 4626 address for the test
+        path[1] = MAINNET_ETH_YFI_GAUGE;
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, MAINNET_YFI));
+        router.previewWithdraws(path, assetOutAmount);
+    }
+
+    function test_previewWithdraws_revertWhen_InvalidVaultInPath_NotAContract() public {
+        uint256 assetOutAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = address(0); // Use non 4626 address for the test
+        path[1] = MAINNET_ETH_YFI_GAUGE;
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, address(0)));
+        router.previewWithdraws(path, assetOutAmount);
+    }
+
+    function test_previewWithdraws_revertWhen_VaultMismatch() public {
+        uint256 assetOutAmount = 1 ether;
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+
+        vm.expectRevert(Yearn4626RouterExt.VaultMismatch.selector);
+        router.previewWithdraws(path, assetOutAmount);
+    }
+
     function test_previewRedeems() public {
         uint256 shareInAmount = 949_289_266_142_683_599;
-        Yearn4626RouterExt.Vault[] memory previewRedeem = new Yearn4626RouterExt.Vault[](2);
-        previewRedeem[0] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_GAUGE, false);
-        previewRedeem[1] = Yearn4626RouterExt.Vault(MAINNET_ETH_YFI_VAULT_V2, true);
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
 
-        (address assetOutAddress, uint256[] memory assetsOut) = router.previewRedeems(previewRedeem, shareInAmount);
-        assertEq(assetOutAddress, MAINNET_ETH_YFI_POOL_LP_TOKEN);
+        (uint256[] memory assetsOut) = router.previewRedeems(path, shareInAmount);
+        assertEq(assetsOut.length, 2);
         assertEq(assetsOut[0], 949_289_266_142_683_599);
         assertEq(assetsOut[1], 1 ether);
+    }
+
+    function test_previewRedeems_revertWhen_PathIsTooShort() public {
+        uint256 shareInAmount = 1 ether;
+        address[] memory path = new address[](1);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+
+        vm.expectRevert(Yearn4626RouterExt.PathIsTooShort.selector);
+        router.previewRedeems(path, shareInAmount);
+    }
+
+    function test_previewRedeems_revertWhen_NonVaultAddressInPath() public {
+        uint256 shareInAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_YFI; // Use non 4626 address for the test
+        path[1] = MAINNET_ETH_YFI_GAUGE;
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, MAINNET_YFI));
+        router.previewRedeems(path, shareInAmount);
+    }
+
+    function test_previewRedeems_revertWhen_NonVaultAddressInPath_NotAContract() public {
+        uint256 shareInAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = address(0); // Use non 4626 address for the test
+        path[1] = MAINNET_ETH_YFI_GAUGE;
+
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.NonVaultAddressInPath.selector, address(0)));
+        router.previewRedeems(path, shareInAmount);
+    }
+
+    function test_previewRedeems_revertWhen_VaultMismatch() public {
+        uint256 shareInAmount = 1 ether;
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+
+        vm.expectRevert(Yearn4626RouterExt.VaultMismatch.selector);
+        router.previewRedeems(path, shareInAmount);
     }
 
     function test_curveLpTokenToYearnGauge() public {
@@ -91,6 +255,7 @@ contract Router_ForkedTest is BaseTest {
         data[1] = abi.encodeWithSelector(
             PeripheryPayments.pullToken.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, address(router)
         );
+        // One time max approval for the vault to spend the LP tokens
         data[2] = abi.encodeWithSelector(
             PeripheryPayments.approve.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
         );
@@ -104,6 +269,7 @@ contract Router_ForkedTest is BaseTest {
             // 1e18 * depositAmount / YearnVaultV2.pricePerShare() - 1
             949_289_266_142_683_599
         );
+        // One time max approval for the vault to spend the LP tokens
         data[4] = abi.encodeWithSelector(
             PeripheryPayments.approve.selector, MAINNET_ETH_YFI_VAULT_V2, MAINNET_ETH_YFI_GAUGE, _MAX_UINT256
         );
@@ -139,6 +305,7 @@ contract Router_ForkedTest is BaseTest {
         data[1] = abi.encodeWithSelector(
             PeripheryPayments.pullToken.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, address(router)
         );
+        // One time max approval for the vault to spend the LP tokens
         data[2] = abi.encodeWithSelector(
             PeripheryPayments.approve.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
         );
@@ -153,6 +320,7 @@ contract Router_ForkedTest is BaseTest {
             // setting as depositAmount to show fail case
             depositAmount
         );
+        // One time max approval for the vault to spend the LP tokens
         data[4] = abi.encodeWithSelector(
             PeripheryPayments.approve.selector, MAINNET_ETH_YFI_VAULT_V2, MAINNET_ETH_YFI_GAUGE, _MAX_UINT256
         );
@@ -174,14 +342,14 @@ contract Router_ForkedTest is BaseTest {
 
     function test_pullTokensWithPermit2() public {
         uint256 depositAmount = 1 ether;
-        // YFI allows for permit2
-        airdrop(IERC20(MAINNET_YFI), user, depositAmount);
-        // max approce permit2
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), user, depositAmount);
+        // Yearn gauge does not support permit signing, therefore we must use Permit2
+        // User's one time max approve Permit2.
         vm.prank(user);
-        IERC20(MAINNET_YFI).approve(MAINNET_PERMIT2, _MAX_UINT256);
+        IERC20(MAINNET_ETH_YFI_GAUGE).approve(MAINNET_PERMIT2, _MAX_UINT256);
 
         ISignatureTransfer.PermitTransferFrom memory permit =
-            _getPermit2PermitTransferFrom(MAINNET_YFI, depositAmount, 0, block.timestamp + 100);
+            _getPermit2PermitTransferFrom(MAINNET_ETH_YFI_GAUGE, depositAmount, 0, block.timestamp + 100);
 
         bytes memory signature = _getPermit2PermitTransferSignature(
             permit, address(router), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
@@ -191,21 +359,22 @@ contract Router_ForkedTest is BaseTest {
             _getPerit2SignatureTransferDetails(address(router), depositAmount);
         vm.prank(user);
         router.pullTokensWithPermit2(permit, transferDetails, signature);
-        uint256 userBalanceAfter = IERC20(MAINNET_YFI).balanceOf(user);
+        uint256 userBalanceAfter = IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user);
         assertEq(userBalanceAfter, 0, "User should have 0 token after transfer");
-        assertEq(IERC20(MAINNET_YFI).balanceOf(address(router)), depositAmount, "Router should have the token");
+        assertEq(
+            IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(address(router)), depositAmount, "Router should have the token"
+        );
     }
 
     function test_pullTokensWithPermit2_revertWhen_InvalidTo() public {
         uint256 depositAmount = 1 ether;
-        // YFI allows for permit2
-        airdrop(IERC20(MAINNET_YFI), user, depositAmount);
-        // max approce permit2
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), user, depositAmount);
+        // One time max approve Permit2.
         vm.prank(user);
-        IERC20(MAINNET_YFI).approve(MAINNET_PERMIT2, _MAX_UINT256);
+        IERC20(MAINNET_ETH_YFI_GAUGE).approve(MAINNET_PERMIT2, _MAX_UINT256);
 
         ISignatureTransfer.PermitTransferFrom memory permit =
-            _getPermit2PermitTransferFrom(MAINNET_YFI, depositAmount, 0, block.timestamp + 100);
+            _getPermit2PermitTransferFrom(MAINNET_ETH_YFI_GAUGE, depositAmount, 0, block.timestamp + 100);
 
         bytes memory signature = _getPermit2PermitTransferSignature(
             permit, address(this), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
