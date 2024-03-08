@@ -33,6 +33,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
     uint256 private constant _OWNER_PAUSE_PERIOD = 6 * 4 weeks;
     /// @dev Role identifier for minters.
     bytes32 private constant _MINTER_ROLE = keccak256("MINTER_ROLE");
+    /// @dev Role identifier for the timelock mechanism, used to secure sensitive functions behind a delay.
     bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     /// @notice Timestamp after which minting is allowed.
@@ -52,13 +53,29 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
     /// @notice State variable to make the events orderable for external observers if they are called in the same block.
     uint256 private _eventId;
 
-    /// @dev Emitted when a transferrer is allowed.
+    /**
+     * @notice Emitted when an address is granted permission to initiate transfers.
+     * @param target The address that is being allowed to send tokens.
+     * @param eventId An identifier for the event to order events within the same block.
+     */
     event SenderAllowed(address indexed target, uint256 eventId);
-    /// @dev Emitted when a transferrer is disallowed.
+    /**
+     * @notice Emitted when an address has its permission to initiate transfers revoked.
+     * @param target The address that is being disallowed from sending tokens.
+     * @param eventId An identifier for the event to order events within the same block.
+     */
     event SenderDisallowed(address indexed target, uint256 eventId);
-    /// @dev Emitted when a transferee is allowed.
+    /**
+     * @notice Emitted when an address is granted permission to receive transfers.
+     * @param target The address that is being allowed to receive tokens.
+     * @param eventId An identifier for the event to order events within the same block.
+     */
     event ReceiverAllowed(address indexed target, uint256 eventId);
-    /// @dev Emitted when a transferee is disallowed.
+    /**
+     * @notice Emitted when an address has its permission to receive transfers revoked.
+     * @param target The address that is being disallowed from receiving tokens.
+     * @param eventId An identifier for the event to order events within the same block.
+     */
     event ReceiverDisallowed(address indexed target, uint256 eventId);
 
     /**
