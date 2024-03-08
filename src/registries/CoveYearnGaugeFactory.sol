@@ -87,10 +87,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
      * @param nonAutoCompoundingGauge Address of the non-auto-compounding gauge.
      */
     event CoveGaugesDeployed(
-        address indexed yearnGauge,
-        address indexed coveYearnStrategy,
-        address indexed autoCompoundingGauge,
-        address nonAutoCompoundingGauge
+        address yearnGauge, address coveYearnStrategy, address autoCompoundingGauge, address nonAutoCompoundingGauge
     );
 
     /**
