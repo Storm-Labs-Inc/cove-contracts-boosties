@@ -67,6 +67,15 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if ((sharesOut = vault.deposit(amount, to)) < minSharesOut) revert InsufficientShares();
     }
 
+    /**
+     * @notice Redeems the specified `shares` from the Yearn Vault V2.
+     * @dev The shares must exist in this router before calling this function.
+     * @param vault The Yearn Vault V2 contract instance.
+     * @param shares The amount of shares to redeem.
+     * @param to The address to which the assets will be transferred.
+     * @param minAssetsOut The minimum amount of assets expected to be received.
+     * @return amountOut The actual amount of assets received by the `to` address.
+     */
     function redeemVaultV2(
         IYearnVaultV2 vault,
         uint256 shares,
@@ -80,6 +89,14 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if ((amountOut = vault.withdraw(shares, to)) < minAssetsOut) revert InsufficientAssets();
     }
 
+    /**
+     * @notice Redeems the specified IERC4626 vault `shares` that this router is holding.
+     * @param vault The IERC4626 vault contract instance.
+     * @param shares The amount of shares to redeem.
+     * @param to The address to which the assets will be transferred.
+     * @param minAmountOut The minimum amount of assets expected to be received.
+     * @return amountOut The actual amount of assets received by the `to` address.
+     */
     function redeemFromRouter(
         IERC4626 vault,
         uint256 shares,
@@ -92,6 +109,28 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         returns (uint256 amountOut)
     {
         if ((amountOut = vault.redeem(shares, to, address(this))) < minAmountOut) revert InsufficientAssets();
+    }
+
+    /**
+     * @notice Withdraws the specified `assets` from the IERC4626 vault.
+     * @param vault The IERC4626 vault contract instance.
+     * @param assets The amount of assets to withdraw.
+     * @param to The address to which the assets will be transferred.
+     * @param maxSharesIn The maximum amount of vault shares expected to be burned.
+     * @return sharesOut The actual amount of shares burned from the `vault`.
+     */
+    function withdrawFromRouter(
+        IERC4626 vault,
+        uint256 assets,
+        address to,
+        uint256 maxSharesIn
+    )
+        public
+        payable
+        virtual
+        returns (uint256 sharesOut)
+    {
+        if ((sharesOut = vault.withdraw(assets, to, address(this))) > maxSharesIn) revert RequiresMoreThanMaxShares();
     }
 
     /**
