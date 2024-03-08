@@ -18,12 +18,6 @@ The testing suite includes unit, integration, fork, and invariant tests.
 
 For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
 
-## Contract Architecture
-
-### Boosties
-
-![boosties](./assets/boosties.png)
-
 ## Prerequisites
 
 Ensure you have the following installed:
@@ -139,6 +133,12 @@ pnpm deploy:local
 - Make sure to not commit `broadcast/`.
 - If trying to deploy new contract either use the default deployer functions or generate them
   with`$./forge-deploy gen-deployer`.
+
+## Contract Architecture
+
+### Boosties
+
+![boosties](./assets/boosties.png)
 
 ## Audits
 
