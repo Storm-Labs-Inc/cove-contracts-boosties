@@ -22,10 +22,14 @@ import { ERC4626Upgradeable } from "@openzeppelin-upgradeable/contracts/token/ER
 contract YSDRewardsGauge is BaseRewardsGauge {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @notice Address of the Yearn staking delegate contract.
     address public yearnStakingDelegate;
+    /// @notice Address of the Cove Yearn strategy contract.
     address public coveYearnStrategy;
 
+    /// @notice Error thrown when the total assets exceed the maximum allowed.
     error MaxTotalAssetsExceeded();
+    /// @notice Error thrown when the contract is not initialized properly.
     error InvalidInitialization();
 
     /**
