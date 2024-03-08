@@ -32,6 +32,7 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
         assertEq(coveYFI.name(), "Cove YFI");
         assertEq(coveYFI.symbol(), "coveYFI");
         assertEq(coveYFI.yfi(), MAINNET_YFI);
+        assertEq(coveYFI.asset(), MAINNET_YFI);
         assertEq(coveYFI.yearnStakingDelegate(), yearnStakingDelegate);
         // Check for ownership
         assertTrue(coveYFI.hasRole(DEFAULT_ADMIN_ROLE, admin));
@@ -45,8 +46,9 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
-        CoveYFI(coveYFI).deposit(1e18);
+        uint256 mintedShares = CoveYFI(coveYFI).deposit(1e18);
         assertEq(IERC20(coveYFI).balanceOf(address(admin)), 1e18);
+        assertEq(mintedShares, 1e18);
         vm.stopPrank();
     }
 
@@ -55,8 +57,9 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
-        CoveYFI(coveYFI).deposit(1e18, address(this));
+        uint256 shares = CoveYFI(coveYFI).deposit(1e18, address(this));
         assertEq(IERC20(coveYFI).balanceOf(address(this)), 1e18);
+        assertEq(shares, 1e18);
         vm.stopPrank();
     }
 
@@ -65,8 +68,9 @@ contract CoveYFI_ForkedTest is YearnV3BaseTest {
 
         vm.startPrank(admin);
         IERC20(MAINNET_YFI).approve(address(coveYFI), type(uint256).max);
-        CoveYFI(coveYFI).deposit(1e18, address(0));
+        uint256 shares = CoveYFI(coveYFI).deposit(1e18, address(0));
         assertEq(IERC20(coveYFI).balanceOf(address(admin)), 1e18);
+        assertEq(shares, 1e18);
         vm.stopPrank();
     }
 
