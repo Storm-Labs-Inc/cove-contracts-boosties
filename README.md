@@ -1,11 +1,11 @@
-# smart-contracts-core
+# cove-contracts-boosties
 
 ![cove](./assets/cove.png)
 
 <div align="center">
 
-[![codecov](https://codecov.io/gh/Storm-Labs-Inc/smart-contracts-core/branch/master/graph/badge.svg?token=TT68C116IT)](https://codecov.io/gh/Storm-Labs-Inc/smart-contracts-core)
-[![CI](https://github.com/Storm-Labs-Inc/smart-contracts-core/actions/workflows/ci.yml/badge.svg)](https://github.com/Storm-Labs-Inc/smart-contracts-core/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Storm-Labs-Inc/cove-contracts-boosties/branch/master/graph/badge.svg?token=TT68C116IT)](https://codecov.io/gh/Storm-Labs-Inc/cove-contracts-boosties)
+[![CI](https://github.com/Storm-Labs-Inc/cove-contracts-boosties/actions/workflows/ci.yml/badge.svg)](https://github.com/Storm-Labs-Inc/cove-contracts-boosties/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/discord/1162443184681533470?logo=discord&label=discord)](https://discord.gg/xdhvEFVsE9)
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/cove_fi)](https://twitter.com/intent/user?screen_name=cove_fi)
 
