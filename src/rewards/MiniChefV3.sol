@@ -75,9 +75,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
     uint256 public constant MAX_REWARD_TOKEN_PER_SECOND = 100_000_000 ether / uint256(1 weeks);
     uint256 private constant _ACC_REWARD_TOKEN_PRECISION = 1e12;
     /// @dev The timelock role for the contract.
-    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     /// @dev The pauser role for the contract.
-    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
@@ -105,9 +105,9 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
         }
         REWARD_TOKEN = rewardToken_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_PAUSER_ROLE, pauser);
-        _grantRole(_TIMELOCK_ROLE, admin); // This role must be revoked after granting it to the timelock
-        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
+        _grantRole(PAUSER_ROLE, pauser);
+        _grantRole(TIMELOCK_ROLE, admin); // This role must be revoked after granting it to the timelock
+        _setRoleAdmin(TIMELOCK_ROLE, TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
     }
 
     /// @notice Returns the number of MCV3 pools.
@@ -173,7 +173,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param lpToken_ Address of the LP ERC-20 token.
      * @param rewarder_ Address of the rewarder delegate.
      */
-    function add(uint64 allocPoint, IERC20 lpToken_, IMiniChefV3Rewarder rewarder_) public onlyRole(_TIMELOCK_ROLE) {
+    function add(uint64 allocPoint, IERC20 lpToken_, IMiniChefV3Rewarder rewarder_) public onlyRole(TIMELOCK_ROLE) {
         if (address(lpToken_) == (address(0))) {
             revert Errors.ZeroAddress();
         }
@@ -209,7 +209,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
         bool overwrite
     )
         public
-        onlyRole(_TIMELOCK_ROLE)
+        onlyRole(TIMELOCK_ROLE)
     {
         uint256 pidPlusOne = _pidPlusOne[address(lpToken_)];
         if (pidPlusOne < 1) {
@@ -255,7 +255,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @notice Sets the reward per second to be distributed. Can only be called by the owner.
      * @param rewardPerSecond_ The amount of reward token to be distributed per second.
      */
-    function setRewardPerSecond(uint256 rewardPerSecond_) public onlyRole(_TIMELOCK_ROLE) {
+    function setRewardPerSecond(uint256 rewardPerSecond_) public onlyRole(TIMELOCK_ROLE) {
         if (rewardPerSecond_ > MAX_REWARD_TOKEN_PER_SECOND) {
             revert Errors.RewardRateTooHigh();
         }
@@ -462,10 +462,10 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
     }
 
     /**
-     * @dev Pauses the contract. Only callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
+     * @dev Pauses the contract. Only callable by PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
      */
     function pause() external {
-        if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
+        if (!(hasRole(PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
             revert Errors.Unauthorized();
         }
         _pause();

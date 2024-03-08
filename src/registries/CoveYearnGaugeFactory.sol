@@ -44,8 +44,8 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         address nonAutoCompoundingGauge;
     }
 
-    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     address private constant _DYFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     // slither-disable-start naming-convention
     address public immutable YEARN_STAKING_DELEGATE;
@@ -103,7 +103,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         _setGaugeManager(gaugeManager_);
         _setGaugePauser(gaugePauser_);
         _grantRole(DEFAULT_ADMIN_ROLE, factoryAdmin);
-        _grantRole(_MANAGER_ROLE, factoryAdmin);
+        _grantRole(MANAGER_ROLE, factoryAdmin);
     }
 
     /**
@@ -181,7 +181,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
      * reward forwarders.
      * @param coveYearnStrategy The address of the Cove Yearn strategy for which to deploy gauges.
      */
-    function deployCoveGauges(address coveYearnStrategy) external onlyRole(_MANAGER_ROLE) {
+    function deployCoveGauges(address coveYearnStrategy) external onlyRole(MANAGER_ROLE) {
         // Sanity check
         if (coveYearnStrategy == address(0)) {
             revert Errors.ZeroAddress();
@@ -228,11 +228,11 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
             coveStratGauge.addReward(COVE, address(forwarder));
             // Replace admin and manager for the auto-compounding gauge
             coveStratGauge.grantRole(DEFAULT_ADMIN_ROLE, gaugeAdmin_);
-            coveStratGauge.grantRole(_MANAGER_ROLE, gaugeManager_);
-            coveStratGauge.grantRole(_PAUSER_ROLE, gaugePauser_);
+            coveStratGauge.grantRole(MANAGER_ROLE, gaugeManager_);
+            coveStratGauge.grantRole(PAUSER_ROLE, gaugePauser_);
             coveStratGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
-            coveStratGauge.renounceRole(_MANAGER_ROLE, address(this));
-            coveStratGauge.renounceRole(_PAUSER_ROLE, address(this));
+            coveStratGauge.renounceRole(MANAGER_ROLE, address(this));
+            coveStratGauge.renounceRole(PAUSER_ROLE, address(this));
         }
 
         // Initialize the non-auto-compounding gauge
@@ -254,11 +254,11 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
             coveYsdGauge.addReward(_DYFI, address(forwarder));
             // Replace admin and manager for the non-auto-compounding gauge
             coveYsdGauge.grantRole(DEFAULT_ADMIN_ROLE, gaugeAdmin_);
-            coveYsdGauge.grantRole(_MANAGER_ROLE, gaugeManager_);
-            coveYsdGauge.grantRole(_PAUSER_ROLE, gaugePauser_);
+            coveYsdGauge.grantRole(MANAGER_ROLE, gaugeManager_);
+            coveYsdGauge.grantRole(PAUSER_ROLE, gaugePauser_);
             coveYsdGauge.renounceRole(DEFAULT_ADMIN_ROLE, address(this));
-            coveYsdGauge.renounceRole(_MANAGER_ROLE, address(this));
-            coveYsdGauge.renounceRole(_PAUSER_ROLE, address(this));
+            coveYsdGauge.renounceRole(MANAGER_ROLE, address(this));
+            coveYsdGauge.renounceRole(PAUSER_ROLE, address(this));
         }
     }
 

@@ -10,10 +10,10 @@ contract Constants is CommonBase {
     uint256 internal constant _WEEK = 604_800;
     // solhint-disable-next-line private-vars-leading-underscore
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 internal constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 internal constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
-    bytes32 internal constant _MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     // Ethereum mainnet addresses
     // Tokens

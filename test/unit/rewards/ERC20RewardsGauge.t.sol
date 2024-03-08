@@ -44,17 +44,17 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.startPrank(admin);
         rewardsGauge.initialize(address(dummyGaugeAsset));
         // setup roles
-        rewardsGauge.grantRole(_MANAGER_ROLE, manager);
-        rewardsGauge.renounceRole(_MANAGER_ROLE, admin);
-        rewardsGauge.grantRole(_PAUSER_ROLE, pauser);
-        rewardsGauge.renounceRole(_PAUSER_ROLE, admin);
+        rewardsGauge.grantRole(MANAGER_ROLE, manager);
+        rewardsGauge.renounceRole(MANAGER_ROLE, admin);
+        rewardsGauge.grantRole(PAUSER_ROLE, pauser);
+        rewardsGauge.renounceRole(PAUSER_ROLE, admin);
         vm.stopPrank();
     }
 
     function test_initialize() public {
         assertTrue(rewardsGauge.hasRole(rewardsGauge.DEFAULT_ADMIN_ROLE(), admin), "admin should have admin role");
-        assertTrue(rewardsGauge.hasRole(_MANAGER_ROLE, manager), "manager should have manager role");
-        assertTrue(rewardsGauge.hasRole(_PAUSER_ROLE, pauser), "pauser should have pauser role");
+        assertTrue(rewardsGauge.hasRole(MANAGER_ROLE, manager), "manager should have manager role");
+        assertTrue(rewardsGauge.hasRole(PAUSER_ROLE, pauser), "pauser should have pauser role");
         assertEq(rewardsGauge.asset(), address(dummyGaugeAsset), "asset should be set");
     }
 
@@ -106,7 +106,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
     }
 
     function test_addReward_revertWhen_notManager() public {
-        vm.expectRevert(_formatAccessControlError(address(this), _MANAGER_ROLE));
+        vm.expectRevert(_formatAccessControlError(address(this), MANAGER_ROLE));
         rewardsGauge.addReward(address(1), address(2));
     }
 
@@ -292,7 +292,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
     function test_depositRewardToken_revertWhen_Unauthorized(address distributor, address user) public {
         vm.assume(distributor != address(0));
         vm.assume(user != distributor);
-        vm.assume(!rewardsGauge.hasRole(_MANAGER_ROLE, user));
+        vm.assume(!rewardsGauge.hasRole(MANAGER_ROLE, user));
         vm.prank(manager);
         rewardsGauge.addReward(address(dummyRewardToken), distributor);
         vm.prank(user);

@@ -13,7 +13,7 @@ import { Errors } from "./libraries/Errors.sol";
  */
 contract MasterRegistry is IMasterRegistry, AccessControlEnumerable, Multicall {
     /// @notice Role responsible for adding registries.
-    bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     //slither-disable-next-line uninitialized-state
     mapping(bytes32 => address[]) private _registryMap;
@@ -38,12 +38,12 @@ contract MasterRegistry is IMasterRegistry, AccessControlEnumerable, Multicall {
     // slither-disable-next-line locked-ether
     constructor(address admin, address manager) payable {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_MANAGER_ROLE, admin);
-        _grantRole(_MANAGER_ROLE, manager);
+        _grantRole(MANAGER_ROLE, admin);
+        _grantRole(MANAGER_ROLE, manager);
     }
 
     /// @inheritdoc IMasterRegistry
-    function addRegistry(bytes32 registryName, address registryAddress) external override onlyRole(_MANAGER_ROLE) {
+    function addRegistry(bytes32 registryName, address registryAddress) external override onlyRole(MANAGER_ROLE) {
         // Check for empty values.
         if (registryName == 0) revert Errors.NameEmpty();
         if (registryAddress == address(0)) revert Errors.AddressEmpty();
@@ -63,7 +63,7 @@ contract MasterRegistry is IMasterRegistry, AccessControlEnumerable, Multicall {
     }
 
     /// @inheritdoc IMasterRegistry
-    function updateRegistry(bytes32 registryName, address registryAddress) external override onlyRole(_MANAGER_ROLE) {
+    function updateRegistry(bytes32 registryName, address registryAddress) external override onlyRole(MANAGER_ROLE) {
         // Check for empty values.
         if (registryName == 0) revert Errors.NameEmpty();
         if (registryAddress == address(0)) revert Errors.AddressEmpty();

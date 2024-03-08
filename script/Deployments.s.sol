@@ -150,8 +150,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
 
         // Move admin roles to the admin multisig
         ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
-        ysd.grantRole(_MANAGER_ROLE, admin);
-        ysd.grantRole(_TIMELOCK_ROLE, timeLock);
+        ysd.grantRole(MANAGER_ROLE, admin);
+        ysd.grantRole(TIMELOCK_ROLE, timeLock);
         SwapAndLock(swapAndLock).grantRole(DEFAULT_ADMIN_ROLE, admin);
         SwapAndLock(swapAndLock).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
     }
@@ -311,13 +311,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
         coveRewardsGauge.grantRole(DEFAULT_ADMIN_ROLE, admin);
-        coveRewardsGauge.grantRole(_MANAGER_ROLE, manager);
+        coveRewardsGauge.grantRole(MANAGER_ROLE, manager);
         coveRewardsGauge.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
+        coveRewardsGauge.renounceRole(MANAGER_ROLE, broadcaster);
         coveRewardsGaugeRewardForwarder.grantRole(DEFAULT_ADMIN_ROLE, admin);
         coveRewardsGaugeRewardForwarder.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         ysd.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        ysd.renounceRole(_TIMELOCK_ROLE, broadcaster);
+        ysd.renounceRole(TIMELOCK_ROLE, broadcaster);
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
@@ -329,8 +329,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveToken.multicall(data);
         coveToken.grantRole(DEFAULT_ADMIN_ROLE, admin);
         coveToken.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        coveToken.grantRole(_TIMELOCK_ROLE, timeLock);
-        coveToken.renounceRole(_TIMELOCK_ROLE, broadcaster);
+        coveToken.grantRole(TIMELOCK_ROLE, timeLock);
+        coveToken.renounceRole(TIMELOCK_ROLE, broadcaster);
     }
 
     function deployMiniChefV3() public broadcast deployIfMissing("MiniChefV3") returns (address) {
@@ -354,8 +354,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         MiniChefV3(miniChefV3).commitReward(COVE_BALANCE_MINICHEF);
         MiniChefV3(miniChefV3).grantRole(DEFAULT_ADMIN_ROLE, admin);
         MiniChefV3(miniChefV3).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        MiniChefV3(miniChefV3).grantRole(_TIMELOCK_ROLE, timeLock);
-        MiniChefV3(miniChefV3).renounceRole(_TIMELOCK_ROLE, broadcaster);
+        MiniChefV3(miniChefV3).grantRole(TIMELOCK_ROLE, timeLock);
+        MiniChefV3(miniChefV3).renounceRole(TIMELOCK_ROLE, broadcaster);
 
         return miniChefV3;
     }
@@ -467,16 +467,16 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Verify roles have been properly set
         /// YearnStakingDelegate
         _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("YearnStakingDelegate", _TIMELOCK_ROLE, timeLock);
-        _verifyRole("YearnStakingDelegate", _PAUSER_ROLE, pauser);
+        _verifyRole("YearnStakingDelegate", TIMELOCK_ROLE, timeLock);
+        _verifyRole("YearnStakingDelegate", PAUSER_ROLE, pauser);
         _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
-        _verifyRoleCount("YearnStakingDelegate", _TIMELOCK_ROLE, 1);
-        _verifyRoleCount("YearnStakingDelegate", _PAUSER_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", TIMELOCK_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", PAUSER_ROLE, 1);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);
-        _verifyRole("StakingDelegateRewards", _TIMELOCK_ROLE, timeLock);
-        _verifyRoleCount("StakingDelegateRewards", _TIMELOCK_ROLE, 1);
+        _verifyRole("StakingDelegateRewards", TIMELOCK_ROLE, timeLock);
+        _verifyRoleCount("StakingDelegateRewards", TIMELOCK_ROLE, 1);
         /// DYFIRedeemer
         _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("DYFIRedeemer", DEFAULT_ADMIN_ROLE, 1);
@@ -485,29 +485,29 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRoleCount("CoveYFI", DEFAULT_ADMIN_ROLE, 1);
         /// MasterRegistry
         _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("MasterRegistry", _MANAGER_ROLE, broadcaster);
+        _verifyRole("MasterRegistry", MANAGER_ROLE, broadcaster);
         _verifyRoleCount("MasterRegistry", DEFAULT_ADMIN_ROLE, 1);
-        _verifyRoleCount("MasterRegistry", _MANAGER_ROLE, 2);
+        _verifyRoleCount("MasterRegistry", MANAGER_ROLE, 2);
         /// DYFIRedeemer
         _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("DYFIRedeemer", DEFAULT_ADMIN_ROLE, 1);
         /// CoveToken
         _verifyRole("CoveToken", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("CoveToken", _TIMELOCK_ROLE, timeLock);
+        _verifyRole("CoveToken", TIMELOCK_ROLE, timeLock);
         _verifyRoleCount("CoveToken", DEFAULT_ADMIN_ROLE, 1);
-        _verifyRoleCount("CoveToken", _TIMELOCK_ROLE, 1);
+        _verifyRoleCount("CoveToken", TIMELOCK_ROLE, 1);
         /// MiniChefV3
         _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("MiniChefV3", _PAUSER_ROLE, pauser);
-        _verifyRole("MiniChefV3", _TIMELOCK_ROLE, timeLock);
+        _verifyRole("MiniChefV3", PAUSER_ROLE, pauser);
+        _verifyRole("MiniChefV3", TIMELOCK_ROLE, timeLock);
         _verifyRoleCount("MiniChefV3", DEFAULT_ADMIN_ROLE, 1);
-        _verifyRoleCount("MiniChefV3", _PAUSER_ROLE, 1);
-        _verifyRoleCount("MiniChefV3", _TIMELOCK_ROLE, 1);
+        _verifyRoleCount("MiniChefV3", PAUSER_ROLE, 1);
+        _verifyRoleCount("MiniChefV3", TIMELOCK_ROLE, 1);
         /// CoveYearnGaugeFactory
         _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
-        _verifyRole("CoveYearnGaugeFactory", _MANAGER_ROLE, broadcaster);
+        _verifyRole("CoveYearnGaugeFactory", MANAGER_ROLE, broadcaster);
         _verifyRoleCount("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, 1);
-        _verifyRoleCount("CoveYearnGaugeFactory", _MANAGER_ROLE, 1);
+        _verifyRoleCount("CoveYearnGaugeFactory", MANAGER_ROLE, 1);
         /// SwapAndLock
         _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("SwapAndLock", DEFAULT_ADMIN_ROLE, 1);

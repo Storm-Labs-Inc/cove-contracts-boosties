@@ -32,8 +32,8 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
     /// @dev Period after which the owner can unpause the contract.
     uint256 private constant _OWNER_PAUSE_PERIOD = 6 * 4 weeks;
     /// @dev Role identifier for minters.
-    bytes32 private constant _MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
 
     /// @notice Timestamp after which minting is allowed.
     uint256 public mintingAllowedAfter;
@@ -80,8 +80,8 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
         _mint(owner_, _INITIAL_SUPPLY); // Mint initial supply to the owner
         _pause(); // Pause the contract
         _grantRole(DEFAULT_ADMIN_ROLE, owner_);
-        _grantRole(_TIMELOCK_ROLE, owner_); // This role must be revoked after granting it to the timelock
-        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
+        _grantRole(TIMELOCK_ROLE, owner_); // This role must be revoked after granting it to the timelock
+        _setRoleAdmin(TIMELOCK_ROLE, TIMELOCK_ROLE); // Only those with the timelock role can grant the timelock role
     }
 
     /**
@@ -89,7 +89,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
      * @param to The address to mint tokens to.
      * @param amount The amount of tokens to mint.
      */
-    function mint(address to, uint256 amount) external onlyRole(_MINTER_ROLE) {
+    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
         if (amount > availableSupplyToMint()) {
             revert Errors.InflationTooLarge();
         }
@@ -114,7 +114,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
      * @notice Adds an address to the list of allowed transferees.
      * @param target The address to allow.
      */
-    function addAllowedReceiver(address target) external onlyRole(_TIMELOCK_ROLE) {
+    function addAllowedReceiver(address target) external onlyRole(TIMELOCK_ROLE) {
         _addToAllowedReceiver(target);
     }
 
@@ -122,7 +122,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
      * @notice Removes an address from the list of allowed transferees.
      * @param target The address to disallow.
      */
-    function removeAllowedReceiver(address target) external onlyRole(_TIMELOCK_ROLE) {
+    function removeAllowedReceiver(address target) external onlyRole(TIMELOCK_ROLE) {
         _removeFromAllowedReceiver(target);
     }
 
@@ -130,7 +130,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
      * @notice Adds an address to the list of allowed transferrers.
      * @param target The address to allow.
      */
-    function addAllowedSender(address target) external onlyRole(_TIMELOCK_ROLE) {
+    function addAllowedSender(address target) external onlyRole(TIMELOCK_ROLE) {
         _addToAllowedSender(target);
     }
 
@@ -138,7 +138,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
      * @notice Removes an address from the list of allowed transferrers.
      * @param target The address to disallow.
      */
-    function removeAllowedSender(address target) external onlyRole(_TIMELOCK_ROLE) {
+    function removeAllowedSender(address target) external onlyRole(TIMELOCK_ROLE) {
         _removeFromAllowedSender(target);
     }
 
