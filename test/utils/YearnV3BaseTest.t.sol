@@ -313,7 +313,7 @@ contract YearnV3BaseTest is BaseTest {
         console.log("price per share: ", yearnGaugeStrategy.pricePerShare());
         console.log("total assets: ", yearnGaugeStrategy.totalAssets());
         console.log("total supply: ", yearnGaugeStrategy.totalSupply());
-        console.log("total debt: ", yearnGaugeStrategy.totalDebt());
+        console.log("total deployed in YSD: ", yearnGaugeStrategy.depositedInYSD(yearnGaugeStrategy.asset()));
         console.log("balance of test executor: ", yearnGaugeStrategy.balanceOf(address(this)));
         console.log("strategy USDC balance: ", ERC20(MAINNET_USDC).balanceOf(address(yearnGaugeStrategy)));
     }

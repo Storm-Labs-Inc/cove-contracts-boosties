@@ -111,4 +111,13 @@ abstract contract YearnGaugeStrategyBase {
         // Withdraw gauge from YSD which transfers to msg.sender
         IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).withdraw(asset, amount);
     }
+
+    /**
+     * @dev Internal function to read the amount of the asset deposited by this contract in the YearnStakingDelegate.
+     * @param asset The address of the asset to check.
+     * @return The amount of the asset deposited in the YearnStakingDelegate.
+     */
+    function depositedInYSD(address asset) public view returns (uint256) {
+        return IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).balanceOf(address(this), asset);
+    }
 }
