@@ -286,7 +286,8 @@ contract Router_ForkedTest is BaseTest {
 
         // Generate Permit2 Signature
         // Find current approval nonce of the user's token to the router
-        (,, uint48 nonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        (,, uint48 currentNonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        uint256 deadline = block.timestamp + 1000;
         (
             ISignatureTransfer.PermitTransferFrom memory permit,
             ISignatureTransfer.SignatureTransferDetails memory transferDetails,
@@ -296,8 +297,8 @@ contract Router_ForkedTest is BaseTest {
             token: MAINNET_ETH_YFI_GAUGE,
             amount: depositAmount,
             to: address(0), // Use invalid to address
-            nonce: nonce,
-            deadline: block.timestamp + 100
+            nonce: currentNonce,
+            deadline: deadline
         });
 
         vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.InvalidTo.selector));
