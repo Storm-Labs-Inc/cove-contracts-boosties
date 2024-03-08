@@ -20,7 +20,9 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     // slither-disable-next-line naming-convention
     IPermit2 private immutable _PERMIT2;
 
+    /// @notice Error for when the number of shares received is less than the minimum expected.
     error InsufficientShares();
+    /// @notice Error for when an invalid recipient address is provided.
     error InvalidTo();
 
     /**

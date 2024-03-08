@@ -21,28 +21,22 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit, Pausable {
     using SafeERC20 for IERC20;
 
-    /**
-     * @notice Info of each MCV3 user.
-     * `amount` LP token amount the user has provided.
-     * `rewardDebt` The amount of REWARD_TOKEN entitled to the user.
-     * `unpaidRewards` The amount of REWARD_TOKEN that has not been claimed by the user.
-     */
     struct UserInfo {
+        /// @dev The amount of LP tokens the user has deposited into the pool.
         uint256 amount;
+        /// @dev The reward debt indicates how much REWARD_TOKEN the user has already been accounted for.
         uint256 rewardDebt;
+        /// @dev The amount of REWARD_TOKEN rewards that the user has earned but not yet claimed.
         uint256 unpaidRewards;
     }
 
-    /**
-     * @notice Info of each MCV3 pool.
-     * `accRewardPerShare` The amount of REWARD_TOKEN per share accumulated.
-     * `lastRewardTime` The last recorded time the pool was updated.
-     * `allocPoint` The amount of allocation points assigned to the pool.
-     * Also known as the amount of REWARD_TOKEN to distribute per block.
-     */
     struct PoolInfo {
+        /// @dev Accumulated REWARD_TOKENs per share, scaled to precision.
         uint128 accRewardPerShare;
+        /// @dev The last timestamp when the pool's rewards were calculated.
         uint64 lastRewardTime;
+        /// @dev The number of allocation points assigned to the pool, which determines the share of reward
+        /// distribution.
         uint64 allocPoint;
     }
 
@@ -73,23 +67,87 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
     uint256 public availableReward;
     /// @notice The maximum amount of REWARD_TOKEN that can be distributed per second.
     uint256 public constant MAX_REWARD_TOKEN_PER_SECOND = 100_000_000 ether / uint256(1 weeks);
+    /// @dev Precision factor to calculate accumulated reward tokens per share.
     uint256 private constant _ACC_REWARD_TOKEN_PRECISION = 1e12;
     /// @dev The timelock role for the contract.
     bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     /// @dev The pauser role for the contract.
     bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
+    /**
+     * @notice Emitted when a user deposits LP tokens into a pool.
+     * @param user The address of the user making the deposit.
+     * @param pid The pool ID into which the deposit is made.
+     * @param amount The amount of LP tokens deposited.
+     * @param to The address receiving the deposit.
+     */
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
+    /**
+     * @notice Emitted when a user withdraws LP tokens from a pool.
+     * @param user The address of the user making the withdrawal.
+     * @param pid The pool ID from which the withdrawal is made.
+     * @param amount The amount of LP tokens withdrawn.
+     * @param to The address receiving the withdrawn LP tokens.
+     */
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
+    /**
+     * @notice Emitted when a user performs an emergency withdrawal of LP tokens from a pool.
+     * @param user The address of the user making the emergency withdrawal.
+     * @param pid The pool ID from which the emergency withdrawal is made.
+     * @param amount The amount of LP tokens emergency withdrawn.
+     * @param to The address receiving the emergency withdrawn LP tokens.
+     */
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
+    /**
+     * @notice Emitted when a user harvests reward tokens from a pool.
+     * @param user The address of the user performing the harvest.
+     * @param pid The pool ID from which the harvest is performed.
+     * @param amount The amount of reward tokens harvested.
+     */
     event Harvest(address indexed user, uint256 indexed pid, uint256 amount);
+    /**
+     * @notice Emitted when a new pool is added to the MiniChef contract.
+     * @param pid The pool ID of the newly added pool.
+     * @param allocPoint The number of allocation points assigned to the new pool.
+     * @param lpToken The address of the LP token for the new pool.
+     * @param rewarder The address of the rewarder contract for the new pool.
+     */
     event LogPoolAddition(
         uint256 indexed pid, uint256 allocPoint, IERC20 indexed lpToken, IMiniChefV3Rewarder indexed rewarder
     );
+    /**
+     * @notice Emitted when a pool's configuration is updated.
+     * @param pid The pool ID of the updated pool.
+     * @param allocPoint The new number of allocation points assigned to the pool.
+     * @param rewarder The address of the rewarder contract for the pool.
+     * @param overwrite Indicates whether the update overwrites the existing rewarder contract.
+     */
     event LogSetPool(uint256 indexed pid, uint256 allocPoint, IMiniChefV3Rewarder indexed rewarder, bool overwrite);
+    /**
+     * @notice Emitted when a pool's rewards are updated.
+     * @param pid The pool ID of the updated pool.
+     * @param lastRewardTime The last timestamp when the pool's rewards were calculated.
+     * @param lpSupply The total amount of LP tokens staked in the pool.
+     * @param accRewardPerShare The accumulated reward tokens per share, scaled to precision.
+     */
     event LogUpdatePool(uint256 indexed pid, uint64 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare);
+    /**
+     * @notice Emitted when the reward per second is updated.
+     * @param rewardPerSecond The new amount of reward tokens distributed per second.
+     */
     event LogRewardPerSecond(uint256 rewardPerSecond);
+    /**
+     * @notice Emitted when a reward amount is committed for distribution.
+     * @param amount The amount of reward tokens committed.
+     */
     event LogRewardCommitted(uint256 amount);
+    /**
+     * @notice Emitted when an emergency withdrawal from a rewarder contract is faulty.
+     * @param user The address of the user performing the emergency withdrawal.
+     * @param pid The pool ID from which the emergency withdrawal is made.
+     * @param amount The amount of tokens emergency withdrawn.
+     * @param to The address receiving the emergency withdrawn tokens.
+     */
     event LogRewarderEmergencyWithdrawFaulty(
         address indexed user, uint256 indexed pid, uint256 amount, address indexed to
     );
