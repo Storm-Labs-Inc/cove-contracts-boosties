@@ -9,6 +9,7 @@ import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { IStakeDaoGauge } from "src/interfaces/deps/stakeDAO/IStakeDaoGauge.sol";
 
 contract Router_ForkedTest is BaseTest {
     Yearn4626RouterExt public router;
@@ -150,6 +151,17 @@ contract Router_ForkedTest is BaseTest {
         assertEq(sharesIn[1], 949_289_266_142_683_599);
     }
 
+    function test_previewWithdraws_StakeDAO() public {
+        uint256 assetOutAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_STAKE_DAO_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+
+        (uint256[] memory sharesIn) = router.previewWithdraws(path, assetOutAmount);
+        assertEq(sharesIn.length, 1);
+        assertEq(sharesIn[0], 1 ether);
+    }
+
     function test_previewWithdraws_revertWhen_PathIsTooShort() public {
         uint256 assetOutAmount = 1 ether;
         address[] memory path = new address[](1);
@@ -201,6 +213,17 @@ contract Router_ForkedTest is BaseTest {
         assertEq(assetsOut.length, 2);
         assertEq(assetsOut[0], 949_289_266_142_683_599);
         assertEq(assetsOut[1], 999_999_999_999_999_999);
+    }
+
+    function test_previewRedeems_StakeDAO() public {
+        uint256 shareInAmount = 1 ether;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_STAKE_DAO_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+
+        (uint256[] memory assetsOut) = router.previewRedeems(path, shareInAmount);
+        assertEq(assetsOut.length, 1);
+        assertEq(assetsOut[0], 1 ether);
     }
 
     function test_previewRedeems_revertWhen_PathIsTooShort() public {
@@ -350,6 +373,17 @@ contract Router_ForkedTest is BaseTest {
         airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), address(router), shareAmount);
         vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.RequiresMoreThanMaxShares.selector));
         router.withdrawFromRouter(IERC4626(MAINNET_ETH_YFI_GAUGE), assetAmount, user, 0);
+    }
+
+    // ------------------ StakeDAO redeem tests ------------------
+    function test_redeemStakeDaoGauge() public {
+        uint256 shareAmount = 1 ether;
+        airdrop(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE), address(router), shareAmount, false);
+        router.redeemStakeDaoGauge(IStakeDaoGauge(MAINNET_STAKE_DAO_ETH_YFI_GAUGE), shareAmount);
+
+        assertEq(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE).balanceOf(user), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), shareAmount);
     }
 
     //------------------- Multicall Tests -------------------

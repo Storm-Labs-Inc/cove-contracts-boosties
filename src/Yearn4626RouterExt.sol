@@ -10,6 +10,8 @@ import { IYearn4626RouterExt } from "./interfaces/IYearn4626RouterExt.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IStakeDaoGauge } from "./interfaces/deps/stakeDAO/IStakeDaoGauge.sol";
+import { IStakeDaoVault } from "./interfaces/deps/stakeDAO/IStakeDaoVault.sol";
 
 /**
  * @title Yearn4626Router Extension
@@ -42,6 +44,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     constructor(string memory name_, address weth_, address permit2_) payable Yearn4626Router(name_, IWETH9(weth_)) {
         _PERMIT2 = IPermit2(permit2_);
     }
+
+    // ------------- YEARN VAULT V2 FUNCTIONS ------------- //
 
     /**
      * @notice Deposits the specified `amount` of tokens into the Yearn Vault V2.
@@ -89,6 +93,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if ((amountOut = vault.withdraw(shares, to)) < minAssetsOut) revert InsufficientAssets();
     }
 
+    // ------------- ERC4626 VAULT FUNCTIONS  ------------- //
+
     /**
      * @notice Redeems the specified IERC4626 vault `shares` that this router is holding.
      * @param vault The IERC4626 vault contract instance.
@@ -133,6 +139,22 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if ((sharesOut = vault.withdraw(assets, to, address(this))) > maxSharesIn) revert RequiresMoreThanMaxShares();
     }
 
+    // ------------- STAKEDAO FUNCTIONS  ------------- //
+
+    /**
+     * @notice Redeems the specified `shares` of the StakeDAO Gauge. The assets withdrawn will be the
+     * the yearn vault tokens and will always be the same amount as the `shares` of StakeDAO gauge tokens burned.
+     * @param gauge The StakeDAO Gauge contract instance.
+     * @param shares The amount of StakeDAO gauge tokens to burn.
+     */
+    function redeemStakeDaoGauge(IStakeDaoGauge gauge, uint256 shares) public payable returns (uint256) {
+        address stakeDaoVault = gauge.staking_token();
+        IStakeDaoVault(stakeDaoVault).withdraw(shares);
+        return shares;
+    }
+
+    // ------------- PERMIT2 FUNCTIONS  ------------- //
+
     /**
      * @notice Pulls tokens to the contract using a signature via Permit2.
      * @dev Verifies that the `to` address in `transferDetails` is the contract itself and then calls
@@ -153,6 +175,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if (transferDetails.to != address(this)) revert InvalidTo();
         IPermit2(_PERMIT2).permitTransferFrom(permit, transferDetails, msg.sender, signature);
     }
+
+    // ------------- PREVIEW FUNCTIONS  ------------- //
 
     /**
      * @notice Calculate the amount of shares to be received from a series of deposits to ERC4626 vaults or Yearn Vault
@@ -288,7 +312,14 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     vaultAsset = abi.decode(data, (address));
                     sharesIn[i] = Math.mulDiv(assetsOut, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down);
                 } else {
-                    revert NonVaultAddressInPath(vault);
+                    // StakeDAO gauge token
+                    (success, data) = vault.staticcall(abi.encodeCall(IStakeDaoGauge.staking_token, ()));
+                    if (success) {
+                        vaultAsset = IStakeDaoVault(abi.decode(data, (address))).token();
+                        sharesIn[i] = assetsOut;
+                    } else {
+                        revert NonVaultAddressInPath(vault);
+                    }
                 }
             }
             if (vaultAsset != path[i + 1]) {
@@ -335,7 +366,15 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     vaultAsset = abi.decode(data, (address));
                     assetsOut[i] = Math.mulDiv(sharesIn, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up);
                 } else {
-                    revert NonVaultAddressInPath(vault);
+                    // StakeDAO gauge token
+                    // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
+                    (success, data) = vault.staticcall(abi.encodeCall(IStakeDaoGauge.staking_token, ()));
+                    if (success) {
+                        vaultAsset = IStakeDaoVault(abi.decode(data, (address))).token();
+                        assetsOut[i] = sharesIn;
+                    } else {
+                        revert NonVaultAddressInPath(vault);
+                    }
                 }
             }
             if (vaultAsset != path[i + 1]) {

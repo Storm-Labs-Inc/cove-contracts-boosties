@@ -5,6 +5,7 @@ import { IYearn4626Router } from "Yearn-ERC4626-Router/interfaces/IYearn4626Rout
 import { IYearnVaultV2 } from "./deps/yearn/veYFI/IYearnVaultV2.sol";
 import { ISignatureTransfer } from "permit2/interfaces/ISignatureTransfer.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IStakeDaoGauge } from "./deps/stakeDAO/IStakeDaoGauge.sol";
 
 interface IYearn4626RouterExt is IYearn4626Router {
     function depositToVaultV2(
@@ -46,6 +47,8 @@ interface IYearn4626RouterExt is IYearn4626Router {
         external
         payable
         returns (uint256 sharesIn);
+
+    function redeemStakeDaoGauge(IStakeDaoGauge gauge, uint256 shares) external payable returns (uint256 amountOut);
 
     function previewDeposits(
         address[] calldata path,

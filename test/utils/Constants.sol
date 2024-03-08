@@ -60,6 +60,9 @@ contract Constants is CommonBase {
     uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
     uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
 
+    // StakeDAO
+    address public constant MAINNET_STAKE_DAO_ETH_YFI_GAUGE = 0x760570c75793b2AB8027aCB60e4A58d337058254;
+
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
     address public constant MAINNET_CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
@@ -144,6 +147,8 @@ contract Constants is CommonBase {
         vm.label(MAINNET_WETH_YETH_POOL_VAULT, "WETH_YETH_POOL_VAULT");
         vm.label(MAINNET_WETH_YETH_POOL_GAUGE, "WETH_YETH_POOL_GAUGE");
         vm.label(MAINNET_DYFI_REDEMPTION, "DYFI_REDEMPTION");
+        // StakeDAO
+        vm.label(MAINNET_STAKE_DAO_ETH_YFI_GAUGE, "STAKE_DAO_ETH_YFI_GAUGE");
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");
