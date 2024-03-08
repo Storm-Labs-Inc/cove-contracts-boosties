@@ -34,44 +34,83 @@ abstract contract BaseRewardsGauge is
     using SafeERC20 for IERC20;
 
     struct Reward {
+        /// @dev Address of the reward distributor.
         address distributor;
+        /// @dev Timestamp when the reward period finishes.
         uint256 periodFinish;
+        /// @dev Reward rate per second.
         uint256 rate;
+        /// @dev Timestamp of the last reward update.
         uint256 lastUpdate;
+        /// @dev Integral of the reward rate up to the last update.
         uint256 integral;
+        /// @dev Amount of reward left over after distribution.
         uint256 leftOver;
     }
 
+    /// @dev Role identifier for the manager role.
     bytes32 private constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    /// @dev Role identifier for the pauser role.
     bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    /// @dev Maximum number of rewards that can be managed by the gauge.
     uint256 public constant MAX_REWARDS = 8;
+    /// @dev Constant representing one week in seconds.
     uint256 internal constant _WEEK = 1 weeks;
+    /// @dev Precision used for reward calculations.
     uint256 internal constant _PRECISION = 1e18;
 
-    // For tracking external rewards
+    /// @notice Array of reward token addresses.
     address[] public rewardTokens;
+    /// @dev Mapping from reward token address to its associated reward data.
     mapping(address => Reward) internal _rewardData;
-    // claimant -> default reward receiver
+    /// @notice Mapping from claimant address to their default reward receiver address.
     mapping(address => address) public rewardsReceiver;
-    // reward token -> claiming address -> integral
+    /// @notice Mapping from reward token address to claimant address to their integral reward amount.
     mapping(address => mapping(address => uint256)) public rewardIntegralFor;
-    // user -> token -> [uint128 claimable amount][uint128 claimed amount]
+    /// @notice Mapping from user address to reward token address to their claim data (claimable and claimed amounts).
     mapping(address => mapping(address => uint256)) public claimData;
 
+    /// @dev Error indicating an attempt to redirect rewards for another user.
     error CannotRedirectForAnotherUser();
+    /// @dev Error indicating that the maximum number of rewards has been reached.
     error MaxRewardsReached();
+    /// @dev Error indicating that the reward token has already been added.
     error RewardTokenAlreadyAdded();
+    /// @dev Error indicating an unauthorized action was attempted.
     error Unauthorized();
+    /// @dev Error indicating that the distributor address has not been set.
     error DistributorNotSet();
+    /// @dev Error indicating that an invalid distributor address was provided.
     error InvalidDistributorAddress();
+    /// @dev Error indicating that the reward amount is too low.
     error RewardAmountTooLow();
+    /// @dev Error indicating that a zero address was provided where it is not allowed.
     error ZeroAddress();
+    /// @dev Error indicating that the reward token cannot be the same as the asset token.
     error RewardCannotBeAsset();
 
-    event RewardTokenAdded(address rewardToken, address distributor);
-    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
-    event RewardDistributorSet(address rewardToken, address distributor);
+    /**
+     * @notice Event emitted when a reward token is added to the gauge.
+     * @param rewardToken The address of the reward token that was added.
+     * @param distributor The address of the distributor for the added reward token.
+     */
+    event RewardTokenAdded(address indexed rewardToken, address distributor);
+    /**
+     * @notice Event emitted when a reward token is deposited into the gauge.
+     * @param rewardToken The address of the reward token that was deposited.
+     * @param amount The amount of the reward token that was deposited.
+     * @param newRate The new rate of distribution per second for the deposited reward token.
+     * @param timestamp The timestamp when the deposit occurred.
+     */
+    event RewardTokenDeposited(address indexed rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
+    /**
+     * @notice Event emitted when a reward distributor is set for a reward token.
+     * @param rewardToken The address of the reward token for which the distributor is set.
+     * @param distributor The address of the distributor set for the reward token.
+     */
+    event RewardDistributorSet(address indexed rewardToken, address distributor);
 
+    /// @dev Constructor that disables initializers to prevent further initialization.
     constructor() payable {
         _disableInitializers();
     }
