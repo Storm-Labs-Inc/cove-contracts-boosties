@@ -18,9 +18,9 @@ contract ERC20RewardsGauge_Test is BaseTest {
     address public treasury;
     address public alice;
 
-    event RewardTokenAdded(address rewardToken, address distributor);
-    event RewardTokenDeposited(address rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
-    event RewardDistributorSet(address rewardToken, address distributor);
+    event RewardTokenAdded(address indexed rewardToken, address distributor);
+    event RewardTokenDeposited(address indexed rewardToken, uint256 amount, uint256 newRate, uint256 timestamp);
+    event RewardDistributorSet(address indexed rewardToken, address distributor);
 
     function setUp() public override {
         admin = createUser("admin");
@@ -88,7 +88,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         vm.assume(_distributor != address(0));
         vm.assume(rewardToken != address(dummyGaugeAsset));
         vm.prank(manager);
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit RewardTokenAdded(rewardToken, _distributor);
         rewardsGauge.addReward(rewardToken, _distributor);
         address distributor = rewardsGauge.getRewardData(rewardToken).distributor;
@@ -150,7 +150,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         address distributor = rewardsGauge.getRewardData(rewardToken).distributor;
         assertEq(distributor, _distributor0, "distributor should be set for reward token");
         vm.prank(_distributor0);
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit RewardDistributorSet(rewardToken, _distributor1);
         rewardsGauge.setRewardDistributor(rewardToken, _distributor1);
         address updatedDistributor = rewardsGauge.getRewardData(rewardToken).distributor;
@@ -239,7 +239,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.addReward(address(dummyRewardToken), admin);
         vm.startPrank(admin);
         dummyRewardToken.approve(address(rewardsGauge), rewardAmount);
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit RewardTokenDeposited(address(dummyRewardToken), rewardAmount, rewardAmount / _WEEK, block.timestamp);
         rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
         BaseRewardsGauge.Reward memory rewardData = rewardsGauge.getRewardData(address(dummyRewardToken));

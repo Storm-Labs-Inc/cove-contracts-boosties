@@ -19,6 +19,9 @@ import { CoveToken } from "src/governance/CoveToken.sol";
 import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -33,27 +36,36 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     address public treasury;
     address public manager;
     address public pauser;
+    address public timeLock;
 
     address[] public coveYearnStrategies;
 
     // Expected cove token balances after deployment
+    // TODO: Update the expected balances before prod deployment
     uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether;
     uint256 public constant COVE_BALANCE_LINEAR_VESTING = 1_000_000 ether;
     uint256 public constant COVE_BALANCE_MULTISIG = 998_000_000 ether;
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
-    // Constants
-    uint256 private constant _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
+    // TimelockController configuration
+    uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
+    // RewardForwarder configuration
+    uint256 public constant COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
         admin = vm.envOr("ADMIN_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
-        pauser = vm.envOr("PAUSER_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
-        treasury = admin;
-        manager = broadcaster;
+        manager = vm.envOr("DEV_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
+        pauser = vm.envOr("PAUSER_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 3)));
+        treasury = admin; // TODO: Determine treasury multisig before prod deployment
 
         vm.label(admin, "admin");
         vm.label(manager, "manager");
         vm.label(pauser, "pauser");
+        vm.label(timeLock, "timeLock");
+
+        deployTimelockController();
+
+        timeLock = deployer.getAddress("TimelockController");
 
         _labelEthereumAddresses();
         // Deploy Master Registry
@@ -94,14 +106,34 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         verifyPostDeploymentState();
     }
 
+    function deployTimelockController() public broadcast deployIfMissing("TimelockController") {
+        // Only admin can propose new transactions
+        address[] memory proposers = new address[](1);
+        proposers[0] = admin;
+        // Admin, manager, and broadcaster can execute proposed transactions
+        address[] memory executors = new address[](3);
+        executors[0] = admin;
+        executors[1] = manager;
+        executors[2] = broadcaster;
+        // Deploy and save the TimelockController
+        address timelockController = address(
+            new TimelockController{ salt: bytes32(options.salt) }(
+                COVE_TIMELOCK_CONTROLLER_MIN_DELAY, proposers, executors, address(0)
+            )
+        );
+        deployer.save("TimelockController", timelockController, "TimelockController.sol:TimelockController");
+    }
+
     function deployYearnStakingDelegateStack() public broadcast deployIfMissing("YearnStakingDelegate") {
         address gaugeRewardReceiverImpl =
             address(deployer.deploy_GaugeRewardReceiver("GaugeRewardReceiverImplementation", options));
         YearnStakingDelegate ysd = deployer.deploy_YearnStakingDelegate(
-            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, manager, pauser, options
+            "YearnStakingDelegate", gaugeRewardReceiverImpl, treasury, broadcaster, pauser, broadcaster, options
         );
         address stakingDelegateRewards = address(
-            deployer.deploy_StakingDelegateRewards("StakingDelegateRewards", MAINNET_DYFI, address(ysd), options)
+            deployer.deploy_StakingDelegateRewards(
+                "StakingDelegateRewards", MAINNET_DYFI, address(ysd), admin, timeLock, options
+            )
         );
         address swapAndLock = address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), broadcaster, options));
         deployer.deploy_DYFIRedeemer("DYFIRedeemer", admin, options);
@@ -109,7 +141,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Admin transactions
         SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYFIRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
-        ysd.setSnapshotDelegate("veyfi.eth", treasury);
+        ysd.setSnapshotDelegate("veyfi.eth", manager);
         ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
@@ -117,10 +149,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_POOL_GAUGE, stakingDelegateRewards);
 
         // Move admin roles to the admin multisig
-        ysd.grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
-        ysd.renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
-        SwapAndLock(swapAndLock).grantRole(ysd.DEFAULT_ADMIN_ROLE(), admin);
-        SwapAndLock(swapAndLock).renounceRole(ysd.DEFAULT_ADMIN_ROLE(), broadcaster);
+        ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
+        ysd.grantRole(_MANAGER_ROLE, admin);
+        ysd.grantRole(_TIMELOCK_ROLE, timeLock);
+        SwapAndLock(swapAndLock).grantRole(DEFAULT_ADMIN_ROLE, admin);
+        SwapAndLock(swapAndLock).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
     }
 
     function deployYearn4626RouterExt() public broadcast deployIfMissing("Yearn4626RouterExt") returns (address) {
@@ -248,7 +281,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     }
 
     function deployMasterRegistry() public broadcast deployIfMissing("MasterRegistry") returns (address) {
-        address masterRegistry = address(deployer.deploy_MasterRegistry("MasterRegistry", admin, manager, options));
+        address masterRegistry = address(deployer.deploy_MasterRegistry("MasterRegistry", admin, broadcaster, options));
         return masterRegistry;
     }
 
@@ -273,17 +306,18 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveRewardsGaugeRewardForwarder.initialize(broadcaster, treasury, address(coveRewardsGauge));
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
-        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, _COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
+        coveRewardsGaugeRewardForwarder.setTreasuryBps(MAINNET_DYFI, COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
-        // CoveRewardsGaugeRewardForwarder
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
         ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
-        coveRewardsGauge.grantRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), admin);
+        coveRewardsGauge.grantRole(DEFAULT_ADMIN_ROLE, admin);
         coveRewardsGauge.grantRole(_MANAGER_ROLE, manager);
-        coveRewardsGauge.renounceRole(coveRewardsGauge.DEFAULT_ADMIN_ROLE(), broadcaster);
+        coveRewardsGauge.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         coveRewardsGauge.renounceRole(_MANAGER_ROLE, broadcaster);
-        coveRewardsGaugeRewardForwarder.grantRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), admin);
-        coveRewardsGaugeRewardForwarder.renounceRole(coveRewardsGaugeRewardForwarder.DEFAULT_ADMIN_ROLE(), broadcaster);
+        coveRewardsGaugeRewardForwarder.grantRole(DEFAULT_ADMIN_ROLE, admin);
+        coveRewardsGaugeRewardForwarder.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        ysd.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        ysd.renounceRole(_TIMELOCK_ROLE, broadcaster);
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
@@ -293,6 +327,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             data[i] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, transferrers[i]);
         }
         coveToken.multicall(data);
+        coveToken.grantRole(DEFAULT_ADMIN_ROLE, admin);
+        coveToken.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        coveToken.grantRole(_TIMELOCK_ROLE, timeLock);
+        coveToken.renounceRole(_TIMELOCK_ROLE, broadcaster);
     }
 
     function deployMiniChefV3() public broadcast deployIfMissing("MiniChefV3") returns (address) {
@@ -314,6 +352,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Commit some rewards to the MiniChefV3
         CoveToken(deployer.getAddress("CoveToken")).approve(miniChefV3, COVE_BALANCE_MINICHEF);
         MiniChefV3(miniChefV3).commitReward(COVE_BALANCE_MINICHEF);
+        MiniChefV3(miniChefV3).grantRole(DEFAULT_ADMIN_ROLE, admin);
+        MiniChefV3(miniChefV3).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        MiniChefV3(miniChefV3).grantRole(_TIMELOCK_ROLE, timeLock);
+        MiniChefV3(miniChefV3).renounceRole(_TIMELOCK_ROLE, broadcaster);
+
         return miniChefV3;
     }
 
@@ -350,6 +393,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 ysdRewardsGaugeImpl,
                 treasury,
                 admin,
+                manager,
+                pauser,
                 options
             )
         );
@@ -395,7 +440,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         masterRegistry.multicall(data);
     }
 
-    function verifyPostDeploymentState() public {
+    function verifyPostDeploymentState() public view {
+        /// CoveToken initial state and balances verification
         IERC20 coveToken = IERC20(deployer.getAddress("CoveToken"));
         // Verify minichef v3 balance
         require(
@@ -411,7 +457,73 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         require(coveToken.balanceOf(admin) == COVE_BALANCE_MULTISIG, "CoveToken balance in admin multisig is incorrect");
         // Verify deployer holds no cove tokens
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
-        // Add more checks here
+        // Verify Snapshot delegation for "veyfi.eth" space is set to manager
+        require(
+            ISnapshotDelegateRegistry(MAINNET_SNAPSHOT_DELEGATE_REGISTRY).delegation(
+                deployer.getAddress("YearnStakingDelegate"), "veyfi.eth"
+            ) == manager,
+            "ysd.setSnapshotDelegate failed"
+        );
+        // Verify roles have been properly set
+        /// YearnStakingDelegate
+        _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("YearnStakingDelegate", _TIMELOCK_ROLE, timeLock);
+        _verifyRole("YearnStakingDelegate", _PAUSER_ROLE, pauser);
+        _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", _TIMELOCK_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", _PAUSER_ROLE, 1);
+        /// StakingDelegateRewards
+        _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRole("StakingDelegateRewards", _TIMELOCK_ROLE, timeLock);
+        _verifyRoleCount("StakingDelegateRewards", _TIMELOCK_ROLE, 1);
+        /// DYFIRedeemer
+        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRoleCount("DYFIRedeemer", DEFAULT_ADMIN_ROLE, 1);
+        /// CoveYFI
+        _verifyRole("CoveYFI", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRoleCount("CoveYFI", DEFAULT_ADMIN_ROLE, 1);
+        /// MasterRegistry
+        _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("MasterRegistry", _MANAGER_ROLE, broadcaster);
+        _verifyRoleCount("MasterRegistry", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("MasterRegistry", _MANAGER_ROLE, 2);
+        /// DYFIRedeemer
+        _verifyRole("DYFIRedeemer", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRoleCount("DYFIRedeemer", DEFAULT_ADMIN_ROLE, 1);
+        /// CoveToken
+        _verifyRole("CoveToken", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("CoveToken", _TIMELOCK_ROLE, timeLock);
+        _verifyRoleCount("CoveToken", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("CoveToken", _TIMELOCK_ROLE, 1);
+        /// MiniChefV3
+        _verifyRole("MiniChefV3", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRole("MiniChefV3", _PAUSER_ROLE, pauser);
+        _verifyRole("MiniChefV3", _TIMELOCK_ROLE, timeLock);
+        _verifyRoleCount("MiniChefV3", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("MiniChefV3", _PAUSER_ROLE, 1);
+        _verifyRoleCount("MiniChefV3", _TIMELOCK_ROLE, 1);
+        /// CoveYearnGaugeFactory
+        _verifyRole("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, broadcaster);
+        _verifyRole("CoveYearnGaugeFactory", _MANAGER_ROLE, broadcaster);
+        _verifyRoleCount("CoveYearnGaugeFactory", DEFAULT_ADMIN_ROLE, 1);
+        _verifyRoleCount("CoveYearnGaugeFactory", _MANAGER_ROLE, 1);
+        /// SwapAndLock
+        _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
+        _verifyRoleCount("SwapAndLock", DEFAULT_ADMIN_ROLE, 1);
+    }
+
+    function _verifyRole(string memory contractName, bytes32 role, address user) internal view {
+        AccessControlEnumerable contractInstance = AccessControlEnumerable(deployer.getAddress(contractName));
+        require(contractInstance.hasRole(role, user), string.concat("Incorrect role for: ", contractName));
+    }
+
+    function _verifyRoleCount(string memory contractName, bytes32 role, uint256 count) internal view {
+        AccessControlEnumerable contractInstance = AccessControlEnumerable(deployer.getAddress(contractName));
+        require(
+            contractInstance.getRoleMemberCount(role) == count,
+            string.concat("Incorrect role count for: ", contractName)
+        );
     }
 
     function getCurrentDeployer() external view returns (Deployer) {

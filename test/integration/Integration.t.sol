@@ -124,6 +124,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
                 address(erc20RewardsGaugeImplementation),
                 address(ysdRewardsGaugeImplementation),
                 treasury,
+                admin,
+                admin,
                 admin
             );
             vm.label(address(coveYearnGaugeFactory), "coveYearnGaugeFactory");

@@ -35,7 +35,7 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingToken = address(new ERC20Mock());
 
         vm.prank(admin);
-        stakingDelegateRewards = new StakingDelegateRewards(rewardToken, yearnStakingDelegate);
+        stakingDelegateRewards = new StakingDelegateRewards(rewardToken, yearnStakingDelegate, admin, admin);
     }
 
     function _calculateEarned(
@@ -54,7 +54,8 @@ contract StakingDelegateRewards_Test is BaseTest {
     function test_constructor() public {
         assertEq(stakingDelegateRewards.rewardToken(), rewardToken);
         assertEq(stakingDelegateRewards.stakingDelegate(), yearnStakingDelegate);
-        assertEq(stakingDelegateRewards.hasRole(stakingDelegateRewards.DEFAULT_ADMIN_ROLE(), admin), true);
+        assertTrue(stakingDelegateRewards.hasRole(stakingDelegateRewards.DEFAULT_ADMIN_ROLE(), admin));
+        assertTrue(stakingDelegateRewards.hasRole(_TIMELOCK_ROLE, admin));
     }
 
     function testFuzz_constructor(
@@ -71,7 +72,7 @@ contract StakingDelegateRewards_Test is BaseTest {
         vm.assume(nonDeployer != deployer);
 
         vm.prank(deployer);
-        stakingDelegateRewards = new StakingDelegateRewards(rewardToken_, stakingDelegate_);
+        stakingDelegateRewards = new StakingDelegateRewards(rewardToken_, stakingDelegate_, deployer, deployer);
         assertEq(stakingDelegateRewards.rewardToken(), rewardToken_);
         assertEq(stakingDelegateRewards.stakingDelegate(), stakingDelegate_);
         assertEq(stakingDelegateRewards.hasRole(stakingDelegateRewards.DEFAULT_ADMIN_ROLE(), deployer), true);
@@ -83,10 +84,10 @@ contract StakingDelegateRewards_Test is BaseTest {
         address zeroAddress = address(0);
         address nonZeroAddress = address(1);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new StakingDelegateRewards(zeroAddress, nonZeroAddress);
+        new StakingDelegateRewards(zeroAddress, nonZeroAddress, admin, admin);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new StakingDelegateRewards(nonZeroAddress, zeroAddress);
+        new StakingDelegateRewards(nonZeroAddress, zeroAddress, admin, admin);
     }
 
     function test_addStakingToken() public {
@@ -255,8 +256,8 @@ contract StakingDelegateRewards_Test is BaseTest {
         assertEq(stakingDelegateRewards.rewardsDuration(stakingToken), 1 days);
     }
 
-    function test_setRewardsDuration_revertWhen_CallerIsNotAdmin() public {
-        vm.expectRevert(_formatAccessControlError(alice, stakingDelegateRewards.DEFAULT_ADMIN_ROLE()));
+    function test_setRewardsDuration_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
         vm.prank(alice);
         stakingDelegateRewards.setRewardsDuration(stakingToken, 1 days);
     }
@@ -673,5 +674,13 @@ contract StakingDelegateRewards_Test is BaseTest {
             IERC20(rewardToken).balanceOf(address(stakingDelegateRewards)),
             REWARD_AMOUNT - IERC20(rewardToken).balanceOf(address(alice)) - IERC20(rewardToken).balanceOf(address(bob))
         );
+    }
+
+    function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
+        vm.prank(admin);
+        stakingDelegateRewards.grantRole(DEFAULT_ADMIN_ROLE, alice);
+        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
+        vm.prank(alice);
+        stakingDelegateRewards.grantRole(_TIMELOCK_ROLE, alice);
     }
 }
