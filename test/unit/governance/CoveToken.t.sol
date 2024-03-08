@@ -298,20 +298,20 @@ contract CoveToken_Test is BaseTest {
     function test_events_eventIdIncrements() public {
         vm.startPrank(owner);
 
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         // initialize adds the zero address and owner as transferrers so eventId starts at 2
         emit SenderAllowed(address(alice), 2);
         coveToken.addAllowedSender(address(alice));
 
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit SenderDisallowed(address(alice), 3);
         coveToken.removeAllowedSender(address(alice));
 
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit ReceiverAllowed(address(alice), 4);
         coveToken.addAllowedReceiver(address(alice));
 
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit();
         emit ReceiverDisallowed(address(alice), 5);
         coveToken.removeAllowedReceiver(address(alice));
     }

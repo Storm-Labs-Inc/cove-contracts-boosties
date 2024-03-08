@@ -94,7 +94,7 @@ abstract contract BaseRewardsGauge is
      * @param rewardToken The address of the reward token that was added.
      * @param distributor The address of the distributor for the added reward token.
      */
-    event RewardTokenAdded(address indexed rewardToken, address indexed distributor);
+    event RewardTokenAdded(address indexed rewardToken, address distributor);
     /**
      * @notice Event emitted when a reward token is deposited into the gauge.
      * @param rewardToken The address of the reward token that was deposited.
@@ -108,7 +108,7 @@ abstract contract BaseRewardsGauge is
      * @param rewardToken The address of the reward token for which the distributor is set.
      * @param distributor The address of the distributor set for the reward token.
      */
-    event RewardDistributorSet(address indexed rewardToken, address indexed distributor);
+    event RewardDistributorSet(address indexed rewardToken, address distributor);
 
     /// @dev Constructor that disables initializers to prevent further initialization.
     constructor() payable {

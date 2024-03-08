@@ -18,7 +18,7 @@ The testing suite includes unit, integration, fork, and invariant tests.
 
 For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
 
-## Architecture
+## Contract Architecture
 
 ### Boosties
 
@@ -40,9 +40,12 @@ Install [rust using rustup](https://rustup.rs/):
 rustup update
 ```
 
-Install the python dependencies:
+Setup [pyenv](https://github.com/pyenv/pyenv?tab=readme-ov-file#installation) and install the python dependencies:
 
 ```sh
+pyenv install 3.9.17
+pyenv virtualenv 3.9.17 cove-contracts-boosties
+pyenv local cove-contracts-boosties
 pip install -r requirements.txt
 ```
 
