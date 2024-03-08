@@ -7,6 +7,7 @@ import { PeripheryPayments, SelfPermit, Yearn4626RouterBase } from "Yearn-ERC462
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 
 contract Router_ForkedTest is BaseTest {
     Yearn4626RouterExt public router;
@@ -249,15 +250,22 @@ contract Router_ForkedTest is BaseTest {
         vm.prank(user);
         IERC20(MAINNET_ETH_YFI_GAUGE).approve(MAINNET_PERMIT2, _MAX_UINT256);
 
-        ISignatureTransfer.PermitTransferFrom memory permit =
-            _getPermit2PermitTransferFrom(MAINNET_ETH_YFI_GAUGE, depositAmount, 0, block.timestamp + 100);
+        // Generate Permit2 Signature
+        // Find current approval nonce of the user
+        (,, uint48 nonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        (
+            ISignatureTransfer.PermitTransferFrom memory permit,
+            ISignatureTransfer.SignatureTransferDetails memory transferDetails,
+            bytes memory signature
+        ) = _generateRouterPullTokenWithPermit2Params({
+            privateKey: userPriv,
+            token: MAINNET_ETH_YFI_GAUGE,
+            amount: depositAmount,
+            to: address(router),
+            nonce: nonce,
+            deadline: block.timestamp + 100
+        });
 
-        bytes memory signature = _getPermit2PermitTransferSignature(
-            permit, address(router), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
-        );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            _getPerit2SignatureTransferDetails(address(router), depositAmount);
         vm.prank(user);
         router.pullTokenWithPermit2(permit, transferDetails, signature);
         uint256 userBalanceAfter = IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user);
@@ -274,15 +282,22 @@ contract Router_ForkedTest is BaseTest {
         vm.prank(user);
         IERC20(MAINNET_ETH_YFI_GAUGE).approve(MAINNET_PERMIT2, _MAX_UINT256);
 
-        ISignatureTransfer.PermitTransferFrom memory permit =
-            _getPermit2PermitTransferFrom(MAINNET_ETH_YFI_GAUGE, depositAmount, 0, block.timestamp + 100);
+        // Generate Permit2 Signature
+        // Find current approval nonce of the user's token to the router
+        (,, uint48 nonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        (
+            ISignatureTransfer.PermitTransferFrom memory permit,
+            ISignatureTransfer.SignatureTransferDetails memory transferDetails,
+            bytes memory signature
+        ) = _generateRouterPullTokenWithPermit2Params({
+            privateKey: userPriv,
+            token: MAINNET_ETH_YFI_GAUGE,
+            amount: depositAmount,
+            to: address(0), // Use invalid to address
+            nonce: nonce,
+            deadline: block.timestamp + 100
+        });
 
-        bytes memory signature = _getPermit2PermitTransferSignature(
-            permit, address(this), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
-        );
-
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            _getPerit2SignatureTransferDetails(address(this), depositAmount);
         vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.InvalidTo.selector));
         vm.prank(user);
         router.pullTokenWithPermit2(permit, transferDetails, signature);
@@ -401,14 +416,20 @@ contract Router_ForkedTest is BaseTest {
         IERC20(MAINNET_ETH_YFI_GAUGE).approve(MAINNET_PERMIT2, _MAX_UINT256);
 
         // Generate Permit2 Signature
-        ISignatureTransfer.PermitTransferFrom memory permit =
-            _getPermit2PermitTransferFrom(MAINNET_ETH_YFI_GAUGE, shareAmount, 0, block.timestamp + 100);
-
-        bytes memory signature = _getPermit2PermitTransferSignature(
-            permit, address(router), userPriv, ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR()
-        );
-        ISignatureTransfer.SignatureTransferDetails memory transferDetails =
-            _getPerit2SignatureTransferDetails(address(router), shareAmount);
+        // Find current approval nonce of the user
+        (,, uint48 nonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        (
+            ISignatureTransfer.PermitTransferFrom memory permit,
+            ISignatureTransfer.SignatureTransferDetails memory transferDetails,
+            bytes memory signature
+        ) = _generateRouterPullTokenWithPermit2Params({
+            privateKey: userPriv,
+            token: MAINNET_ETH_YFI_GAUGE,
+            amount: shareAmount,
+            to: address(router),
+            nonce: nonce,
+            deadline: block.timestamp + 100
+        });
 
         // Build multicall data
         bytes[] memory data = new bytes[](4);

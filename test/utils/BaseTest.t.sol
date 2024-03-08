@@ -221,8 +221,7 @@ abstract contract BaseTest is Test, Constants {
     function _getPermit2PermitTransferSignature(
         ISignatureTransfer.PermitTransferFrom memory permit,
         address to,
-        uint256 privateKey,
-        bytes32 domainSeparator
+        uint256 privateKey
     )
         internal
         view
@@ -232,7 +231,7 @@ abstract contract BaseTest is Test, Constants {
         bytes32 msgHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                domainSeparator,
+                ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR(),
                 keccak256(
                     abi.encode(PERMIT2_TRANSFER_FROM_TYPEHASH, tokenPermissions, to, permit.nonce, permit.deadline)
                 )
@@ -250,7 +249,7 @@ abstract contract BaseTest is Test, Constants {
         uint256 deadline
     )
         internal
-        view
+        pure
         returns (ISignatureTransfer.PermitTransferFrom memory permit)
     {
         permit = ISignatureTransfer.PermitTransferFrom({
@@ -260,7 +259,7 @@ abstract contract BaseTest is Test, Constants {
         });
     }
 
-    function _getPerit2SignatureTransferDetails(
+    function _getPermit2SignatureTransferDetails(
         address to,
         uint256 requestedAmount
     )
@@ -269,5 +268,26 @@ abstract contract BaseTest is Test, Constants {
         returns (ISignatureTransfer.SignatureTransferDetails memory transferDetails)
     {
         transferDetails = ISignatureTransfer.SignatureTransferDetails({ to: to, requestedAmount: requestedAmount });
+    }
+
+    function _generateRouterPullTokenWithPermit2Params(
+        uint256 privateKey,
+        address token,
+        uint256 amount,
+        address to,
+        uint256 nonce,
+        uint256 deadline
+    )
+        internal
+        view
+        returns (
+            ISignatureTransfer.PermitTransferFrom memory permit,
+            ISignatureTransfer.SignatureTransferDetails memory transferDetails,
+            bytes memory signature
+        )
+    {
+        permit = _getPermit2PermitTransferFrom(token, amount, nonce, deadline);
+        transferDetails = _getPermit2SignatureTransferDetails(to, amount);
+        signature = _getPermit2PermitTransferSignature(permit, to, privateKey);
     }
 }
