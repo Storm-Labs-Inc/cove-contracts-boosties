@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IYearnVaultV2 } from "src/interfaces/deps/yearn/veYFI/IYearnVaultV2.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 contract Router_ForkedTest is BaseTest {
     Yearn4626RouterExt public router;
@@ -252,7 +253,8 @@ contract Router_ForkedTest is BaseTest {
 
         // Generate Permit2 Signature
         // Find current approval nonce of the user
-        (,, uint48 nonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        (,, uint48 currentNonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        uint256 deadline = block.timestamp + 1000;
         (
             ISignatureTransfer.PermitTransferFrom memory permit,
             ISignatureTransfer.SignatureTransferDetails memory transferDetails,
@@ -262,8 +264,8 @@ contract Router_ForkedTest is BaseTest {
             token: MAINNET_ETH_YFI_GAUGE,
             amount: depositAmount,
             to: address(router),
-            nonce: nonce,
-            deadline: block.timestamp + 100
+            nonce: currentNonce,
+            deadline: deadline
         });
 
         vm.prank(user);
@@ -355,13 +357,15 @@ contract Router_ForkedTest is BaseTest {
         airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount, false);
 
         // Generate a permit signature
+        uint256 currentNonce = IERC20Permit(MAINNET_ETH_YFI_POOL_LP_TOKEN).nonces(user);
+        uint256 deadline = block.timestamp + 1000;
         (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
-            MAINNET_ETH_YFI_POOL_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
+            MAINNET_ETH_YFI_POOL_LP_TOKEN, user, userPriv, address(router), depositAmount, currentNonce, deadline
         );
 
         bytes[] memory data = new bytes[](6);
         data[0] = abi.encodeWithSelector(
-            SelfPermit.selfPermit.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, block.timestamp, v, r, s
+            SelfPermit.selfPermit.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, deadline, v, r, s
         );
         data[1] = abi.encodeWithSelector(
             PeripheryPayments.pullToken.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, address(router)
@@ -417,7 +421,8 @@ contract Router_ForkedTest is BaseTest {
 
         // Generate Permit2 Signature
         // Find current approval nonce of the user
-        (,, uint48 nonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        (,, uint48 currentNonce) = IPermit2(MAINNET_PERMIT2).allowance(user, MAINNET_ETH_YFI_GAUGE, address(router));
+        uint256 deadline = block.timestamp + 1000;
         (
             ISignatureTransfer.PermitTransferFrom memory permit,
             ISignatureTransfer.SignatureTransferDetails memory transferDetails,
@@ -427,8 +432,8 @@ contract Router_ForkedTest is BaseTest {
             token: MAINNET_ETH_YFI_GAUGE,
             amount: shareAmount,
             to: address(router),
-            nonce: nonce,
-            deadline: block.timestamp + 100
+            nonce: currentNonce,
+            deadline: deadline
         });
 
         // Build multicall data
@@ -470,8 +475,10 @@ contract Router_ForkedTest is BaseTest {
         airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount);
 
         // Generate a permit signature
+        uint256 currentNonce = IERC20Permit(MAINNET_ETH_YFI_POOL_LP_TOKEN).nonces(user);
+        uint256 deadline = block.timestamp + 1000;
         (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
-            MAINNET_ETH_YFI_POOL_LP_TOKEN, user, userPriv, address(router), depositAmount, 0, block.timestamp
+            MAINNET_ETH_YFI_POOL_LP_TOKEN, user, userPriv, address(router), depositAmount, currentNonce, deadline
         );
 
         bytes[] memory data = new bytes[](6);
