@@ -65,8 +65,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
     address public erc20RewardsGaugeImpl;
     /// @notice Address of the current YSD Rewards Gauge implementation.
     address public ysdRewardsGaugeImpl;
-    /// @notice Address of the treasury.
-    address public treasuryMultisig;
     /// @notice Address of the account with gauge admin privileges.
     address public gaugeAdmin;
     /// @notice Address of the account with gauge management privileges.
