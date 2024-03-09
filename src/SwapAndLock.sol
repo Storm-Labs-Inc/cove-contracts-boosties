@@ -11,7 +11,7 @@ import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
 /**
  * @title SwapAndLock
  * @dev This contract is designed to swap dYFI tokens to YFI and lock them in the YearnStakingDelegate.
- * It inherits from ISwapAndLock, CurveRouterSwapper, and AccessControlEnumerable to leverage swapping functionality
+ * It inherits from ISwapAndLock and AccessControlEnumerable to leverage swapping functionality
  * and role-based access control.
  */
 contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
@@ -19,18 +19,24 @@ contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     using SafeERC20 for IERC20;
 
     // Constants
-    // ETH mainnet token addresses for YFI and dYFI
+    /// @notice Address of the mainnet Yearn YFI token.
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    /// @notice Address of the mainnet Yearn D_YFI token.
     address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
 
     // Immutables
-    // Address of the YearnStakingDelegate contract
+    /// @dev Address of the YearnStakingDelegate contract, set at deployment and immutable thereafter.
     // slither-disable-next-line naming-convention
     address private immutable _YEARN_STAKING_DELEGATE;
 
     /// @notice Address of the DYfiRedeemer contract.
     address private _dYfiRedeemer;
 
+    /**
+     * @notice Emitted when the address of the DYfiRedeemer contract is updated.
+     * @param oldRedeemer The address of the previous DYfiRedeemer contract.
+     * @param newRedeemer The address of the new DYfiRedeemer contract.
+     */
     event DYfiRedeemerSet(address oldRedeemer, address newRedeemer);
 
     /**
