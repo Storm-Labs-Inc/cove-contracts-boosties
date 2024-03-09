@@ -177,6 +177,13 @@ contract Router_ForkedTest is BaseTest {
         assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(user), shareAmount);
     }
 
+    function test_redeemFromRouter_revertWhen_InsufficientAssets() public {
+        uint256 shareAmount = 1 ether;
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), address(router), shareAmount);
+        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.InsufficientAssets.selector));
+        router.redeemFromRouter(IERC4626(MAINNET_ETH_YFI_GAUGE), shareAmount, user, 100 ether);
+    }
+
     function test_withdrawFromRouter() public {
         uint256 shareAmount = 1 ether;
         uint256 assetAmount = 1 ether;
