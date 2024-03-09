@@ -217,17 +217,6 @@ abstract contract BaseTest is Test, Constants {
         );
     }
 
-    // Below from Permit2.PermitSignature.sol, only added a "to" parameter
-    function _getPermit2PermitTransferSignature(
-        ISignatureTransfer.PermitTransferFrom memory permit,
-        address to,
-        uint256 privateKey
-    )
-        internal
-        view
-        returns (bytes memory sig)
-    { }
-
     function _generateRouterPullTokenWithPermit2Params(
         uint256 privateKey,
         address token,
