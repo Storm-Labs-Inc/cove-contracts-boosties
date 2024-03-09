@@ -271,29 +271,28 @@ abstract contract BaseRewardsGauge is
         if (!(msg.sender == reward.distributor || hasRole(MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
-
         _checkpointRewards(address(0), totalSupply(), false, address(0));
-        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 periodFinish = reward.periodFinish;
-        // slither-disable-next-line timestamp
         uint256 leftOver = _rewardData[rewardToken].leftOver;
+        // slither-disable-next-line timestamp
         if (block.timestamp < periodFinish) {
             uint256 remaining = periodFinish - block.timestamp;
             leftOver = leftOver + remaining * _rewardData[rewardToken].rate;
         }
-        amount = amount + leftOver;
-        uint256 newRate = amount / _WEEK;
+        uint256 newRewardAmount = amount + leftOver;
+        uint256 newRate = newRewardAmount / _WEEK;
         // slither-disable-next-line timestamp,incorrect-equality
         if (newRate == 0) {
             revert RewardAmountTooLow();
         }
-        emit RewardTokenDeposited(rewardToken, amount, newRate, block.timestamp);
+        emit RewardTokenDeposited(rewardToken, newRewardAmount, newRate, block.timestamp);
         _rewardData[rewardToken].rate = newRate;
         _rewardData[rewardToken].lastUpdate = block.timestamp;
         _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
         // slither-disable-next-line weak-prng
-        reward.leftOver = amount % _WEEK;
+        reward.leftOver = newRewardAmount % _WEEK;
+        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
