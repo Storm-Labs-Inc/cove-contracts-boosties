@@ -143,12 +143,12 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     }
 
     /**
-     * @dev Performs an emergency withdrawal from the YearnStakingDelegate.
+     * @dev Performs an emergency withdrawal from the YearnStakingDelegate, withdrawing the asset to the strategy.
      * @param amount The amount to withdraw in case of an emergency.
      */
     function _emergencyWithdraw(uint256 amount) internal override {
-        uint256 currentTotalBalance = TokenizedStrategy.totalDebt();
-        uint256 withdrawAmount = amount > currentTotalBalance ? currentTotalBalance : amount;
+        uint256 deployedAmount = depositedInYSD(address(asset));
+        uint256 withdrawAmount = amount > deployedAmount ? deployedAmount : amount;
         _withdrawFromYSD(address(asset), withdrawAmount);
     }
 
@@ -178,7 +178,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
             }
         }
         // Return the total idle assets and the deployed assets
-        return IERC20(asset).balanceOf(address(this))
-            + IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).balanceOf(address(this), address(asset));
+        return IERC20(asset).balanceOf(address(this)) + depositedInYSD(address(asset));
     }
 }
