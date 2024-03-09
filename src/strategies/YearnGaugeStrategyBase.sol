@@ -113,7 +113,7 @@ abstract contract YearnGaugeStrategyBase {
     }
 
     /**
-     * @dev Internal function to read the amount of the asset deposited by this contract in the YearnStakingDelegate.
+     * @notice Return the amount of the asset deposited by this contract in the YearnStakingDelegate.
      * @param asset The address of the asset to check.
      * @return The amount of the asset deposited in the YearnStakingDelegate.
      */
