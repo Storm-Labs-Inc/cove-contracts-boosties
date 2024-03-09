@@ -232,6 +232,10 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 revert PreviewVaultMismatch();
             }
             assetsIn = sharesOut[i];
+
+            /// @dev Increment the loop index `i` without checking for overflow.
+            /// This is safe because the loop's termination condition ensures that `i` will not exceed
+            /// the bounds of the `sharesOut` array, which would be the only case where an overflow could occur.
             unchecked {
                 ++i;
             }
@@ -281,6 +285,10 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 revert PreviewVaultMismatch();
             }
             sharesOut = assetsIn[i];
+
+            /// @dev Increment the loop counter within an unchecked block to avoid redundant gas cost associated with
+            /// overflow checking.  This is safe because the loop's exit condition ensures that `i` will not exceed
+            /// `assetsInLength - 1`, preventing overflow.
             unchecked {
                 ++i;
             }
@@ -337,6 +345,10 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 revert PreviewVaultMismatch();
             }
             assetsOut = sharesIn[i];
+
+            /// @dev Increment the loop counter without checking for overflow.  This is safe because the for loop
+            /// naturally ensures that `i` will not overflow as it is bounded by `sharesInLength`, which is derived from
+            /// the length of the `path` array.
             unchecked {
                 ++i;
             }
@@ -392,6 +404,9 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 revert PreviewVaultMismatch();
             }
             sharesIn = assetsOut[i];
+
+            /// @dev The unchecked block is used here to prevent overflow checking for the loop increment, which is not
+            /// necessary since the loop's exit condition ensures `i` will not exceed `assetsOutLength`.
             unchecked {
                 ++i;
             }
