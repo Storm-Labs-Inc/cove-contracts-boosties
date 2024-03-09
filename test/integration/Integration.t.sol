@@ -128,9 +128,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // CoveToken
             coveToken = new CoveToken(admin);
             // RewardsGauges
-            ERC20RewardsGauge erc20RewardsGaugeImplementation = new ERC20RewardsGauge();
-            YSDRewardsGauge ysdRewardsGaugeImplementation = new YSDRewardsGauge();
-            RewardForwarder rewardForwarderImplementation = new RewardForwarder();
             coveYearnGaugeFactory = new CoveYearnGaugeFactory(
                 admin,
                 address(yearnStakingDelegate),
@@ -147,12 +144,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = coveYearnGaugeFactory.getGaugeInfo(address(gauge));
             erc20RewardsGauge = BaseRewardsGauge(gaugeInfo.autoCompoundingGauge);
             vm.label(address(erc20RewardsGauge), "erc20RewardsGauge");
-            erc20RewardsGauge.grantRole(_MANAGER_ROLE, tpManagement);
+            erc20RewardsGauge.grantRole(MANAGER_ROLE, tpManagement);
             baseRewardForwarder = erc20RewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(baseRewardForwarder, "baseRewardForwarder");
             ysdRewardsGauge = YSDRewardsGauge(gaugeInfo.nonAutoCompoundingGauge);
             vm.label(address(ysdRewardsGauge), "ysdRewardsGauge");
-            ysdRewardsGauge.grantRole(_MANAGER_ROLE, tpManagement);
+            ysdRewardsGauge.grantRole(MANAGER_ROLE, tpManagement);
             ysdRewardForwarder = ysdRewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(ysdRewardForwarder, "ysdRewardForwarder");
             // Setup Cove token to be given as a reward

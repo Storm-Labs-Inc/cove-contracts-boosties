@@ -189,9 +189,9 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(rewardSplit.user, 0);
         assertEq(rewardSplit.lock, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(yearnStakingDelegate.hasRole(_PAUSER_ROLE, pauser));
-        assertTrue(yearnStakingDelegate.hasRole(_TIMELOCK_ROLE, timelock));
+        assertTrue(yearnStakingDelegate.hasRole(DEFAULT_ADMIN_ROLE, admin));
+        assertTrue(yearnStakingDelegate.hasRole(PAUSER_ROLE, pauser));
+        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, timelock));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }
@@ -212,7 +212,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_unpause_revertWhen_notAdmin() public {
-        vm.expectRevert(_formatAccessControlError(address(this), yearnStakingDelegate.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(address(this), DEFAULT_ADMIN_ROLE));
         yearnStakingDelegate.unpause();
     }
 
@@ -299,7 +299,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_earlyUnlock_revertWhen_CallerIsNotTimelock() public {
         _lockYfiForYSD(alice, 1e18);
 
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.earlyUnlock();
     }
@@ -455,7 +455,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_setBoostRewardSplit_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setBoostRewardSplit(1e18, 0);
     }
@@ -526,7 +526,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_setExitRewardSplit_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setExitRewardSplit(1e18, 0);
     }
@@ -567,7 +567,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_setTreasury_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setTreasury(admin);
     }
@@ -587,7 +587,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_setSwapAndLock_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setSwapAndLock(admin);
     }
@@ -624,7 +624,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_setGaugeRewardSplit_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setGaugeRewardSplit(testGauge, 1e18, 0, 0, 0);
     }
@@ -695,7 +695,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_updateGaugeRewards_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.updateGaugeRewards(testGauge, stakingDelegateRewards);
     }
@@ -796,7 +796,7 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function test_execute_revertWhen_CallerIsNotTimelock() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
@@ -804,8 +804,8 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
         vm.prank(admin);
         yearnStakingDelegate.grantRole(DEFAULT_ADMIN_ROLE, alice);
-        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
-        yearnStakingDelegate.grantRole(_TIMELOCK_ROLE, alice);
+        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
     }
 }

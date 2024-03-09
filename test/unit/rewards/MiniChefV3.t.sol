@@ -33,9 +33,9 @@ contract MiniChefV3_Test is BaseTest {
 
     function test_constructor() public {
         assertEq(address(miniChef.REWARD_TOKEN()), address(rewardToken), "rewardToken not set");
-        assertTrue(miniChef.hasRole(miniChef.DEFAULT_ADMIN_ROLE(), address(this)), "admin role not set");
-        assertTrue(miniChef.hasRole(_TIMELOCK_ROLE, address(this)), "timelock role not set");
-        assertTrue(miniChef.hasRole(_PAUSER_ROLE, pauser), "pauser role not set");
+        assertTrue(miniChef.hasRole(DEFAULT_ADMIN_ROLE, address(this)), "admin role not set");
+        assertTrue(miniChef.hasRole(TIMELOCK_ROLE, address(this)), "timelock role not set");
+        assertTrue(miniChef.hasRole(PAUSER_ROLE, pauser), "pauser role not set");
     }
 
     function test_constructor_revertWhen_RewardTokenIsZero() public {
@@ -91,7 +91,7 @@ contract MiniChefV3_Test is BaseTest {
 
     function test_unpause_revertWhen_notAdmin() public {
         vm.startPrank(alice);
-        vm.expectRevert(_formatAccessControlError(alice, miniChef.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(alice, DEFAULT_ADMIN_ROLE));
         miniChef.unpause();
     }
 
@@ -109,7 +109,7 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     function test_add_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(bob, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(bob, TIMELOCK_ROLE));
         vm.startPrank(bob);
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
     }
@@ -143,7 +143,7 @@ contract MiniChefV3_Test is BaseTest {
     function test_set_revertWhen_CallerIsNotTimelock() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
-        vm.expectRevert(_formatAccessControlError(bob, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(bob, TIMELOCK_ROLE));
         vm.startPrank(bob);
         miniChef.set(pid, 1000, lpToken, IMiniChefV3Rewarder(address(0)), false);
     }
@@ -180,7 +180,7 @@ contract MiniChefV3_Test is BaseTest {
 
     function testFuzz_setRewardPerSecond_revertWhen_CallerIsNotTimelock(uint256 rate) public {
         rate = bound(rate, 0, miniChef.MAX_REWARD_TOKEN_PER_SECOND());
-        vm.expectRevert(_formatAccessControlError(bob, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(bob, TIMELOCK_ROLE));
         vm.startPrank(bob);
         miniChef.setRewardPerSecond(rate);
     }
@@ -470,7 +470,7 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     function testFuzz_rescue_revertWhen_CallerIsNotAdmin(IERC20 token, address to, uint256 amount) public {
-        vm.expectRevert(_formatAccessControlError(bob, miniChef.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(bob, DEFAULT_ADMIN_ROLE));
         vm.startPrank(bob);
         miniChef.rescue(token, to, amount);
     }
@@ -561,8 +561,8 @@ contract MiniChefV3_Test is BaseTest {
 
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
         miniChef.grantRole(DEFAULT_ADMIN_ROLE, alice);
-        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
-        miniChef.grantRole(_TIMELOCK_ROLE, alice);
+        miniChef.grantRole(TIMELOCK_ROLE, alice);
     }
 }

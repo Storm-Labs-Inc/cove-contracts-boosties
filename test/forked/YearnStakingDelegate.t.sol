@@ -139,9 +139,9 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(rewardSplit.user, 0);
         assertEq(rewardSplit.lock, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(_TIMELOCK_ROLE, timelock));
-        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(yearnStakingDelegate.hasRole(_PAUSER_ROLE, pauser));
+        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, timelock));
+        assertTrue(yearnStakingDelegate.hasRole(DEFAULT_ADMIN_ROLE, admin));
+        assertTrue(yearnStakingDelegate.hasRole(PAUSER_ROLE, pauser));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }
@@ -222,7 +222,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     function test_earlyUnlock_revertWhen_CallerIsNotTimelock() public {
         _lockYfiForYSD(1e18);
         vm.startPrank(admin);
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         yearnStakingDelegate.earlyUnlock();
     }
 
@@ -509,7 +509,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
     function test_setTreasury_revertWhen_CallerIsNotTimelock() public {
         vm.startPrank(admin);
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         yearnStakingDelegate.setTreasury(address(0));
         vm.stopPrank();
     }

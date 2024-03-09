@@ -8,12 +8,11 @@ contract Constants is CommonBase {
     uint40 internal constant _JAN_1_2023 = 1_672_531_200;
     uint256 internal constant _MAX_UINT256 = type(uint256).max;
     uint256 internal constant _WEEK = 604_800;
-    // solhint-disable-next-line private-vars-leading-underscore
-    bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 internal constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 internal constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
-    bytes32 internal constant _MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     // Ethereum mainnet addresses
     // Tokens
@@ -54,11 +53,6 @@ contract Constants is CommonBase {
     address public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE = 0x6130E6cD924a40b24703407F246966D7435D4998;
     address public constant MAINNET_CRV_YCRV_POOL_VAULT = 0x6E9455D109202b426169F0d8f01A3332DAE160f3;
     address public constant MAINNET_CRV_YCRV_POOL_GAUGE = 0x107717C98C8125A94D3d2Cc82b86a1b705f3A27C;
-    uint256 public constant MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
 
     // StakeDAO
     address public constant MAINNET_STAKE_DAO_ETH_YFI_GAUGE = 0x760570c75793b2AB8027aCB60e4A58d337058254;
