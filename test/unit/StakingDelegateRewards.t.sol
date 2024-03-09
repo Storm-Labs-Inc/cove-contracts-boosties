@@ -140,9 +140,12 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingDelegateRewards.notifyRewardAmount(stakingToken, REWARD_AMOUNT);
         vm.stopPrank();
 
-        assertEq(stakingDelegateRewards.rewardRate(stakingToken), uint256(REWARD_AMOUNT) / 7 days);
+        uint256 expectedFirstRewardRate = uint256(REWARD_AMOUNT) / 7 days;
+        uint256 expectedFirstLeftOver = uint256(REWARD_AMOUNT) % 7 days;
+        assertEq(stakingDelegateRewards.rewardRate(stakingToken), expectedFirstRewardRate);
         assertEq(stakingDelegateRewards.lastUpdateTime(stakingToken), block.timestamp);
         assertEq(stakingDelegateRewards.periodFinish(stakingToken), block.timestamp + 7 days);
+        assertEq(stakingDelegateRewards.leftOver(stakingToken), expectedFirstLeftOver);
         assertEq(IERC20(rewardToken).balanceOf(address(stakingDelegateRewards)), REWARD_AMOUNT);
         vm.warp(block.timestamp + 4 days);
 
@@ -152,10 +155,14 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingDelegateRewards.notifyRewardAmount(stakingToken, REWARD_AMOUNT);
         vm.stopPrank();
 
-        uint256 expectedRewardRate = (uint256(REWARD_AMOUNT) * 3 days / 7 days + uint256(REWARD_AMOUNT)) / 7 days;
-        assertEq(stakingDelegateRewards.rewardRate(stakingToken), expectedRewardRate);
+        uint256 expectedNewRewardAmount =
+            expectedFirstLeftOver + 3 days * expectedFirstRewardRate + uint256(REWARD_AMOUNT);
+        uint256 expectedNewRewardRate = expectedNewRewardAmount / 7 days;
+        uint256 expectedNewLeftOver = expectedNewRewardAmount % 7 days;
+        assertEq(stakingDelegateRewards.rewardRate(stakingToken), expectedNewRewardRate);
         assertEq(stakingDelegateRewards.lastUpdateTime(stakingToken), block.timestamp);
         assertEq(stakingDelegateRewards.periodFinish(stakingToken), block.timestamp + 7 days);
+        assertEq(stakingDelegateRewards.leftOver(stakingToken), expectedNewLeftOver);
 
         assertEq(IERC20(rewardToken).balanceOf(address(stakingDelegateRewards)), 2000e18);
     }
