@@ -276,7 +276,6 @@ abstract contract BaseRewardsGauge is
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 periodFinish = reward.periodFinish;
-        uint256 newRate = 0;
         // slither-disable-next-line timestamp
         uint256 leftOver = _rewardData[rewardToken].leftOver;
         if (block.timestamp < periodFinish) {
@@ -284,7 +283,7 @@ abstract contract BaseRewardsGauge is
             leftOver = leftOver + remaining * _rewardData[rewardToken].rate;
         }
         amount = amount + leftOver;
-        newRate = amount / _WEEK;
+        uint256 newRate = amount / _WEEK;
         // slither-disable-next-line timestamp,incorrect-equality
         if (newRate == 0) {
             revert RewardAmountTooLow();

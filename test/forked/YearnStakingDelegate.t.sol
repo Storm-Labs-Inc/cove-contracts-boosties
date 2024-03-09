@@ -10,7 +10,6 @@ import { IYearnStakingDelegate, YearnStakingDelegate } from "src/YearnStakingDel
 import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
-import { BaseTest } from "test/utils/BaseTest.t.sol";
 
 contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -35,16 +34,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     address public coveYfiRewardFowarder;
 
     function setUp() public override {
-        forkNetworkAt("mainnet", 18_748_116);
-        BaseTest.setUp();
-        _createYearnRelatedAddresses();
-        _createThirdPartyRelatedAddresses();
-        _labelEthereumAddresses();
-
-        // create admin user that would be the default owner of deployed contracts unless specified
-        admin = createUser("admin");
-
-        setUpVotingYfiStack();
+        super.setUp();
 
         // create alice who will be lock YFI via the yearnStakingDelegate
         alice = createUser("alice");
@@ -424,11 +414,10 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
     function test_claimBoostRewards() public {
         _lockYfiForYSD(10e18);
-        vm.warp(block.timestamp + 1 weeks);
         vm.prank(timelock);
         yearnStakingDelegate.setCoveYfiRewardForwarder(coveYfiRewardFowarder);
         yearnStakingDelegate.claimBoostRewards();
-        uint256 balanceBefore = IERC20(MAINNET_DYFI).balanceOf(treasury);
+        uint256 balanceBefore = IERC20(MAINNET_DYFI).balanceOf(coveYfiRewardFowarder);
         // Alice deposits some vault tokens to a yearn gauge without any veYFI
         airdrop(IERC20(vault), alice, 1e18);
         vm.startPrank(alice);
@@ -439,7 +428,8 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 2 weeks);
         // Claim the dYFI gauge rewards for alice
         IGauge(gauge).getReward(alice);
-        vm.warp(block.timestamp + 1 weeks);
+        // Advance to the next epoch
+        vm.warp(block.timestamp + 2 weeks);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimBoostRewards();
         uint256 balanceAfter = IERC20(MAINNET_DYFI).balanceOf(coveYfiRewardFowarder);
@@ -456,7 +446,6 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     function test_claimExitRewards() public {
         // Lock YFI for YSD
         _lockYfiForYSD(10e18);
-        vm.warp(block.timestamp + 1 weeks);
         vm.prank(timelock);
         yearnStakingDelegate.setCoveYfiRewardForwarder(coveYfiRewardFowarder);
         yearnStakingDelegate.claimExitRewards();
@@ -467,7 +456,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.prank(alice);
         IVotingYFI(MAINNET_VE_YFI).withdraw();
         // Advance to the next epoch
-        vm.warp(block.timestamp + 1 weeks);
+        vm.warp(block.timestamp + 2 weeks);
         // Claim exit rewards
         yearnStakingDelegate.claimExitRewards();
         uint256 balanceAfter = IERC20(MAINNET_YFI).balanceOf(coveYfiRewardFowarder);

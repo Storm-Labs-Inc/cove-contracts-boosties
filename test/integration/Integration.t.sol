@@ -298,8 +298,11 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_harvest_revertWhen_RewardRateTooLow(uint256 amount) public {
-        vm.assume(amount >= 1.8e5);
-        vm.assume(amount < 1e10); // Small deposits do not accrue enough rewards to harvest
+        // If deposit amount is too low (<1.8e5), the reward will not be earned and the harvest will pass
+        // If deposit amount is high (>1e10), the reward will be earned and the harvest will pass
+        // If deposit amount is in the middle, a tiny amount of reward will be earned and will revert on harvest due to
+        // low reward rate
+        amount = bound(amount, 1.8e5, 1e10);
 
         // deposit into strategy happens
         mintAndDepositIntoStrategy(yearnGaugeStrategy, alice, amount, gauge);
@@ -319,8 +322,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
-        vm.assume(amount > 3e10); // Minimum deposit size is required to farm sufficient dYFI emission
-        vm.assume(amount < 100_000_000_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
+        // Minimum deposit size is required to farm sufficient dYFI emission
+        amount = bound(amount, 3e10, 100_000_000_000 * 1e18);
 
         vm.prank(tpManagement);
         yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
@@ -385,15 +388,20 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         assertGt(IERC20(gauge).balanceOf(alice), amount, "profit not given to user on withdraw");
     }
 
-    function testFuzz_report_staking_rewards_profit_erc20RewardsGauge_reward(uint256 amount, uint256 reward) public {
-        vm.assume(amount > 3e10); // Minimum deposit size is required to farm sufficient dYFI emission
-        vm.assume(amount < 100_000_000_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
-        reward = bound(reward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
-        vm.assume(reward > _WEEK);
+    function testFuzz_report_staking_rewards_profit_erc20RewardsGauge_reward(
+        uint256 amount,
+        uint256 coveReward
+    )
+        public
+    {
+        // Minimum deposit size is required to farm sufficient dYFI emission
+        amount = bound(amount, 3e10, 100_000_000_000 * 1e18);
+        coveReward = bound(coveReward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
         // Mint coveToken to be given as reward
         vm.prank(admin);
-        coveToken.transfer(address(baseRewardForwarder), reward);
+        coveToken.transfer(address(baseRewardForwarder), coveReward);
         RewardForwarder(baseRewardForwarder).forwardRewardToken(address(coveToken));
+        coveReward = coveReward - erc20RewardsGauge.getRewardData(address(coveToken)).leftOver;
 
         vm.prank(tpManagement);
         yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
@@ -414,7 +422,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 1 weeks);
 
         assertApproxEqRel(
-            reward,
+            coveReward,
             erc20RewardsGauge.claimableReward(alice, address(coveToken)),
             0.005 * 1e18,
             "alice should have claimable rewards equal to the total amount of reward tokens deposited"
@@ -452,11 +460,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         yearnGaugeStrategy.report();
 
         uint256 afterTotalAssets = yearnGaugeStrategy.totalAssets();
-        assertEq(
-            afterTotalAssets,
-            yearnStakingDelegate.balanceOf(address(yearnGaugeStrategy), gauge),
-            "all assets should be deployed"
-        );
+        assertEq(afterTotalAssets, yearnGaugeStrategy.depositedInYSD(gauge), "all assets should be deployed");
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
         // User withdraws
         vm.startPrank(alice);
@@ -466,21 +470,22 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 coveBalanceBefore = IERC20(address(coveToken)).balanceOf(alice);
         erc20RewardsGauge.claimRewards(alice, alice);
         assertApproxEqRel(
-            coveBalanceBefore + reward,
+            coveBalanceBefore + coveReward,
             IERC20(address(coveToken)).balanceOf(alice),
             0.005 * 1e18,
             "reward not given to user on claim"
         );
     }
 
-    function testFuzz_report_staking_rewards_profit_ysdRewardsGauge_reward(uint256 amount, uint256 reward) public {
-        vm.assume(amount > 1.1e13); // Minimum deposit size is required to farm sufficient dYFI emission
-        vm.assume(amount < 100_000_000_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
-        reward = bound(reward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
+    function testFuzz_report_staking_rewards_profit_ysdRewardsGauge_reward(uint256 amount, uint256 coveReward) public {
+        // Minimum deposit size is required to farm sufficient dYFI emission
+        amount = bound(amount, 3e11, 100_000_000_000 ether);
+        coveReward = bound(coveReward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
         // Mint coveToken to be given as reward
         vm.prank(admin);
-        coveToken.transfer(address(ysdRewardForwarder), reward);
+        coveToken.transfer(address(ysdRewardForwarder), coveReward);
         RewardForwarder(ysdRewardForwarder).forwardRewardToken(address(coveToken));
+        coveReward = coveReward - ysdRewardsGauge.getRewardData(address(coveToken)).leftOver;
 
         airdrop(ERC20(gauge), alice, amount);
         vm.startPrank(alice);
@@ -492,7 +497,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 2 weeks);
 
         assertApproxEqRel(
-            reward,
+            coveReward,
             ysdRewardsGauge.claimableReward(alice, address(coveToken)),
             0.005 * 1e18,
             "alice should have claimable rewards equal to the total amount of reward tokens deposited"
@@ -502,7 +507,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.prank(alice);
         ysdRewardsGauge.claimRewards(alice, alice);
         assertApproxEqRel(
-            coveBalanceBefore + reward,
+            coveBalanceBefore + coveReward,
             IERC20(address(coveToken)).balanceOf(alice),
             0.005 * 1e18,
             "reward gauge cove reward not given to user on claim"
@@ -511,6 +516,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // yearn staking delegate harvests available rewards
         vm.prank(admin);
         uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
+        totalRewardAmount = totalRewardAmount - stakingDelegateRewards.leftOver(gauge);
 
         // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
@@ -521,6 +527,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         stakingDelegateRewards.getReward(address(ysdRewardsGauge), gauge);
         // Forward the earned dYFI to the rewardsGauge
         RewardForwarder(ysdRewardForwarder).forwardRewardToken(address(MAINNET_DYFI));
+        totalRewardAmount = totalRewardAmount - ysdRewardsGauge.getRewardData(MAINNET_DYFI).leftOver;
         // Warp forward 1 week for the rewards to be claimable
         uint256 periodFinish = ysdRewardsGauge.getRewardData(MAINNET_DYFI).periodFinish;
         vm.warp(periodFinish);
