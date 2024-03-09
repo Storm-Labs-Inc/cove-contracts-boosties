@@ -123,7 +123,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
             revert Errors.RewardRateTooLow();
         }
         uint256 newPeriodFinish = block.timestamp + rewardDuration_;
-        emit RewardAdded(stakingToken, newRewardAmount, newRewardRate, block.timestamp, newPeriodFinish);
+        emit RewardAdded(stakingToken, reward, newRewardRate, block.timestamp, newPeriodFinish);
         rewardRate[stakingToken] = newRewardRate;
         lastUpdateTime[stakingToken] = block.timestamp;
         periodFinish[stakingToken] = newPeriodFinish;
