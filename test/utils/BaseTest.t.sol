@@ -226,49 +226,7 @@ abstract contract BaseTest is Test, Constants {
         internal
         view
         returns (bytes memory sig)
-    {
-        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
-        bytes32 msgHash = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(PERMIT2_TRANSFER_FROM_TYPEHASH, tokenPermissions, to, permit.nonce, permit.deadline)
-                )
-            )
-        );
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
-        return bytes.concat(r, s, bytes1(v));
-    }
-
-    function _getPermit2PermitTransferFrom(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint256 deadline
-    )
-        internal
-        pure
-        returns (ISignatureTransfer.PermitTransferFrom memory permit)
-    {
-        permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({ token: token, amount: amount }),
-            nonce: nonce,
-            deadline: deadline
-        });
-    }
-
-    function _getPermit2SignatureTransferDetails(
-        address to,
-        uint256 requestedAmount
-    )
-        internal
-        pure
-        returns (ISignatureTransfer.SignatureTransferDetails memory transferDetails)
-    {
-        transferDetails = ISignatureTransfer.SignatureTransferDetails({ to: to, requestedAmount: requestedAmount });
-    }
+    { }
 
     function _generateRouterPullTokenWithPermit2Params(
         uint256 privateKey,
@@ -286,8 +244,31 @@ abstract contract BaseTest is Test, Constants {
             bytes memory signature
         )
     {
-        permit = _getPermit2PermitTransferFrom(token, amount, nonce, deadline);
-        transferDetails = _getPermit2SignatureTransferDetails(to, amount);
-        signature = _getPermit2PermitTransferSignature(permit, to, privateKey);
+        // Build PermitTransferFrom struct
+        permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({ token: token, amount: amount }),
+            nonce: nonce,
+            deadline: deadline
+        });
+
+        // Build SignatureTransferDetails struct
+        transferDetails = ISignatureTransfer.SignatureTransferDetails({ to: to, requestedAmount: amount });
+
+        // Build msgHash to sign with user's private key
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                ISignatureTransfer(MAINNET_PERMIT2).DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(PERMIT2_TRANSFER_FROM_TYPEHASH, tokenPermissions, to, permit.nonce, permit.deadline)
+                )
+            )
+        );
+        // Sign the msgHash with user's private key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        signature = bytes.concat(r, s, bytes1(v));
+
+        return (permit, transferDetails, signature);
     }
 }

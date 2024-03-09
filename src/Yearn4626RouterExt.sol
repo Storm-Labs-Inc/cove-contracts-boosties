@@ -27,13 +27,20 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
 
     /// @notice Error for when the number of shares received is less than the minimum expected.
     error InsufficientShares();
+    /// @notice Error for when the amount of assets received is less than the minimum expected.
     error InsufficientAssets();
+    /// @notice Error for when the amount of shares burned is more than the maximum expected.
     error RequiresMoreThanMaxShares();
-    /// @notice Error for when an invalid recipient address is provided.
-    error InvalidTo();
-    error PathIsTooShort();
-    error NonVaultAddressInPath(address invalidVault);
-    error VaultMismatch();
+    /// @notice Error for when the `to` address in the Permit2 transfer is not the router contract.
+    error InvalidPermit2TransferTo();
+    /// @notice Error for when the amount in the Permit2 transfer is not the same as the requested amount.
+    error InvalidPermit2TransferAmount();
+    /// @notice Error for when the path is too short to preview the deposits/mints/withdraws/redeems.
+    error PreviewPathIsTooShort();
+    /// @notice Error for when the address in the path is not a vault.
+    error PreviewNonVaultAddressInPath(address invalidVault);
+    /// @notice Error for when an address in the path does not match previous or next vault's asset.
+    error PreviewVaultMismatch();
 
     /**
      * @notice Constructs the Yearn4626RouterExt contract.
@@ -167,14 +174,15 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @param signature The signature to authorize the token transfer.
      */
     function pullTokenWithPermit2(
-        ISignatureTransfer.PermitTransferFrom memory permit,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
         ISignatureTransfer.SignatureTransferDetails calldata transferDetails,
         bytes calldata signature
     )
         public
         payable
     {
-        if (transferDetails.to != address(this)) revert InvalidTo();
+        if (transferDetails.to != address(this)) revert InvalidPermit2TransferTo();
+        if (permit.permitted.amount != transferDetails.requestedAmount) revert InvalidPermit2TransferAmount();
         IPermit2(_PERMIT2).permitTransferFrom(permit, transferDetails, msg.sender, signature);
     }
 
@@ -197,13 +205,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         view
         returns (uint256[] memory sharesOut)
     {
-        if (path.length < 2) revert PathIsTooShort();
+        if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 sharesOutLength = path.length - 1;
         sharesOut = new uint256[](sharesOutLength);
         for (uint256 i; i < sharesOutLength;) {
             address vault = path[i + 1];
             if (!Address.isContract(vault)) {
-                revert NonVaultAddressInPath(vault);
+                revert PreviewNonVaultAddressInPath(vault);
             }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
@@ -217,11 +225,11 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     sharesOut[i] =
                         Math.mulDiv(assetsIn, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down) - 1;
                 } else {
-                    revert NonVaultAddressInPath(vault);
+                    revert PreviewNonVaultAddressInPath(vault);
                 }
             }
             if (vaultAsset != path[i]) {
-                revert VaultMismatch();
+                revert PreviewVaultMismatch();
             }
             assetsIn = sharesOut[i];
             unchecked {
@@ -245,13 +253,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         view
         returns (uint256[] memory assetsIn)
     {
-        if (path.length < 2) revert PathIsTooShort();
+        if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 assetsInLength = path.length - 1;
         assetsIn = new uint256[](assetsInLength);
         for (uint256 i; i < assetsInLength;) {
             address vault = path[i + 1];
             if (!Address.isContract(vault)) {
-                revert NonVaultAddressInPath(vault);
+                revert PreviewNonVaultAddressInPath(vault);
             }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
@@ -265,12 +273,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     assetsIn[i] =
                         Math.mulDiv(sharesOut, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up) + 1;
                 } else {
-                    revert NonVaultAddressInPath(vault);
+                    revert PreviewNonVaultAddressInPath(vault);
                 }
             }
 
             if (vaultAsset != path[i]) {
-                revert VaultMismatch();
+                revert PreviewVaultMismatch();
             }
             sharesOut = assetsIn[i];
             unchecked {
@@ -295,13 +303,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         view
         returns (uint256[] memory sharesIn)
     {
-        if (path.length < 2) revert PathIsTooShort();
+        if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 sharesInLength = path.length - 1;
         sharesIn = new uint256[](sharesInLength);
         for (uint256 i; i < sharesInLength;) {
             address vault = path[i];
             if (!Address.isContract(vault)) {
-                revert NonVaultAddressInPath(vault);
+                revert PreviewNonVaultAddressInPath(vault);
             }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
@@ -321,12 +329,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                         vaultAsset = IStakeDaoVault(abi.decode(data, (address))).token();
                         sharesIn[i] = assetsOut;
                     } else {
-                        revert NonVaultAddressInPath(vault);
+                        revert PreviewNonVaultAddressInPath(vault);
                     }
                 }
             }
             if (vaultAsset != path[i + 1]) {
-                revert VaultMismatch();
+                revert PreviewVaultMismatch();
             }
             assetsOut = sharesIn[i];
             unchecked {
@@ -350,13 +358,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         view
         returns (uint256[] memory assetsOut)
     {
-        if (path.length < 2) revert PathIsTooShort();
+        if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 assetsOutLength = path.length - 1;
         assetsOut = new uint256[](assetsOutLength);
         for (uint256 i; i < assetsOutLength;) {
             address vault = path[i];
             if (!Address.isContract(vault)) {
-                revert NonVaultAddressInPath(vault);
+                revert PreviewNonVaultAddressInPath(vault);
             }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
@@ -376,12 +384,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                         vaultAsset = IStakeDaoVault(abi.decode(data, (address))).token();
                         assetsOut[i] = sharesIn;
                     } else {
-                        revert NonVaultAddressInPath(vault);
+                        revert PreviewNonVaultAddressInPath(vault);
                     }
                 }
             }
             if (vaultAsset != path[i + 1]) {
-                revert VaultMismatch();
+                revert PreviewVaultMismatch();
             }
             sharesIn = assetsOut[i];
             unchecked {
