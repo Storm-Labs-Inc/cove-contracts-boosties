@@ -91,7 +91,7 @@ contract YSDRewardsGauge_Test is BaseTest {
     }
 
     function test_setStakingDelegateRewardsReceiver_revertWhen_notAdmin() public {
-        vm.expectRevert(_formatAccessControlError(address(this), rewardsGauge.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(address(this), DEFAULT_ADMIN_ROLE));
         rewardsGauge.setStakingDelegateRewardsReceiver(address(2));
     }
 
