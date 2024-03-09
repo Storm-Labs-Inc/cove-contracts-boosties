@@ -425,7 +425,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_setBoostRewardSplit(uint128 treasuryPct) public {
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
         uint128 coveYfiPct = 1e18 - treasuryPct;
         _setBoostRewardSplit(treasuryPct, coveYfiPct);
         IYearnStakingDelegate.BoostRewardSplit memory rewardSplit = yearnStakingDelegate.getBoostRewardSplit();
@@ -439,7 +439,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     )
         public
     {
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
         vm.assume(uint256(treasuryPct) + coveYfiPct != 1e18);
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
@@ -448,8 +448,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_setBoostRewardSplit_revertWhen_TreasuryPctTooHigh(uint128 treasuryPct) public {
-        vm.assume(treasuryPct > 0.2e18);
-        vm.assume(treasuryPct <= 1e18);
+        treasuryPct = uint128(bound(treasuryPct, 0.2e18 + 1, 1e18));
         vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
         vm.prank(timelock);
         yearnStakingDelegate.setBoostRewardSplit(treasuryPct, 1e18 - treasuryPct);
@@ -477,7 +476,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_claimBoostRewards(uint128 treasuryPct) public {
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
         uint128 coveYfiPct = 1e18 - treasuryPct;
         _setBoostRewardSplit(treasuryPct, coveYfiPct);
         _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
@@ -496,7 +495,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_setExitRewardSplit(uint128 treasuryPct) public {
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
         uint128 coveYfiPct = 1e18 - treasuryPct;
         _setExitRewardSplit(treasuryPct, coveYfiPct);
         IYearnStakingDelegate.ExitRewardSplit memory rewardSplit = yearnStakingDelegate.getExitRewardSplit();
@@ -510,7 +509,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     )
         public
     {
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
         vm.assume(uint256(treasuryPct) + coveYfiPct != 1e18);
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
@@ -519,8 +518,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_setExitRewardSplit_revertWhen_TreasuryPctTooHigh(uint128 treasuryPct) public {
-        vm.assume(treasuryPct > 0.2e18);
-        vm.assume(treasuryPct <= 1e18);
+        treasuryPct = uint128(bound(treasuryPct, 0.2e18 + 1, 1e18));
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
         yearnStakingDelegate.setExitRewardSplit(treasuryPct, 1e18 - treasuryPct);
@@ -534,7 +532,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_claimExitRewards(uint128 treasuryPct) public {
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
         uint128 coveYfiPct = 1e18 - treasuryPct;
         _setExitRewardSplit(treasuryPct, coveYfiPct);
         _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
@@ -595,7 +593,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function testFuzz_setGaugeRewardSplit(uint64 a, uint64 b, uint64 c) public {
-        vm.assume(a <= 0.2e18);
+        a = uint64(bound(a, 0, 0.2e18));
         // Workaround for vm.assume max tries
         vm.assume(uint256(a) + b + c <= 1e18);
         uint64 d = 1e18 - a - b - c;

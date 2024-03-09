@@ -172,8 +172,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_lockYFI_revertWhen_CreatingLockWithLessThanMinAmount(uint256 lockAmount) public {
-        vm.assume(lockAmount > 0);
-        vm.assume(lockAmount < 1e18);
+        lockAmount = bound(lockAmount, 1, 1e18 - 1);
         airdrop(ERC20(MAINNET_YFI), alice, lockAmount);
         vm.prank(alice);
         vm.expectRevert();
@@ -181,8 +180,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_lockYFI(uint256 lockAmount) public {
-        vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount <= YFI_MAX_SUPPLY);
+        lockAmount = bound(lockAmount, 1e18, YFI_MAX_SUPPLY);
         _lockYfiForYSD(lockAmount);
 
         assertEq(IERC20(MAINNET_YFI).balanceOf(address(yearnStakingDelegate)), 0, "lock failed");
@@ -202,8 +200,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_earlyUnlock(uint256 lockAmount) public {
-        vm.assume(lockAmount >= 1e18);
-        vm.assume(lockAmount <= YFI_MAX_SUPPLY);
+        lockAmount = bound(lockAmount, 1e18, YFI_MAX_SUPPLY);
         _lockYfiForYSD(lockAmount);
 
         vm.startPrank(timelock);
@@ -230,8 +227,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_deposit(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        amount = bound(amount, 1, type(uint128).max);
         _setGaugeRewards();
         _depositGaugeTokensToYSD(wrappedStrategy, amount);
 
@@ -255,8 +251,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_withdraw(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        amount = bound(amount, 1, type(uint128).max);
         _setGaugeRewards();
         _depositGaugeTokensToYSD(wrappedStrategy, amount);
 
@@ -274,8 +269,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_withdraw_toReceiver(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        amount = bound(amount, 1, type(uint128).max);
         _setGaugeRewards();
         _depositGaugeTokensToYSD(wrappedStrategy, amount);
 
@@ -293,8 +287,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     }
 
     function testFuzz_withdraw_toReceiver_revertsWhen_zeroAmount(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount < 100_000 * 1e18); // limit deposit size to 100k ETH
+        amount = bound(amount, 1, type(uint128).max);
         _setGaugeRewards();
         _depositGaugeTokensToYSD(wrappedStrategy, amount);
 
@@ -523,7 +516,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
 
     function testFuzz_setGaugeRewardSplit(uint64 treasuryPct, uint64 coveYfiPct, uint64 lockPct) public {
         // Workaround for vm.assume max tries
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint64(bound(treasuryPct, 0, 0.2e18));
         vm.assume(uint256(treasuryPct) + coveYfiPct + lockPct <= 1e18);
         uint64 userPct = 1e18 - treasuryPct - coveYfiPct - lockPct;
         vm.prank(timelock);
@@ -543,7 +536,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     )
         public
     {
-        vm.assume(treasuryPct <= 0.2e18);
+        treasuryPct = uint64(bound(treasuryPct, 0, 0.2e18));
         vm.assume(uint256(treasuryPct) + coveYfiPct + userPct + lockPct != 1e18);
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
@@ -558,8 +551,8 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     )
         public
     {
-        vm.assume(treasuryPct > 0.2e18);
-        vm.assume(uint128(treasuryPct) + coveYfiPct + lockPct <= 1e18);
+        treasuryPct = uint64(bound(treasuryPct, 0.2e18 + 1, 1e18));
+        vm.assume(uint256(treasuryPct) + coveYfiPct + lockPct <= 1e18);
         uint64 userPct = 1e18 - treasuryPct - coveYfiPct - lockPct;
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
