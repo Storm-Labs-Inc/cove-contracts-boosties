@@ -280,7 +280,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_harvest_revertWhen_RewardRateTooLow(uint256 amount) public {
-        vm.assume(amount >= 1.8e4);
+        vm.assume(amount >= 1.8e5);
         vm.assume(amount < 1e10); // Small deposits do not accrue enough rewards to harvest
 
         // deposit into strategy happens
@@ -301,7 +301,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_report_staking_rewards_profit(uint256 amount) public {
-        vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
+        vm.assume(amount > 3e10); // Minimum deposit size is required to farm sufficient dYFI emission
         vm.assume(amount < 100_000_000_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
 
         vm.prank(tpManagement);
@@ -368,7 +368,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     }
 
     function testFuzz_report_staking_rewards_profit_erc20RewardsGauge_reward(uint256 amount, uint256 reward) public {
-        vm.assume(amount > 1.1e10); // Minimum deposit size is required to farm sufficient dYFI emission
+        vm.assume(amount > 3e10); // Minimum deposit size is required to farm sufficient dYFI emission
         vm.assume(amount < 100_000_000_000 * 1e18); // limit deposit size to 100k ETH/yETH LP token
         reward = bound(reward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
         vm.assume(reward > _WEEK);

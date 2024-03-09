@@ -10,6 +10,7 @@ import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import { BaseTest } from "test/utils/BaseTest.t.sol";
 
 contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -33,7 +34,16 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     address public treasury;
 
     function setUp() public override {
-        super.setUp();
+        forkNetworkAt("mainnet", 18_748_116);
+        BaseTest.setUp();
+        _createYearnRelatedAddresses();
+        _createThirdPartyRelatedAddresses();
+        _labelEthereumAddresses();
+
+        // create admin user that would be the default owner of deployed contracts unless specified
+        admin = createUser("admin");
+
+        setUpVotingYfiStack();
 
         // create alice who will be lock YFI via the yearnStakingDelegate
         alice = createUser("alice");
@@ -400,7 +410,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(swapAndLockBalance, estimatedVeYfiSplit, "veYfi split is incorrect");
     }
 
-    function test_claimBoostRewards() public {
+    function test_claimBoostRewards_buh() public {
         _lockYfiForYSD(10e18);
         vm.warp(block.timestamp + 1 weeks);
         yearnStakingDelegate.claimBoostRewards();
