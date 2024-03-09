@@ -37,7 +37,9 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     address public baseRewardForwarder;
     YSDRewardsGauge public ysdRewardsGauge;
     address public ysdRewardForwarder;
-    CoveYFI public coveYFI;
+    CoveYFI public coveYfi;
+    RewardForwarder public coveYfiRewardForwarder;
+    ERC20RewardsGauge public coveYfiRewardsGauge;
     CoveToken public coveToken;
     CoveYearnGaugeFactory public coveYearnGaugeFactory;
 
@@ -59,6 +61,11 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
         // Deploy Contracts
 
+        // Deploy clone implementations
+        address erc20RewardsGaugeImplementation = address(new ERC20RewardsGauge());
+        address ysdRewardsGaugeImplementation = address(new YSDRewardsGauge());
+        address rewardForwarderImplementation = address(new RewardForwarder());
+
         //// gauge rewards  ////
         {
             gaugeRewardReceiver = setUpGaugeRewardReceiverImplementation(admin);
@@ -71,14 +78,22 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             swapAndLock = SwapAndLock(setUpSwapAndLock(admin, address(yearnStakingDelegate)));
             dYfiRedeemer = new DYFIRedeemer(admin);
             vm.label(address(dYfiRedeemer), "dYfiRedeemer");
-            coveYFI = new CoveYFI(address(yearnStakingDelegate), admin);
-            vm.label(address(coveYFI), "coveYFI");
+            coveYfi = new CoveYFI(address(yearnStakingDelegate), admin);
+            vm.label(address(coveYfi), "coveYfi");
+            coveYfiRewardsGauge = ERC20RewardsGauge(_cloneContract(erc20RewardsGaugeImplementation));
+            coveYfiRewardsGauge.initialize(address(coveYfi));
+            coveYfiRewardForwarder = RewardForwarder(_cloneContract(rewardForwarderImplementation));
+            coveYfiRewardForwarder.initialize(address(coveYfiRewardsGauge));
+            coveYfiRewardsGauge.addReward(MAINNET_YFI, address(coveYfiRewardForwarder));
+            coveYfiRewardsGauge.addReward(MAINNET_DYFI, address(coveYfiRewardForwarder));
+            vm.label(address(coveYfiRewardForwarder), "coveYfiRewardForwarder");
             // Admin transactions for setup
             vm.startPrank(admin);
             // sets gauge as reward and a 100% split to the strategy
             swapAndLock.setDYfiRedeemer(address(dYfiRedeemer));
             yearnStakingDelegate.addGaugeRewards(gauge, address(stakingDelegateRewards));
             yearnStakingDelegate.setSwapAndLock(address(swapAndLock));
+            yearnStakingDelegate.setCoveYfiRewardForwarder(address(coveYfiRewardForwarder));
             vm.stopPrank();
         }
 
@@ -113,9 +128,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // CoveToken
             coveToken = new CoveToken(admin);
             // RewardsGauges
-            ERC20RewardsGauge erc20RewardsGaugeImplementation = new ERC20RewardsGauge();
-            YSDRewardsGauge ysdRewardsGaugeImplementation = new YSDRewardsGauge();
-            RewardForwarder rewardForwarderImplementation = new RewardForwarder();
             coveYearnGaugeFactory = new CoveYearnGaugeFactory(
                 admin,
                 address(yearnStakingDelegate),
@@ -123,7 +135,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
                 address(rewardForwarderImplementation),
                 address(erc20RewardsGaugeImplementation),
                 address(ysdRewardsGaugeImplementation),
-                treasury,
                 admin,
                 admin,
                 admin
@@ -133,12 +144,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = coveYearnGaugeFactory.getGaugeInfo(address(gauge));
             erc20RewardsGauge = BaseRewardsGauge(gaugeInfo.autoCompoundingGauge);
             vm.label(address(erc20RewardsGauge), "erc20RewardsGauge");
-            erc20RewardsGauge.grantRole(_MANAGER_ROLE, tpManagement);
+            erc20RewardsGauge.grantRole(MANAGER_ROLE, tpManagement);
             baseRewardForwarder = erc20RewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(baseRewardForwarder, "baseRewardForwarder");
             ysdRewardsGauge = YSDRewardsGauge(gaugeInfo.nonAutoCompoundingGauge);
             vm.label(address(ysdRewardsGauge), "ysdRewardsGauge");
-            ysdRewardsGauge.grantRole(_MANAGER_ROLE, tpManagement);
+            ysdRewardsGauge.grantRole(MANAGER_ROLE, tpManagement);
             ysdRewardForwarder = ysdRewardsGauge.getRewardData(address(coveToken)).distributor;
             vm.label(ysdRewardForwarder, "ysdRewardForwarder");
             // Setup Cove token to be given as a reward
@@ -187,9 +198,16 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.stopPrank();
     }
 
-    function _setGaugeRewardSplit(uint80 treasurySplit, uint80 strategySplit, uint80 veYfiSplit) internal {
+    function _setGaugeRewardSplit(
+        uint64 treasurySplit,
+        uint64 coveYfiSplit,
+        uint64 strategySplit,
+        uint64 veYfiSplit
+    )
+        internal
+    {
         vm.prank(admin);
-        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, strategySplit, veYfiSplit);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, coveYfiSplit, strategySplit, veYfiSplit);
     }
 
     function _lockYfiForYSD(uint256 amount) internal {
@@ -523,7 +541,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // non-fuzzing for amount to ensure reward calculation
         uint256 amount = 10e18;
         // Set the reward split for treasury and swap and lock
-        _setGaugeRewardSplit(0.3e18, 0.3e18, 0.4e18);
+        _setGaugeRewardSplit(0.1e18, 0.2e18, 0.3e18, 0.4e18);
 
         vm.prank(tpManagement);
         yearnGaugeStrategy.setDYfiRedeemer(address(dYfiRedeemer));
@@ -545,18 +563,25 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
 
         // Calculate split amounts strategy split amount
-        uint256 estimatedTreasurySplit = totalRewardAmount * 0.3e18 / 1e18;
-        uint256 estimatedVeYfiSplit = totalRewardAmount * 0.4e18 / 1e18;
-        uint256 estimatedUserSplit = totalRewardAmount - estimatedTreasurySplit - estimatedVeYfiSplit;
+        {
+            uint256 estimatedTreasurySplit = totalRewardAmount * 0.1e18 / 1e18;
+            uint256 estimatedForwarderSplit = totalRewardAmount * 0.2e18 / 1e18;
+            uint256 estimatedVeYfiSplit = totalRewardAmount * 0.4e18 / 1e18;
+            uint256 estimatedUserSplit =
+                totalRewardAmount - estimatedTreasurySplit - estimatedForwarderSplit - estimatedVeYfiSplit;
 
-        uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(address(stakingDelegateRewards));
-        assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
+            uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
+            assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");
 
-        uint256 treasuryBalance = IERC20(MAINNET_DYFI).balanceOf(treasury);
-        assertEq(treasuryBalance, estimatedTreasurySplit, "treausry split is incorrect");
+            uint256 forwarderBalance = IERC20(MAINNET_DYFI).balanceOf(address(coveYfiRewardForwarder));
+            assertEq(forwarderBalance, estimatedForwarderSplit, "forwarder split is incorrect");
 
-        uint256 swapAndLockBalance = IERC20(MAINNET_DYFI).balanceOf(address(swapAndLock));
-        assertEq(swapAndLockBalance, estimatedVeYfiSplit, "veYfi split is incorrect");
+            uint256 strategyDYfiBalance = IERC20(MAINNET_DYFI).balanceOf(address(stakingDelegateRewards));
+            assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
+
+            uint256 swapAndLockBalance = IERC20(MAINNET_DYFI).balanceOf(address(swapAndLock));
+            assertEq(swapAndLockBalance, estimatedVeYfiSplit, "veYfi split is incorrect");
+        }
 
         // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);

@@ -20,8 +20,8 @@ contract MasterRegistry_Test is BaseTest {
 
     function test_init() public view {
         assert(masterRegistry.hasRole(DEFAULT_ADMIN_ROLE, admin));
-        assert(masterRegistry.hasRole(_MANAGER_ROLE, admin));
-        assert(masterRegistry.hasRole(_MANAGER_ROLE, address(this)));
+        assert(masterRegistry.hasRole(MANAGER_ROLE, admin));
+        assert(masterRegistry.hasRole(MANAGER_ROLE, address(this)));
     }
 
     function test_addRegistry_revertWhen_CalledWithEmptyString(address addr) public {
@@ -207,7 +207,7 @@ contract MasterRegistry_Test is BaseTest {
     }
 
     function test_getRoleAdmin_managerRole() public {
-        assertEq(masterRegistry.getRoleAdmin(_MANAGER_ROLE), bytes32(0));
+        assertEq(masterRegistry.getRoleAdmin(MANAGER_ROLE), bytes32(0));
     }
 
     function testFuzz_addRegistry_revertWhen_CalledByNonManager(bytes32 name, address addr) public {
@@ -215,7 +215,7 @@ contract MasterRegistry_Test is BaseTest {
         vm.assume(addr != address(0));
         vm.stopPrank();
         vm.startPrank(alice);
-        vm.expectRevert(_formatAccessControlError(alice, _MANAGER_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, MANAGER_ROLE));
         masterRegistry.addRegistry(name, addr);
     }
 
@@ -227,7 +227,7 @@ contract MasterRegistry_Test is BaseTest {
         masterRegistry.addRegistry(name, addr);
         vm.stopPrank();
         vm.startPrank(alice);
-        vm.expectRevert(_formatAccessControlError(alice, _MANAGER_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, MANAGER_ROLE));
         masterRegistry.updateRegistry(name, addr2);
     }
 
@@ -237,20 +237,20 @@ contract MasterRegistry_Test is BaseTest {
         vm.startPrank(alice);
         // account is alice's address, role is bytes(0) as defined in the contract
         vm.expectRevert(_formatAccessControlError(alice, DEFAULT_ADMIN_ROLE));
-        masterRegistry.grantRole(_MANAGER_ROLE, alice);
+        masterRegistry.grantRole(MANAGER_ROLE, alice);
     }
 
     // Try granting manager role from an account with admin role
     function test_grantRole_managerRole() public {
         // Check the user does not have the manager role
-        assert(!masterRegistry.hasRole(_MANAGER_ROLE, alice));
+        assert(!masterRegistry.hasRole(MANAGER_ROLE, alice));
 
         // Grant the manager role to the user from the owner
         vm.prank(admin);
-        masterRegistry.grantRole(_MANAGER_ROLE, alice);
+        masterRegistry.grantRole(MANAGER_ROLE, alice);
 
         // Check the user now has the manager role
-        assert(masterRegistry.hasRole(_MANAGER_ROLE, alice));
+        assert(masterRegistry.hasRole(MANAGER_ROLE, alice));
     }
 
     function test_grantRole_adminRole() public {
@@ -267,7 +267,7 @@ contract MasterRegistry_Test is BaseTest {
         // Verify the user can grant the manager role
         vm.stopPrank();
         vm.prank(alice);
-        masterRegistry.grantRole(_MANAGER_ROLE, users["bob"]);
+        masterRegistry.grantRole(MANAGER_ROLE, users["bob"]);
     }
 
     function test_revokeRole_managerRole_revertWhen_RevokeRoleWithoutAdmin() public {
@@ -275,7 +275,7 @@ contract MasterRegistry_Test is BaseTest {
         vm.startPrank(alice);
         // account is alice's address, role is bytes(0) as defined in the contract
         vm.expectRevert(_formatAccessControlError(alice, DEFAULT_ADMIN_ROLE));
-        masterRegistry.revokeRole(_MANAGER_ROLE, admin);
+        masterRegistry.revokeRole(MANAGER_ROLE, admin);
         vm.stopPrank();
     }
 
@@ -320,14 +320,14 @@ contract MasterRegistry_Test is BaseTest {
 
     function test_renouceRole_managerRole() public {
         // Check the admin has the manager role
-        assert(masterRegistry.hasRole(_MANAGER_ROLE, admin));
+        assert(masterRegistry.hasRole(MANAGER_ROLE, admin));
 
         // Renouce the manager role from the admin
         vm.prank(admin);
-        masterRegistry.renounceRole(_MANAGER_ROLE, admin);
+        masterRegistry.renounceRole(MANAGER_ROLE, admin);
 
         // Check the user no longer has the manager role
-        assert(!masterRegistry.hasRole(_MANAGER_ROLE, admin));
+        assert(!masterRegistry.hasRole(MANAGER_ROLE, admin));
     }
 
     function test_renouceRole_adminRole() public {

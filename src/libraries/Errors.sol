@@ -29,21 +29,17 @@ library Errors {
 
     //// YEARN STAKING DELEGATE ////
     error ZeroAddress();
-
     error ZeroAmount();
-
     error InvalidRewardSplit();
-
+    error TreasuryPctTooHigh();
     error PerpetualLockEnabled();
-
     error PerpetualLockDisabled();
-
     error SwapAndLockNotSet();
-
     error GaugeRewardsAlreadyAdded();
     error GaugeRewardsNotYetAdded();
     error ExecutionNotAllowed();
     error ExecutionFailed();
+    error CoveYfiRewardForwarderNotSet();
 
     //// STAKING DELEGATE REWARDS ////
     error RescueNotAllowed();

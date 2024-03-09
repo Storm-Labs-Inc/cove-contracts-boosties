@@ -33,6 +33,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     address public yfiRewardPool;
     address public dYfiRewardPool;
     address public mockTarget;
+    address public coveYfiRewardForwarder;
 
     // Airdrop amounts
     uint256 public constant ALICE_YFI = 50_000e18;
@@ -53,6 +54,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     event GaugeRewardSplitSet(address indexed gauge, IYearnStakingDelegate.RewardSplit split);
     event SwapAndLockSet(address swapAndLockContract);
     event TreasurySet(address newTreasury);
+    event CoveYfiRewardForwarderSet(address forwarder);
     event Deposit(address indexed sender, address indexed gauge, uint256 amount);
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
 
@@ -65,8 +67,10 @@ contract YearnStakingDelegate_Test is BaseTest {
         timelock = createUser("timelock");
         // create pauser of the yearnStakingDelegate
         pauser = createUser("pauser");
-        // create an address that will act as a treasury
+        // create an address that will act as the treasury
         treasury = createUser("treasury");
+        // create an address that will act as the coveYfiRewardForwarder
+        coveYfiRewardForwarder = createUser("coveYfiRewardForwarder");
 
         // Deploy base asset
         baseAsset = address(new ERC20Mock());
@@ -119,9 +123,34 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.setSwapAndLock(swapAndLock);
     }
 
-    function _setGaugeRewardSplit(address gauge, uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) internal {
+    function _setCoveYfiRewardForwarder(address forwarder) internal {
+        vm.expectEmit();
+        emit CoveYfiRewardForwarderSet(forwarder);
         vm.prank(timelock);
-        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, userSplit, lockSplit);
+        yearnStakingDelegate.setCoveYfiRewardForwarder(forwarder);
+    }
+
+    function _setGaugeRewardSplit(
+        address gauge,
+        uint64 treasurySplit,
+        uint64 coveYfiSplit,
+        uint64 userSplit,
+        uint64 lockSplit
+    )
+        internal
+    {
+        vm.prank(timelock);
+        yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, coveYfiSplit, userSplit, lockSplit);
+    }
+
+    function _setBoostRewardSplit(uint128 treasurySplit, uint128 coveYfiSplit) internal {
+        vm.prank(timelock);
+        yearnStakingDelegate.setBoostRewardSplit(treasurySplit, coveYfiSplit);
+    }
+
+    function _setExitRewardSplit(uint128 treasurySplit, uint128 coveYfiSplit) internal {
+        vm.prank(timelock);
+        yearnStakingDelegate.setExitRewardSplit(treasurySplit, coveYfiSplit);
     }
 
     function _lockYfiForYSD(address from, uint256 amount) internal {
@@ -154,14 +183,15 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(yearnStakingDelegate.dYfi(), MAINNET_DYFI);
         assertEq(yearnStakingDelegate.veYfi(), MAINNET_VE_YFI);
         assertTrue(yearnStakingDelegate.shouldPerpetuallyLock());
-        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(anyGauge);
-        assertEq(treasurySplit, 0);
-        assertEq(userSplit, 0);
-        assertEq(lockSplit, 0);
+        IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.getGaugeRewardSplit(anyGauge);
+        assertEq(rewardSplit.treasury, 0);
+        assertEq(rewardSplit.coveYfi, 0);
+        assertEq(rewardSplit.user, 0);
+        assertEq(rewardSplit.lock, 0);
         // Check for roles
-        assertTrue(yearnStakingDelegate.hasRole(yearnStakingDelegate.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(yearnStakingDelegate.hasRole(_PAUSER_ROLE, pauser));
-        assertTrue(yearnStakingDelegate.hasRole(_TIMELOCK_ROLE, timelock));
+        assertTrue(yearnStakingDelegate.hasRole(DEFAULT_ADMIN_ROLE, admin));
+        assertTrue(yearnStakingDelegate.hasRole(PAUSER_ROLE, pauser));
+        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, timelock));
         // Check for approvals
         assertEq(IERC20(MAINNET_YFI).allowance(address(yearnStakingDelegate), MAINNET_VE_YFI), type(uint256).max);
     }
@@ -182,7 +212,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_unpause_revertWhen_notAdmin() public {
-        vm.expectRevert(_formatAccessControlError(address(this), yearnStakingDelegate.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(address(this), DEFAULT_ADMIN_ROLE));
         yearnStakingDelegate.unpause();
     }
 
@@ -269,7 +299,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_earlyUnlock_revertWhen_CallerIsNotTimelock() public {
         _lockYfiForYSD(alice, 1e18);
 
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.earlyUnlock();
     }
@@ -375,7 +405,6 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_harvest_revertWhen_SwapAndLockNotSet() public {
-        _addTestGaugeRewards();
         vm.expectRevert(abi.encodeWithSelector(Errors.SwapAndLockNotSet.selector));
         yearnStakingDelegate.harvest(testGauge);
     }
@@ -386,18 +415,139 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.harvest(testGauge);
     }
 
-    function test_claimBoostRewards() public {
+    function test_harvest_revertWhen_CoveYfiRewardForwarderNotSet() public {
+        _setSwapAndLock();
+        _addTestGaugeRewards();
+        vm.prank(timelock);
+        yearnStakingDelegate.setTreasury(treasury);
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
+        yearnStakingDelegate.harvest(testGauge);
+    }
+
+    function testFuzz_setBoostRewardSplit(uint128 treasuryPct) public {
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setBoostRewardSplit(treasuryPct, coveYfiPct);
+        IYearnStakingDelegate.BoostRewardSplit memory rewardSplit = yearnStakingDelegate.getBoostRewardSplit();
+        assertEq(rewardSplit.treasury, treasuryPct, "setBoostRewardSplit failed, treasury split is incorrect");
+        assertEq(rewardSplit.coveYfi, coveYfiPct, "setBoostRewardSplit failed, coveYfi split is incorrect");
+    }
+
+    function testFuzz_setBoostRewardSplit_revertWhen_InvalidRewardSplit(
+        uint128 treasuryPct,
+        uint128 coveYfiPct
+    )
+        public
+    {
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
+        vm.assume(uint256(treasuryPct) + coveYfiPct != 1e18);
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
+        yearnStakingDelegate.setBoostRewardSplit(treasuryPct, coveYfiPct);
+        vm.stopPrank();
+    }
+
+    function testFuzz_setBoostRewardSplit_revertWhen_TreasuryPctTooHigh(uint128 treasuryPct) public {
+        treasuryPct = uint128(bound(treasuryPct, 0.2e18 + 1, 1e18));
+        vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
+        vm.prank(timelock);
+        yearnStakingDelegate.setBoostRewardSplit(treasuryPct, 1e18 - treasuryPct);
+    }
+
+    function test_setBoostRewardSplit_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.setBoostRewardSplit(1e18, 0);
+    }
+
+    function testFuzz_setCoveYfiRewardForwarder(address forwarder) public {
+        vm.assume(forwarder != address(0));
+        vm.expectEmit();
+        emit CoveYfiRewardForwarderSet(forwarder);
+        vm.prank(timelock);
+        yearnStakingDelegate.setCoveYfiRewardForwarder(forwarder);
+        assertEq(yearnStakingDelegate.coveYfiRewardForwarder(), forwarder, "setCoveYfiRewardForwarder failed");
+    }
+
+    function test_setCoveYfiRewardForwarder_revertWhen_ZeroAddress() public {
+        vm.prank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        yearnStakingDelegate.setCoveYfiRewardForwarder(address(0));
+    }
+
+    function testFuzz_claimBoostRewards(uint128 treasuryPct) public {
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setBoostRewardSplit(treasuryPct, coveYfiPct);
+        _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
         airdrop(IERC20(dYfi), dYfiRewardPool, DYFI_REWARD_AMOUNT);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimBoostRewards();
-        assertEq(IERC20(dYfi).balanceOf(treasury), DYFI_REWARD_AMOUNT, "claimBoostRewards failed");
+        uint256 treasuryAmount = DYFI_REWARD_AMOUNT * treasuryPct / 1e18;
+        uint256 coveYfiAmount = DYFI_REWARD_AMOUNT - treasuryAmount;
+        assertEq(IERC20(dYfi).balanceOf(treasury), treasuryAmount, "claimBoostRewards failed");
+        assertEq(IERC20(dYfi).balanceOf(coveYfiRewardForwarder), coveYfiAmount, "claimBoostRewards failed");
     }
 
-    function test_claimExitRewards() public {
+    function test_claimBoostRewards_revertWhen_CoveYfiRewardForwarderNotSet() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
+        yearnStakingDelegate.claimBoostRewards();
+    }
+
+    function testFuzz_setExitRewardSplit(uint128 treasuryPct) public {
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setExitRewardSplit(treasuryPct, coveYfiPct);
+        IYearnStakingDelegate.ExitRewardSplit memory rewardSplit = yearnStakingDelegate.getExitRewardSplit();
+        assertEq(rewardSplit.treasury, treasuryPct, "setExitRewardSplit failed, treasury split is incorrect");
+        assertEq(rewardSplit.coveYfi, coveYfiPct, "setExitRewardSplit failed, coveYfi split is incorrect");
+    }
+
+    function testFuzz_setExitRewardSplit_revertWhen_InvalidRewardSplit(
+        uint128 treasuryPct,
+        uint128 coveYfiPct
+    )
+        public
+    {
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
+        vm.assume(uint256(treasuryPct) + coveYfiPct != 1e18);
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
+        yearnStakingDelegate.setExitRewardSplit(treasuryPct, coveYfiPct);
+        vm.stopPrank();
+    }
+
+    function testFuzz_setExitRewardSplit_revertWhen_TreasuryPctTooHigh(uint128 treasuryPct) public {
+        treasuryPct = uint128(bound(treasuryPct, 0.2e18 + 1, 1e18));
+        vm.startPrank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
+        yearnStakingDelegate.setExitRewardSplit(treasuryPct, 1e18 - treasuryPct);
+        vm.stopPrank();
+    }
+
+    function test_setExitRewardSplit_revertWhen_CallerIsNotTimelock() public {
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.setExitRewardSplit(1e18, 0);
+    }
+
+    function testFuzz_claimExitRewards(uint128 treasuryPct) public {
+        treasuryPct = uint128(bound(treasuryPct, 0, 0.2e18));
+        uint128 coveYfiPct = 1e18 - treasuryPct;
+        _setExitRewardSplit(treasuryPct, coveYfiPct);
+        _setCoveYfiRewardForwarder(coveYfiRewardForwarder);
         airdrop(IERC20(yfi), yfiRewardPool, YFI_REWARD_AMOUNT);
         // YSD claims the dYFI rewards Alice was penalized for
         yearnStakingDelegate.claimExitRewards();
-        assertEq(IERC20(yfi).balanceOf(treasury), YFI_REWARD_AMOUNT, "claimExitRewards failed");
+        uint256 treasuryAmount = YFI_REWARD_AMOUNT * treasuryPct / 1e18;
+        uint256 coveYfiAmount = YFI_REWARD_AMOUNT - treasuryAmount;
+        assertEq(IERC20(yfi).balanceOf(treasury), treasuryAmount, "claimExitRewards failed");
+        assertEq(IERC20(yfi).balanceOf(coveYfiRewardForwarder), coveYfiAmount, "claimExitRewards failed");
+    }
+
+    function test_claimExitRewards_revertWhen_CoveYfiRewardForwarderNotSet() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.CoveYfiRewardForwarderNotSet.selector));
+        yearnStakingDelegate.claimExitRewards();
     }
 
     function testFuzz_setTreasury(address newTreasury) public {
@@ -417,7 +567,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_setTreasury_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setTreasury(admin);
     }
@@ -437,37 +587,46 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_setSwapAndLock_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.setSwapAndLock(admin);
     }
 
-    function testFuzz_setGaugeRewardSplit(uint80 a, uint80 b) public {
+    function testFuzz_setGaugeRewardSplit(uint64 a, uint64 b, uint64 c) public {
+        a = uint64(bound(a, 0, 0.2e18));
         // Workaround for vm.assume max tries
-        vm.assume(uint256(a) + b <= 1e18);
-        uint80 c = 1e18 - a - b;
+        vm.assume(uint256(a) + b + c <= 1e18);
+        uint64 d = 1e18 - a - b - c;
         vm.expectEmit();
-        emit GaugeRewardSplitSet(testGauge, IYearnStakingDelegate.RewardSplit(a, b, c));
+        emit GaugeRewardSplitSet(testGauge, IYearnStakingDelegate.RewardSplit(a, b, c, d));
         vm.prank(timelock);
-        yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c);
-        (uint80 treasurySplit, uint80 userSplit, uint80 lockSplit) = yearnStakingDelegate.gaugeRewardSplit(testGauge);
-        assertEq(treasurySplit, a, "setGaugeRewardSplit failed, treasury split is incorrect");
-        assertEq(userSplit, b, "setGaugeRewardSplit failed, user split is incorrect");
-        assertEq(lockSplit, c, "setGaugeRewardSplit failed, lock split is incorrect");
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c, d);
+        IYearnStakingDelegate.RewardSplit memory rewardSplit = yearnStakingDelegate.getGaugeRewardSplit(testGauge);
+        assertEq(rewardSplit.treasury, a, "setGaugeRewardSplit failed, treasury split is incorrect");
+        assertEq(rewardSplit.coveYfi, b, "setGaugeRewardSplit failed, coveYfi split is incorrect");
+        assertEq(rewardSplit.user, c, "setGaugeRewardSplit failed, user split is incorrect");
+        assertEq(rewardSplit.lock, d, "setGaugeRewardSplit failed, lock split is incorrect");
     }
 
-    function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(uint80 a, uint80 b, uint80 c) public {
-        vm.assume(uint256(a) + b + c != 1e18);
+    function testFuzz_setGaugeRewardSplit_revertWhen_InvalidRewardSplit(
+        uint64 a,
+        uint64 b,
+        uint64 c,
+        uint64 d
+    )
+        public
+    {
+        vm.assume(uint256(a) + b + c + d != 1e18);
         vm.startPrank(timelock);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRewardSplit.selector));
-        yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c);
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, a, b, c, d);
         vm.stopPrank();
     }
 
     function test_setGaugeRewardSplit_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
-        yearnStakingDelegate.setGaugeRewardSplit(testGauge, 1e18, 0, 0);
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, 1e18, 0, 0, 0);
     }
 
     function test_addGaugeRewards() public {
@@ -536,7 +695,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_updateGaugeRewards_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.updateGaugeRewards(testGauge, stakingDelegateRewards);
     }
@@ -637,7 +796,7 @@ contract YearnStakingDelegate_Test is BaseTest {
 
     function test_execute_revertWhen_CallerIsNotTimelock() public {
         bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, address(treasury), 100e18);
-        vm.expectRevert(_formatAccessControlError(admin, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         vm.prank(admin);
         yearnStakingDelegate.execute{ value: 1 ether }(mockTarget, data, 1 ether);
     }
@@ -645,8 +804,8 @@ contract YearnStakingDelegate_Test is BaseTest {
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
         vm.prank(admin);
         yearnStakingDelegate.grantRole(DEFAULT_ADMIN_ROLE, alice);
-        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
-        yearnStakingDelegate.grantRole(_TIMELOCK_ROLE, alice);
+        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
     }
 }

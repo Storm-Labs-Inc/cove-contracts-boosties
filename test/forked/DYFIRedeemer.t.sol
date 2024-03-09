@@ -245,7 +245,7 @@ contract DYFIRedeemer_ForkedTest is YearnV3BaseTest {
 
     function testFuzz_setSlippage_revertWhen_CallerIsNotAdmin(address a) public {
         vm.assume(a != admin);
-        vm.expectRevert(_formatAccessControlError(a, dYfiRedeemer.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(a, DEFAULT_ADMIN_ROLE));
         vm.prank(a);
         dYfiRedeemer.setSlippage(0.02e18);
     }
@@ -331,7 +331,7 @@ contract DYFIRedeemer_ForkedTest is YearnV3BaseTest {
 
     function testFuzz_kill_revertWhen_CallerIsNotAdmin(address a) public {
         vm.assume(a != admin);
-        vm.expectRevert(_formatAccessControlError(a, dYfiRedeemer.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(a, DEFAULT_ADMIN_ROLE));
         vm.prank(a);
         dYfiRedeemer.kill();
     }
