@@ -10,7 +10,7 @@ import { IStakingDelegateRewards } from "src/interfaces/IStakingDelegateRewards.
  * @title Staking Delegate Rewards
  * @notice Contract for managing staking rewards with functionality to update balances, notify new rewards, and recover
  * tokens.
- * @dev Inherits from IStakingDelegateRewards, AccessControlEnumerable, and ReentrancyGuard.
+ * @dev Inherits from IStakingDelegateRewards and AccessControlEnumerable.
  */
 contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumerable {
     // Libraries
