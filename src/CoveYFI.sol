@@ -62,21 +62,23 @@ contract CoveYFI is ERC20Permit, Rescuable, AccessControlEnumerable {
      *      Reverts with `Errors.ZeroAmount` if the deposit amount is zero.
      *      Emits a `Transfer` event from the zero address to the sender, indicating minting of coveYFI tokens.
      * @param balance The amount of YFI tokens to deposit and stake. Must be greater than zero to succeed.
+     * @return The amount of coveYFI tokens minted to the sender.
      */
-    function deposit(uint256 balance) external {
-        _deposit(balance, msg.sender);
+    function deposit(uint256 balance) external returns (uint256) {
+        return _deposit(balance, msg.sender);
     }
 
     /**
      * @notice Deposits YFI tokens into the YearnStakingDelegate contract and mints coveYFI tokens to the receiver.
      * @param balance The amount of YFI tokens to deposit and stake.
      * @param receiver The address to mint the coveYFI tokens to.
+     * @return The amount of coveYFI tokens minted to the receiver.
      */
-    function deposit(uint256 balance, address receiver) external {
+    function deposit(uint256 balance, address receiver) external returns (uint256) {
         if (receiver == address(0)) {
             receiver = msg.sender;
         }
-        _deposit(balance, receiver);
+        return _deposit(balance, receiver);
     }
 
     /**
@@ -109,7 +111,16 @@ contract CoveYFI is ERC20Permit, Rescuable, AccessControlEnumerable {
         return _YFI;
     }
 
-    function _deposit(uint256 balance, address receiver) internal {
+    /**
+     * @notice Returns the address of asset required to deposit into this contract, which is YFI.
+     * @dev This is provided for the compatibility with the 4626 Router.
+     * @return The address of the YFI token contract.
+     */
+    function asset() external pure returns (address) {
+        return _YFI;
+    }
+
+    function _deposit(uint256 balance, address receiver) internal returns (uint256) {
         // Checks
         if (balance == 0) {
             revert Errors.ZeroAmount();
@@ -124,5 +135,6 @@ contract CoveYFI is ERC20Permit, Rescuable, AccessControlEnumerable {
         // Ref: https://github.com/yearn/veYFI/blob/master/contracts/VotingYFI.vy#L300
         // slither-disable-next-line unused-return
         IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(balance);
+        return balance;
     }
 }
