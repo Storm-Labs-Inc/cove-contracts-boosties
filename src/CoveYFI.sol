@@ -18,9 +18,12 @@ contract CoveYFI is ERC20Permit, Rescuable, AccessControlEnumerable {
     // Libraries
     using SafeERC20 for IERC20;
 
+    /// @dev Address of the mainnet Yearn YFI token.
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+
     // Immutable storage variables
     // slither-disable-start naming-convention
+    /// @dev Address of the YearnStakingDelegate contract, set at deployment and immutable thereafter.
     address private immutable _YEARN_STAKING_DELEGATE;
     // slither-disable-end naming-convention
 

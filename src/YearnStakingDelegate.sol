@@ -20,7 +20,7 @@ import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol"
 /**
  * @title YearnStakingDelegate
  * @notice Contract for staking yearn gauge tokens, managing rewards, and delegating voting power.
- * @dev Inherits from IYearnStakingDelegate, AccessControlEnumerable, ReentrancyGuard, and Rescuable.
+ * @dev Inherits from IYearnStakingDelegate, AccessControlEnumerable, ReentrancyGuard, Rescuable, and Pausable.
  */
 contract YearnStakingDelegate is
     IYearnStakingDelegate,
@@ -34,47 +34,121 @@ contract YearnStakingDelegate is
     using ClonesWithImmutableArgs for address;
 
     // Constants
+    /// @dev Role identifier for pausers, capable of pausing contract functions.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    /// @dev Role identifier for timelock, capable of performing time-sensitive administrative functions.
     bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     // slither-disable-start naming-convention
+    /// @dev Address of the Yearn Finance YFI reward pool.
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
+    /// @dev Address of the Yearn Finance D_YFI reward pool.
     address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
+    /// @dev Address of the Yearn Finance YFI token.
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    /// @dev Address of the Yearn Finance D_YFI token.
     address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
+    /// @dev Address of the Yearn Finance veYFI token.
     address private constant _VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
+    /// @dev Address of the Snapshot delegate registry.
     address private constant _SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+    /// @dev Maximum percentage of the treasury in basis points.
     uint256 private constant _MAX_TREASURY_PCT = 0.2e18;
 
     // Immutables
+    /// @dev Address of the GaugeRewardReceiver implementation, set at contract deployment and immutable thereafter.
     address private immutable _GAUGE_REWARD_RECEIVER_IMPL;
     // slither-disable-end naming-convention
 
     // Mappings
-    /// @notice Mapping of vault to gauge
-    mapping(address gauge => address) public gaugeStakingRewards;
-    mapping(address gauge => address) public gaugeRewardReceivers;
-    mapping(address user => mapping(address token => uint256)) public balanceOf;
-    mapping(address target => bool) public blockedTargets;
-    mapping(address vault => RewardSplit) private _gaugeRewardSplit;
+    /// @notice Mapping of gauge addresses to their corresponding staking rewards contract addresses.
+    mapping(address => address) public gaugeStakingRewards;
+    /// @notice Mapping of gauge addresses to their corresponding GaugeRewardReceiver contract addresses.
+    mapping(address => address) public gaugeRewardReceivers;
+    /// @notice Mapping of user addresses to a nested mapping of token addresses to the user's balance of that token.
+    mapping(address => mapping(address => uint256)) public balanceOf;
+    /// @notice Mapping of target addresses to a boolean indicating whether the target is blocked.
+    mapping(address => bool) public blockedTargets;
+    /// @dev Mapping of vault addresses to their corresponding RewardSplit configuration.
+    mapping(address => RewardSplit) private _gaugeRewardSplit;
 
     // Variables
+    /// @dev Address of the treasury where funds are managed.
     address private _treasury;
+    /// @dev Flag indicating whether to lock rewards perpetually.
     bool private _shouldPerpetuallyLock;
+    /// @dev Address of the contract that swaps and locks tokens.
     address private _swapAndLock;
+    /// @dev Address of the contract that forwards YFI rewards to CoveYFI.
     address private _coveYfiRewardForwarder;
+    /// @dev Configuration for how rewards are split in the boost phase.
     BoostRewardSplit private _boostRewardSplit;
+    /// @dev Configuration for how rewards are split upon exit.
     ExitRewardSplit private _exitRewardSplit;
 
+    /**
+     * @notice Emitted when YFI tokens are locked.
+     * @param sender The address of the sender who locked YFI tokens.
+     * @param amount The amount of YFI tokens locked.
+     */
     event LockYfi(address indexed sender, uint256 amount);
+    /**
+     * @notice Emitted when gauge rewards are set.
+     * @param gauge The address of the gauge for which rewards are set.
+     * @param stakingRewardsContract The address of the staking rewards contract.
+     * @param receiver The address of the rewards receiver.
+     */
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
+    /**
+     * @notice Emitted when the perpetual lock setting is updated.
+     * @param shouldLock The status of the perpetual lock setting.
+     */
     event PerpetualLockSet(bool shouldLock);
+    /**
+     * @notice Emitted when the reward split configuration for a gauge is set.
+     * @param gauge The address of the gauge for which the reward split is set.
+     * @param split The reward split configuration.
+     */
     event GaugeRewardSplitSet(address indexed gauge, RewardSplit split);
+    /**
+     * @notice Emitted when the boost reward split configuration is set.
+     * @param treasuryPct The percentage of the boost reward allocated to the treasury.
+     * @param coveYfiPct The percentage of the boost reward allocated to CoveYFI.
+     */
     event BoostRewardSplitSet(uint128 treasuryPct, uint128 coveYfiPct);
+    /**
+     * @notice Emitted when the exit reward split configuration is set.
+     * @param treasuryPct The percentage of the exit reward allocated to the treasury.
+     * @param coveYfiPct The percentage of the exit reward allocated to CoveYFI.
+     */
     event ExitRewardSplitSet(uint128 treasuryPct, uint128 coveYfiPct);
+    /**
+     * @notice Emitted when the swap and lock contract address is set.
+     * @param swapAndLockContract The address of the swap and lock contract.
+     */
     event SwapAndLockSet(address swapAndLockContract);
+    /**
+     * @notice Emitted when the treasury address is updated.
+     * @param newTreasury The new address of the treasury.
+     */
     event TreasurySet(address newTreasury);
+    /**
+     * @notice Emitted when the CoveYFI reward forwarder address is set.
+     * @param forwarder The address of the CoveYFI reward forwarder.
+     */
     event CoveYfiRewardForwarderSet(address forwarder);
+    /**
+     * @notice Emitted when a deposit is made into a gauge.
+     * @param sender The address of the sender who made the deposit.
+     * @param gauge The address of the gauge where the deposit was made.
+     * @param amount The amount of tokens deposited.
+     */
     event Deposit(address indexed sender, address indexed gauge, uint256 amount);
+    /**
+     * @notice Emitted when a withdrawal is made from a gauge.
+     * @param sender The address of the sender who made the withdrawal.
+     * @param gauge The address of the gauge from which the withdrawal was made.
+     * @param amount The amount of tokens withdrawn.
+     */
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
 
     /**
