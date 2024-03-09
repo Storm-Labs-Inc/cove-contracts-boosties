@@ -69,6 +69,8 @@ contract YearnStakingDelegate is
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
     event PerpetualLockSet(bool shouldLock);
     event GaugeRewardSplitSet(address indexed gauge, RewardSplit split);
+    event BoostRewardSplitSet(uint128 treasuryPct, uint128 coveYfiPct);
+    event ExitRewardSplitSet(uint128 treasuryPct, uint128 coveYfiPct);
     event SwapAndLockSet(address swapAndLockContract);
     event TreasurySet(address newTreasury);
     event CoveYfiRewardForwarderSet(address forwarder);
@@ -664,6 +666,7 @@ contract YearnStakingDelegate is
             revert Errors.TreasuryPctTooHigh();
         }
         _boostRewardSplit = BoostRewardSplit({ treasury: treasuryPct, coveYfi: coveYfiPct });
+        emit BoostRewardSplitSet(treasuryPct, coveYfiPct);
     }
 
     /**
@@ -680,6 +683,7 @@ contract YearnStakingDelegate is
             revert Errors.TreasuryPctTooHigh();
         }
         _exitRewardSplit = ExitRewardSplit({ treasury: treasuryPct, coveYfi: coveYfiPct });
+        emit ExitRewardSplitSet(treasuryPct, coveYfiPct);
     }
 
     /**
