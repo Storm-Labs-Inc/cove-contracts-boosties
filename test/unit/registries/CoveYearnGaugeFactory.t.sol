@@ -70,7 +70,6 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
             rewardForwarderImpl_: address(rewardForwarderImpl),
             erc20RewardsGaugeImpl_: address(erc20RewardsGaugeImpl),
             ysdRewardsGaugeImpl_: address(ysdRewardsGaugeImpl),
-            treasuryMultisig_: treasuryMultisig,
             gaugeAdmin_: gaugeAdmin,
             gaugeManager_: gaugeManager,
             gaugePauser_: gaugePauser
@@ -85,7 +84,6 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
         assertEq(factory.rewardForwarderImpl(), address(rewardForwarderImpl));
         assertEq(factory.erc20RewardsGaugeImpl(), address(erc20RewardsGaugeImpl));
         assertEq(factory.ysdRewardsGaugeImpl(), address(ysdRewardsGaugeImpl));
-        assertEq(factory.treasuryMultisig(), treasuryMultisig);
         assertEq(factory.gaugeAdmin(), gaugeAdmin);
         assertEq(factory.gaugeManager(), gaugeManager);
         assertEq(factory.gaugePauser(), gaugePauser);
@@ -245,24 +243,6 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     function test_setYsdRewardsGaugeImplementation_revertWhen_notContract() public {
         vm.expectRevert(Errors.AddressNotContract.selector);
         factory.setYsdRewardsGaugeImplementation(address(1));
-    }
-
-    function test_setTreasuryMultisig() public {
-        address newTreasuryMultisig = createUser("newTreasuryMultisig");
-        factory.setTreasuryMultisig(newTreasuryMultisig);
-        assertEq(factory.treasuryMultisig(), newTreasuryMultisig);
-    }
-
-    function test_setTreasuryMultisig_revertWhen_notAdmin() public {
-        address newTreasuryMultisig = createUser("newTreasuryMultisig");
-        factory.revokeRole(factory.DEFAULT_ADMIN_ROLE(), address(this));
-        vm.expectRevert(_formatAccessControlError(address(this), factory.DEFAULT_ADMIN_ROLE()));
-        factory.setTreasuryMultisig(newTreasuryMultisig);
-    }
-
-    function test_setTreasuryMultisig_revertWhen_ZeroAddress() public {
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        factory.setTreasuryMultisig(address(0));
     }
 
     function test_getGaugeInfo_revertWhen_GaugeNotDeployed(address gauge) public {

@@ -65,8 +65,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
     address public erc20RewardsGaugeImpl;
     /// @notice Address of the current YSD Rewards Gauge implementation.
     address public ysdRewardsGaugeImpl;
-    /// @notice Address of the treasury.
-    address public treasuryMultisig;
     /// @notice Address of the account with gauge admin privileges.
     address public gaugeAdmin;
     /// @notice Address of the account with gauge management privileges.
@@ -98,7 +96,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
      * @param rewardForwarderImpl_ The implementation address of the RewardForwarder contract.
      * @param erc20RewardsGaugeImpl_ The implementation address of the ERC20RewardsGauge contract.
      * @param ysdRewardsGaugeImpl_ The implementation address of the YSDRewardsGauge contract.
-     * @param treasuryMultisig_ The address of the treasury multisig.
      * @param gaugeAdmin_ The address that will be granted the gauge admin role.
      */
     // slither-disable-next-line locked-ether
@@ -109,7 +106,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         address rewardForwarderImpl_,
         address erc20RewardsGaugeImpl_,
         address ysdRewardsGaugeImpl_,
-        address treasuryMultisig_,
         address gaugeAdmin_,
         address gaugeManager_,
         address gaugePauser_
@@ -122,7 +118,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         _setRewardForwarderImplementation(rewardForwarderImpl_);
         _setERC20RewardsGaugeImplementation(erc20RewardsGaugeImpl_);
         _setYsdRewardsGaugeImplementation(ysdRewardsGaugeImpl_);
-        _setTreasuryMultisig(treasuryMultisig_);
         _setGaugeAdmin(gaugeAdmin_);
         _setGaugeManager(gaugeManager_);
         _setGaugePauser(gaugePauser_);
@@ -220,7 +215,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         address gaugeManager_ = gaugeManager;
         address gaugePauser_ = gaugePauser;
         address rewardForwarderImpl_ = rewardForwarderImpl;
-        address treasuryMultisig_ = treasuryMultisig;
 
         // Deploy both gauges
         ERC20RewardsGauge coveStratGauge = ERC20RewardsGauge(Clones.clone(erc20RewardsGaugeImpl));
@@ -242,11 +236,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         // Deploy and initialize the reward forwarder for the auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
-            forwarder.initialize({
-                admin_: gaugeAdmin_,
-                treasury_: treasuryMultisig_,
-                destination_: address(coveStratGauge)
-            });
+            forwarder.initialize({ destination_: address(coveStratGauge) });
             forwarder.approveRewardToken(COVE);
             // Add COVE reward to the auto-compounding gauge
             coveStratGauge.addReward(COVE, address(forwarder));
@@ -264,11 +254,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         // Deploy and initialize the reward forwarder for the non-auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
-            forwarder.initialize({
-                admin_: gaugeAdmin_,
-                treasury_: treasuryMultisig_,
-                destination_: address(coveYsdGauge)
-            });
+            forwarder.initialize({ destination_: address(coveYsdGauge) });
             forwarder.approveRewardToken(_DYFI);
             forwarder.approveRewardToken(COVE);
             // Set the dYFI rewards to be received by the reward forwarder
@@ -302,15 +288,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
      */
     function setYsdRewardsGaugeImplementation(address impl) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setYsdRewardsGaugeImplementation(impl);
-    }
-
-    /**
-     * @notice Sets the treasury multisig address.
-     * @dev Can only be called by the admin role. Reverts if the new treasury multisig address is the zero address.
-     * @param multisig The new treasury multisig address.
-     */
-    function setTreasuryMultisig(address multisig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setTreasuryMultisig(multisig);
     }
 
     /**
@@ -367,13 +344,6 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
             revert Errors.AddressNotContract();
         }
         erc20RewardsGaugeImpl = impl;
-    }
-
-    function _setTreasuryMultisig(address multisig) internal {
-        if (multisig == address(0)) {
-            revert Errors.ZeroAddress();
-        }
-        treasuryMultisig = multisig;
     }
 
     function _setYsdRewardsGaugeImplementation(address impl) internal {
