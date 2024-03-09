@@ -77,8 +77,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     }
 
     function test_constructor() public {
-        assertTrue(factory.hasRole(factory.DEFAULT_ADMIN_ROLE(), address(this)));
-        assertTrue(factory.hasRole(_MANAGER_ROLE, address(this)));
+        assertTrue(factory.hasRole(DEFAULT_ADMIN_ROLE, address(this)));
+        assertTrue(factory.hasRole(MANAGER_ROLE, address(this)));
         assertEq(factory.YEARN_STAKING_DELEGATE(), address(mockYearnStakingDelegate));
         assertEq(factory.COVE(), address(cove));
         assertEq(factory.rewardForwarderImpl(), address(rewardForwarderImpl));
@@ -160,8 +160,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
     }
 
     function test_deployCoveGauges_revertWhen_notManager() public {
-        factory.revokeRole(_MANAGER_ROLE, address(this));
-        vm.expectRevert(_formatAccessControlError(address(this), _MANAGER_ROLE));
+        factory.revokeRole(MANAGER_ROLE, address(this));
+        vm.expectRevert(_formatAccessControlError(address(this), MANAGER_ROLE));
         factory.deployCoveGauges(address(mockCoveYearnStrategyV2));
     }
 
@@ -184,8 +184,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
 
     function test_setRewardForwarderImplementation_revertWhen_notAdmin() public {
         RewardForwarder newRewardForwarderImpl = new RewardForwarder();
-        factory.revokeRole(factory.DEFAULT_ADMIN_ROLE(), address(this));
-        vm.expectRevert(_formatAccessControlError(address(this), factory.DEFAULT_ADMIN_ROLE()));
+        factory.revokeRole(DEFAULT_ADMIN_ROLE, address(this));
+        vm.expectRevert(_formatAccessControlError(address(this), DEFAULT_ADMIN_ROLE));
         factory.setRewardForwarderImplementation(address(newRewardForwarderImpl));
     }
 
@@ -207,8 +207,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
 
     function test_setBaseRewardsGaugeImplementation_revertWhen_notAdmin() public {
         ERC20RewardsGauge newBaseRewardsGaugeImpl = new ERC20RewardsGauge();
-        factory.revokeRole(factory.DEFAULT_ADMIN_ROLE(), address(this));
-        vm.expectRevert(_formatAccessControlError(address(this), factory.DEFAULT_ADMIN_ROLE()));
+        factory.revokeRole(DEFAULT_ADMIN_ROLE, address(this));
+        vm.expectRevert(_formatAccessControlError(address(this), DEFAULT_ADMIN_ROLE));
         factory.setERC20RewardsGaugeImplementation(address(newBaseRewardsGaugeImpl));
     }
 
@@ -230,8 +230,8 @@ contract CoveYearnGaugeFactory_Test is BaseTest {
 
     function test_setYsdRewardsGaugeImplementation_revertWhen_notAdmin() public {
         YSDRewardsGauge newYsdRewardsGaugeImpl = new YSDRewardsGauge();
-        factory.revokeRole(factory.DEFAULT_ADMIN_ROLE(), address(this));
-        vm.expectRevert(_formatAccessControlError(address(this), factory.DEFAULT_ADMIN_ROLE()));
+        factory.revokeRole(DEFAULT_ADMIN_ROLE, address(this));
+        vm.expectRevert(_formatAccessControlError(address(this), DEFAULT_ADMIN_ROLE));
         factory.setYsdRewardsGaugeImplementation(address(newYsdRewardsGaugeImpl));
     }
 

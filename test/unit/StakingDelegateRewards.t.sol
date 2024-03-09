@@ -54,8 +54,8 @@ contract StakingDelegateRewards_Test is BaseTest {
     function test_constructor() public {
         assertEq(stakingDelegateRewards.rewardToken(), rewardToken);
         assertEq(stakingDelegateRewards.stakingDelegate(), yearnStakingDelegate);
-        assertTrue(stakingDelegateRewards.hasRole(stakingDelegateRewards.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(stakingDelegateRewards.hasRole(_TIMELOCK_ROLE, admin));
+        assertTrue(stakingDelegateRewards.hasRole(DEFAULT_ADMIN_ROLE, admin));
+        assertTrue(stakingDelegateRewards.hasRole(TIMELOCK_ROLE, admin));
     }
 
     function testFuzz_constructor(
@@ -75,8 +75,8 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingDelegateRewards = new StakingDelegateRewards(rewardToken_, stakingDelegate_, deployer, deployer);
         assertEq(stakingDelegateRewards.rewardToken(), rewardToken_);
         assertEq(stakingDelegateRewards.stakingDelegate(), stakingDelegate_);
-        assertEq(stakingDelegateRewards.hasRole(stakingDelegateRewards.DEFAULT_ADMIN_ROLE(), deployer), true);
-        assertEq(stakingDelegateRewards.hasRole(stakingDelegateRewards.DEFAULT_ADMIN_ROLE(), nonDeployer), false);
+        assertEq(stakingDelegateRewards.hasRole(DEFAULT_ADMIN_ROLE, deployer), true);
+        assertEq(stakingDelegateRewards.hasRole(DEFAULT_ADMIN_ROLE, nonDeployer), false);
     }
 
     function test_constructor_revertWhen_ZeroAddress() public {
@@ -242,7 +242,7 @@ contract StakingDelegateRewards_Test is BaseTest {
     }
 
     function test_recoverERC20_revertWhen_CallerIsNotAdmin() public {
-        vm.expectRevert(_formatAccessControlError(alice, stakingDelegateRewards.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(_formatAccessControlError(alice, DEFAULT_ADMIN_ROLE));
         vm.prank(alice);
         stakingDelegateRewards.recoverERC20(rewardToken, alice, 1e18);
     }
@@ -257,7 +257,7 @@ contract StakingDelegateRewards_Test is BaseTest {
     }
 
     function test_setRewardsDuration_revertWhen_CallerIsNotTimelock() public {
-        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
         stakingDelegateRewards.setRewardsDuration(stakingToken, 1 days);
     }
@@ -679,8 +679,8 @@ contract StakingDelegateRewards_Test is BaseTest {
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
         vm.prank(admin);
         stakingDelegateRewards.grantRole(DEFAULT_ADMIN_ROLE, alice);
-        vm.expectRevert(_formatAccessControlError(alice, _TIMELOCK_ROLE));
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
-        stakingDelegateRewards.grantRole(_TIMELOCK_ROLE, alice);
+        stakingDelegateRewards.grantRole(TIMELOCK_ROLE, alice);
     }
 }

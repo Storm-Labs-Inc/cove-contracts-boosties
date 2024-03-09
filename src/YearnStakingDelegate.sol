@@ -34,9 +34,9 @@ contract YearnStakingDelegate is
     using ClonesWithImmutableArgs for address;
 
     // Constants
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     // slither-disable-start naming-convention
-    bytes32 private constant _PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 private constant _TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
     address private constant _DYFI_REWARD_POOL = 0x2391Fc8f5E417526338F5aa3968b1851C16D894E;
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
@@ -118,10 +118,10 @@ contract YearnStakingDelegate is
         blockedTargets[_DYFI_REWARD_POOL] = true;
         blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
         blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
-        _setRoleAdmin(_TIMELOCK_ROLE, _TIMELOCK_ROLE);
+        _setRoleAdmin(TIMELOCK_ROLE, TIMELOCK_ROLE);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(_TIMELOCK_ROLE, timelock);
-        _grantRole(_PAUSER_ROLE, pauser);
+        _grantRole(TIMELOCK_ROLE, timelock);
+        _grantRole(PAUSER_ROLE, pauser);
 
         // Interactions
         // Max approve YFI to veYFI so we can lock it later
@@ -273,10 +273,10 @@ contract YearnStakingDelegate is
 
     /**
      * @notice Sets the address for the CoveYFI Reward Forwarder.
-     * @dev Can only be called by an address with the _TIMELOCK_ROLE. Emits CoveYfiRewardForwarderSet event.
+     * @dev Can only be called by an address with the TIMELOCK_ROLE. Emits CoveYfiRewardForwarderSet event.
      * @param forwarder The address of the new CoveYFI Reward Forwarder.
      */
-    function setCoveYfiRewardForwarder(address forwarder) external onlyRole(_TIMELOCK_ROLE) {
+    function setCoveYfiRewardForwarder(address forwarder) external onlyRole(TIMELOCK_ROLE) {
         // Checks
         if (forwarder == address(0)) {
             revert Errors.ZeroAddress();
@@ -289,7 +289,7 @@ contract YearnStakingDelegate is
      * @notice Set treasury address. This address will receive a portion of the rewards
      * @param treasury_ address to receive rewards
      */
-    function setTreasury(address treasury_) external onlyRole(_TIMELOCK_ROLE) {
+    function setTreasury(address treasury_) external onlyRole(TIMELOCK_ROLE) {
         // Checks
         if (treasury_ == address(0)) {
             revert Errors.ZeroAddress();
@@ -302,7 +302,7 @@ contract YearnStakingDelegate is
      * @notice Sets the address for the SwapAndLock contract.
      * @param newSwapAndLock Address of the SwapAndLock contract.
      */
-    function setSwapAndLock(address newSwapAndLock) external onlyRole(_TIMELOCK_ROLE) {
+    function setSwapAndLock(address newSwapAndLock) external onlyRole(TIMELOCK_ROLE) {
         // Checks
         if (newSwapAndLock == address(0)) {
             revert Errors.ZeroAddress();
@@ -328,7 +328,7 @@ contract YearnStakingDelegate is
         uint64 veYfiPct
     )
         external
-        onlyRole(_TIMELOCK_ROLE)
+        onlyRole(TIMELOCK_ROLE)
     {
         _setGaugeRewardSplit(gauge, treasuryPct, coveYfiPct, userPct, veYfiPct);
     }
@@ -339,7 +339,7 @@ contract YearnStakingDelegate is
      * @param treasuryPct percentage of rewards to treasury
      * @param coveYfiPct percentage of rewards to CoveYFI Reward Forwarder
      */
-    function setBoostRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external onlyRole(_TIMELOCK_ROLE) {
+    function setBoostRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external onlyRole(TIMELOCK_ROLE) {
         _setBoostRewardSplit(treasuryPct, coveYfiPct);
     }
 
@@ -349,7 +349,7 @@ contract YearnStakingDelegate is
      * @param treasuryPct percentage of rewards to treasury
      * @param coveYfiPct percentage of rewards to CoveYFI Reward Forwarder
      */
-    function setExitRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external onlyRole(_TIMELOCK_ROLE) {
+    function setExitRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external onlyRole(TIMELOCK_ROLE) {
         _setExitRewardSplit(treasuryPct, coveYfiPct);
     }
 
@@ -358,7 +358,7 @@ contract YearnStakingDelegate is
      * @param id name of the space in snapshot to apply delegation. For yearn it is "veyfi.eth"
      * @param delegate address to delegate voting power to
      */
-    function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(_TIMELOCK_ROLE) {
+    function setSnapshotDelegate(bytes32 id, address delegate) external onlyRole(TIMELOCK_ROLE) {
         // Checks
         if (delegate == address(0)) {
             revert Errors.ZeroAddress();
@@ -405,7 +405,7 @@ contract YearnStakingDelegate is
     )
         external
         nonReentrant
-        onlyRole(_TIMELOCK_ROLE)
+        onlyRole(TIMELOCK_ROLE)
     {
         // Checks
         if (gauge == address(0) || stakingDelegateRewards == address(0)) {
@@ -426,14 +426,14 @@ contract YearnStakingDelegate is
      * @notice Set perpetual lock status
      * @param lock if true, lock YFI for 4 years after each harvest
      */
-    function setPerpetualLock(bool lock) external onlyRole(_TIMELOCK_ROLE) {
+    function setPerpetualLock(bool lock) external onlyRole(TIMELOCK_ROLE) {
         _setPerpetualLock(lock);
     }
 
     /**
      * @notice early unlock veYFI and send YFI to treasury
      */
-    function earlyUnlock() external onlyRole(_TIMELOCK_ROLE) {
+    function earlyUnlock() external onlyRole(TIMELOCK_ROLE) {
         // Checks
         if (_shouldPerpetuallyLock) {
             revert Errors.PerpetualLockEnabled();
@@ -444,10 +444,10 @@ contract YearnStakingDelegate is
     }
 
     /**
-     * @dev Pauses the contract. Only callable by _PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
+     * @dev Pauses the contract. Only callable by PAUSER_ROLE or DEFAULT_ADMIN_ROLE.
      */
     function pause() external {
-        if (!(hasRole(_PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
+        if (!(hasRole(PAUSER_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
             revert Errors.Unauthorized();
         }
         _pause();
@@ -476,7 +476,7 @@ contract YearnStakingDelegate is
     )
         external
         payable
-        onlyRole(_TIMELOCK_ROLE)
+        onlyRole(TIMELOCK_ROLE)
         returns (bytes memory)
     {
         // Checks
