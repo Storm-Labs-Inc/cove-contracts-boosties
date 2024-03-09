@@ -2,7 +2,6 @@
 pragma solidity 0.8.18;
 
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IStakingDelegateRewards } from "src/interfaces/IStakingDelegateRewards.sol";
@@ -11,9 +10,9 @@ import { IStakingDelegateRewards } from "src/interfaces/IStakingDelegateRewards.
  * @title Staking Delegate Rewards
  * @notice Contract for managing staking rewards with functionality to update balances, notify new rewards, and recover
  * tokens.
- * @dev Inherits from IStakingDelegateRewards, AccessControlEnumerable, and ReentrancyGuard.
+ * @dev Inherits from IStakingDelegateRewards and AccessControlEnumerable.
  */
-contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumerable, ReentrancyGuard {
+contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumerable {
     // Libraries
     using SafeERC20 for IERC20;
 
@@ -31,6 +30,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
     mapping(address => uint256) public rewardsDuration;
     mapping(address => uint256) public lastUpdateTime;
     mapping(address => uint256) public rewardPerTokenStored;
+    mapping(address => uint256) public leftOver;
     mapping(address => mapping(address => uint256)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint256)) public rewards;
     mapping(address => address) public rewardDistributors;
@@ -39,7 +39,9 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
     mapping(address => address) public rewardReceiver;
 
     // Events
-    event RewardAdded(address indexed stakingToken, uint256 reward);
+    event RewardAdded(
+        address indexed stakingToken, uint256 rewardAmount, uint256 rewardRate, uint256 start, uint256 end
+    );
     event StakingTokenAdded(address indexed stakingToken, address rewardDistributioner);
     event UserBalanceUpdated(address indexed user, address indexed stakingToken, uint256 amount);
     event RewardPaid(address indexed user, address indexed stakingToken, uint256 reward, address receiver);
@@ -71,7 +73,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @notice Claims reward for a given staking token.
      * @param stakingToken The address of the staking token.
      */
-    function getReward(address stakingToken) external nonReentrant {
+    function getReward(address stakingToken) external {
         _getReward(msg.sender, stakingToken);
     }
 
@@ -80,7 +82,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @param user The address of the user to claim rewards for.
      * @param stakingToken The address of the staking token.
      */
-    function getReward(address user, address stakingToken) external nonReentrant {
+    function getReward(address user, address stakingToken) external {
         _getReward(user, stakingToken);
     }
 
@@ -99,7 +101,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @param stakingToken The address of the staking token to notify the reward for.
      * @param reward The amount of the new reward.
      */
-    function notifyRewardAmount(address stakingToken, uint256 reward) external nonReentrant {
+    function notifyRewardAmount(address stakingToken, uint256 reward) external {
         if (msg.sender != rewardDistributors[stakingToken]) {
             revert Errors.OnlyRewardDistributorCanNotifyRewardAmount();
         }
@@ -108,24 +110,26 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
         uint256 periodFinish_ = periodFinish[stakingToken];
         // slither-disable-next-line similar-names
         uint256 rewardDuration_ = rewardsDuration[stakingToken];
-        uint256 newRewardRate = 0;
+        uint256 leftOverRewards = leftOver[stakingToken];
         // slither-disable-next-line timestamp
-        if (block.timestamp >= periodFinish_) {
-            newRewardRate = reward / rewardDuration_;
-        } else {
-            uint256 remaining = periodFinish_ - block.timestamp;
-            uint256 leftover = remaining * rewardRate[stakingToken];
-            newRewardRate = (reward + leftover) / rewardDuration_;
+        if (block.timestamp < periodFinish_) {
+            uint256 remainingTime = periodFinish_ - block.timestamp;
+            leftOverRewards = leftOverRewards + (remainingTime * rewardRate[stakingToken]);
         }
-        // If reward < duration, newRewardRate will be 0, causing dust to be left in the contract
-        if (newRewardRate <= 0) {
+        uint256 newRewardAmount = reward + leftOverRewards;
+        uint256 newRewardRate = newRewardAmount / rewardDuration_;
+        // slither-disable-next-line incorrect-equality
+        if (newRewardRate == 0) {
             revert Errors.RewardRateTooLow();
         }
+        uint256 newPeriodFinish = block.timestamp + rewardDuration_;
+        emit RewardAdded(stakingToken, reward, newRewardRate, block.timestamp, newPeriodFinish);
         rewardRate[stakingToken] = newRewardRate;
         lastUpdateTime[stakingToken] = block.timestamp;
-        periodFinish[stakingToken] = block.timestamp + (rewardDuration_);
+        periodFinish[stakingToken] = newPeriodFinish;
+        // slither-disable-next-line weak-prng
+        leftOver[stakingToken] = newRewardAmount % rewardDuration_;
         IERC20(_REWARDS_TOKEN).safeTransferFrom(msg.sender, address(this), reward);
-        emit RewardAdded(stakingToken, reward);
     }
 
     /**
@@ -285,8 +289,8 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
             if (receiver == address(0)) {
                 receiver = user;
             }
-            IERC20(_REWARDS_TOKEN).safeTransfer(receiver, reward);
             emit RewardPaid(user, stakingToken, reward, receiver);
+            IERC20(_REWARDS_TOKEN).safeTransfer(receiver, reward);
         }
     }
 

@@ -175,7 +175,7 @@ abstract contract BaseTest is Test, Constants {
     function _deployVaultFactoryAt(address owner, address at) internal returns (address) {
         vm.startPrank(owner);
         address blueprint = vyperDeployer.deployBlueprint("lib/yearn-vaults-v3/contracts/", "VaultV3");
-        bytes memory args = abi.encode("Vault V3 Factory 3.0.0", blueprint, owner);
+        bytes memory args = abi.encode("Vault V3 Factory 3.0.2", blueprint, owner);
         address factory = vyperDeployer.deployContract("lib/yearn-vaults-v3/contracts/", "VaultFactory", args);
         vm.etch(at, factory.code);
         vm.label(at, "VaultFactory");
