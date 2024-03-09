@@ -232,7 +232,7 @@ abstract contract BaseRewardsGauge is
         }
 
         emit RewardTokenAdded(rewardToken, distributor);
-        _rewardData[rewardToken].distributor = distributor;
+        reward.distributor = distributor;
         rewardTokens.push(rewardToken);
     }
 
@@ -257,7 +257,7 @@ abstract contract BaseRewardsGauge is
         }
 
         emit RewardDistributorSet(rewardToken, distributor);
-        _rewardData[rewardToken].distributor = distributor;
+        reward.distributor = distributor;
     }
 
     /**
@@ -278,10 +278,10 @@ abstract contract BaseRewardsGauge is
         uint256 periodFinish = reward.periodFinish;
         uint256 newRate = 0;
         // slither-disable-next-line timestamp
-        uint256 leftOver = _rewardData[rewardToken].leftOver;
+        uint256 leftOver = reward.leftOver;
         if (block.timestamp < periodFinish) {
             uint256 remaining = periodFinish - block.timestamp;
-            leftOver = leftOver + remaining * _rewardData[rewardToken].rate;
+            leftOver = leftOver + remaining * reward.rate;
         }
         amount = amount + leftOver;
         newRate = amount / _WEEK;
@@ -290,9 +290,9 @@ abstract contract BaseRewardsGauge is
             revert RewardAmountTooLow();
         }
         emit RewardTokenDeposited(rewardToken, amount, newRate, block.timestamp);
-        _rewardData[rewardToken].rate = newRate;
-        _rewardData[rewardToken].lastUpdate = block.timestamp;
-        _rewardData[rewardToken].periodFinish = block.timestamp + _WEEK;
+        reward.rate = newRate;
+        reward.lastUpdate = block.timestamp;
+        reward.periodFinish = block.timestamp + _WEEK;
         // slither-disable-next-line weak-prng
         reward.leftOver = amount % _WEEK;
     }
