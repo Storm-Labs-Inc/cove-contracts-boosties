@@ -313,6 +313,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     sharesIn[i] = Math.mulDiv(assetsOut, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down);
                 } else {
                     // StakeDAO gauge token
+                    // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
                     (success, data) = vault.staticcall(abi.encodeCall(IStakeDaoGauge.staking_token, ()));
                     if (success) {
                         vaultAsset = IStakeDaoVault(abi.decode(data, (address))).token();
