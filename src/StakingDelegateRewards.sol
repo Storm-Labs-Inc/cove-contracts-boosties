@@ -17,36 +17,93 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
     using SafeERC20 for IERC20;
 
     // Constants
+    /// @dev Default duration of rewards period in seconds (7 days).
     uint256 private constant _DEFAULT_DURATION = 7 days;
+    /// @dev Role identifier used for protecting functions with timelock access.
     bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     // slither-disable-start naming-convention
+    /// @dev Address of the token used for rewards, immutable.
     address private immutable _REWARDS_TOKEN;
+    /// @dev Address of the staking delegate, immutable.
     address private immutable _STAKING_DELEGATE;
     // slither-disable-end naming-convention
 
     // State variables
+    /// @dev Mapping of staking tokens to the period end timestamp.
     mapping(address => uint256) public periodFinish;
+    /// @dev Mapping of staking tokens to their respective reward rate.
     mapping(address => uint256) public rewardRate;
+    /// @dev Mapping of staking tokens to their rewards duration.
     mapping(address => uint256) public rewardsDuration;
+    /// @dev Mapping of staking tokens to the last update time for rewards.
     mapping(address => uint256) public lastUpdateTime;
+    /// @dev Mapping of staking tokens to the accumulated reward per token.
     mapping(address => uint256) public rewardPerTokenStored;
+    /// @dev Mapping of staking tokens to the leftover rewards.
     mapping(address => uint256) public leftOver;
+    /// @dev Mapping of staking tokens and users to the paid-out reward per token.
     mapping(address => mapping(address => uint256)) public userRewardPerTokenPaid;
+    /// @dev Mapping of staking tokens and users to their respective rewards.
     mapping(address => mapping(address => uint256)) public rewards;
+    /// @dev Mapping of staking tokens to their reward distributors.
     mapping(address => address) public rewardDistributors;
+    /// @dev Mapping of staking tokens to their total supply.
     mapping(address => uint256) public totalSupply;
+    /// @dev Mapping of staking tokens and users to their respective balances.
     mapping(address => mapping(address => uint256)) public balanceOf;
+    /// @dev Mapping of users to their designated reward receivers.
     mapping(address => address) public rewardReceiver;
 
     // Events
+    /**
+     * @notice Emitted when rewards are added for a staking token.
+     * @param stakingToken The staking token for which rewards are added.
+     * @param rewardAmount The amount of rewards added.
+     * @param rewardRate The rate at which rewards will be distributed.
+     * @param start The start time of the reward period.
+     * @param end The end time of the reward period.
+     */
     event RewardAdded(
         address indexed stakingToken, uint256 rewardAmount, uint256 rewardRate, uint256 start, uint256 end
     );
+    /**
+     * @notice Emitted when a staking token is added to the rewards program.
+     * @param stakingToken The staking token that was added.
+     * @param rewardDistributioner The address authorized to distribute rewards for the staking token.
+     */
     event StakingTokenAdded(address indexed stakingToken, address rewardDistributioner);
+    /**
+     * @notice Emitted when a user's balance is updated for a staking token.
+     * @param user The user whose balance was updated.
+     * @param stakingToken The staking token for which the balance was updated.
+     * @param amount The new balance amount.
+     */
     event UserBalanceUpdated(address indexed user, address indexed stakingToken, uint256 amount);
+    /**
+     * @notice Emitted when rewards are paid out to a user for a staking token.
+     * @param user The user who received the rewards.
+     * @param stakingToken The staking token for which the rewards were paid.
+     * @param reward The amount of rewards paid.
+     * @param receiver The address that received the rewards.
+     */
     event RewardPaid(address indexed user, address indexed stakingToken, uint256 reward, address receiver);
+    /**
+     * @notice Emitted when the rewards duration is updated for a staking token.
+     * @param stakingToken The staking token for which the duration was updated.
+     * @param newDuration The new duration for rewards.
+     */
     event RewardsDurationUpdated(address indexed stakingToken, uint256 newDuration);
+    /**
+     * @notice Emitted when tokens are recovered from the contract.
+     * @param token The address of the token that was recovered.
+     * @param amount The amount of the token that was recovered.
+     */
     event Recovered(address token, uint256 amount);
+    /**
+     * @notice Emitted when a user sets a reward receiver address.
+     * @param user The user who set the reward receiver.
+     * @param receiver The address set as the reward receiver.
+     */
     event RewardReceiverSet(address indexed user, address receiver);
 
     /**

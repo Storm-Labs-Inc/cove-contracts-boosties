@@ -28,21 +28,45 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 contract DYFIRedeemer is IDYFIRedeemer, AccessControlEnumerable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
+    /// @dev Address of the redemption contract for dYFI tokens.
     address private constant _REDEMPTION = 0x7dC3A74F0684fc026f9163C6D5c3C99fda2cf60a;
+    /// @dev Address of the Chainlink YFI/ETH price feed contract.
     address private constant _YFI_ETH_PRICE_FEED = 0x3EbEACa272Ce4f60E800f6C5EE678f50D2882fd4;
+    /// @dev Address of the Balancer flash loan provider contract.
     address private constant _FLASH_LOAN_PROVIDER = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+    /// @dev Address of the dYFI token contract.
     address private constant _DYFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
+    /// @dev Address of the YFI token contract.
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
+    /// @dev Address of the WETH token contract.
     address private constant _WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    /// @dev Address of the Curve ETH/YFI liquidity pool contract.
     address private constant _ETH_YFI_CURVE_POOL = 0xC26b89A667578ec7b3f11b2F98d6Fd15C07C54ba;
+    /// @dev Maximum slippage allowed during redemption, represented as a fraction of 1e18.
     uint256 private constant _MAX_SLIPPAGE = 0.05e18;
+    /// @dev Default slippage used during redemption if no specific slippage is set, represented as a fraction of 1e18.
     uint256 private constant _DEFAULT_SLIPPAGE = 0.01e18;
 
     /// @notice The slippage that should be applied to the redemption process
     uint256 private _slippage;
 
+    /**
+     * @notice Emitted when the slippage is set.
+     * @param slippage The new slippage value set for the redemption process.
+     */
     event SlippageSet(uint256 slippage);
+    /**
+     * @notice Emitted when dYFI is redeemed for YFI.
+     * @param dYfiHolder The address of the dYFI holder whose tokens were redeemed.
+     * @param dYfiAmount The amount of dYFI that was redeemed.
+     * @param yfiAmount The amount of YFI received from redeeming the dYFI.
+     */
     event DYfiRedeemed(address indexed dYfiHolder, uint256 dYfiAmount, uint256 yfiAmount);
+    /**
+     * @notice Emitted when a reward is given to the caller of the massRedeem function.
+     * @param caller The address of the caller who received the reward.
+     * @param amount The amount of the reward received.
+     */
     event CallerReward(address indexed caller, uint256 amount);
 
     // slither-disable-next-line locked-ether
