@@ -43,6 +43,7 @@ contract YearnStakingDelegate is
     address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
     address private constant _VE_YFI = 0x90c1f9220d90d3966FbeE24045EDd73E1d588aD5;
     address private constant _SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
+    uint256 private constant _MAX_TREASURY_PCT = 0.2e18;
 
     // Immutables
     address private immutable _GAUGE_REWARD_RECEIVER_IMPL;
@@ -52,21 +53,27 @@ contract YearnStakingDelegate is
     /// @notice Mapping of vault to gauge
     mapping(address gauge => address) public gaugeStakingRewards;
     mapping(address gauge => address) public gaugeRewardReceivers;
-    mapping(address vault => RewardSplit) public gaugeRewardSplit;
     mapping(address user => mapping(address token => uint256)) public balanceOf;
     mapping(address target => bool) public blockedTargets;
+    mapping(address vault => RewardSplit) private _gaugeRewardSplit;
 
     // Variables
     address private _treasury;
     bool private _shouldPerpetuallyLock;
     address private _swapAndLock;
+    address private _coveYfiRewardForwarder;
+    BoostRewardSplit private _boostRewardSplit;
+    ExitRewardSplit private _exitRewardSplit;
 
     event LockYfi(address indexed sender, uint256 amount);
     event GaugeRewardsSet(address indexed gauge, address stakingRewardsContract, address receiver);
     event PerpetualLockSet(bool shouldLock);
     event GaugeRewardSplitSet(address indexed gauge, RewardSplit split);
+    event BoostRewardSplitSet(uint128 treasuryPct, uint128 coveYfiPct);
+    event ExitRewardSplitSet(uint128 treasuryPct, uint128 coveYfiPct);
     event SwapAndLockSet(address swapAndLockContract);
     event TreasurySet(address newTreasury);
+    event CoveYfiRewardForwarderSet(address forwarder);
     event Deposit(address indexed sender, address indexed gauge, uint256 amount);
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
 
@@ -101,6 +108,8 @@ contract YearnStakingDelegate is
         // Set storage variables
         _setTreasury(treasury_);
         _setPerpetualLock(true);
+        _setBoostRewardSplit(0, 1e18); // 100% to CoveYFI by default
+        _setExitRewardSplit(0, 1e18); // 100% to CoveYFI by default
         _GAUGE_REWARD_RECEIVER_IMPL = gaugeRewardReceiverImpl;
         blockedTargets[_YFI] = true;
         blockedTargets[_D_YFI] = true;
@@ -190,34 +199,56 @@ contract YearnStakingDelegate is
         if (gaugeRewardReceiver == address(0)) {
             revert Errors.GaugeRewardsNotYetAdded();
         }
+        address rewardForwarder = _coveYfiRewardForwarder;
+        if (rewardForwarder == address(0)) {
+            revert Errors.CoveYfiRewardForwarderNotSet();
+        }
         // Interactions
-        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(swapAndLockContract, _treasury, gaugeRewardSplit[gauge]);
+        return GaugeRewardReceiver(gaugeRewardReceiver).harvest(
+            swapAndLockContract, _treasury, rewardForwarder, _gaugeRewardSplit[gauge]
+        );
     }
 
     /**
-     * @notice Claim dYFI rewards from the reward pool and transfer them to the treasury
+     * @notice Claim dYFI rewards from the reward pool and transfer them to the CoveYFI Reward Forwarder
      */
     function claimBoostRewards() external {
+        // Checks
+        address rewardForwarder = _coveYfiRewardForwarder;
+        if (rewardForwarder == address(0)) {
+            revert Errors.CoveYfiRewardForwarderNotSet();
+        }
         // Interactions
         // Ignore the returned amount and use the balance instead to ensure we capture
         // any rewards claimed for this contract by other addresses
-        // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
+        // https://etherscan.io/address/0x2391Fc8f5E417526338F5aa3968b1851C16D894E#code
         // slither-disable-next-line unused-return
         IDYfiRewardPool(_DYFI_REWARD_POOL).claim();
-        _rescueDYfi();
+        uint256 balance = IERC20(_D_YFI).balanceOf(address(this));
+        uint256 coveYfiAmount = (balance * _boostRewardSplit.coveYfi) / 1e18;
+        IERC20(_D_YFI).safeTransfer(rewardForwarder, coveYfiAmount);
+        IERC20(_D_YFI).safeTransfer(_treasury, balance - coveYfiAmount);
     }
 
     /**
-     * @notice Claim YFI rewards from the reward pool and transfer them to the treasury
+     * @notice Claim YFI rewards from the reward pool and transfer them to the CoveYFI Reward Forwarder
      */
     function claimExitRewards() external {
+        // Checks
+        address rewardForwarder = _coveYfiRewardForwarder;
+        if (rewardForwarder == address(0)) {
+            revert Errors.CoveYfiRewardForwarderNotSet();
+        }
         // Interactions
         // Ignore the returned amount and use the balance instead to ensure we capture
         // any rewards claimed for this contract by other addresses
         // https://etherscan.io/address/0xb287a1964AEE422911c7b8409f5E5A273c1412fA#code
         // slither-disable-next-line unused-return
         IYfiRewardPool(_YFI_REWARD_POOL).claim();
-        _rescueYfi();
+        uint256 balance = IERC20(_YFI).balanceOf(address(this));
+        uint256 coveYfiAmount = (balance * _exitRewardSplit.coveYfi) / 1e18;
+        IERC20(_YFI).safeTransfer(rewardForwarder, coveYfiAmount);
+        IERC20(_YFI).safeTransfer(_treasury, balance - coveYfiAmount);
     }
 
     /**
@@ -238,6 +269,20 @@ contract YearnStakingDelegate is
         emit LockYfi(msg.sender, amount);
         IERC20(_YFI).safeTransferFrom(msg.sender, address(this), amount);
         return IVotingYFI(_VE_YFI).modify_lock(amount, block.timestamp + 4 * 365 days + 4 weeks, address(this));
+    }
+
+    /**
+     * @notice Sets the address for the CoveYFI Reward Forwarder.
+     * @dev Can only be called by an address with the _TIMELOCK_ROLE. Emits CoveYfiRewardForwarderSet event.
+     * @param forwarder The address of the new CoveYFI Reward Forwarder.
+     */
+    function setCoveYfiRewardForwarder(address forwarder) external onlyRole(_TIMELOCK_ROLE) {
+        // Checks
+        if (forwarder == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+        // Effects
+        _setCoveYfiRewardForwarder(forwarder);
     }
 
     /**
@@ -270,20 +315,42 @@ contract YearnStakingDelegate is
      * @notice Set the reward split percentages
      * @param gauge address of the gauge token
      * @param treasuryPct percentage of rewards to treasury
+     * @param coveYfiPct percentage of rewards to coveYFI Reward Forwarder
      * @param userPct percentage of rewards to user
      * @param veYfiPct percentage of rewards to veYFI
      * @dev Sum of percentages must equal to 1e18
      */
     function setGaugeRewardSplit(
         address gauge,
-        uint80 treasuryPct,
-        uint80 userPct,
-        uint80 veYfiPct
+        uint64 treasuryPct,
+        uint64 coveYfiPct,
+        uint64 userPct,
+        uint64 veYfiPct
     )
         external
         onlyRole(_TIMELOCK_ROLE)
     {
-        _setGaugeRewardSplit(gauge, treasuryPct, userPct, veYfiPct);
+        _setGaugeRewardSplit(gauge, treasuryPct, coveYfiPct, userPct, veYfiPct);
+    }
+
+    /**
+     * @notice Set the reward split percentages for dYFI boost rewards
+     * @dev Sum of percentages must equal to 1e18
+     * @param treasuryPct percentage of rewards to treasury
+     * @param coveYfiPct percentage of rewards to CoveYFI Reward Forwarder
+     */
+    function setBoostRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external onlyRole(_TIMELOCK_ROLE) {
+        _setBoostRewardSplit(treasuryPct, coveYfiPct);
+    }
+
+    /**
+     * @notice Set the reward split percentages for YFI exit rewards
+     * @dev Sum of percentages must equal to 1e18
+     * @param treasuryPct percentage of rewards to treasury
+     * @param coveYfiPct percentage of rewards to CoveYFI Reward Forwarder
+     */
+    function setExitRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external onlyRole(_TIMELOCK_ROLE) {
+        _setExitRewardSplit(treasuryPct, coveYfiPct);
     }
 
     /**
@@ -321,7 +388,8 @@ contract YearnStakingDelegate is
             revert Errors.GaugeRewardsAlreadyAdded();
         }
         // Effects
-        _setGaugeRewardSplit(gauge, 0, 1e18, 0); // 0% to treasury, 100% to user, 0% to veYFI for relocking
+        // 0% to treasury, 0% to coveYfi, 100% to user, 0% to SwapAndLock for increasing veYFI lock
+        _setGaugeRewardSplit(gauge, 0, 0, 1e18, 0);
         // Effects & Interactions
         _setGaugeRewards(gauge, stakingDelegateRewards);
     }
@@ -373,22 +441,6 @@ contract YearnStakingDelegate is
         // Interactions
         IVotingYFI.Withdrawn memory withdrawn = IVotingYFI(_VE_YFI).withdraw();
         IERC20(_YFI).safeTransfer(_treasury, withdrawn.amount);
-    }
-
-    /**
-     * @notice Rescue YFI tokens from the contract
-     * @dev Should only be called if a breaking change occurs to the reward pool contract
-     */
-    function rescueYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueYfi();
-    }
-
-    /**
-     * @notice Rescue dYFI tokens from the contract
-     * @dev Should only be called if a breaking change occurs to the reward pool contract
-     */
-    function rescueDYfi() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueDYfi();
     }
 
     /**
@@ -446,11 +498,44 @@ contract YearnStakingDelegate is
     }
 
     /**
+     * @notice Get the dYFI boost reward split
+     * @return BoostRewardSplit struct containing the treasury and coveYFI split.
+     */
+    function getBoostRewardSplit() external view returns (BoostRewardSplit memory) {
+        return _boostRewardSplit;
+    }
+
+    /**
+     * @notice Get the YFI exit reward split
+     * @return ExitRewardSplit struct containing the treasury and coveYFI split.
+     */
+    function getExitRewardSplit() external view returns (ExitRewardSplit memory) {
+        return _exitRewardSplit;
+    }
+
+    /**
+     * @notice Get the dYFI reward split for a gauge
+     * @param gauge Address of the gauge
+     * @return RewardSplit struct containing the treasury, coveYFI, user, and lock splits for the gauge
+     */
+    function getGaugeRewardSplit(address gauge) external view returns (RewardSplit memory) {
+        return _gaugeRewardSplit[gauge];
+    }
+
+    /**
      * @notice Get the address of the treasury
      * @return The address of the treasury
      */
     function treasury() external view returns (address) {
         return _treasury;
+    }
+
+    /**
+     * @notice Get the address of the stored CoveYFI Reward Forwarder
+     * @return The address of the CoveYFI Reward Forwarder
+     */
+    function coveYfiRewardForwarder() external view returns (address) {
+        return _coveYfiRewardForwarder;
     }
 
     /**
@@ -493,9 +578,22 @@ contract YearnStakingDelegate is
         return _VE_YFI;
     }
 
+    /**
+     * @dev Internal function to set the treasury address.
+     * @param treasury_ The address of the new treasury.
+     */
     function _setTreasury(address treasury_) internal {
         _treasury = treasury_;
         emit TreasurySet(treasury_);
+    }
+
+    /**
+     * @dev Internal function to set the CoveYFI Reward Forwarder address.
+     * @param forwarder The address of the CoveYFI Reward Forwarder.
+     */
+    function _setCoveYfiRewardForwarder(address forwarder) internal {
+        _coveYfiRewardForwarder = forwarder;
+        emit CoveYfiRewardForwarderSet(forwarder);
     }
 
     /**
@@ -534,13 +632,58 @@ contract YearnStakingDelegate is
      * @param userPct Percentage of rewards to the user.
      * @param lockPct Percentage of rewards to lock in veYFI.
      */
-    function _setGaugeRewardSplit(address gauge, uint80 treasuryPct, uint80 userPct, uint80 lockPct) internal {
-        if (uint256(treasuryPct) + userPct + lockPct != 1e18) {
+    function _setGaugeRewardSplit(
+        address gauge,
+        uint64 treasuryPct,
+        uint64 coveYfiPct,
+        uint64 userPct,
+        uint64 lockPct
+    )
+        internal
+    {
+        if (uint256(treasuryPct) + coveYfiPct + userPct + lockPct != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
-        RewardSplit memory newRewardSplit = RewardSplit({ treasury: treasuryPct, user: userPct, lock: lockPct });
-        gaugeRewardSplit[gauge] = newRewardSplit;
+        if (treasuryPct > _MAX_TREASURY_PCT) {
+            revert Errors.TreasuryPctTooHigh();
+        }
+        RewardSplit memory newRewardSplit =
+            RewardSplit({ treasury: treasuryPct, coveYfi: coveYfiPct, user: userPct, lock: lockPct });
+        _gaugeRewardSplit[gauge] = newRewardSplit;
         emit GaugeRewardSplitSet(gauge, newRewardSplit);
+    }
+
+    /**
+     * @dev Internal function to set the reward split for the dYFI boost rewards
+     * @param treasuryPct Percentage of rewards to the treasury.
+     * @param coveYfiPct Percentage of rewards to the CoveYFI Reward Forwarder.
+     */
+    function _setBoostRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) internal {
+        if (uint256(treasuryPct) + coveYfiPct != 1e18) {
+            revert Errors.InvalidRewardSplit();
+        }
+        if (treasuryPct > _MAX_TREASURY_PCT) {
+            revert Errors.TreasuryPctTooHigh();
+        }
+        _boostRewardSplit = BoostRewardSplit({ treasury: treasuryPct, coveYfi: coveYfiPct });
+        emit BoostRewardSplitSet(treasuryPct, coveYfiPct);
+    }
+
+    /**
+     * @dev Internal function to set the reward split for the YFI exit rewards (when veYFI holders early unlock their
+     * YFI, a portion of their YFI is distributed to other veYFI holders).
+     * @param treasuryPct Percentage of rewards to the treasury.
+     * @param coveYfiPct Percentage of rewards to the CoveYFI Reward Forwarder.
+     */
+    function _setExitRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) internal {
+        if (uint256(treasuryPct) + coveYfiPct != 1e18) {
+            revert Errors.InvalidRewardSplit();
+        }
+        if (treasuryPct > _MAX_TREASURY_PCT) {
+            revert Errors.TreasuryPctTooHigh();
+        }
+        _exitRewardSplit = ExitRewardSplit({ treasury: treasuryPct, coveYfi: coveYfiPct });
+        emit ExitRewardSplitSet(treasuryPct, coveYfiPct);
     }
 
     /**
@@ -561,21 +704,5 @@ contract YearnStakingDelegate is
         // In case of error, we don't want to block the entire tx so we try-catch
         // solhint-disable-next-line no-empty-blocks
         try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
-    }
-
-    /**
-     * @dev Internal function to transfer YFI held by this contract to the treasury.
-     */
-    function _rescueYfi() internal {
-        // Interactions
-        IERC20(_YFI).safeTransfer(_treasury, IERC20(_YFI).balanceOf(address(this)));
-    }
-
-    /**
-     * @dev Internal function to transfer dYFI held by this contract to the treasury.
-     */
-    function _rescueDYfi() internal {
-        // Interactions
-        IERC20(_D_YFI).safeTransfer(_treasury, IERC20(_D_YFI).balanceOf(address(this)));
     }
 }

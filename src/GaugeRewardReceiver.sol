@@ -45,12 +45,14 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ac
      * @notice Harvest rewards from the gauge and distribute to treasury, compound, and veYFI
      * @param swapAndLock Address of the SwapAndLock contract.
      * @param treasury Address of the treasury to receive a portion of the rewards.
+     * @param coveYfiRewardForwarder Address of the CoveYfiRewardForwarder contract.
      * @param rewardSplit Struct containing the split percentages for lock, treasury, and user rewards.
      * @return userRewardsAmount The amount of rewards harvested for the user.
      */
     function harvest(
         address swapAndLock,
         address treasury,
+        address coveYfiRewardForwarder,
         IYearnStakingDelegate.RewardSplit calldata rewardSplit
     )
         external
@@ -60,7 +62,7 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ac
         if (msg.sender != stakingDelegate()) {
             revert Errors.NotAuthorized();
         }
-        if (rewardSplit.lock + rewardSplit.treasury + rewardSplit.user != 1e18) {
+        if (rewardSplit.treasury + rewardSplit.coveYfi + rewardSplit.user + rewardSplit.lock != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
         // Read pending dYFI rewards from the gauge
@@ -70,22 +72,27 @@ contract GaugeRewardReceiver is Clone, Rescuable, ReentrancyGuardUpgradeable, Ac
         IGauge(gauge()).getReward(stakingDelegate());
         uint256 totalRewardsAmount = IERC20(rewardToken()).balanceOf(address(this));
 
-        // Store the amount of dYFI to use for locking later
-        uint256 swapAndLockAmount = totalRewardsAmount * uint256(rewardSplit.lock) / 1e18;
+        // Calculate the amount of rewards to distribute
         uint256 treasuryAmount = totalRewardsAmount * uint256(rewardSplit.treasury) / 1e18;
-        uint256 userAmount = totalRewardsAmount - swapAndLockAmount - treasuryAmount;
+        uint256 coveYfiAmount = totalRewardsAmount * uint256(rewardSplit.coveYfi) / 1e18;
+        uint256 swapAndLockAmount = totalRewardsAmount * uint256(rewardSplit.lock) / 1e18;
+        uint256 userAmount = totalRewardsAmount - swapAndLockAmount - treasuryAmount - coveYfiAmount;
 
-        // Transfer rewards to the staking delegate rewards contract
-        if (userAmount != 0) {
-            StakingDelegateRewards(stakingDelegateRewards()).notifyRewardAmount(gauge(), userAmount);
-        }
         // Transfer rewards to the treasury
         if (rewardSplit.treasury != 0) {
             IERC20(rewardToken()).safeTransfer(treasury, treasuryAmount);
         }
+        // Transfer rewards to the coveYFI reward forwarder
+        if (coveYfiAmount != 0) {
+            IERC20(rewardToken()).safeTransfer(coveYfiRewardForwarder, coveYfiAmount);
+        }
         // Transfer rewards to the swap and lock contract
         if (swapAndLockAmount != 0) {
             IERC20(rewardToken()).safeTransfer(swapAndLock, swapAndLockAmount);
+        }
+        // Transfer rewards to the staking delegate rewards contract
+        if (userAmount != 0) {
+            StakingDelegateRewards(stakingDelegateRewards()).notifyRewardAmount(gauge(), userAmount);
         }
 
         return totalRewardsAmount;
