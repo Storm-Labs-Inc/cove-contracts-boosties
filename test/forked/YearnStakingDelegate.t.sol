@@ -422,7 +422,7 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(strategyDYfiBalance, estimatedUserSplit, "strategy split is incorrect");
     }
 
-    function test_claimBoostRewards_buh() public {
+    function test_claimBoostRewards() public {
         _lockYfiForYSD(10e18);
         vm.warp(block.timestamp + 1 weeks);
         vm.prank(timelock);
