@@ -25,8 +25,8 @@ contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
 
     // Immutables
-    // slither-disable-next-line naming-convention
     /// @dev Address of the YearnStakingDelegate contract, set at deployment and immutable thereafter.
+    // slither-disable-next-line naming-convention
     address private immutable _YEARN_STAKING_DELEGATE;
 
     /// @notice Address of the DYfiRedeemer contract.
