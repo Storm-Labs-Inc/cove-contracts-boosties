@@ -11,6 +11,7 @@ fs_permissions = [
 solc = '0.8.18'
 ffi = true
 evm_version = "shanghai"
+auto_detect_remappings = false
 
 [fmt]
 bracket_spacing = true

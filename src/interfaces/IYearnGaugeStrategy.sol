@@ -13,4 +13,5 @@ interface IYearnGaugeStrategy is IStrategy {
     function setMaxTotalAssets(uint256 maxTotalAssets_) external;
     function setDYfiRedeemer(address newDYfiRedeemer) external;
     function maxTotalAssets() external view returns (uint256);
+    function depositedInYSD(address asset) external view returns (uint256);
 }
