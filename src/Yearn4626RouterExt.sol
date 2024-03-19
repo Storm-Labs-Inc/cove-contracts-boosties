@@ -222,8 +222,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesOut[i] =
-                        Math.mulDiv(assetsIn, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down) - 1;
+                    sharesOut[i] = Math.mulDiv(assetsIn, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down);
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
