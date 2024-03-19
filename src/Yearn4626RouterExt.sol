@@ -222,8 +222,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesOut[i] =
-                        Math.mulDiv(assetsIn, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down) - 1;
+                    sharesOut[i] = Math.mulDiv(
+                        assetsIn,
+                        10 ** IERC4626(vault).decimals(),
+                        IYearnVaultV2(vault).pricePerShare(),
+                        Math.Rounding.Down
+                    ) - 1;
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -274,8 +278,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsIn[i] =
-                        Math.mulDiv(sharesOut, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up) + 1;
+                    assetsIn[i] = Math.mulDiv(
+                        sharesOut,
+                        IYearnVaultV2(vault).pricePerShare(),
+                        10 ** IERC4626(vault).decimals(),
+                        Math.Rounding.Up
+                    ) + 1;
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -328,7 +336,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesIn[i] = Math.mulDiv(assetsOut, 1e18, IYearnVaultV2(vault).pricePerShare(), Math.Rounding.Down);
+                    sharesIn[i] = Math.mulDiv(
+                        assetsOut,
+                        10 ** IERC4626(vault).decimals(),
+                        IYearnVaultV2(vault).pricePerShare(),
+                        Math.Rounding.Down
+                    );
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
@@ -387,7 +400,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsOut[i] = Math.mulDiv(sharesIn, IYearnVaultV2(vault).pricePerShare(), 1e18, Math.Rounding.Up);
+                    assetsOut[i] = Math.mulDiv(
+                        sharesIn,
+                        IYearnVaultV2(vault).pricePerShare(),
+                        10 ** IERC4626(vault).decimals(),
+                        Math.Rounding.Up
+                    );
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
