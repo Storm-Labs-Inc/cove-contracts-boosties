@@ -211,6 +211,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         for (uint256 i; i < sharesOutLength;) {
             address vault = path[i + 1];
             address vaultAsset = address(0);
+            // slither-disable-start missing-zero-check
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -225,6 +226,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
             }
+            // slither-disable-end missing-zero-check
             if (vaultAsset != path[i]) {
                 revert PreviewVaultMismatch();
             }
@@ -260,6 +262,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         for (uint256 i; i < assetsInLength;) {
             address vault = path[i + 1];
             address vaultAsset = address(0);
+            // slither-disable-start missing-zero-check
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -274,7 +277,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
             }
-
+            // slither-disable-end missing-zero-check
             if (vaultAsset != path[i]) {
                 revert PreviewVaultMismatch();
             }
@@ -311,6 +314,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         for (uint256 i; i < sharesInLength;) {
             address vault = path[i];
             address vaultAsset = address(0);
+            // slither-disable-start missing-zero-check
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -332,6 +336,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     }
                 }
             }
+            // slither-disable-end missing-zero-check
             if (vaultAsset != path[i + 1]) {
                 revert PreviewVaultMismatch();
             }
@@ -367,6 +372,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         for (uint256 i; i < assetsOutLength;) {
             address vault = path[i];
             address vaultAsset = address(0);
+            // slither-disable-start missing-zero-check
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
@@ -388,6 +394,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     }
                 }
             }
+            // slither-disable-end missing-zero-check
             if (vaultAsset != path[i + 1]) {
                 revert PreviewVaultMismatch();
             }
