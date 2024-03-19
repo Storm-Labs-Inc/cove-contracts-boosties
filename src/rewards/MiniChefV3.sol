@@ -519,7 +519,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, pendingReward_, user.amount);
+            _rewarder.onReward(pid, msg.sender, to, rewardAmount, user.amount);
         }
     }
 
