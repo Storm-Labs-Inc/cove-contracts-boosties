@@ -83,7 +83,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             coveYfiRewardsGauge = ERC20RewardsGauge(_cloneContract(erc20RewardsGaugeImplementation));
             coveYfiRewardsGauge.initialize(address(coveYfi));
             coveYfiRewardForwarder = RewardForwarder(_cloneContract(rewardForwarderImplementation));
-            coveYfiRewardForwarder.initialize(address(coveYfiRewardsGauge));
+            coveYfiRewardForwarder.initialize(address(coveYfiRewardsGauge), address(this));
+            coveYfiRewardsGauge.grantRole(DEPOSITOR_ROLE, address(this));
             coveYfiRewardsGauge.addReward(MAINNET_YFI, address(coveYfiRewardForwarder));
             coveYfiRewardsGauge.addReward(MAINNET_DYFI, address(coveYfiRewardForwarder));
             vm.label(address(coveYfiRewardForwarder), "coveYfiRewardForwarder");
@@ -398,9 +399,10 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         amount = bound(amount, 3e10, 100_000_000_000 * 1e18);
         coveReward = bound(coveReward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
         // Mint coveToken to be given as reward
-        vm.prank(admin);
+        vm.startPrank(admin);
         coveToken.transfer(address(baseRewardForwarder), coveReward);
         RewardForwarder(baseRewardForwarder).forwardRewardToken(address(coveToken));
+        vm.stopPrank();
         coveReward = coveReward - erc20RewardsGauge.getRewardData(address(coveToken)).leftOver;
 
         vm.prank(tpManagement);
@@ -482,9 +484,10 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         amount = bound(amount, 3e11, 100_000_000_000 ether);
         coveReward = bound(coveReward, Math.max(1e9, amount / 1e15), 1_000_000_000 ether);
         // Mint coveToken to be given as reward
-        vm.prank(admin);
+        vm.startPrank(admin);
         coveToken.transfer(address(ysdRewardForwarder), coveReward);
         RewardForwarder(ysdRewardForwarder).forwardRewardToken(address(coveToken));
+        vm.stopPrank();
         coveReward = coveReward - ysdRewardsGauge.getRewardData(address(coveToken)).leftOver;
 
         airdrop(ERC20(gauge), alice, amount);
@@ -522,16 +525,18 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         // Get rewards gained by YearnStakingDelegate harvest and forwarded to the rewards forwarder
         stakingDelegateRewards.getReward(address(ysdRewardsGauge), gauge);
         // Forward the earned dYFI to the rewardsGauge
+        vm.prank(admin);
         RewardForwarder(ysdRewardForwarder).forwardRewardToken(address(MAINNET_DYFI));
         totalRewardAmount = totalRewardAmount - ysdRewardsGauge.getRewardData(MAINNET_DYFI).leftOver;
         // Warp forward 1 week for the rewards to be claimable
         uint256 periodFinish = ysdRewardsGauge.getRewardData(MAINNET_DYFI).periodFinish;
         vm.warp(periodFinish);
         uint256 dYFIBalanceBefore = IERC20(MAINNET_DYFI).balanceOf(alice);
+        vm.startPrank(alice);
         ysdRewardsGauge.claimRewards(alice, alice);
         assertApproxEqRel(
             dYFIBalanceBefore + totalRewardAmount,

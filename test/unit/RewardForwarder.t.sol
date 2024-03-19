@@ -30,17 +30,18 @@ contract RewardForwarder_Test is BaseTest {
         // clone the rewardForwarder
         rewardForwarder = RewardForwarder(_cloneContract(address(rewardForwarderImplementation)));
         vm.label(address(rewardForwarder), "rewardForwarder");
-        rewardForwarder.initialize(destination);
+        rewardForwarder.initialize(destination, admin);
     }
 
     function test_initialize() public {
         assertEq(rewardForwarder.rewardDestination(), destination);
+        assertTrue(rewardForwarder.hasRole(rewardForwarder.DEFAULT_ADMIN_ROLE(), admin));
     }
 
     function test_initialize_revertWhen_zeroDestination() public {
         RewardForwarder dummyRewardForwarder = RewardForwarder(_cloneContract(address(rewardForwarderImplementation)));
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        dummyRewardForwarder.initialize(address(0));
+        dummyRewardForwarder.initialize(address(0), admin);
     }
 
     function test_approveRewardToken() public {
@@ -50,10 +51,17 @@ contract RewardForwarder_Test is BaseTest {
     }
 
     function testFuzz_forwardRewardToken(uint256 amount) public {
+        vm.prank(admin);
+        rewardForwarder.grantRole(DEPOSITOR_ROLE, address(this));
         airdrop(IERC20(token), address(rewardForwarder), amount);
         // approve reward token and forward it
         rewardForwarder.approveRewardToken(address(token));
         rewardForwarder.forwardRewardToken(address(token));
         assertEq(token.balanceOf(destination), amount);
+    }
+
+    function testFuzz_forwardRewardToken_revertWhen_notDepositor() public {
+        vm.expectRevert(_formatAccessControlError(address(this), DEPOSITOR_ROLE));
+        rewardForwarder.forwardRewardToken(address(token));
     }
 }

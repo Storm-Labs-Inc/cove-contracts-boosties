@@ -5,6 +5,8 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IBaseRewardsGauge } from "../interfaces/rewards/IBaseRewardsGauge.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { Initializable } from "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
+import { AccessControlEnumerableUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/AccessControlEnumerableUpgradeable.sol";
 
 /**
  * @title Reward Forwarder Contract
@@ -15,11 +17,14 @@ import { Initializable } from "@openzeppelin-upgradeable/contracts/proxy/utils/I
  * @dev The contract uses the OpenZeppelin SafeERC20 library to interact with ERC20 tokens safely. It inherits
  * from OpenZeppelin's Initializable contract to ensure that initialization logic is executed only once.
  */
-contract RewardForwarder is Initializable {
+contract RewardForwarder is Initializable, AccessControlEnumerableUpgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice Address where the majority of rewards will be forwarded.
     address public rewardDestination;
+
+    /// @notice Role for a depositor, who can forward reward tokens.
+    bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
 
     /// @dev Constructor that disables initializers to prevent further initialization.
     constructor() payable {
@@ -30,9 +35,10 @@ contract RewardForwarder is Initializable {
      * @dev Initializes the contract with the specified reward destination.
      * @param destination_ The destination address where the rewards will be forwarded.
      */
-    function initialize(address destination_) external initializer {
+    function initialize(address destination_, address admin) external initializer {
         if (destination_ == address(0)) revert Errors.ZeroAddress();
         rewardDestination = destination_;
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     /**
@@ -49,7 +55,7 @@ contract RewardForwarder is Initializable {
      * @dev Forwards all balance of the specified reward token to the reward destination
      * @param rewardToken The address of the reward token to forward.
      */
-    function forwardRewardToken(address rewardToken) public {
+    function forwardRewardToken(address rewardToken) public onlyRole(DEPOSITOR_ROLE) {
         uint256 balance = IERC20(rewardToken).balanceOf(address(this));
         if (balance > 0) {
             IBaseRewardsGauge(rewardDestination).depositRewardToken(rewardToken, balance);
