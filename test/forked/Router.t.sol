@@ -253,7 +253,7 @@ contract Router_ForkedTest is BaseTest {
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
         path[1] = address(0); // Use non 4626 address for the test
 
-        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.PreviewNonVaultAddressInPath.selector, address(0)));
+        vm.expectRevert();
         router.previewDeposits(path, assetInAmount);
     }
 
@@ -306,7 +306,7 @@ contract Router_ForkedTest is BaseTest {
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
         path[1] = address(0); // Use non 4626 address for the test
 
-        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.PreviewNonVaultAddressInPath.selector, address(0)));
+        vm.expectRevert();
         router.previewMints(path, shareOutAmount);
     }
 
@@ -370,7 +370,7 @@ contract Router_ForkedTest is BaseTest {
         path[0] = address(0); // Use non 4626 address for the test
         path[1] = MAINNET_ETH_YFI_GAUGE;
 
-        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.PreviewNonVaultAddressInPath.selector, address(0)));
+        vm.expectRevert();
         router.previewWithdraws(path, assetOutAmount);
     }
 
@@ -434,7 +434,7 @@ contract Router_ForkedTest is BaseTest {
         path[0] = address(0); // Use non 4626 address for the test
         path[1] = MAINNET_ETH_YFI_GAUGE;
 
-        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.PreviewNonVaultAddressInPath.selector, address(0)));
+        vm.expectRevert();
         router.previewRedeems(path, shareInAmount);
     }
 

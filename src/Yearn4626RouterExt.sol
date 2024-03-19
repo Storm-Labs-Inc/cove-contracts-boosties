@@ -210,9 +210,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         sharesOut = new uint256[](sharesOutLength);
         for (uint256 i; i < sharesOutLength;) {
             address vault = path[i + 1];
-            if (!Address.isContract(vault)) {
-                revert PreviewNonVaultAddressInPath(vault);
-            }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
@@ -262,9 +259,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         assetsIn = new uint256[](assetsInLength);
         for (uint256 i; i < assetsInLength;) {
             address vault = path[i + 1];
-            if (!Address.isContract(vault)) {
-                revert PreviewNonVaultAddressInPath(vault);
-            }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
@@ -316,9 +310,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         sharesIn = new uint256[](sharesInLength);
         for (uint256 i; i < sharesInLength;) {
             address vault = path[i];
-            if (!Address.isContract(vault)) {
-                revert PreviewNonVaultAddressInPath(vault);
-            }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
@@ -375,9 +366,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         assetsOut = new uint256[](assetsOutLength);
         for (uint256 i; i < assetsOutLength;) {
             address vault = path[i];
-            if (!Address.isContract(vault)) {
-                revert PreviewNonVaultAddressInPath(vault);
-            }
             address vaultAsset = address(0);
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
