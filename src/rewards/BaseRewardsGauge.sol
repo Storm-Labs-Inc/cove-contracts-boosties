@@ -88,6 +88,8 @@ abstract contract BaseRewardsGauge is
     error ZeroAddress();
     /// @dev Error indicating that the reward token cannot be the same as the asset token.
     error RewardCannotBeAsset();
+    /// @dev Error indication that the reward token has not been added.
+    error RewardTokenNotAdded();
 
     /**
      * @notice Event emitted when a reward token is added to the gauge.
@@ -270,7 +272,7 @@ abstract contract BaseRewardsGauge is
         Reward storage reward = _rewardData[rewardToken];
         address distributor = reward.distributor;
         if (distributor == address(0)) {
-            revert InvalidDistributorAddress();
+            revert RewardTokenNotAdded();
         }
         if (!(msg.sender == distributor || hasRole(MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();

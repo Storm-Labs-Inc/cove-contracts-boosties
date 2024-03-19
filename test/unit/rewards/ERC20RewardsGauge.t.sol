@@ -300,6 +300,12 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.depositRewardToken(address(dummyRewardToken), 1e20);
     }
 
+    function test_depositRewardToken_revertWhen_rewardTokenNotAdded(address user) public {
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.RewardTokenNotAdded.selector));
+        rewardsGauge.depositRewardToken(address(dummyRewardToken), 1e20);
+    }
+
     function testFuzz_claimRewards(uint256 amount, uint256 rewardAmount) public {
         amount = bound(amount, 1, type(uint128).max);
         rewardAmount = bound(rewardAmount, Math.max(1e9, amount / 1e15), type(uint128).max);
