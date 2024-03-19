@@ -22,6 +22,7 @@ import { PausableUpgradeable } from "@openzeppelin-upgradeable/contracts/securit
  * @notice Gauge contract for managing and distributing reward tokens to stakers.
  * @dev This contract handles the accounting of reward tokens, allowing users to claim their accrued rewards.
  * It supports multiple reward tokens and allows for the addition of new rewards by authorized distributors.
+ * Does not support distributing reward tokens with a max supply greater than `type(uint128).max`.
  */
 abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
@@ -413,6 +414,9 @@ abstract contract BaseRewardsGauge is
         uint256 totalClaimed = data % (2 ** 128);
 
         if (totalClaimable > 0) {
+            /// @dev It is possible for `totalClaimed + totalClaimable` to overflow if using reward tokens with a max
+            /// supply greater than `type(uint128).max`.  An overflow in the claimed amount of reward tokens could allow
+            /// a user to withdraw more tokens than allocated, leading to a potential drain of the contract.
             claimData[user][token] = claim ? totalClaimed + totalClaimable : totalClaimed + (totalClaimable << 128);
 
             if (claim) {
