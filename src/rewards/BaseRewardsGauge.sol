@@ -268,7 +268,11 @@ abstract contract BaseRewardsGauge is
      */
     function depositRewardToken(address rewardToken, uint256 amount) external nonReentrant {
         Reward storage reward = _rewardData[rewardToken];
-        if (!(msg.sender == reward.distributor || hasRole(MANAGER_ROLE, msg.sender))) {
+        address distributor = reward.distributor;
+        if (distributor == address(0)) {
+            revert InvalidDistributorAddress();
+        }
+        if (!(msg.sender == distributor || hasRole(MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
         _checkpointRewards(address(0), totalSupply(), false, address(0));
