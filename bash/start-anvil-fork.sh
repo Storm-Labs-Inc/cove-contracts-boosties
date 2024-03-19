@@ -14,4 +14,4 @@ echo "\nCleaning up ./deployments/1-fork/ folder..."
 rm -rf ./deployments/1-fork/*
 # Run anvil
 source .env
-anvil --auto-impersonate --fork-url $MAINNET_RPC_URL --fork-block-number 19122720 --steps-tracing
+anvil --auto-impersonate --fork-url $MAINNET_RPC_URL --fork-block-number 19470523 --steps-tracing
