@@ -7,6 +7,7 @@ import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 import { ISignatureTransfer } from "permit2/interfaces/ISignatureTransfer.sol";
 import { IWETH9 } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
 import { IYearn4626RouterExt } from "./interfaces/IYearn4626RouterExt.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -224,7 +225,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     vaultAsset = abi.decode(data, (address));
                     sharesOut[i] = Math.mulDiv(
                         assetsIn,
-                        10 ** IERC4626(vault).decimals(),
+                        10 ** IERC20Metadata(vault).decimals(),
                         IYearnVaultV2(vault).pricePerShare(),
                         Math.Rounding.Down
                     ) - 1;
@@ -281,7 +282,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     assetsIn[i] = Math.mulDiv(
                         sharesOut,
                         IYearnVaultV2(vault).pricePerShare(),
-                        10 ** IERC4626(vault).decimals(),
+                        10 ** IERC20Metadata(vault).decimals(),
                         Math.Rounding.Up
                     ) + 1;
                 } else {
@@ -338,7 +339,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     vaultAsset = abi.decode(data, (address));
                     sharesIn[i] = Math.mulDiv(
                         assetsOut,
-                        10 ** IERC4626(vault).decimals(),
+                        10 ** IERC20Metadata(vault).decimals(),
                         IYearnVaultV2(vault).pricePerShare(),
                         Math.Rounding.Down
                     );
@@ -403,7 +404,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                     assetsOut[i] = Math.mulDiv(
                         sharesIn,
                         IYearnVaultV2(vault).pricePerShare(),
-                        10 ** IERC4626(vault).decimals(),
+                        10 ** IERC20Metadata(vault).decimals(),
                         Math.Rounding.Up
                     );
                 } else {
