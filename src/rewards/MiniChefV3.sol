@@ -403,7 +403,8 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
         // Effects
         user.amount += amount;
         user.rewardDebt += amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
-        /// @dev += is slightly more gas efficient (5300) than the alternative (5365) using solidity 0.8.18
+        /// @dev += is slightly more gas efficient (5300) than the alternative (5365) using solidity 0.8.18.
+        /// The rule only applies to non-mapping storage variables.
         // nosemgrep: inefficient-state-variable-increment
         lpSupply[pid] += amount;
 
