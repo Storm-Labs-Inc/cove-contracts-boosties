@@ -3,6 +3,9 @@ name: Docs
 on:
   push:
     branches: [master]
+  # TODO: remove after testing
+  pull_request:
+    branches: ["*"]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -28,7 +31,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Build forge docs
-        run: forge doc --build
+        run: |
+          pnpm build
+          forge doc --build
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
