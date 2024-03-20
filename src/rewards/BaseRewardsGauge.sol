@@ -22,7 +22,7 @@ import { PausableUpgradeable } from "@openzeppelin-upgradeable/contracts/securit
  * @notice Gauge contract for managing and distributing reward tokens to stakers.
  * @dev This contract handles the accounting of reward tokens, allowing users to claim their accrued rewards.
  * It supports multiple reward tokens and allows for the addition of new rewards by authorized distributors.
- * Does not support distributing reward tokens with a max supply greater than `type(uint128).max`.
+ * It doesn't support rebasing or fee on transfer tokens, or tokens with a max supply greater than `type(uint128).max`.
  */
 abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
