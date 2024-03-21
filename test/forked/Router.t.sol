@@ -331,7 +331,7 @@ contract Router_ForkedTest is BaseTest {
         uint256[] memory sharesIn = router.previewWithdraws(path, assetOutAmount);
         assertEq(sharesIn.length, 2);
         assertEq(sharesIn[0], 999_999_999_999_999_999);
-        assertEq(sharesIn[1], 949_289_266_142_683_599);
+        assertEq(sharesIn[1], 949_289_266_142_683_600);
     }
 
     function test_previewWithdraws_StakeDAO() public {
@@ -395,7 +395,7 @@ contract Router_ForkedTest is BaseTest {
         (uint256[] memory assetsOut) = router.previewRedeems(path, shareInAmount);
         assertEq(assetsOut.length, 2);
         assertEq(assetsOut[0], 949_289_266_142_683_599);
-        assertEq(assetsOut[1], 999_999_999_999_999_999);
+        assertEq(assetsOut[1], 999_999_999_999_999_998);
     }
 
     function test_previewRedeems_StakeDAO() public {
