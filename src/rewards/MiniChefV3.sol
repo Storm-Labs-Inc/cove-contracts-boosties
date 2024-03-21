@@ -455,6 +455,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
             // Interactions
             if (rewardAmount != 0) {
                 emit Harvest(msg.sender, pid, rewardAmount);
+                // slither-disable-next-line reentrancy-events
                 REWARD_TOKEN.safeTransfer(to, rewardAmount);
             }
         }
