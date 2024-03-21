@@ -16,7 +16,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * @notice A contract for managing staking, rewards, and pool information for liquidity providers.
  * @dev This contract handles the logic for staking LP tokens, distributing rewards, and managing pool information.
  * It supports multiple reward tokens through external rewarder contracts and includes emergency withdrawal
- * functionality.
+ * functionality.  It does not support rebasing or fee on transfer tokens.
  */
 contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit, Pausable {
     using SafeERC20 for IERC20;
@@ -403,7 +403,10 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
         // Effects
         user.amount += amount;
         user.rewardDebt += amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
-        lpSupply[pid] = lpSupply[pid] + amount;
+        /// @dev += is slightly more gas efficient (5300) than the alternative (5365) using solidity 0.8.18.
+        /// The rule only applies to non-mapping storage variables.
+        // nosemgrep: inefficient-state-variable-increment
+        lpSupply[pid] += amount;
 
         emit Deposit(msg.sender, pid, amount, to);
 
