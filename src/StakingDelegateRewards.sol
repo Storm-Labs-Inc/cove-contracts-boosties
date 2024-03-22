@@ -5,7 +5,6 @@ import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessCo
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IStakingDelegateRewards } from "src/interfaces/IStakingDelegateRewards.sol";
-import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
 /**
  * @title Staking Delegate Rewards
@@ -48,6 +47,10 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
     mapping(address => mapping(address => uint256)) public rewards;
     /// @dev Mapping of staking tokens to their reward distributors.
     mapping(address => address) public rewardDistributors;
+    /// @dev Mapping of staking tokens to their total supply.
+    mapping(address => uint256) public totalSupply;
+    /// @dev Mapping of staking tokens and users to their respective balances.
+    mapping(address => mapping(address => uint256)) public balanceOf;
     /// @dev Mapping of users to their designated reward receivers.
     mapping(address => address) public rewardReceiver;
 
@@ -73,8 +76,9 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @notice Emitted when a user's balance is updated for a staking token.
      * @param user The user whose balance was updated.
      * @param stakingToken The staking token for which the balance was updated.
+     * @param amount The new balance amount.
      */
-    event UserBalanceUpdated(address indexed user, address indexed stakingToken);
+    event UserBalanceUpdated(address indexed user, address indexed stakingToken, uint256 amount);
     /**
      * @notice Emitted when rewards are paid out to a user for a staking token.
      * @param user The user who received the rewards.
@@ -189,22 +193,17 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @notice Updates the balance of a user for a given staking token.
      * @param user The address of the user to update the balance for.
      * @param stakingToken The address of the staking token.
-     * @param currentUserBalance The current balance of staking token of the user.
-     * @param currentTotalDeposited The current total deposited amount of the staking token.
+     * @param totalAmount The new total amount to set for the user's balance.
      */
-    function updateUserBalance(
-        address user,
-        address stakingToken,
-        uint256 currentUserBalance,
-        uint256 currentTotalDeposited
-    )
-        external
-    {
+    function updateUserBalance(address user, address stakingToken, uint256 totalAmount) external {
         if (msg.sender != _STAKING_DELEGATE) {
             revert Errors.OnlyStakingDelegateCanUpdateUserBalance();
         }
-        _updateReward(user, stakingToken, currentUserBalance, currentTotalDeposited);
-        emit UserBalanceUpdated(user, stakingToken);
+        _updateReward(user, stakingToken);
+        uint256 currentUserBalance = balanceOf[user][stakingToken];
+        balanceOf[user][stakingToken] = totalAmount;
+        totalSupply[stakingToken] = totalSupply[stakingToken] - currentUserBalance + totalAmount;
+        emit UserBalanceUpdated(user, stakingToken, totalAmount);
     }
 
     /**
@@ -309,16 +308,13 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @return The accumulated reward per token.
      */
     function rewardPerToken(address stakingToken) public view returns (uint256) {
-        return _rewardPerToken(stakingToken, IYearnStakingDelegate(_STAKING_DELEGATE).totalDeposited(stakingToken));
-    }
-
-    function _rewardPerToken(address stakingToken, uint256 currentTotalDeposited) internal view returns (uint256) {
-        if (currentTotalDeposited == 0) {
+        uint256 totalSupply_ = totalSupply[stakingToken];
+        if (totalSupply_ == 0) {
             return rewardPerTokenStored[stakingToken];
         }
         return rewardPerTokenStored[stakingToken]
             + (lastTimeRewardApplicable(stakingToken) - lastUpdateTime[stakingToken]) * rewardRate[stakingToken] * 1e18
-                / currentTotalDeposited;
+                / totalSupply_;
     }
 
     /**
@@ -328,28 +324,10 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @return The amount of reward earned.
      */
     function earned(address account, address stakingToken) public view returns (uint256) {
-        return _earned(
-            account,
-            stakingToken,
-            IYearnStakingDelegate(_STAKING_DELEGATE).balanceOf(account, stakingToken),
-            IYearnStakingDelegate(_STAKING_DELEGATE).totalDeposited(stakingToken)
-        );
-    }
-
-    function _earned(
-        address account,
-        address stakingToken,
-        uint256 userBalance,
-        uint256 totalDeposited
-    )
-        internal
-        view
-        returns (uint256)
-    {
         return rewards[account][stakingToken]
             + (
-                userBalance
-                    * (_rewardPerToken(stakingToken, totalDeposited) - userRewardPerTokenPaid[account][stakingToken]) / 1e18
+                balanceOf[account][stakingToken]
+                    * (rewardPerToken(stakingToken) - userRewardPerTokenPaid[account][stakingToken]) / 1e18
             );
     }
 
@@ -373,32 +351,16 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
         }
     }
 
-    function _updateReward(address account, address stakingToken) internal {
-        _updateReward(
-            account,
-            stakingToken,
-            IYearnStakingDelegate(_STAKING_DELEGATE).balanceOf(account, stakingToken),
-            IYearnStakingDelegate(_STAKING_DELEGATE).totalDeposited(stakingToken)
-        );
-    }
-
     /**
      * @dev Updates reward state for a given user and staking token.
      * @param account The address of the user to update rewards for.
      * @param stakingToken The address of the staking token.
      */
-    function _updateReward(
-        address account,
-        address stakingToken,
-        uint256 currentUserBalance,
-        uint256 currentTotalDeposited
-    )
-        internal
-    {
-        rewardPerTokenStored[stakingToken] = _rewardPerToken(stakingToken, currentTotalDeposited);
+    function _updateReward(address account, address stakingToken) internal {
+        rewardPerTokenStored[stakingToken] = rewardPerToken(stakingToken);
         lastUpdateTime[stakingToken] = lastTimeRewardApplicable(stakingToken);
         if (account != address(0)) {
-            rewards[account][stakingToken] = _earned(account, stakingToken, currentUserBalance, currentTotalDeposited);
+            rewards[account][stakingToken] = earned(account, stakingToken);
             userRewardPerTokenPaid[account][stakingToken] = rewardPerTokenStored[stakingToken];
         }
     }

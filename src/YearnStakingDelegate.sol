@@ -38,8 +38,6 @@ contract YearnStakingDelegate is
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     /// @dev Role identifier for timelock, capable of performing time-sensitive administrative functions.
     bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
-    /// @dev Role identifier for depositors, capable of depositing gauge tokens.
-    bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
     // slither-disable-start naming-convention
     /// @dev Address of the Yearn Finance YFI reward pool.
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
@@ -68,8 +66,6 @@ contract YearnStakingDelegate is
     mapping(address => address) public gaugeRewardReceivers;
     /// @notice Mapping of user addresses to a nested mapping of token addresses to the user's balance of that token.
     mapping(address => mapping(address => uint256)) public balanceOf;
-    /// @notice Mapping of gauge token address to the total amount deposited in this contract.
-    mapping(address => uint256) public totalDeposited;
     /// @notice Mapping of target addresses to a boolean indicating whether the target is blocked.
     mapping(address => bool) public blockedTargets;
     /// @dev Mapping of vault addresses to their corresponding RewardSplit configuration.
@@ -222,13 +218,11 @@ contract YearnStakingDelegate is
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Effects
-        uint256 currentUserBalance = balanceOf[msg.sender][gauge];
-        uint256 currentTotalDeposited = totalDeposited[gauge];
-        balanceOf[msg.sender][gauge] = currentUserBalance + amount;
-        totalDeposited[gauge] = currentTotalDeposited + amount;
+        uint256 newBalance = balanceOf[msg.sender][gauge] + amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         emit Deposit(msg.sender, gauge, amount);
-        _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, currentUserBalance, currentTotalDeposited);
+        _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
 
@@ -256,13 +250,11 @@ contract YearnStakingDelegate is
             revert Errors.ZeroAmount();
         }
         // Effects
-        uint256 currentUserBalance = balanceOf[msg.sender][gauge];
-        uint256 currentTotalDeposited = totalDeposited[gauge];
-        balanceOf[msg.sender][gauge] = currentUserBalance - amount;
-        totalDeposited[gauge] = currentTotalDeposited - amount;
+        uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
+        balanceOf[msg.sender][gauge] = newBalance;
         // Interactions
         emit Withdraw(msg.sender, gauge, amount);
-        _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, currentUserBalance, currentTotalDeposited);
+        _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, newBalance);
         IERC20(gauge).safeTransfer(receiver, amount);
     }
 
@@ -779,15 +771,12 @@ contract YearnStakingDelegate is
         address stakingDelegateReward,
         address gauge,
         address user,
-        uint256 userBalance,
-        uint256 currentTotalDeposited
+        uint256 userBalance
     )
         internal
     {
         // In case of error, we don't want to block the entire tx so we try-catch
         // solhint-disable-next-line no-empty-blocks
-        try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(
-            user, gauge, userBalance, currentTotalDeposited
-        ) { } catch { }
+        try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(user, gauge, userBalance) { } catch { }
     }
 }
