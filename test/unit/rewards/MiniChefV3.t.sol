@@ -96,7 +96,7 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     function test_add() public {
-        uint64 allocPoint = 1000;
+        uint32 allocPoint = 1000;
         IERC20 newLpToken = IERC20(address(new ERC20Mock()));
         IMiniChefV3Rewarder newRewarder = IMiniChefV3Rewarder(address(0));
 
@@ -127,7 +127,7 @@ contract MiniChefV3_Test is BaseTest {
 
     function test_set() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
-        uint64 allocPoint = 500;
+        uint32 allocPoint = 500;
         IMiniChefV3Rewarder newRewarder = IMiniChefV3Rewarder(address(0));
         uint256 pid = miniChef.poolLength() - 1;
 
@@ -152,14 +152,14 @@ contract MiniChefV3_Test is BaseTest {
         uint256 pid = miniChef.poolLength();
         IERC20 invalidLpToken = IERC20(address(0xdead));
         IMiniChefV3Rewarder dummyRewarder = IMiniChefV3Rewarder(address(0));
-        uint64 allocPoint = 1000;
+        uint32 allocPoint = 1000;
 
         vm.expectRevert(Errors.LPTokenNotAdded.selector);
         miniChef.set(pid, allocPoint, invalidLpToken, dummyRewarder, true);
     }
 
     function test_set_revertWhen_LPTokenDoesNotMatchPoolId() public {
-        uint64 allocPoint = 1000;
+        uint32 allocPoint = 1000;
         IERC20 lpToken1 = IERC20(address(new ERC20Mock()));
         IMiniChefV3Rewarder dummyRewarder = IMiniChefV3Rewarder(address(0));
         miniChef.add(allocPoint, lpToken1, dummyRewarder);
@@ -564,5 +564,25 @@ contract MiniChefV3_Test is BaseTest {
         vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
         vm.prank(alice);
         miniChef.grantRole(TIMELOCK_ROLE, alice);
+    }
+
+    function test_rewardShareSafecast() public {
+        miniChef.setRewardPerSecond(miniChef.MAX_REWARD_TOKEN_PER_SECOND());
+        miniChef.add(type(uint32).max, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 rewardCommitment = 10_000_000_000e18;
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1;
+        lpToken.mint(alice, amount);
+
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+
+        vm.warp(block.timestamp + 30 * 52 weeks);
+        miniChef.updatePool(pid);
+        assertEq(miniChef.getPoolInfo(pid).lastRewardTime, block.timestamp, "lastRewardTime not updated correctly");
     }
 }
