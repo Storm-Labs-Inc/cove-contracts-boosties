@@ -79,8 +79,6 @@ abstract contract BaseRewardsGauge is
     error RewardTokenAlreadyAdded();
     /// @dev Error indicating an unauthorized action was attempted.
     error Unauthorized();
-    /// @dev Error indicating that the distributor address has not been set.
-    error DistributorNotSet();
     /// @dev Error indicating that an invalid distributor address was provided.
     error InvalidDistributorAddress();
     /// @dev Error indicating that the reward amount is too low.
@@ -253,7 +251,7 @@ abstract contract BaseRewardsGauge is
             revert Unauthorized();
         }
         if (currentDistributor == address(0)) {
-            revert DistributorNotSet();
+            revert RewardTokenNotAdded();
         }
         if (distributor == address(0)) {
             revert InvalidDistributorAddress();

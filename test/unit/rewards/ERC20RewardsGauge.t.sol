@@ -168,7 +168,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
     }
 
     function test_setRewardDistributor_revertWhen_distributorNotSet() public {
-        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.DistributorNotSet.selector));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.RewardTokenNotAdded.selector));
         vm.prank(manager);
         rewardsGauge.setRewardDistributor(address(1), address(2));
     }
