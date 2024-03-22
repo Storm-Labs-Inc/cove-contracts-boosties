@@ -8,7 +8,7 @@ import { Clones } from "@crytic/properties/lib/openzeppelin-contracts/contracts/
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.sol";
 import { MockYearnGaugeStrategy } from "test/mocks/MockYearnGaugeStrategy.sol";
-import { ERC20RewardsGauge_EchidnaTest } from "test/invariant/ERC20RewardsGauge.t.sol";
+import { ERC20RewardsGauge_EchidnaTest } from "test/invariant/ERC20RewardsGauge_EchidnaTest.sol";
 
 /// @title YSDRewardsGauge_EchidnaTest
 /// @notice Echidna test contract for YSDRewardsGauge
