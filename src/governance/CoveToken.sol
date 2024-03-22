@@ -83,7 +83,7 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
      * @dev The contract is paused upon deployment and the initial supply is minted to the owner.
      * @param owner_ The address of the initial owner.
      */
-    constructor(address owner_) payable ERC20Permit("CoveToken") ERC20("CoveToken", "COVE") {
+    constructor(address owner_) payable ERC20Permit("Cove DAO") ERC20("Cove DAO", "COVE") {
         // Checks
         if (owner_ == address(0)) {
             revert Errors.ZeroAddress();
@@ -204,14 +204,17 @@ contract CoveToken is ERC20Permit, AccessControlEnumerable, Pausable, Multicall 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes minting and burning.
      *      It checks if the contract is paused and if so, only allows transfers from allowed transferrers
-     *      to allowed transferees.
+     *      or to allowed transferees (only one inclusion is required).  This is meant to support:
+     *      - Allowed senders: Vesting, treasury multisig, and rewards contracts so CoveToken can be distributed.
+     *      - Allowed receivers: For non-tokenized staking contracts like MiniChefV3 so any address can stake CoveToken
+     *        while it's non-transferrable.
      * @param from The address which is transferring tokens.
      * @param to The address which is receiving tokens.
      * @param amount The amount of tokens being transferred.
      */
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         // Check if the transfer is allowed
-        // When paused, only allowed transferrers can transfer and only allowed transferees can receive
+        // When paused, only allowed transferrers can transfer or only allowed transferees can receive
         if (paused()) {
             if (!allowedSender[from]) {
                 if (!allowedReceiver[to]) {
