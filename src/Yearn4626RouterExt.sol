@@ -341,7 +341,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                         assetsOut,
                         10 ** IERC20Metadata(vault).decimals(),
                         IYearnVaultV2(vault).pricePerShare(),
-                        Math.Rounding.Down
+                        Math.Rounding.Up
                     );
                 } else {
                     // StakeDAO gauge token
@@ -405,7 +405,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                         sharesIn,
                         IYearnVaultV2(vault).pricePerShare(),
                         10 ** IERC20Metadata(vault).decimals(),
-                        Math.Rounding.Up
+                        Math.Rounding.Down
                     );
                 } else {
                     // StakeDAO gauge token
