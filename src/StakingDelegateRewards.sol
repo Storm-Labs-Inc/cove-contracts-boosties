@@ -308,7 +308,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @param stakingToken The address of the staking token.
      * @return The accumulated reward per token.
      */
-    function rewardPerToken(address stakingToken) public view returns (uint256) {
+    function rewardPerToken(address stakingToken) external view returns (uint256) {
         return _rewardPerToken(stakingToken, IYearnStakingDelegate(_STAKING_DELEGATE).totalDeposited(stakingToken));
     }
 
@@ -327,7 +327,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
      * @param stakingToken The address of the staking token.
      * @return The amount of reward earned.
      */
-    function earned(address account, address stakingToken) public view returns (uint256) {
+    function earned(address account, address stakingToken) external view returns (uint256) {
         return _earned(
             account,
             stakingToken,
