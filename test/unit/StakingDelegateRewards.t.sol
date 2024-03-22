@@ -7,6 +7,8 @@ import { StakingDelegateRewards } from "src/StakingDelegateRewards.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { console2 } from "forge-std/console2.sol";
 
 contract StakingDelegateRewards_Test is BaseTest {
     address public yearnStakingDelegate;
@@ -36,6 +38,10 @@ contract StakingDelegateRewards_Test is BaseTest {
 
         vm.prank(admin);
         stakingDelegateRewards = new StakingDelegateRewards(rewardToken, yearnStakingDelegate, admin, admin);
+        vm.prank(alice);
+        IERC20(stakingToken).approve(address(yearnStakingDelegate), type(uint256).max);
+        vm.prank(bob);
+        IERC20(stakingToken).approve(address(yearnStakingDelegate), type(uint256).max);
     }
 
     function _calculateEarned(
@@ -49,6 +55,19 @@ contract StakingDelegateRewards_Test is BaseTest {
         returns (uint256)
     {
         return (timeSpentLocked * rewardRate * 1e18 / totalSupply) * depositAmount / 1e18;
+    }
+
+    function _updateUserBalance(address user) internal {
+        uint256 currentUserBalance = IYearnStakingDelegate(yearnStakingDelegate).balanceOf(user, stakingToken);
+        uint256 currentTotalDeposited = IYearnStakingDelegate(yearnStakingDelegate).totalDeposited(stakingToken);
+        vm.prank(yearnStakingDelegate);
+        stakingDelegateRewards.updateUserBalance(user, stakingToken, currentUserBalance, currentTotalDeposited);
+    }
+
+    function _depositToYSDFromUser(address user, uint256 amount) internal {
+        airdrop(IERC20(stakingToken), user, amount);
+        vm.prank(user);
+        IYearnStakingDelegate(yearnStakingDelegate).deposit(stakingToken, amount);
     }
 
     function test_constructor() public {
@@ -176,8 +195,7 @@ contract StakingDelegateRewards_Test is BaseTest {
     }
 
     function testFuzz_notifyRewardAmount(uint256 reward) public {
-        vm.assume(reward != 0);
-        vm.assume(reward >= 7 days);
+        reward = bound(reward, 7 days, type(uint256).max);
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
 
@@ -194,7 +212,7 @@ contract StakingDelegateRewards_Test is BaseTest {
     }
 
     function testFuzz_notifyRewardAmount_revertWhen_RewardRateTooLow(uint256 reward) public {
-        vm.assume(reward < 7 days);
+        reward = bound(reward, 0, 7 days - 1);
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
 
@@ -207,18 +225,46 @@ contract StakingDelegateRewards_Test is BaseTest {
     }
 
     function test_updateUserBalance() public {
+        vm.warp(1337);
         vm.prank(yearnStakingDelegate);
         stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
 
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, 1e18);
+
+        assertEq(stakingDelegateRewards.lastUpdateTime(stakingToken), 0);
+        assertEq(stakingDelegateRewards.rewardPerTokenStored(stakingToken), 0);
+        assertEq(stakingDelegateRewards.userRewardPerTokenPaid(alice, stakingToken), 0);
+        assertEq(stakingDelegateRewards.rewards(alice, stakingToken), 0);
+    }
+
+    function test_updateUserBalance_WithExistingReward() public {
+        vm.warp(1337);
         vm.prank(yearnStakingDelegate);
-        stakingDelegateRewards.updateUserBalance(address(alice), stakingToken, 1e18);
-        assertEq(stakingDelegateRewards.totalSupply(stakingToken), 1e18);
-        assertEq(stakingDelegateRewards.balanceOf(address(alice), stakingToken), 1e18);
+        stakingDelegateRewards.addStakingToken(stakingToken, rewardDistributor);
+
+        vm.warp(block.timestamp + 1);
+
+        airdrop(IERC20(rewardToken), rewardDistributor, REWARD_AMOUNT);
+        vm.startPrank(rewardDistributor);
+        IERC20(rewardToken).approve(address(stakingDelegateRewards), REWARD_AMOUNT);
+        stakingDelegateRewards.notifyRewardAmount(stakingToken, REWARD_AMOUNT);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1);
+
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, 1e18);
+
+        assertEq(stakingDelegateRewards.lastUpdateTime(stakingToken), 1337 + 2);
+        assertEq(stakingDelegateRewards.rewardPerTokenStored(stakingToken), 0);
+        assertEq(stakingDelegateRewards.userRewardPerTokenPaid(alice, stakingToken), 0);
+        assertEq(stakingDelegateRewards.rewards(alice, stakingToken), 0);
     }
 
     function test_updateUserBalance_revertWhen_CallerIsNotStakingDelegate() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.OnlyStakingDelegateCanUpdateUserBalance.selector));
-        stakingDelegateRewards.updateUserBalance(stakingToken, address(alice), 1e18);
+        stakingDelegateRewards.updateUserBalance(stakingToken, address(alice), 0, 0);
     }
 
     function test_recoverERC20() public {
@@ -348,16 +394,15 @@ contract StakingDelegateRewards_Test is BaseTest {
 
         assertEq(stakingDelegateRewards.rewardPerToken(stakingToken), 0);
 
-        vm.prank(yearnStakingDelegate);
         uint256 depositAmount = 100e18;
-        stakingDelegateRewards.updateUserBalance(address(alice), stakingToken, depositAmount);
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, depositAmount);
         assertEq(stakingDelegateRewards.rewardPerToken(stakingToken), 0);
-        uint256 lastUpdateTime = block.timestamp;
 
         vm.warp(block.timestamp + 4 days);
         assertEq(
             stakingDelegateRewards.rewardPerToken(stakingToken),
-            (block.timestamp - lastUpdateTime) * (REWARD_AMOUNT / 7 days) * 1e18 / depositAmount
+            4 days * (REWARD_AMOUNT / 7 days) * 1e18 / depositAmount
         );
     }
 
@@ -375,10 +420,10 @@ contract StakingDelegateRewards_Test is BaseTest {
 
         assertEq(stakingDelegateRewards.earned(address(alice), stakingToken), 0);
 
-        vm.prank(yearnStakingDelegate);
         uint256 depositAmount = 100e18;
-        stakingDelegateRewards.updateUserBalance(address(alice), stakingToken, depositAmount);
         uint256 totalSupply = 100e18;
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, depositAmount);
         assertEq(stakingDelegateRewards.earned(address(alice), stakingToken), 0);
         uint256 lastUpdateTime = block.timestamp;
 
@@ -413,13 +458,13 @@ contract StakingDelegateRewards_Test is BaseTest {
 
         uint256 aliceDepositAmount = 100e18;
         uint256 bobDepositAmount = 200e18;
-
-        vm.startPrank(yearnStakingDelegate);
-        stakingDelegateRewards.updateUserBalance(address(alice), stakingToken, aliceDepositAmount);
-        stakingDelegateRewards.updateUserBalance(address(bob), stakingToken, bobDepositAmount);
-        vm.stopPrank();
-
         uint256 totalSupply = aliceDepositAmount + bobDepositAmount;
+
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, aliceDepositAmount);
+        _updateUserBalance(bob);
+        _depositToYSDFromUser(bob, bobDepositAmount);
+
         assertEq(stakingDelegateRewards.earned(address(alice), stakingToken), 0);
         assertEq(stakingDelegateRewards.earned(address(bob), stakingToken), 0);
         uint256 lastUpdateTime = block.timestamp;
@@ -474,10 +519,10 @@ contract StakingDelegateRewards_Test is BaseTest {
         stakingDelegateRewards.notifyRewardAmount(stakingToken, REWARD_AMOUNT);
         vm.stopPrank();
 
-        vm.prank(yearnStakingDelegate);
         uint256 depositAmount = 100e18;
         uint256 totalSupply = 100e18;
-        stakingDelegateRewards.updateUserBalance(address(alice), stakingToken, depositAmount);
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, depositAmount);
         stakingDelegateRewards.getReward(address(alice), stakingToken);
         assertEq(IERC20(rewardToken).balanceOf(address(alice)), 0);
         uint256 lastUpdateTime = block.timestamp;
@@ -527,8 +572,8 @@ contract StakingDelegateRewards_Test is BaseTest {
 
         uint256 depositAmount = 100e18;
         uint256 totalSupply = 100e18;
-        vm.prank(yearnStakingDelegate);
-        stakingDelegateRewards.updateUserBalance(alice, stakingToken, depositAmount);
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, depositAmount);
         stakingDelegateRewards.getReward(alice, stakingToken);
         assertEq(IERC20(rewardToken).balanceOf(alice), 0);
         assertEq(IERC20(rewardToken).balanceOf(aliceReceiver), 0);
@@ -582,10 +627,11 @@ contract StakingDelegateRewards_Test is BaseTest {
         uint256 aliceDepositAmount = 100e18;
         uint256 bobDepositAmount = 200e18;
         uint256 totalSupply = aliceDepositAmount + bobDepositAmount;
-        vm.startPrank(yearnStakingDelegate);
-        stakingDelegateRewards.updateUserBalance(address(alice), stakingToken, aliceDepositAmount);
-        stakingDelegateRewards.updateUserBalance(address(bob), stakingToken, bobDepositAmount);
-        vm.stopPrank();
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, aliceDepositAmount);
+        _updateUserBalance(bob);
+        _depositToYSDFromUser(bob, bobDepositAmount);
+
         stakingDelegateRewards.getReward(address(alice), stakingToken);
         stakingDelegateRewards.getReward(address(bob), stakingToken);
         assertEq(IERC20(rewardToken).balanceOf(address(alice)), 0);
@@ -638,10 +684,11 @@ contract StakingDelegateRewards_Test is BaseTest {
         uint256 aliceDepositAmount = 100e18;
         uint256 bobDepositAmount = 200e18;
         uint256 totalSupply = aliceDepositAmount + bobDepositAmount;
-        vm.startPrank(yearnStakingDelegate);
-        stakingDelegateRewards.updateUserBalance(address(alice), stakingToken, aliceDepositAmount);
-        stakingDelegateRewards.updateUserBalance(address(bob), stakingToken, bobDepositAmount);
-        vm.stopPrank();
+        _updateUserBalance(alice);
+        _depositToYSDFromUser(alice, aliceDepositAmount);
+        _updateUserBalance(bob);
+        _depositToYSDFromUser(bob, bobDepositAmount);
+
         vm.prank(alice);
         stakingDelegateRewards.getReward(stakingToken);
         vm.prank(bob);
