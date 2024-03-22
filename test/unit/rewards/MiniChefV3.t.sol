@@ -7,6 +7,7 @@ import { MiniChefV3 } from "src/rewards/MiniChefV3.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { stdError } from "forge-std/StdError.sol";
 
 contract MiniChefV3_Test is BaseTest {
     MiniChefV3 public miniChef;
@@ -566,6 +567,7 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.grantRole(TIMELOCK_ROLE, alice);
     }
 
+    // @dev yAudit-14 SafeCast could overflow PoC test
     function test_rewardShareSafecast() public {
         miniChef.setRewardPerSecond(miniChef.MAX_REWARD_TOKEN_PER_SECOND());
         miniChef.add(type(uint32).max, lpToken, IMiniChefV3Rewarder(address(0)));
@@ -581,8 +583,54 @@ contract MiniChefV3_Test is BaseTest {
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
 
-        vm.warp(block.timestamp + 30 * 52 weeks);
+        vm.warp(block.timestamp + 100_000_000 * 52 weeks);
         miniChef.updatePool(pid);
-        assertEq(miniChef.getPoolInfo(pid).lastRewardTime, block.timestamp, "lastRewardTime not updated correctly");
+    }
+
+    function test_rewardShareSafecast_revertWhen_BillionYears() public {
+        miniChef.setRewardPerSecond(miniChef.MAX_REWARD_TOKEN_PER_SECOND());
+        miniChef.add(type(uint32).max, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 rewardCommitment = 10_000_000_000e18;
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1;
+        lpToken.mint(alice, amount);
+
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+
+        vm.warp(block.timestamp + 1_000_000_000 * 52 weeks);
+        vm.expectRevert("SafeCast: value doesn't fit in 160 bits");
+        miniChef.updatePool(pid);
+    }
+
+    // @dev yAudit-15 accRewardPerShare could overflow PoC test
+    function test_rewardShareOverflow() public {
+        miniChef.setRewardPerSecond(miniChef.MAX_REWARD_TOKEN_PER_SECOND());
+        miniChef.add(type(uint32).max, lpToken, IMiniChefV3Rewarder(address(0)));
+        uint256 rewardCommitment = 10_000_000_000e18;
+        rewardToken.mint(address(this), rewardCommitment);
+        rewardToken.approve(address(miniChef), rewardCommitment);
+        miniChef.commitReward(rewardCommitment);
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1;
+        lpToken.mint(alice, amount);
+
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, 1, alice);
+
+        vm.warp(block.timestamp + 100_000_000 * 52 weeks);
+        miniChef.updatePool(pid);
+
+        vm.warp(block.timestamp + 100_000_000 * 52 weeks);
+        miniChef.updatePool(pid);
+
+        vm.warp(block.timestamp + 100_000_000 * 52 weeks);
+        vm.expectRevert(stdError.arithmeticError);
+        miniChef.updatePool(pid);
     }
 }
