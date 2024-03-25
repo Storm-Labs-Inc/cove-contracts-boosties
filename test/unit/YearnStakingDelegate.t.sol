@@ -57,6 +57,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     event CoveYfiRewardForwarderSet(address forwarder);
     event Deposit(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
+    event DepositLimitSet(address indexed gaugeToken, uint256 limit);
 
     function setUp() public override {
         super.setUp();
@@ -305,6 +306,35 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.earlyUnlock();
     }
 
+    function testFuzz_setDepositLimit(uint256 limit) public {
+        vm.assume(limit > 0);
+        _addTestGaugeRewards();
+        vm.expectEmit();
+        emit DepositLimitSet(testGauge, limit);
+        vm.prank(timelock);
+        yearnStakingDelegate.setDepositLimit(testGauge, limit);
+        assertEq(yearnStakingDelegate.depositLimit(testGauge), limit, "setDepositLimit failed");
+    }
+
+    function testFuzz_availableDepositLimit(uint256 amount) public {
+        vm.assume(amount > 1);
+        _addTestGaugeRewards();
+
+        uint256 availableDepositLimit = yearnStakingDelegate.availableDepositLimit(testGauge);
+        assertEq(availableDepositLimit, 0, "default availableDepositLimit should be 0");
+
+        vm.prank(timelock);
+        yearnStakingDelegate.setDepositLimit(testGauge, 1);
+        availableDepositLimit = yearnStakingDelegate.availableDepositLimit(testGauge);
+        assertEq(availableDepositLimit, 1, "setDepositLimit failed");
+
+        // Deposit more than the available limit
+        _depositGaugeTokensToYSD(alice, amount);
+
+        availableDepositLimit = yearnStakingDelegate.availableDepositLimit(testGauge);
+        assertEq(availableDepositLimit, 0, "availableDepositLimit failed");
+    }
+
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount > 0);
         _addTestGaugeRewards();
@@ -314,6 +344,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(yearnStakingDelegate.balanceOf(alice, testGauge), amount, "deposit failed");
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
         assertEq(IERC20(testGauge).balanceOf(alice), 0, "deposit failed");
+        assertEq(yearnStakingDelegate.totalDeposited(testGauge), amount, "deposit failed");
     }
 
     function testFuzz_deposit_revertWhen_GaugeRewardsNotYetAdded(uint256 amount) public {

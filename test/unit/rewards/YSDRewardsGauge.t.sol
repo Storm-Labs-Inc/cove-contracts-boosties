@@ -38,10 +38,10 @@ contract YSDRewardsGauge_Test is BaseTest {
         // clone the implementation
         rewardsGauge = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
         vm.label(address(rewardsGauge), "rewardsGauge");
-        vm.prank(admin);
 
         // Mock YearnGaugeStrategy for establishing max deposit limit
         strategy = YearnGaugeStrategy(createUser("strategy"));
+        vm.prank(admin);
         rewardsGauge.initialize(address(dummyGaugeAsset), address(ysd), address(strategy));
     }
 
@@ -122,6 +122,47 @@ contract YSDRewardsGauge_Test is BaseTest {
         );
         vm.expectRevert("ERC4626: deposit more than max");
         rewardsGauge.deposit(amount, alice);
+    }
+
+    function testFuzz_deposit_revertWhen_Paused(uint256 amount) public {
+        vm.assume(amount > 0);
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.prank(admin);
+        rewardsGauge.pause();
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(rewardsGauge), amount);
+        vm.expectRevert("ERC4626: deposit more than max");
+        rewardsGauge.deposit(amount, alice);
+    }
+
+    function test_maxDeposit() public {
+        // set availableDepositLimit to max
+        vm.mockCall(
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(type(uint256).max)
+        );
+        assertEq(rewardsGauge.maxDeposit(address(0)), type(uint256).max, "maxDeposit was not set correctly");
+
+        vm.prank(admin);
+        // pause
+        rewardsGauge.pause();
+        assertEq(rewardsGauge.maxDeposit(address(0)), 0, "maxDeposit was not set correctly");
+    }
+
+    function test_maxMint() public {
+        // set availableDepositLimit to max
+        vm.mockCall(
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(type(uint256).max)
+        );
+        assertEq(rewardsGauge.maxMint(address(0)), type(uint256).max, "maxMint was not set correctly");
+
+        vm.prank(admin);
+        // pause
+        rewardsGauge.pause();
+        assertEq(rewardsGauge.maxMint(address(0)), 0, "maxMint was not set correctly");
     }
 
     function testFuzz_withdraw(uint256 amount) public {
