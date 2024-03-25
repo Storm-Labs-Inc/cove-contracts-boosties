@@ -425,26 +425,48 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param amount LP token amount to withdraw.
      * @param to Receiver of the LP tokens.
      */
-    function withdraw(uint256 pid, uint256 amount, address to) public {
+    function harvestAndWithdraw(uint256 pid, uint256 amount, address to) public {
         if (amount == 0) {
             revert Errors.ZeroAmount();
         }
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][msg.sender];
 
+        uint256 accumulatedReward = user.amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
+        uint256 pendingReward_ = accumulatedReward + user.unpaidRewards - user.rewardDebt;
+
         // Effects
-        user.rewardDebt -= amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
+        user.rewardDebt = accumulatedReward - amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
         user.amount -= amount;
         lpSupply[pid] -= amount;
 
-        emit Withdraw(msg.sender, pid, amount, to);
+        uint256 rewardAmount = 0;
+        if (pendingReward_ != 0) {
+            uint256 availableReward_ = availableReward;
+            uint256 unpaidRewards_ = 0;
+            rewardAmount = pendingReward_ > availableReward_ ? availableReward_ : pendingReward_;
+            /// @dev unchecked is used as the subtraction is guaranteed to not underflow because
+            /// `rewardAmount` is always less than or equal to `availableReward_`.
+            unchecked {
+                availableReward -= rewardAmount;
+                unpaidRewards_ = pendingReward_ - rewardAmount;
+            }
+            user.unpaidRewards = unpaidRewards_;
+            // Interactions
+            if (rewardAmount != 0) {
+                emit Harvest(msg.sender, pid, rewardAmount);
+                // slither-disable-next-line reentrancy-events
+                REWARD_TOKEN.safeTransfer(to, rewardAmount);
+            }
+        }
 
         // Interactions
+        emit Withdraw(msg.sender, pid, amount, to);
         lpToken[pid].safeTransfer(to, amount);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, 0, user.amount);
+            _rewarder.onReward(pid, msg.sender, to, rewardAmount, user.amount);
         }
     }
 

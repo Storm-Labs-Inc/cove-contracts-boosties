@@ -257,8 +257,12 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, 0, alice);
     }
 
-    function test_withdraw() public {
+    function test_harvestAndWithdraw_passWhen_ImmediateWithdraw() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        miniChef.setRewardPerSecond(1e15);
+        rewardToken.mint(address(this), 10e18);
+        rewardToken.approve(address(miniChef), 10e18);
+        miniChef.commitReward(10e18);
         uint256 pid = miniChef.poolLength() - 1;
         uint256 amount = 1e18;
         lpToken.mint(alice, amount);
@@ -267,13 +271,95 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.deposit(pid, amount, alice);
 
         uint256 initialUserAmount = miniChef.getUserInfo(pid, alice).amount;
-        miniChef.withdraw(pid, amount, alice);
-        uint256 newUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        assertEq(initialUserAmount, amount, "User amount not set correctly");
+        uint256 pendingReward = miniChef.pendingReward(pid, alice);
+        assertEq(pendingReward, 0, "Pending rewards should be 0 when no time has passed");
 
-        assertEq(newUserAmount, initialUserAmount - amount, "User amount not updated correctly after withdrawal");
+        miniChef.harvestAndWithdraw(pid, amount, alice);
+        uint256 newUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        uint256 newUserRewardBalance = rewardToken.balanceOf(alice);
+
+        assertEq(newUserAmount, 0, "User amount not updated correctly after withdrawal");
+        assertEq(newUserRewardBalance, 0, "Incorrect reward amount transferred to user");
     }
 
-    function test_withdraw_passWhen_RewarderIsNotZero() public {
+    function test_harvestAndWithdraw_passWhen_RewardAccrued() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        miniChef.setRewardPerSecond(1e15);
+        rewardToken.mint(address(this), 10_000e18);
+        rewardToken.approve(address(miniChef), 10_000e18);
+        miniChef.commitReward(10_000e18);
+
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+
+        // Fast forward to accrue rewards
+        vm.warp(block.timestamp + 1 days);
+
+        uint256 initialUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        assertEq(initialUserAmount, amount, "User amount not set correctly");
+        uint256 initialRewardBalance = rewardToken.balanceOf(alice);
+        assertEq(initialRewardBalance, 0, "Initial reward balance not 0");
+        uint256 pendingReward = miniChef.pendingReward(pid, alice);
+        uint256 expectedTotalReward = miniChef.rewardPerSecond() * 1 days;
+        assertGt(pendingReward, 0, "Pending rewards not accrued correctly");
+        assertEq(pendingReward, expectedTotalReward, "Pending rewards not accrued correctly");
+
+        miniChef.harvestAndWithdraw(pid, amount, alice);
+        uint256 newUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        uint256 newUserRewardBalance = rewardToken.balanceOf(alice);
+
+        assertEq(newUserAmount, 0, "User amount not updated correctly after withdrawal");
+        assertEq(newUserRewardBalance, expectedTotalReward, "Rewards not transferred to user correctly");
+    }
+
+    function test_harvestAndWithdraw_passWhen_PendingRewardGreaterThanAvailableReward() public {
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        miniChef.setRewardPerSecond(1e15);
+        rewardToken.mint(address(this), 1e18);
+        rewardToken.approve(address(miniChef), 1e18);
+        miniChef.commitReward(1e18);
+
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+
+        // Fast forward to accrue rewards
+        vm.warp(block.timestamp + 1 days);
+
+        uint256 initialUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        assertEq(initialUserAmount, amount, "User amount not set correctly");
+
+        uint256 initialRewardBalance = rewardToken.balanceOf(alice);
+        assertEq(initialRewardBalance, 0, "Initial reward balance not 0");
+
+        uint256 pendingReward = miniChef.pendingReward(pid, alice);
+        uint256 expectedTotalReward = miniChef.rewardPerSecond() * 1 days;
+        assertGt(pendingReward, 0, "Pending rewards not accrued correctly");
+        assertEq(pendingReward, expectedTotalReward, "Pending rewards not accrued correctly");
+
+        uint256 availableReward = miniChef.availableReward();
+        assertGt(pendingReward, availableReward, "Pending rewards not greater than available rewards");
+
+        miniChef.harvestAndWithdraw(pid, amount, alice);
+        uint256 newUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        uint256 newUserRewardBalance = rewardToken.balanceOf(alice);
+
+        assertEq(newUserAmount, 0, "User amount not updated correctly after withdrawal");
+        assertEq(newUserRewardBalance, availableReward, "Rewards not transferred to user correctly");
+
+        uint256 newPendingReward = miniChef.pendingReward(pid, alice);
+        assertEq(newPendingReward, pendingReward - newUserRewardBalance, "Pending rewards not updated correctly");
+    }
+
+    function test_harvestAndWithdraw_passWhen_RewarderIsNotZero() public {
         IMiniChefV3Rewarder rewarder = IMiniChefV3Rewarder(address(0xbeef));
         vm.mockCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector), "");
 
@@ -285,10 +371,10 @@ contract MiniChefV3_Test is BaseTest {
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
         vm.expectCall(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector, pid, alice, alice, 0, 0));
-        miniChef.withdraw(pid, amount, alice);
+        miniChef.harvestAndWithdraw(pid, amount, alice);
     }
 
-    function test_withdraw_revertWhen_ZeroAmount() public {
+    function test_harvestAndWithdraw_revertWhen_ZeroAmount() public {
         miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
         uint256 pid = miniChef.poolLength() - 1;
         uint256 amount = 1e18;
@@ -297,7 +383,117 @@ contract MiniChefV3_Test is BaseTest {
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
         vm.expectRevert(Errors.ZeroAmount.selector);
-        miniChef.withdraw(pid, 0, alice);
+        miniChef.harvestAndWithdraw(pid, 0, alice);
+    }
+
+    /// forge-config: default.fuzz.runs = 2048
+    function testFuzz_harvestAndWithdraw(
+        uint256 depositAmount,
+        uint256 withdrawAmount,
+        uint256 stakedDuration
+    )
+        public
+    {
+        // Bound deposit amount between 1 and 10 billion, total supply of Cove DAO token.
+        depositAmount = bound(depositAmount, 1, 10_000_000_000e18);
+        // Bound withdraw amount between 1 and deposit amount.
+        withdrawAmount = bound(withdrawAmount, 1, depositAmount);
+        // Bound total staked duration before harvest between 1 second and 1 year.
+        stakedDuration = bound(stakedDuration, 1, 52 weeks);
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(0)));
+        miniChef.setRewardPerSecond(1e18); // 604_800 Cove DAO tokens per week
+        rewardToken.mint(address(this), 1000e18);
+        rewardToken.approve(address(miniChef), 1000e18);
+        miniChef.commitReward(1000e18);
+        uint256 pid = miniChef.poolLength() - 1;
+        lpToken.mint(alice, depositAmount);
+
+        // Alice deposits to the minichef
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), depositAmount);
+        miniChef.deposit(pid, depositAmount, alice);
+
+        uint256 initialUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        assertEq(initialUserAmount, depositAmount, "User amount not set correctly");
+
+        uint256 initialRewardBalance = rewardToken.balanceOf(alice);
+        assertEq(initialRewardBalance, 0, "Initial reward balance not 0");
+
+        // Fast forward to accrue rewards
+        vm.warp(block.timestamp + stakedDuration);
+
+        uint256 pendingReward = miniChef.pendingReward(pid, alice);
+        uint256 rewardPerSecond = miniChef.rewardPerSecond();
+        assertGt(rewardPerSecond, 0, "Reward per second not greater than 0");
+
+        uint256 expectedTotalReward = rewardPerSecond * stakedDuration;
+        assertApproxEqRel(pendingReward, expectedTotalReward, 0.01e18, "Pending rewards not accrued correctly");
+        assertLe(pendingReward, expectedTotalReward, "Pending rewards is too high");
+
+        uint256 availableReward = miniChef.availableReward();
+
+        // Alice harvests and withdraws from the minichef
+        miniChef.harvestAndWithdraw(pid, withdrawAmount, alice);
+
+        uint256 newUserAmount = miniChef.getUserInfo(pid, alice).amount;
+        uint256 newUserRewardBalance = rewardToken.balanceOf(alice);
+
+        assertEq(newUserAmount, depositAmount - withdrawAmount, "User amount not updated correctly after withdrawal");
+        uint256 aliceUnpaidRewards = miniChef.getUserInfo(pid, alice).unpaidRewards;
+
+        if (pendingReward < availableReward) {
+            assertEq(
+                newUserRewardBalance,
+                pendingReward,
+                "Rewards not transferred to user correctly, when pending reward < available reward"
+            );
+            assertEq(
+                aliceUnpaidRewards, 0, "Unpaid rewards not updated correctly, when pending reward < available reward"
+            );
+        } else {
+            assertEq(
+                newUserRewardBalance,
+                availableReward,
+                "Rewards not transferred to user correctly, when pending reward >= available reward"
+            );
+            assertEq(
+                aliceUnpaidRewards,
+                pendingReward - availableReward,
+                "Unpaid rewards not updated correctly, when pending reward >= available reward"
+            );
+        }
+
+        if (newUserAmount > 0) {
+            // Advance 1 second so pendingReward call uses new accRewardPerShare
+            vm.warp(block.timestamp + 1 seconds);
+            uint256 newPendingReward = miniChef.pendingReward(pid, alice);
+
+            if (pendingReward < availableReward) {
+                assertApproxEqRel(
+                    newPendingReward,
+                    rewardPerSecond,
+                    0.01e18,
+                    "Pending rewards not updated correctly, when pending reward < available reward"
+                );
+                assertLe(
+                    newPendingReward,
+                    rewardPerSecond,
+                    "Pending rewards too high, when pending reward < available reward"
+                );
+            } else {
+                assertApproxEqRel(
+                    newPendingReward,
+                    rewardPerSecond + aliceUnpaidRewards,
+                    0.01e18,
+                    "Pending rewards not updated correctly, when pending reward >= available reward"
+                );
+                assertLe(
+                    newPendingReward,
+                    rewardPerSecond + aliceUnpaidRewards,
+                    "Pending rewards too high, when pending reward >= available reward"
+                );
+            }
+        }
     }
 
     function test_emergencyWithdraw() public {
