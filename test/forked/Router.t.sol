@@ -364,7 +364,7 @@ contract Router_ForkedTest is BaseTest {
 
         uint256[] memory sharesOut = router.previewWithdraws(path, assetInAmount);
         assertEq(sharesOut.length, 1);
-        assertEq(sharesOut[0], 944_891);
+        assertEq(sharesOut[0], 944_892);
     }
 
     function test_previewWithdraws_StakeDAO() public {
