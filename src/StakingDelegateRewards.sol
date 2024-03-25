@@ -397,7 +397,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
         lastUpdateTime[stakingToken] = lastTimeRewardApplicable(stakingToken);
         if (account != address(0)) {
             rewards[account][stakingToken] = _earned(account, stakingToken, currentUserBalance, rewardPerToken_);
-            userRewardPerTokenPaid[account][stakingToken] = rewardPerTokenStored[stakingToken];
+            userRewardPerTokenPaid[account][stakingToken] = rewardPerToken_;
         }
     }
 }
