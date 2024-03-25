@@ -49,6 +49,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     address public treasury;
     address public rewardDistributor;
     address public gaugeRewardReceiver;
+    address public pauser;
+    address public timelock;
 
     function setUp() public override {
         super.setUp();
@@ -58,6 +60,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
         gauge = MAINNET_WETH_YETH_POOL_GAUGE;
         rewardDistributor = createUser("rewardDistributor");
+        pauser = createUser("pauser");
+        timelock = createUser("timelock");
 
         // Deploy Contracts
 
@@ -70,7 +74,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         {
             gaugeRewardReceiver = setUpGaugeRewardReceiverImplementation(admin);
             yearnStakingDelegate =
-                YearnStakingDelegate(new YearnStakingDelegate(gaugeRewardReceiver, treasury, admin, admin, admin));
+                YearnStakingDelegate(new YearnStakingDelegate(gaugeRewardReceiver, treasury, admin, pauser, timelock));
             vm.label(address(yearnStakingDelegate), "yearnStakingDelegate");
             vm.label(yearnStakingDelegate.gaugeRewardReceivers(gauge), "gaugeRewardReceiver");
             stakingDelegateRewards =
@@ -92,6 +96,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // sets gauge as reward and a 100% split to the strategy
             swapAndLock.setDYfiRedeemer(address(dYfiRedeemer));
             yearnStakingDelegate.addGaugeRewards(gauge, address(stakingDelegateRewards));
+            vm.stopPrank();
+            vm.startPrank(timelock);
             yearnStakingDelegate.setSwapAndLock(address(swapAndLock));
             yearnStakingDelegate.setCoveYfiRewardForwarder(address(coveYfiRewardForwarder));
             vm.stopPrank();
@@ -119,7 +125,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
             vm.stopPrank();
-            vm.prank(admin);
+            vm.prank(timelock);
             yearnStakingDelegate.setDepositLimit(gauge, type(uint256).max);
         }
 
@@ -168,6 +174,11 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         IERC20(MAINNET_YFI).approve(MAINNET_VE_YFI, type(uint256).max);
         IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), type(uint256).max);
         vm.stopPrank();
+
+        vm.startPrank(timelock);
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, address(yearnGaugeStrategy));
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, address(ysdRewardsGauge));
+        vm.stopPrank();
     }
 
     /// @dev Mock the price feed for yfi/eth to be latest timestamp to prevent price too old error
@@ -207,7 +218,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
     )
         internal
     {
-        vm.prank(admin);
+        vm.prank(timelock);
         yearnStakingDelegate.setGaugeRewardSplit(gauge, treasurySplit, coveYfiSplit, strategySplit, veYfiSplit);
     }
 
@@ -294,7 +305,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         assertEq(yearnStakingDelegate.harvest(gauge), 0);
     }
 
@@ -317,7 +327,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.RewardRateTooLow.selector));
         yearnStakingDelegate.harvest(gauge);
     }
@@ -345,7 +354,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         yearnStakingDelegate.harvest(gauge);
 
         // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
@@ -430,7 +438,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         );
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         yearnStakingDelegate.harvest(gauge);
 
         // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
@@ -515,7 +522,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         );
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
         totalRewardAmount = totalRewardAmount - stakingDelegateRewards.leftOver(gauge);
 
@@ -567,7 +573,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
         _mockChainlinkPriceFeedTimestamp();
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
 
         // Calculate split amounts strategy split amount
@@ -692,7 +697,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         yearnStakingDelegate.harvest(gauge);
 
         // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them
@@ -755,7 +759,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 14 days);
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         uint256 totalRewardAmount = yearnStakingDelegate.harvest(gauge);
         assertGt(totalRewardAmount, 0, "harvest failed");
         vm.prank(bob);
@@ -790,7 +793,6 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         vm.warp(block.timestamp + 2 weeks);
 
         // yearn staking delegate harvests available rewards
-        vm.prank(admin);
         yearnStakingDelegate.harvest(gauge);
 
         // Staking Delegate Rewards contract has accrued rewards and needs time to unlock them

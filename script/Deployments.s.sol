@@ -192,7 +192,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
 
-        // Set deposit limit for the gauge token
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_WETH_YETH_POOL_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
+        // Set deposit limit for the gauge toke
         YearnStakingDelegate(ysd).setDepositLimit(
             MAINNET_WETH_YETH_POOL_GAUGE, MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT
         );
@@ -219,6 +223,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
 
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
+
         // Set deposit limit for the gauge token
         YearnStakingDelegate(ysd).setDepositLimit(MAINNET_ETH_YFI_GAUGE, MAINNET_ETH_YFI_GAUGE_MAX_DEPOSIT);
     }
@@ -243,6 +252,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_DYFI_ETH_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
 
         // Set deposit limit for the gauge token
         YearnStakingDelegate(ysd).setDepositLimit(MAINNET_DYFI_ETH_GAUGE, MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT);
@@ -269,6 +283,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
 
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_CRV_YCRV_POOL_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
+
         // Set deposit limit for the gauge token
         YearnStakingDelegate(ysd).setDepositLimit(MAINNET_CRV_YCRV_POOL_GAUGE, MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT);
     }
@@ -293,6 +312,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_POOL_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
 
         // Set deposit limit for the gauge token
         YearnStakingDelegate(ysd).setDepositLimit(
@@ -488,6 +512,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", TIMELOCK_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", PAUSER_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", DEPOSITOR_ROLE, 10);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);

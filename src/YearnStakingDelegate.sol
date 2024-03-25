@@ -208,6 +208,7 @@ contract YearnStakingDelegate is
         blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
         blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
         _setRoleAdmin(TIMELOCK_ROLE, TIMELOCK_ROLE);
+        _setRoleAdmin(DEPOSITOR_ROLE, TIMELOCK_ROLE);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(TIMELOCK_ROLE, timelock);
         _grantRole(PAUSER_ROLE, pauser);
@@ -223,7 +224,7 @@ contract YearnStakingDelegate is
      * @param gauge The address of the gauge token to deposit.
      * @param amount The amount of tokens to deposit.
      */
-    function deposit(address gauge, uint256 amount) external whenNotPaused {
+    function deposit(address gauge, uint256 amount) external onlyRole(DEPOSITOR_ROLE) whenNotPaused {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();

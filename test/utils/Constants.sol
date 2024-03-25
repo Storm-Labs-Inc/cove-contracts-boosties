@@ -13,6 +13,7 @@ contract Constants is CommonBase {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
 
     // Ethereum mainnet addresses
     // Tokens
