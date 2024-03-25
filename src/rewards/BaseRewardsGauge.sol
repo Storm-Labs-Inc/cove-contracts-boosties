@@ -412,11 +412,11 @@ abstract contract BaseRewardsGauge is
         if (integral > integralFor) {
             // @dev unchecked is used as the subtraction is guaranteed to not underflow because
             // `integral` is always greater than `integralFor`.
-            uint256 currentIntegral = 0;
+            uint256 newUserIntegral = 0;
             unchecked {
-                currentIntegral = integral - integralFor;
+                newUserIntegral = integral - integralFor;
             }
-            newClaimable = userBalance * currentIntegral / _PRECISION;
+            newClaimable = userBalance * newUserIntegral / _PRECISION;
             rewardIntegralFor[token][user] = integral;
         }
 
