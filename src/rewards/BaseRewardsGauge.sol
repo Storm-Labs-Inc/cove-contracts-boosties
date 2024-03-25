@@ -79,8 +79,6 @@ abstract contract BaseRewardsGauge is
     error RewardTokenAlreadyAdded();
     /// @dev Error indicating an unauthorized action was attempted.
     error Unauthorized();
-    /// @dev Error indicating that the distributor address has not been set.
-    error DistributorNotSet();
     /// @dev Error indicating that an invalid distributor address was provided.
     error InvalidDistributorAddress();
     /// @dev Error indicating that the reward amount is too low.
@@ -89,6 +87,8 @@ abstract contract BaseRewardsGauge is
     error ZeroAddress();
     /// @dev Error indicating that the reward token cannot be the same as the asset token.
     error RewardCannotBeAsset();
+    /// @dev Error indication that the reward token has not been added.
+    error RewardTokenNotAdded();
 
     /**
      * @notice Event emitted when a reward token is added to the gauge.
@@ -251,7 +251,7 @@ abstract contract BaseRewardsGauge is
             revert Unauthorized();
         }
         if (currentDistributor == address(0)) {
-            revert DistributorNotSet();
+            revert RewardTokenNotAdded();
         }
         if (distributor == address(0)) {
             revert InvalidDistributorAddress();
@@ -269,7 +269,11 @@ abstract contract BaseRewardsGauge is
      */
     function depositRewardToken(address rewardToken, uint256 amount) external nonReentrant {
         Reward storage reward = _rewardData[rewardToken];
-        if (!(msg.sender == reward.distributor || hasRole(MANAGER_ROLE, msg.sender))) {
+        address distributor = reward.distributor;
+        if (distributor == address(0)) {
+            revert RewardTokenNotAdded();
+        }
+        if (!(msg.sender == distributor || hasRole(MANAGER_ROLE, msg.sender))) {
             revert Unauthorized();
         }
         _checkpointRewards(address(0), totalSupply(), false, address(0));
