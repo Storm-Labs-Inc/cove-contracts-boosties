@@ -62,10 +62,11 @@ contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     }
 
     /**
-     * @notice Locks YFI in the YearnStakingDelegate contract.
+     * @notice Converts any YFI held by this contract to CoveYFI, minting CoveYFI to the treasury. YFI will be locked as
+     * veYFI under YearnStakingDelegate's ownership.
      * @return The amount of coveYFI minted.
      */
-    function lockYfi() external returns (uint256) {
+    function convertToCoveYfi() external returns (uint256) {
         address treasury = IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).treasury();
         return CoveYFI(_COVE_YFI).deposit(IERC20(_YFI).balanceOf(address(this)), treasury);
     }

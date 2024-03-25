@@ -51,7 +51,7 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
 
         // Check for the new veYFI balance
         vm.prank(admin);
-        uint256 coveYfiMinted = ISwapAndLock(swapAndLock).lockYfi();
+        uint256 coveYfiMinted = ISwapAndLock(swapAndLock).convertToCoveYfi();
         assertEq(coveYfiMinted, yfiAmount, "Incorrect coveYFI mint");
     }
 }

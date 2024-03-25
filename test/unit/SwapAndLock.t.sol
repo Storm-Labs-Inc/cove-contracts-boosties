@@ -50,7 +50,7 @@ contract SwapAndLock_Test is BaseTest {
         uint256 yfiAmount = 10e18;
         airdrop(IERC20(yfi), swapAndLock, yfiAmount);
         vm.prank(admin);
-        ISwapAndLock(swapAndLock).lockYfi();
+        ISwapAndLock(swapAndLock).convertToCoveYfi();
         assertEq(IERC20(yfi).balanceOf(address(swapAndLock)), 0);
         assertEq(IERC20(coveYfi).balanceOf(address(treasury)), yfiAmount);
     }
