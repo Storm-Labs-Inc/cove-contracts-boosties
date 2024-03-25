@@ -547,7 +547,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
             uint256 gasBefore = gasleft();
-            // slither-disable-next-line missing-zero-check
+            // slither-disable-next-line missing-zero-check,return-bomb,low-level-calls
             (bool success,) = address(_rewarder).call{ gas: gasBefore }(
                 abi.encodeWithSignature("onReward(uint256,address,address,uint256,uint256)", pid, msg.sender, to, 0, 0)
             );
