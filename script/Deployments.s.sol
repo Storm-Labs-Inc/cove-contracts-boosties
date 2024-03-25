@@ -196,7 +196,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_WETH_YETH_POOL_GAUGE);
         YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
         YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
-        // Set deposit limit for the gauge toke
+        // Set deposit limit for the gauge token
         YearnStakingDelegate(ysd).setDepositLimit(
             MAINNET_WETH_YETH_POOL_GAUGE, MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT
         );
