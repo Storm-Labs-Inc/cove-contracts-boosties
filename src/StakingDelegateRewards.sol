@@ -332,7 +332,7 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
             account,
             stakingToken,
             IYearnStakingDelegate(_STAKING_DELEGATE).balanceOf(account, stakingToken),
-            IYearnStakingDelegate(_STAKING_DELEGATE).totalDeposited(stakingToken)
+            _rewardPerToken(stakingToken, IYearnStakingDelegate(_STAKING_DELEGATE).totalDeposited(stakingToken))
         );
     }
 
@@ -340,17 +340,14 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
         address account,
         address stakingToken,
         uint256 userBalance,
-        uint256 totalDeposited
+        uint256 rewardPerToken_
     )
         internal
         view
         returns (uint256)
     {
         return rewards[account][stakingToken]
-            + (
-                userBalance
-                    * (_rewardPerToken(stakingToken, totalDeposited) - userRewardPerTokenPaid[account][stakingToken]) / 1e18
-            );
+            + (userBalance * (rewardPerToken_ - userRewardPerTokenPaid[account][stakingToken]) / 1e18);
     }
 
     /**
@@ -395,10 +392,11 @@ contract StakingDelegateRewards is IStakingDelegateRewards, AccessControlEnumera
     )
         internal
     {
-        rewardPerTokenStored[stakingToken] = _rewardPerToken(stakingToken, currentTotalDeposited);
+        uint256 rewardPerToken_ = _rewardPerToken(stakingToken, currentTotalDeposited);
+        rewardPerTokenStored[stakingToken] = rewardPerToken_;
         lastUpdateTime[stakingToken] = lastTimeRewardApplicable(stakingToken);
         if (account != address(0)) {
-            rewards[account][stakingToken] = _earned(account, stakingToken, currentUserBalance, currentTotalDeposited);
+            rewards[account][stakingToken] = _earned(account, stakingToken, currentUserBalance, rewardPerToken_);
             userRewardPerTokenPaid[account][stakingToken] = rewardPerTokenStored[stakingToken];
         }
     }
