@@ -192,6 +192,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_WETH_YETH_POOL_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
     }
 
     function deployEthYfiCoveStrategy(address ysd)
@@ -215,6 +220,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
     }
 
     function deployEthDyfiCoveStrategy(address ysd)
@@ -238,6 +248,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_DYFI_ETH_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
     }
 
     function deployCrvYcrvCoveStrategy(address ysd)
@@ -261,6 +276,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_CRV_YCRV_POOL_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
     }
 
     function deployPrismaYprismaCoveStrategy(address ysd)
@@ -284,6 +304,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_POOL_GAUGE);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
     }
 
     function deployMasterRegistry() public broadcast deployIfMissing("MasterRegistry") returns (address) {
@@ -474,6 +499,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", TIMELOCK_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", PAUSER_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", DEPOSITOR_ROLE, 10);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);
