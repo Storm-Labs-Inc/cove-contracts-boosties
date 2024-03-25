@@ -70,6 +70,9 @@ contract YearnStakingDelegate is
     mapping(address => mapping(address => uint256)) public balanceOf;
     /// @notice Mapping of gauge token address to the total amount deposited in this contract.
     mapping(address => uint256) public totalDeposited;
+    /// @notice Mapping of gauge token addresses to their corresponding deposit limits. Note that this is the ideal
+    /// limit, which should be enforced by the depositing contracts
+    mapping(address => uint256) public depositLimits;
     /// @notice Mapping of target addresses to a boolean indicating whether the target is blocked.
     mapping(address => bool) public blockedTargets;
     /// @dev Mapping of vault addresses to their corresponding RewardSplit configuration.
@@ -126,6 +129,12 @@ contract YearnStakingDelegate is
      */
     event ExitRewardSplitSet(uint128 treasuryPct, uint128 coveYfiPct);
     /**
+     * @notice Emitted when a deposit limit is set.
+     * @param gaugeToken The address of the gauge token for which the deposit limit is set.
+     * @param limit The deposit limit.
+     */
+    event DepositLimitSet(address indexed gaugeToken, uint256 limit);
+    /**
      * @notice Emitted when the swap and lock contract address is set.
      * @param swapAndLockContract The address of the swap and lock contract.
      */
@@ -141,19 +150,21 @@ contract YearnStakingDelegate is
      */
     event CoveYfiRewardForwarderSet(address forwarder);
     /**
-     * @notice Emitted when a deposit is made into a gauge.
+     * @notice Emitted when a gauge token is deposited
      * @param sender The address of the sender who made the deposit.
-     * @param gauge The address of the gauge where the deposit was made.
+     * @param gauge The address of the gauge token deposited.
      * @param amount The amount of tokens deposited.
+     * @param newTotalDeposited The new total amount of the gauge tokens deposited across all users.
      */
-    event Deposit(address indexed sender, address indexed gauge, uint256 amount);
+    event Deposit(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
     /**
-     * @notice Emitted when a withdrawal is made from a gauge.
+     * @notice Emitted when a gauge token is withdrawn
      * @param sender The address of the sender who made the withdrawal.
-     * @param gauge The address of the gauge from which the withdrawal was made.
+     * @param gauge The address of the gauge token withdrawn.
      * @param amount The amount of tokens withdrawn.
+     * @param newTotalDeposited The new total amount of the gauge tokens deposited across all users.
      */
-    event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
+    event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
 
     /**
      * @dev Initializes the contract by setting up roles and initializing state variables.
@@ -222,12 +233,13 @@ contract YearnStakingDelegate is
             revert Errors.GaugeRewardsNotYetAdded();
         }
         // Effects
-        uint256 currentUserBalance = balanceOf[msg.sender][gauge];
         uint256 currentTotalDeposited = totalDeposited[gauge];
+        uint256 currentUserBalance = balanceOf[msg.sender][gauge];
+        uint256 newTotalDeposited = currentTotalDeposited + amount;
         balanceOf[msg.sender][gauge] = currentUserBalance + amount;
-        totalDeposited[gauge] = currentTotalDeposited + amount;
+        totalDeposited[gauge] = newTotalDeposited;
         // Interactions
-        emit Deposit(msg.sender, gauge, amount);
+        emit Deposit(msg.sender, gauge, amount, newTotalDeposited);
         _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, currentUserBalance, currentTotalDeposited);
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -258,10 +270,11 @@ contract YearnStakingDelegate is
         // Effects
         uint256 currentUserBalance = balanceOf[msg.sender][gauge];
         uint256 currentTotalDeposited = totalDeposited[gauge];
+        uint256 newTotalDeposited = currentTotalDeposited - amount;
         balanceOf[msg.sender][gauge] = currentUserBalance - amount;
-        totalDeposited[gauge] = currentTotalDeposited - amount;
+        totalDeposited[gauge] = newTotalDeposited;
         // Interactions
-        emit Withdraw(msg.sender, gauge, amount);
+        emit Withdraw(msg.sender, gauge, amount, newTotalDeposited);
         _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, currentUserBalance, currentTotalDeposited);
         IERC20(gauge).safeTransfer(receiver, amount);
     }
@@ -433,6 +446,18 @@ contract YearnStakingDelegate is
      */
     function setExitRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external onlyRole(TIMELOCK_ROLE) {
         _setExitRewardSplit(treasuryPct, coveYfiPct);
+    }
+
+    /**
+     * @notice Set the deposit limit for a gauge token. This is the ideal limit, which should be enforced by the
+     * depositing contracts.
+     * @param gaugeToken address of the gauge token
+     * @param limit maximum amount of tokens that can be deposited
+     */
+    function setDepositLimit(address gaugeToken, uint256 limit) external onlyRole(TIMELOCK_ROLE) {
+        // Effects
+        emit DepositLimitSet(gaugeToken, limit);
+        depositLimits[gaugeToken] = limit;
     }
 
     /**
