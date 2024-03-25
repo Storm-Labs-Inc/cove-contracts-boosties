@@ -8,19 +8,24 @@ import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.so
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { Errors } from "src/libraries/Errors.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
+import { MockCoveYFI } from "test/mocks/MockCoveYFI.sol";
 
 contract SwapAndLock_Test is BaseTest {
     address public yearnStakingDelegate;
     address public swapAndLock;
     address public admin;
+    address public treasury;
     address public yfi;
     address public dYfi;
+    address public coveYfi;
 
     event DYfiRedeemerSet(address oldRedeemer, address newRedeemer);
 
     function setUp() public override {
         super.setUp();
         admin = createUser("admin");
+        treasury = createUser("treasury");
 
         // Deploy mock tokens
         yfi = MAINNET_YFI;
@@ -30,9 +35,15 @@ contract SwapAndLock_Test is BaseTest {
 
         // Deploy mock contracts to be called in SwapAndLock
         yearnStakingDelegate = address(new MockYearnStakingDelegate());
+        coveYfi = address(new MockCoveYFI(yfi));
 
         // Deploy SwapAndLock
-        swapAndLock = address(new SwapAndLock(yearnStakingDelegate, admin));
+        swapAndLock = address(new SwapAndLock(yearnStakingDelegate, coveYfi, admin));
+
+        // Mock yearnStakingDelegate.treasury()
+        vm.mockCall(
+            yearnStakingDelegate, abi.encodeWithSelector(IYearnStakingDelegate.treasury.selector), abi.encode(treasury)
+        );
     }
 
     function test_lockYfi() public {
@@ -41,6 +52,7 @@ contract SwapAndLock_Test is BaseTest {
         vm.prank(admin);
         ISwapAndLock(swapAndLock).lockYfi();
         assertEq(IERC20(yfi).balanceOf(address(swapAndLock)), 0);
+        assertEq(IERC20(coveYfi).balanceOf(address(treasury)), yfiAmount);
     }
 
     function testFuzz_setDYfiRedeemer(address a) public {

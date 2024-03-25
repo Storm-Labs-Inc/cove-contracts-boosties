@@ -75,11 +75,11 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             vm.label(yearnStakingDelegate.gaugeRewardReceivers(gauge), "gaugeRewardReceiver");
             stakingDelegateRewards =
                 StakingDelegateRewards(setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate)));
-            swapAndLock = SwapAndLock(setUpSwapAndLock(admin, address(yearnStakingDelegate)));
-            dYfiRedeemer = new DYFIRedeemer(admin);
-            vm.label(address(dYfiRedeemer), "dYfiRedeemer");
             coveYfi = new CoveYFI(address(yearnStakingDelegate), admin);
             vm.label(address(coveYfi), "coveYfi");
+            swapAndLock = SwapAndLock(setUpSwapAndLock(admin, address(yearnStakingDelegate), address(coveYfi)));
+            dYfiRedeemer = new DYFIRedeemer(admin);
+            vm.label(address(dYfiRedeemer), "dYfiRedeemer");
             coveYfiRewardsGauge = ERC20RewardsGauge(_cloneContract(erc20RewardsGaugeImplementation));
             coveYfiRewardsGauge.initialize(address(coveYfi));
             coveYfiRewardForwarder = RewardForwarder(_cloneContract(rewardForwarderImplementation));

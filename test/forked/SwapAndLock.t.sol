@@ -3,13 +3,14 @@ pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest } from "test/utils/YearnV3BaseTest.t.sol";
 import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
-import { IVotingYFI } from "src/interfaces/deps/yearn/veYFI/IVotingYFI.sol";
+import { CoveYFI } from "src/CoveYFI.sol";
 import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 import { IDYFIRedeemer } from "src/interfaces/IDYFIRedeemer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SwapAndLock_ForkedTest is YearnV3BaseTest {
     address public yearnStakingDelegate;
+    address public coveYfi;
     address public swapAndLock;
     address public dYfiRedeemer;
 
@@ -20,7 +21,8 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
         redeemCaller = createUser("redeemCaller");
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
         yearnStakingDelegate = setUpYearnStakingDelegate(receiver, admin, admin, admin, admin);
-        swapAndLock = setUpSwapAndLock(admin, yearnStakingDelegate);
+        coveYfi = address(new CoveYFI(yearnStakingDelegate, admin));
+        swapAndLock = setUpSwapAndLock(admin, yearnStakingDelegate, coveYfi);
         dYfiRedeemer = setUpDYfiRedeemer(admin);
         vm.startPrank(admin);
         IYearnStakingDelegate(yearnStakingDelegate).setSwapAndLock(swapAndLock);
@@ -49,13 +51,7 @@ contract SwapAndLock_ForkedTest is YearnV3BaseTest {
 
         // Check for the new veYFI balance
         vm.prank(admin);
-        IVotingYFI.LockedBalance memory lockedBalance = ISwapAndLock(swapAndLock).lockYfi();
-        assertApproxEqRel(lockedBalance.amount, yfiAmount, 0.001e18, "lockYfi failed: locked amount is incorrect");
-        assertApproxEqRel(
-            lockedBalance.end,
-            block.timestamp + 4 * 365 days + 4 weeks,
-            0.001e18,
-            "lockYfi failed: locked end timestamp is incorrect"
-        );
+        uint256 coveYfiMinted = ISwapAndLock(swapAndLock).lockYfi();
+        assertEq(coveYfiMinted, yfiAmount, "Incorrect coveYFI mint");
     }
 }

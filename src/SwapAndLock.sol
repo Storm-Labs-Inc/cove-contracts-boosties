@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IYearnStakingDelegate, IVotingYFI } from "src/interfaces/IYearnStakingDelegate.sol";
 import { ISwapAndLock } from "src/interfaces/ISwapAndLock.sol";
+import { CoveYFI } from "./CoveYFI.sol";
 
 /**
  * @title SwapAndLock
@@ -28,6 +29,7 @@ contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     /// @dev Address of the YearnStakingDelegate contract, set at deployment and immutable thereafter.
     // slither-disable-next-line naming-convention
     address private immutable _YEARN_STAKING_DELEGATE;
+    address private immutable _COVE_YFI;
 
     /// @notice Address of the DYfiRedeemer contract.
     address private _dYfiRedeemer;
@@ -42,26 +44,30 @@ contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     /**
      * @notice Constructs the SwapAndLock contract.
      * @param yearnStakingDelegate_ Address of the YearnStakingDelegate contract.
+     * @param coveYfi_ Address of the CoveYFI contract.
+     * @param admin Address of the contract admin for rescuing tokens.
      */
     // slither-disable-next-line locked-ether
-    constructor(address yearnStakingDelegate_, address admin) payable {
+    constructor(address yearnStakingDelegate_, address coveYfi_, address admin) payable {
         // Checks
-        if (yearnStakingDelegate_ == address(0)) {
+        if (coveYfi_ == address(0)) {
             revert Errors.ZeroAddress();
         }
         // Effects
         _YEARN_STAKING_DELEGATE = yearnStakingDelegate_;
+        _COVE_YFI = coveYfi_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         // Interactions
-        IERC20(_YFI).forceApprove(yearnStakingDelegate_, type(uint256).max);
+        IERC20(_YFI).forceApprove(coveYfi_, type(uint256).max);
     }
 
     /**
      * @notice Locks YFI in the YearnStakingDelegate contract.
-     * @return The total amount of YFI locked and the end timestamp of the lock after the lock operation.
+     * @return The amount of coveYFI minted.
      */
-    function lockYfi() external returns (IVotingYFI.LockedBalance memory) {
-        return IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).lockYfi(IERC20(_YFI).balanceOf(address(this)));
+    function lockYfi() external returns (uint256) {
+        address treasury = IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).treasury();
+        return CoveYFI(_COVE_YFI).deposit(IERC20(_YFI).balanceOf(address(this)), treasury);
     }
 
     /**

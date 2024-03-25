@@ -10,11 +10,13 @@ import { IYearnStakingDelegate, YearnStakingDelegate } from "src/YearnStakingDel
 import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import { CoveYFI } from "src/CoveYFI.sol";
 
 contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
     YearnStakingDelegate public yearnStakingDelegate;
+    address public coveYfi;
     address public gauge;
     address public vault;
     address public stakingDelegateRewards;
@@ -59,7 +61,8 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
         yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, pauser, timelock);
         stakingDelegateRewards = setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate));
-        swapAndLock = setUpSwapAndLock(admin, address(yearnStakingDelegate));
+        coveYfi = address(new CoveYFI(address(yearnStakingDelegate), admin));
+        swapAndLock = setUpSwapAndLock(admin, address(yearnStakingDelegate), coveYfi);
 
         // Setup approvals for YFI spending
         vm.startPrank(alice);
