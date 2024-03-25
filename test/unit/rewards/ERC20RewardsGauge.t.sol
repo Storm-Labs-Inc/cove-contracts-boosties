@@ -168,7 +168,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
     }
 
     function test_setRewardDistributor_revertWhen_distributorNotSet() public {
-        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.DistributorNotSet.selector));
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.RewardTokenNotAdded.selector));
         vm.prank(manager);
         rewardsGauge.setRewardDistributor(address(1), address(2));
     }
@@ -315,6 +315,12 @@ contract ERC20RewardsGauge_Test is BaseTest {
         rewardsGauge.addReward(address(dummyRewardToken), distributor);
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.Unauthorized.selector));
+        rewardsGauge.depositRewardToken(address(dummyRewardToken), 1e20);
+    }
+
+    function test_depositRewardToken_revertWhen_rewardTokenNotAdded(address user) public {
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(BaseRewardsGauge.RewardTokenNotAdded.selector));
         rewardsGauge.depositRewardToken(address(dummyRewardToken), 1e20);
     }
 
