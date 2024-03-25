@@ -26,10 +26,12 @@ contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     address private constant _D_YFI = 0x41252E8691e964f7DE35156B68493bAb6797a275;
 
     // Immutables
+    // slither-disable-start naming-convention
     /// @dev Address of the YearnStakingDelegate contract, set at deployment and immutable thereafter.
-    // slither-disable-next-line naming-convention
     address private immutable _YEARN_STAKING_DELEGATE;
+    /// @dev Address of the CoveYFI contract, set at deployment and immutable thereafter.
     address private immutable _COVE_YFI;
+    // slither-disable-end naming-convention
 
     /// @notice Address of the DYfiRedeemer contract.
     address private _dYfiRedeemer;
@@ -50,7 +52,7 @@ contract SwapAndLock is ISwapAndLock, AccessControlEnumerable {
     // slither-disable-next-line locked-ether
     constructor(address yearnStakingDelegate_, address coveYfi_, address admin) payable {
         // Checks
-        if (coveYfi_ == address(0)) {
+        if (coveYfi_ == address(0) || yearnStakingDelegate_ == address(0)) {
             revert Errors.ZeroAddress();
         }
         // Effects

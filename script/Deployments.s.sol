@@ -141,9 +141,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 "StakingDelegateRewards", MAINNET_DYFI, address(ysd), admin, timeLock, options
             )
         );
-        address swapAndLock = address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), broadcaster, options));
         deployer.deploy_DYFIRedeemer("DYFIRedeemer", admin, options);
-        deployer.deploy_CoveYFI("CoveYFI", address(ysd), admin, options);
+        address coveYfi = address(deployer.deploy_CoveYFI("CoveYFI", address(ysd), admin, options));
+        address swapAndLock =
+            address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), coveYfi, broadcaster, options));
+
         // Admin transactions
         SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYFIRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
