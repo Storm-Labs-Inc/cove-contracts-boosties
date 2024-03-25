@@ -282,7 +282,12 @@ abstract contract BaseRewardsGauge is
         // slither-disable-next-line timestamp
         uint256 leftOver = reward.leftOver;
         if (block.timestamp < periodFinish) {
-            uint256 remaining = periodFinish - block.timestamp;
+            // @dev unchecked is used as the subtraction is guaranteed to not underflow because
+            // `block.timestamp` is always less than `periodFinish`.
+            uint256 remaining;
+            unchecked {
+                remaining = periodFinish - block.timestamp;
+            }
             leftOver = leftOver + remaining * reward.rate;
         }
         uint256 newRewardAmount = amount + leftOver;
@@ -409,7 +414,13 @@ abstract contract BaseRewardsGauge is
         uint256 newClaimable = 0;
         // slither-disable-next-line timestamp
         if (integral > integralFor) {
-            newClaimable = userBalance * (integral - integralFor) / _PRECISION;
+            // @dev unchecked is used as the subtraction is guaranteed to not underflow because
+            // `integral` is always greater than `integralFor`.
+            uint256 newUserIntegral = 0;
+            unchecked {
+                newUserIntegral = integral - integralFor;
+            }
+            newClaimable = userBalance * newUserIntegral / _PRECISION;
             rewardIntegralFor[token][user] = integral;
         }
 
