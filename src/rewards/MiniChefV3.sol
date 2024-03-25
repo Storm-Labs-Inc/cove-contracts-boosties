@@ -347,7 +347,12 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
         if (block.timestamp > pool.lastRewardTime) {
             if (lpSupply_ != 0) {
                 if (totalAllocPoint_ != 0) {
-                    uint256 time = block.timestamp - pool.lastRewardTime;
+                    // @dev unchecked is used as the subtraction is guaranteed to not underflow because
+                    // `block.timestamp` is always greater than `pool.lastRewardTime`.
+                    uint256 time;
+                    unchecked {
+                        time = block.timestamp - pool.lastRewardTime;
+                    }
                     // Explicitly round down when calculating the reward
                     // slither-disable-start divide-before-multiply
                     uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
@@ -372,7 +377,12 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
             uint256 totalAllocPoint_ = totalAllocPoint;
             if (lpSupply_ != 0) {
                 if (totalAllocPoint_ != 0) {
-                    uint256 time = block.timestamp - pool.lastRewardTime;
+                    // @dev unchecked is used as the subtraction is guaranteed to not underflow because
+                    // `block.timestamp` is always greater than `pool.lastRewardTime`.
+                    uint256 time;
+                    unchecked {
+                        time = block.timestamp - pool.lastRewardTime;
+                    }
                     // Explicitly round down when calculating the reward
                     // slither-disable-start divide-before-multiply
                     uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
