@@ -552,6 +552,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
                 abi.encodeWithSignature("onReward(uint256,address,address,uint256,uint256)", pid, msg.sender, to, 0, 0)
             );
             if (!success) {
+                //slither-disable-next-line reentrancy-events
                 emit LogRewarderEmergencyWithdrawFaulty(msg.sender, pid, amount, to);
             }
             require(gasleft() > gasBefore / 63);
