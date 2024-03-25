@@ -201,7 +201,7 @@ contract ERC20RewardsGauge_Test is BaseTest {
         airdrop(dummyGaugeAsset, alice, amount);
         vm.startPrank(alice);
         dummyGaugeAsset.approve(address(rewardsGauge), amount);
-        vm.expectRevert("Pausable: paused");
+        vm.expectRevert("ERC4626: deposit more than max");
         rewardsGauge.deposit(amount, alice);
     }
 

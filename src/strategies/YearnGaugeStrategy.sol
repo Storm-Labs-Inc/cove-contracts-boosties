@@ -22,9 +22,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     /// @notice Parameters for Curve swap used during harvest
     CurveSwapParams internal _harvestSwapParams;
 
-    /// @notice Maximum total assets that the strategy can manage
-    uint256 private _maxTotalAssets;
-
     /// @notice Address of the contract that will be redeeming dYFI for YFI for this strategy
     address private _dYfiRedeemer;
 
@@ -63,14 +60,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     }
 
     /**
-     * @notice Sets the maximum total assets the strategy can manage
-     * @param newMaxTotalAssets The maximum total assets
-     */
-    function setMaxTotalAssets(uint256 newMaxTotalAssets) external onlyManagement {
-        _maxTotalAssets = newMaxTotalAssets;
-    }
-
-    /**
      * @notice Sets the address of the contract that will be redeeming dYFI
      * @param newDYfiRedeemer The address of the new dYFI redeemer contract
      */
@@ -94,14 +83,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
     }
 
     /**
-     * @notice Get the max total assets the strategy can manage
-     * @return The maximum total assets
-     */
-    function maxTotalAssets() external view returns (uint256) {
-        return _maxTotalAssets;
-    }
-
-    /**
      * @notice Get the address of the contract that will be redeeming dYFI from this strategy
      * @return The address of the dYFI redeemer contract
      */
@@ -114,16 +95,7 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      * @return The strategy's available deposit limit
      */
     function availableDepositLimit(address) public view override returns (uint256) {
-        uint256 currentTotalAssets = TokenizedStrategy.totalAssets();
-        uint256 currentMaxTotalAssets = _maxTotalAssets;
-        if (currentTotalAssets >= currentMaxTotalAssets) {
-            return 0;
-        }
-        // Return the difference between the max total assets and the current total assets, an underflow is not possible
-        // due to the above check
-        unchecked {
-            return currentMaxTotalAssets - currentTotalAssets;
-        }
+        return IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).availableDepositLimit(address(asset));
     }
 
     /**

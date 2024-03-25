@@ -15,6 +15,7 @@ import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateReward
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 import { DYFIRedeemer } from "src/DYFIRedeemer.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
 contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -72,8 +73,12 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
             curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
-            yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
             vm.stopPrank();
+            vm.mockCall(
+                address(mockYearnStakingDelegate),
+                abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, gauge),
+                abi.encode(type(uint256).max)
+            );
         }
     }
 

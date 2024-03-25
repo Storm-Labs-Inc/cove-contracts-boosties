@@ -118,8 +118,9 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
-            yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
             vm.stopPrank();
+            vm.prank(admin);
+            yearnStakingDelegate.setDepositLimit(gauge, type(uint256).max);
         }
 
         // Reward Gauges

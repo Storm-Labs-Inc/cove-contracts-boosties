@@ -55,8 +55,8 @@ contract YearnStakingDelegate_Test is BaseTest {
     event SwapAndLockSet(address swapAndLockContract);
     event TreasurySet(address newTreasury);
     event CoveYfiRewardForwarderSet(address forwarder);
-    event Deposit(address indexed sender, address indexed gauge, uint256 amount);
-    event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
+    event Deposit(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
+    event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
 
     function setUp() public override {
         super.setUp();
@@ -168,11 +168,12 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function _depositGaugeTokensToYSD(address from, uint256 amount) internal {
+        uint256 currentTotalDeposited = yearnStakingDelegate.totalDeposited(testGauge);
         _airdropGaugeTokens(from, amount);
         vm.startPrank(from);
         IERC20(testGauge).approve(address(yearnStakingDelegate), amount);
         vm.expectEmit();
-        emit Deposit(from, testGauge, amount);
+        emit Deposit(from, testGauge, amount, currentTotalDeposited + amount);
         yearnStakingDelegate.deposit(testGauge, amount);
         vm.stopPrank();
     }
@@ -364,7 +365,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         // Start withdraw process
         vm.startPrank(alice);
         vm.expectEmit();
-        emit Withdraw(alice, testGauge, amount);
+        emit Withdraw(alice, testGauge, amount, 0);
         yearnStakingDelegate.withdraw(testGauge, amount);
         vm.stopPrank();
 
@@ -392,7 +393,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         // Start withdraw process
         vm.startPrank(alice);
         vm.expectEmit();
-        emit Withdraw(alice, testGauge, amount);
+        emit Withdraw(alice, testGauge, amount, 0);
         yearnStakingDelegate.withdraw(testGauge, amount);
         vm.stopPrank();
 
@@ -400,6 +401,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), 0, "withdraw failed");
         // Check the accounting is correct
         assertEq(yearnStakingDelegate.balanceOf(alice, testGauge), 0, "withdraw failed");
+        assertEq(yearnStakingDelegate.totalDeposited(testGauge), 0, "withdraw failed");
         // Check that wrappedStrategy has received the vault tokens
         assertEq(IERC20(testGauge).balanceOf(alice), amount, "withdraw failed");
     }

@@ -72,7 +72,7 @@ contract YearnStakingDelegate is
     mapping(address => uint256) public totalDeposited;
     /// @notice Mapping of gauge token addresses to their corresponding deposit limits. Note that this is the ideal
     /// limit, which should be enforced by the depositing contracts
-    mapping(address => uint256) public depositLimits;
+    mapping(address => uint256) public depositLimit;
     /// @notice Mapping of target addresses to a boolean indicating whether the target is blocked.
     mapping(address => bool) public blockedTargets;
     /// @dev Mapping of vault addresses to their corresponding RewardSplit configuration.
@@ -457,7 +457,7 @@ contract YearnStakingDelegate is
     function setDepositLimit(address gaugeToken, uint256 limit) external onlyRole(TIMELOCK_ROLE) {
         // Effects
         emit DepositLimitSet(gaugeToken, limit);
-        depositLimits[gaugeToken] = limit;
+        depositLimit[gaugeToken] = limit;
     }
 
     /**
@@ -602,6 +602,24 @@ contract YearnStakingDelegate is
             revert Errors.ExecutionFailed();
         }
         return result;
+    }
+
+    /**
+     * @notice Get the available deposit limit for a gauge token
+     * @param gaugeToken The address of the gauge token
+     * @return Available deposit limit
+     */
+    function availableDepositLimit(address gaugeToken) external view returns (uint256) {
+        uint256 currentTotalDeposited = totalDeposited[gaugeToken];
+        uint256 currentDepositLimit = depositLimit[gaugeToken];
+        if (currentTotalDeposited >= currentDepositLimit) {
+            return 0;
+        }
+        // Return the difference between the max total assets and the current total assets, an underflow is not possible
+        // due to the above check
+        unchecked {
+            return currentDepositLimit - currentTotalDeposited;
+        }
     }
 
     /**
