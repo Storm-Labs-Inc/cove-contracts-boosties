@@ -240,7 +240,9 @@ contract YearnStakingDelegate is
         totalDeposited[gauge] = newTotalDeposited;
         // Interactions
         emit Deposit(msg.sender, gauge, amount, newTotalDeposited);
-        _checkpointUserBalance(stakingDelegateReward, gauge, msg.sender, currentUserBalance, currentTotalDeposited);
+        StakingDelegateRewards(stakingDelegateReward).updateUserBalance(
+            msg.sender, gauge, currentUserBalance, currentTotalDeposited
+        );
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
 
@@ -275,7 +277,9 @@ contract YearnStakingDelegate is
         totalDeposited[gauge] = newTotalDeposited;
         // Interactions
         emit Withdraw(msg.sender, gauge, amount, newTotalDeposited);
-        _checkpointUserBalance(gaugeStakingRewards[gauge], gauge, msg.sender, currentUserBalance, currentTotalDeposited);
+        StakingDelegateRewards(gaugeStakingRewards[gauge]).updateUserBalance(
+            msg.sender, gauge, currentUserBalance, currentTotalDeposited
+        );
         IERC20(gauge).safeTransfer(receiver, amount);
     }
 
@@ -809,28 +813,5 @@ contract YearnStakingDelegate is
         }
         _exitRewardSplit = ExitRewardSplit({ treasury: treasuryPct, coveYfi: coveYfiPct });
         emit ExitRewardSplitSet(treasuryPct, coveYfiPct);
-    }
-
-    /**
-     * @dev Internal function to checkpoint a user's balance for a gauge.
-     * @param stakingDelegateReward Address of the StakingDelegateRewards contract.
-     * @param gauge Address of the gauge.
-     * @param user Address of the user.
-     * @param userBalance New balance of the user for the gauge.
-     */
-    function _checkpointUserBalance(
-        address stakingDelegateReward,
-        address gauge,
-        address user,
-        uint256 userBalance,
-        uint256 currentTotalDeposited
-    )
-        internal
-    {
-        // In case of error, we don't want to block the entire tx so we try-catch
-        // solhint-disable-next-line no-empty-blocks
-        try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(
-            user, gauge, userBalance, currentTotalDeposited
-        ) { } catch { }
     }
 }
