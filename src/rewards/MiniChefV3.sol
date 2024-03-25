@@ -32,12 +32,12 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
 
     struct PoolInfo {
         /// @dev Accumulated REWARD_TOKENs per share, scaled to precision.
-        uint128 accRewardPerShare;
+        uint160 accRewardPerShare;
         /// @dev The last timestamp when the pool's rewards were calculated.
         uint64 lastRewardTime;
         /// @dev The number of allocation points assigned to the pool, which determines the share of reward
         /// distribution.
-        uint64 allocPoint;
+        uint32 allocPoint;
     }
 
     /// @notice Address of REWARD_TOKEN contract.
@@ -231,7 +231,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param lpToken_ Address of the LP ERC-20 token.
      * @param rewarder_ Address of the rewarder delegate.
      */
-    function add(uint64 allocPoint, IERC20 lpToken_, IMiniChefV3Rewarder rewarder_) public onlyRole(TIMELOCK_ROLE) {
+    function add(uint32 allocPoint, IERC20 lpToken_, IMiniChefV3Rewarder rewarder_) public onlyRole(TIMELOCK_ROLE) {
         if (address(lpToken_) == (address(0))) {
             revert Errors.ZeroAddress();
         }
@@ -261,7 +261,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      */
     function set(
         uint256 pid,
-        uint64 allocPoint,
+        uint32 allocPoint,
         IERC20 lpToken_,
         IMiniChefV3Rewarder rewarder_,
         bool overwrite
@@ -386,7 +386,7 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
                     // Explicitly round down when calculating the reward
                     // slither-disable-start divide-before-multiply
                     uint256 rewardAmount = time * rewardPerSecond * pool.allocPoint / totalAllocPoint_;
-                    pool.accRewardPerShare += SafeCast.toUint128(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
+                    pool.accRewardPerShare += SafeCast.toUint160(rewardAmount * _ACC_REWARD_TOKEN_PRECISION / lpSupply_);
                     // slither-disable-end divide-before-multiply
                 }
             }
@@ -435,26 +435,48 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
      * @param amount LP token amount to withdraw.
      * @param to Receiver of the LP tokens.
      */
-    function withdraw(uint256 pid, uint256 amount, address to) public {
+    function harvestAndWithdraw(uint256 pid, uint256 amount, address to) public {
         if (amount == 0) {
             revert Errors.ZeroAmount();
         }
         PoolInfo memory pool = updatePool(pid);
         UserInfo storage user = _userInfo[pid][msg.sender];
 
+        uint256 accumulatedReward = user.amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
+        uint256 pendingReward_ = accumulatedReward + user.unpaidRewards - user.rewardDebt;
+
         // Effects
-        user.rewardDebt -= amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
+        user.rewardDebt = accumulatedReward - amount * pool.accRewardPerShare / _ACC_REWARD_TOKEN_PRECISION;
         user.amount -= amount;
         lpSupply[pid] -= amount;
 
-        emit Withdraw(msg.sender, pid, amount, to);
+        uint256 rewardAmount = 0;
+        if (pendingReward_ != 0) {
+            uint256 availableReward_ = availableReward;
+            uint256 unpaidRewards_ = 0;
+            rewardAmount = pendingReward_ > availableReward_ ? availableReward_ : pendingReward_;
+            /// @dev unchecked is used as the subtraction is guaranteed to not underflow because
+            /// `rewardAmount` is always less than or equal to `availableReward_`.
+            unchecked {
+                availableReward -= rewardAmount;
+                unpaidRewards_ = pendingReward_ - rewardAmount;
+            }
+            user.unpaidRewards = unpaidRewards_;
+            // Interactions
+            if (rewardAmount != 0) {
+                emit Harvest(msg.sender, pid, rewardAmount);
+                // slither-disable-next-line reentrancy-events
+                REWARD_TOKEN.safeTransfer(to, rewardAmount);
+            }
+        }
 
         // Interactions
+        emit Withdraw(msg.sender, pid, amount, to);
         lpToken[pid].safeTransfer(to, amount);
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, 0, user.amount);
+            _rewarder.onReward(pid, msg.sender, to, rewardAmount, user.amount);
         }
     }
 
