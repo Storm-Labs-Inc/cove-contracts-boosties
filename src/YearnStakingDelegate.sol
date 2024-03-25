@@ -38,8 +38,6 @@ contract YearnStakingDelegate is
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     /// @dev Role identifier for timelock, capable of performing time-sensitive administrative functions.
     bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
-    /// @dev Role identifier for depositors, capable of depositing gauge tokens.
-    bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
     // slither-disable-start naming-convention
     /// @dev Address of the Yearn Finance YFI reward pool.
     address private constant _YFI_REWARD_POOL = 0xb287a1964AEE422911c7b8409f5E5A273c1412fA;
@@ -195,7 +193,6 @@ contract YearnStakingDelegate is
         blockedTargets[_SNAPSHOT_DELEGATE_REGISTRY] = true;
         blockedTargets[_GAUGE_REWARD_RECEIVER_IMPL] = true;
         _setRoleAdmin(TIMELOCK_ROLE, TIMELOCK_ROLE);
-        _setRoleAdmin(DEPOSITOR_ROLE, TIMELOCK_ROLE);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(TIMELOCK_ROLE, timelock);
         _grantRole(PAUSER_ROLE, pauser);
@@ -211,7 +208,7 @@ contract YearnStakingDelegate is
      * @param gauge The address of the gauge token to deposit.
      * @param amount The amount of tokens to deposit.
      */
-    function deposit(address gauge, uint256 amount) external onlyRole(DEPOSITOR_ROLE) whenNotPaused {
+    function deposit(address gauge, uint256 amount) external whenNotPaused {
         // Checks
         if (amount == 0) {
             revert Errors.ZeroAmount();

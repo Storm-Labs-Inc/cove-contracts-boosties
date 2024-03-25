@@ -44,7 +44,6 @@ contract YearnStakingDelegate_Test is BaseTest {
     // Addresses
     address public admin;
     address public alice;
-    address public ben;
     address public timelock;
     address public pauser;
     address public treasury;
@@ -64,8 +63,6 @@ contract YearnStakingDelegate_Test is BaseTest {
         admin = createUser("admin");
         // create alice who will be lock YFI via the yearnStakingDelegate
         alice = createUser("alice");
-        // create ben who does not have depositor role
-        ben = createUser("ben");
         // create timelock address for the yearnStakingDelegate
         timelock = createUser("timelock");
         // create pauser of the yearnStakingDelegate
@@ -103,9 +100,6 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.startPrank(alice);
         IERC20(yfi).approve(address(yearnStakingDelegate), type(uint256).max);
         vm.stopPrank();
-
-        // Grant the depositor role to alice
-        _grantDepositorRole(alice);
     }
 
     // Need a special function to airdrop to the gauge since it relies on totalSupply for calculation
@@ -181,11 +175,6 @@ contract YearnStakingDelegate_Test is BaseTest {
         emit Deposit(from, testGauge, amount);
         yearnStakingDelegate.deposit(testGauge, amount);
         vm.stopPrank();
-    }
-
-    function _grantDepositorRole(address user) internal {
-        vm.prank(timelock);
-        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, user);
     }
 
     function testFuzz_constructor(address anyGauge) public {
@@ -326,14 +315,6 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(IERC20(testGauge).balanceOf(alice), 0, "deposit failed");
     }
 
-    function testFuzz_deposit_revertWhen_CallerIsNotDepositor(address user, uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(!yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, user));
-        vm.expectRevert(_formatAccessControlError(user, DEPOSITOR_ROLE));
-        vm.prank(user);
-        yearnStakingDelegate.deposit(testGauge, amount);
-    }
-
     function testFuzz_deposit_revertWhen_GaugeRewardsNotYetAdded(uint256 amount) public {
         vm.assume(amount > 0);
 
@@ -357,7 +338,6 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.prank(pauser);
         yearnStakingDelegate.pause();
         assertTrue(yearnStakingDelegate.paused());
-        _grantDepositorRole(address(this));
         vm.expectRevert("Pausable: paused");
         yearnStakingDelegate.deposit(testGauge, 1e18);
     }
@@ -822,30 +802,10 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
-        vm.startPrank(admin);
-        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
-        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
+        vm.prank(admin);
+        yearnStakingDelegate.grantRole(DEFAULT_ADMIN_ROLE, alice);
+        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
+        vm.prank(alice);
         yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
-    }
-
-    function test_grantRole_TimelockRole() public {
-        vm.startPrank(timelock);
-        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, alice));
-        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
-        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, alice));
-    }
-
-    function test_grantRole_DepositorRole_revertWhen_CallerIsNotTimelock() public {
-        vm.startPrank(admin);
-        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
-        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
-        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, alice);
-    }
-
-    function test_grantRole_DepositorRole() public {
-        vm.startPrank(timelock);
-        assertFalse(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, ben));
-        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, ben);
-        assertTrue(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, ben));
     }
 }
