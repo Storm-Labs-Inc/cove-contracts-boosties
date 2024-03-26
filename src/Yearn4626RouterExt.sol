@@ -309,10 +309,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
 
     /**
      * @notice Calculate the amount of shares required to withdraw a given amount of assets from a series of withdraws
-     * from
-     * ERC4626 vaults or Yearn Vault V2.
+     * from ERC4626 vaults or Yearn Vault V2.
      * @param path The array of addresses that represents the path from input to output.
      * @param assetsOut The amount of assets to withdraw from the last vault.
+     * @dev assetsOut is the desired result of the output token, and the path = [vault0, vault1, ..., vaultN, tokenOut].
+     * First calculate the amount of shares in to get the desired assetsOut from the last vault, then using that amount
+     * as the next assetsOut to get the amount of shares in for the penultimate vault.
      * @return sharesIn The amount of shares required at each step. The length of the array is `path.length - 1`.
      */
     function previewWithdraws(
@@ -326,7 +328,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 sharesInLength = path.length - 1;
         sharesIn = new uint256[](sharesInLength);
-        for (uint256 i; i < sharesInLength;) {
+        for (uint256 i = path.length - 2;;) {
             address vault = path[i];
             if (!Address.isContract(vault)) {
                 revert PreviewNonVaultAddressInPath(vault);
@@ -361,13 +363,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i + 1]) {
                 revert PreviewVaultMismatch();
             }
+            if (i == 0) return sharesIn;
             assetsOut = sharesIn[i];
 
-            /// @dev Increment the loop counter without checking for overflow.  This is safe because the for loop
-            /// naturally ensures that `i` will not overflow as it is bounded by `sharesInLength`, which is derived from
-            /// the length of the `path` array.
+            /// @dev Decrement the loop counter without checking for overflow.  This is safe because the for loop
+            /// naturally ensures that `i` will not underflow as it is bounded by i == 0 check.
             unchecked {
-                ++i;
+                --i;
             }
         }
     }
