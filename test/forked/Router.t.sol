@@ -228,6 +228,17 @@ contract Router_ForkedTest is BaseTest {
         assertEq(sharesOut[1], 949_289_266_142_683_599);
     }
 
+    function test_previewDeposits_v2Vault() public {
+        uint256 assetInAmount = 1e6;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_USDC;
+        path[1] = MAINNET_YVUSDC_VAULT_V2;
+
+        uint256[] memory sharesOut = router.previewDeposits(path, assetInAmount);
+        assertEq(sharesOut.length, 1);
+        assertEq(sharesOut[0], 944_890);
+    }
+
     function test_previewDeposits_revertWhen_PreviewPathIsTooShort() public {
         uint256 assetInAmount = 1 ether;
         address[] memory path = new address[](1);
@@ -281,6 +292,17 @@ contract Router_ForkedTest is BaseTest {
         assertEq(assetsIn[1], 1 ether);
     }
 
+    function test_previewMints_v2Vault() public {
+        uint256 assetInAmount = 1e6;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_USDC;
+        path[1] = MAINNET_YVUSDC_VAULT_V2;
+
+        uint256[] memory sharesOut = router.previewMints(path, assetInAmount);
+        assertEq(sharesOut.length, 1);
+        assertEq(sharesOut[0], 1_058_324);
+    }
+
     function test_previewMints_revertWhen_PreviewPathIsTooShort() public {
         uint256 shareOutAmount = 949_289_266_142_683_599;
         address[] memory path = new address[](1);
@@ -332,6 +354,17 @@ contract Router_ForkedTest is BaseTest {
         assertEq(sharesIn.length, 2);
         assertEq(sharesIn[0], 999_999_999_999_999_999);
         assertEq(sharesIn[1], 949_289_266_142_683_600);
+    }
+
+    function test_previewWithdraws_v2Vault() public {
+        uint256 assetInAmount = 1e6;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_YVUSDC_VAULT_V2;
+        path[1] = MAINNET_USDC;
+
+        uint256[] memory sharesOut = router.previewWithdraws(path, assetInAmount);
+        assertEq(sharesOut.length, 1);
+        assertEq(sharesOut[0], 944_892);
     }
 
     function test_previewWithdraws_StakeDAO() public {
@@ -396,6 +429,17 @@ contract Router_ForkedTest is BaseTest {
         assertEq(assetsOut.length, 2);
         assertEq(assetsOut[0], 949_289_266_142_683_599);
         assertEq(assetsOut[1], 999_999_999_999_999_998);
+    }
+
+    function test_previewRedeems_v2Vault() public {
+        uint256 assetInAmount = 1e6;
+        address[] memory path = new address[](2);
+        path[0] = MAINNET_YVUSDC_VAULT_V2;
+        path[1] = MAINNET_USDC;
+
+        uint256[] memory sharesOut = router.previewRedeems(path, assetInAmount);
+        assertEq(sharesOut.length, 1);
+        assertEq(sharesOut[0], 1_058_323);
     }
 
     function test_previewRedeems_StakeDAO() public {
