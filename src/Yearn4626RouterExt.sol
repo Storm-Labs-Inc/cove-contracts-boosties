@@ -253,6 +253,9 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @param path The array of addresses that represents the path from input to output.
      * @param sharesOut The amount of shares to mint from the last vault.
      * @return assetsIn The amount of assets required at each step. The length of the array is `path.length - 1`.
+     * @dev sharesOut is the expected result at the last vault, and the path = [tokenIn, vault0, vault1, ..., vaultN].
+     * First calculate the amount of assets in to get the desired sharesOut from the last vault, then using that amount
+     * as the next sharesOut to get the amount of assets in for the penultimate vault.
      */
     function previewMints(
         address[] calldata path,
@@ -265,8 +268,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 assetsInLength = path.length - 1;
         assetsIn = new uint256[](assetsInLength);
-        for (uint256 i; i < assetsInLength;) {
-            address vault = path[i + 1];
+        for (uint256 i = assetsInLength; i > 0;) {
+            address vault = path[i];
             if (!Address.isContract(vault)) {
                 revert PreviewNonVaultAddressInPath(vault);
             }
@@ -274,12 +277,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                assetsIn[i] = IERC4626(vault).previewMint(sharesOut);
+                assetsIn[i - 1] = IERC4626(vault).previewMint(sharesOut);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsIn[i] = Math.mulDiv(
+                    assetsIn[i - 1] = Math.mulDiv(
                         sharesOut,
                         IYearnVaultV2(vault).pricePerShare(),
                         10 ** IERC20Metadata(vault).decimals(),
@@ -290,16 +293,16 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 }
             }
 
-            if (vaultAsset != path[i]) {
+            if (vaultAsset != path[i - 1]) {
                 revert PreviewVaultMismatch();
             }
-            sharesOut = assetsIn[i];
+            sharesOut = assetsIn[i - 1];
 
-            /// @dev Increment the loop counter within an unchecked block to avoid redundant gas cost associated with
-            /// overflow checking.  This is safe because the loop's exit condition ensures that `i` will not exceed
-            /// `assetsInLength - 1`, preventing overflow.
+            /// @dev Decrement the loop counter within an unchecked block to avoid redundant gas cost associated with
+            /// underflow checking. This is safe because the loop's initialization and exit condition ensure that `i`
+            /// will not underflow.
             unchecked {
-                ++i;
+                --i;
             }
         }
     }
