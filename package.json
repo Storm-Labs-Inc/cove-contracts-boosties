@@ -7,7 +7,7 @@
     "prepare": "husky install && pnpm run forge-deploy:build",
     "clean": "rm -rf cache out crytic-export generated && forge clean",
     "build": "./forge-deploy gen-deployer && forge build --build-info",
-    "test": "forge test -vvv --gas-report",
+    "test": "forge test -vvv --gas-report --no-match-test _SkipOnIsolate",
     "invariant-test": "echidna ./ --config ./echidna.config.yaml --contract",
     "coverage": "forge coverage --report lcov",
     "slither": "forge clean && forge build --skip test script --build-info && slither . --ignore-compile",

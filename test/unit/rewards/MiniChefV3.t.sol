@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "test/utils/BaseTest.t.sol";
+import { BaseTest, console2 as console } from "test/utils/BaseTest.t.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { MiniChefV3 } from "src/rewards/MiniChefV3.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { IMiniChefV3Rewarder } from "src/interfaces/rewards/IMiniChefV3Rewarder.sol";
 import { Errors } from "src/libraries/Errors.sol";
 import { stdError } from "forge-std/StdError.sol";
+import { MockMiniChefRewarder } from "test/mocks/MockMiniChefRewarder.sol";
 
 contract MiniChefV3_Test is BaseTest {
     MiniChefV3 public miniChef;
@@ -543,6 +544,29 @@ contract MiniChefV3_Test is BaseTest {
         vm.mockCallRevert(address(rewarder), abi.encodeWithSelector(rewarder.onReward.selector), "");
         miniChef.emergencyWithdraw(pid, alice);
         assertEq(lpToken.balanceOf(alice), amount, "LP tokens not returned to user after emergency withdrawal");
+    }
+
+    /// forge-config: default.fuzz.runs = 1024
+    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas_SkipOnIsolate(uint256 gasToCall) public {
+        // Amount of gas low enought to revert try call, but continue with rest of call
+        gasToCall = bound(gasToCall, 43_991, 636_008);
+        console.log("Gas to call: ", gasToCall);
+        // Mock rewarder to spend gas when called
+        MockMiniChefRewarder rewarder = (new MockMiniChefRewarder());
+        rewarder.setGasLoop(1000);
+
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(rewarder)));
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        (bool success, bytes memory data) =
+            address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
+        assertEq(success, false, "Emergency withdraw should revert");
+        bytes memory expectedErrorCode = abi.encodeWithSelector(Errors.InsufficientGas.selector);
+        assertTrue(keccak256(expectedErrorCode) == keccak256(data), "Incorrect error code");
     }
 
     function test_harvest() public {
