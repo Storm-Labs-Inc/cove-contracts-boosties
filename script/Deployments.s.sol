@@ -52,12 +52,12 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
     // RewardForwarder configuration
     uint256 public constant COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
-    // Cove strategy deposit limit configuration
+        // Cove strategy deposit limit configuration
     uint256 public constant MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT = type(uint256).max;
     uint256 public constant MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
     uint256 public constant MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_CRV_YCRV_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_PRISMA_YPRISMA_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
