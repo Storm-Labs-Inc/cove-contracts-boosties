@@ -295,7 +295,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         );
         address coveYFI = deployer.getAddress("CoveYFI");
         coveRewardsGauge.initialize(coveYFI);
-        coveRewardsGaugeRewardForwarder.initialize(address(coveRewardsGauge));
+        coveRewardsGaugeRewardForwarder.initialize(address(coveRewardsGauge), admin, manager);
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
