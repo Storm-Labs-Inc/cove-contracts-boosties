@@ -236,7 +236,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         // Deploy and initialize the reward forwarder for the auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
-            forwarder.initialize({ destination_: address(coveStratGauge) });
+            forwarder.initialize({ destination_: address(coveStratGauge), admin: gaugeAdmin_, manager: gaugeManager_ });
             forwarder.approveRewardToken(COVE);
             // Add COVE reward to the auto-compounding gauge
             coveStratGauge.addReward(COVE, address(forwarder));
@@ -254,7 +254,7 @@ contract CoveYearnGaugeFactory is AccessControlEnumerable, Multicall {
         // Deploy and initialize the reward forwarder for the non-auto-compounding gauge
         {
             RewardForwarder forwarder = RewardForwarder(Clones.clone(rewardForwarderImpl_));
-            forwarder.initialize({ destination_: address(coveYsdGauge) });
+            forwarder.initialize({ destination_: address(coveYsdGauge), admin: gaugeAdmin_, manager: gaugeManager_ });
             forwarder.approveRewardToken(_DYFI);
             forwarder.approveRewardToken(COVE);
             // Set the dYFI rewards to be received by the reward forwarder
