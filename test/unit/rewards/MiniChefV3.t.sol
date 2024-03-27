@@ -547,7 +547,13 @@ contract MiniChefV3_Test is BaseTest {
     }
 
     /// forge-config: default.fuzz.runs = 1024
-    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas_SkipOnIsolate(uint256 gasToCall) public {
+    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
+        // Workaround for consistent gas usage with --isolate or --gas-report flag
+        // https://github.com/foundry-rs/foundry/issues/7499#issuecomment-2021163562
+        this._testFuzz_emergencyWithdraw_revertWhen_OutOfGas(gasToCall);
+    }
+
+    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
         // Amount of gas low enought to revert try call, but continue with rest of call
         gasToCall = bound(gasToCall, 43_991, 636_008);
         console.log("Gas to call: ", gasToCall);
@@ -565,8 +571,7 @@ contract MiniChefV3_Test is BaseTest {
         (bool success, bytes memory data) =
             address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
         assertEq(success, false, "Emergency withdraw should revert");
-        bytes memory expectedErrorCode = abi.encodeWithSelector(Errors.InsufficientGas.selector);
-        assertTrue(keccak256(expectedErrorCode) == keccak256(data), "Incorrect error code");
+        assertEq(bytes4(data), Errors.InsufficientGas.selector, "Incorrect error code");
     }
 
     function test_harvest() public {
