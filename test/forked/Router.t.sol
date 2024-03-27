@@ -10,6 +10,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { IStakeDaoGauge } from "src/interfaces/deps/stakeDAO/IStakeDaoGauge.sol";
+import { IYearn4626 } from "Yearn-ERC4626-Router/interfaces/IYearn4626.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 contract Router_ForkedTest is BaseTest {
@@ -215,8 +216,31 @@ contract Router_ForkedTest is BaseTest {
     }
 
     // ------------------ Preview tests ------------------
-    function test_previewDeposits() public {
-        uint256 assetInAmount = 1 ether;
+    function testFuzz_previewDeposits(uint256 assetInAmount) public {
+        assetInAmount = bound(assetInAmount, 2, 100e18);
+
+        // Snapshot the state before the deposit
+        uint256 beforeDeposit = vm.snapshot();
+
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), address(router), assetInAmount, false);
+        router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), MAINNET_ETH_YFI_VAULT_V2, assetInAmount);
+
+        // Deposit to the vault
+        uint256 expectedVaultSharesOut =
+            router.depositToVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), assetInAmount, address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), expectedVaultSharesOut);
+        router.approve(ERC20(MAINNET_ETH_YFI_VAULT_V2), MAINNET_ETH_YFI_GAUGE, expectedVaultSharesOut);
+
+        // Deposit to the gauge
+        uint256 expectedGaugeSharesOut =
+            router.deposit(IYearn4626(MAINNET_ETH_YFI_GAUGE), expectedVaultSharesOut, user, 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(user), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user), expectedGaugeSharesOut);
+
+        // Revert to the snapshot before the deposit
+        vm.revertToAndDelete(beforeDeposit);
+
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
@@ -224,8 +248,8 @@ contract Router_ForkedTest is BaseTest {
 
         uint256[] memory sharesOut = router.previewDeposits(path, assetInAmount);
         assertEq(sharesOut.length, 2);
-        assertEq(sharesOut[0], 949_289_266_142_683_599);
-        assertEq(sharesOut[1], 949_289_266_142_683_599);
+        assertEq(sharesOut[0], expectedVaultSharesOut);
+        assertEq(sharesOut[1], expectedGaugeSharesOut);
     }
 
     function test_previewDeposits_v2Vault() public {
@@ -279,8 +303,9 @@ contract Router_ForkedTest is BaseTest {
         router.previewDeposits(path, assetInAmount);
     }
 
-    function test_previewMints() public {
-        uint256 shareOutAmount = 949_289_266_142_683_599;
+    function testFuzz_previewMints(uint256 shareOutAmount) public {
+        shareOutAmount = bound(shareOutAmount, 1, 100e18);
+
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
@@ -288,8 +313,21 @@ contract Router_ForkedTest is BaseTest {
 
         uint256[] memory assetsIn = router.previewMints(path, shareOutAmount);
         assertEq(assetsIn.length, 2);
-        assertEq(assetsIn[0], 1 ether);
-        assertEq(assetsIn[1], 1 ether);
+
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), address(router), assetsIn[0], false);
+        // Deposit the returned assetIn amount to the vault
+        router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), MAINNET_ETH_YFI_VAULT_V2, assetsIn[0]);
+        uint256 actualVaultShareAmount =
+            router.depositToVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), assetsIn[0], address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), actualVaultShareAmount);
+        // Confirm the actual share amount is equal to the expected share amount
+        assertEq(assetsIn[1], actualVaultShareAmount);
+        // Deposit the return assetIn amount to the gauge
+        router.approve(ERC20(MAINNET_ETH_YFI_VAULT_V2), MAINNET_ETH_YFI_GAUGE, assetsIn[1]);
+        uint256 actualGaugeShareAmount = router.deposit(IYearn4626(MAINNET_ETH_YFI_GAUGE), assetsIn[1], user, 0);
+        // Confirm the final share amount is equal to the expected share amount
+        assertEq(actualGaugeShareAmount, shareOutAmount);
     }
 
     function test_previewMints_v2Vault() public {
@@ -341,6 +379,31 @@ contract Router_ForkedTest is BaseTest {
 
         vm.expectRevert(Yearn4626RouterExt.PreviewVaultMismatch.selector);
         router.previewMints(path, shareOutAmount);
+    }
+
+    function testFuzz_previewWithdraws(uint256 assetOutAmount) public {
+        assetOutAmount = bound(assetOutAmount, 1, IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2).totalAssets());
+
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+
+        uint256[] memory sharesIn = router.previewWithdraws(path, assetOutAmount);
+        assertEq(sharesIn.length, 2);
+
+        // Redeem the returned sharesIn amount of gauge tokens
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), address(router), sharesIn[0], false);
+        uint256 vaultShares = router.redeemFromRouter(IERC4626(MAINNET_ETH_YFI_GAUGE), sharesIn[0], address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), vaultShares);
+        assertEq(sharesIn[1], vaultShares);
+        // Redeem the returned sharesIn amount of vault tokens
+        uint256 finalAssetOut =
+            router.redeemVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), vaultShares, address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), finalAssetOut);
+        assertEq(finalAssetOut, assetOutAmount);
     }
 
     function test_previewWithdraws() public {
@@ -418,8 +481,27 @@ contract Router_ForkedTest is BaseTest {
         router.previewWithdraws(path, assetOutAmount);
     }
 
-    function test_previewRedeems() public {
-        uint256 shareInAmount = 949_289_266_142_683_599;
+    function testFuzz_previewRedeems(uint256 shareInAmount) public {
+        shareInAmount = bound(shareInAmount, 1, IERC20(MAINNET_ETH_YFI_GAUGE).totalSupply());
+
+        // Snapshot the state before the redeem
+        uint256 beforeRedeem = vm.snapshot();
+
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), address(router), shareInAmount, false);
+
+        // Redeem from the gauge
+        uint256 expectedVaultTokenOut =
+            router.redeemFromRouter(IERC4626(MAINNET_ETH_YFI_GAUGE), shareInAmount, address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), expectedVaultTokenOut);
+        uint256 expectedLPTokenOut =
+            router.redeemVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), expectedVaultTokenOut, address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), expectedLPTokenOut);
+
+        // Revert to the snapshot before the redeem
+        vm.revertToAndDelete(beforeRedeem);
+
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_GAUGE;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
@@ -427,8 +509,8 @@ contract Router_ForkedTest is BaseTest {
 
         (uint256[] memory assetsOut) = router.previewRedeems(path, shareInAmount);
         assertEq(assetsOut.length, 2);
-        assertEq(assetsOut[0], 949_289_266_142_683_599);
-        assertEq(assetsOut[1], 999_999_999_999_999_998);
+        assertEq(assetsOut[0], expectedVaultTokenOut);
+        assertEq(assetsOut[1], expectedLPTokenOut);
     }
 
     function test_previewRedeems_v2Vault() public {

@@ -223,12 +223,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesOut[i] = Math.mulDiv(
-                        assetsIn,
-                        10 ** IERC20Metadata(vault).decimals(),
-                        IYearnVaultV2(vault).pricePerShare(),
-                        Math.Rounding.Down
-                    ) - 1;
+                    sharesOut[i] = _yearnVaultV2_previewDeposit(IYearnVaultV2(vault), assetsIn);
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -279,12 +274,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsIn[i] = Math.mulDiv(
-                        sharesOut,
-                        IYearnVaultV2(vault).pricePerShare(),
-                        10 ** IERC20Metadata(vault).decimals(),
-                        Math.Rounding.Up
-                    ) + 1;
+                    assetsIn[i] = _yearnVaultV2_previewMint(IYearnVaultV2(vault), sharesOut);
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -337,12 +327,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesIn[i] = Math.mulDiv(
-                        assetsOut,
-                        10 ** IERC20Metadata(vault).decimals(),
-                        IYearnVaultV2(vault).pricePerShare(),
-                        Math.Rounding.Up
-                    );
+                    sharesIn[i] = _yearnVaultV2_previewWithdraw(IYearnVaultV2(vault), assetsOut);
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
@@ -401,12 +386,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsOut[i] = Math.mulDiv(
-                        sharesIn,
-                        IYearnVaultV2(vault).pricePerShare(),
-                        10 ** IERC20Metadata(vault).decimals(),
-                        Math.Rounding.Down
-                    );
+                    assetsOut[i] = _yearnVaultV2_previewRedeem(IYearnVaultV2(vault), sharesIn);
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
@@ -432,4 +412,61 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         }
     }
     // slither-disable-end calls-loop,low-level-calls
+
+    /// @dev Yearn Vault V2 contract's calculate locked profit logic
+    /// https://github.com/yearn/yearn-vaults/blob/97ca1b2e4fcf20f4be0ff456dabd020bfeb6697b/contracts/Vault.vy#L829-L842
+    function _yearnVaultV2_calculateLockedProfit(IYearnVaultV2 vault) internal view returns (uint256) {
+        uint256 lockedProfit = vault.lockedProfit();
+        uint256 lockedFundsRatio = (block.timestamp - vault.lastReport()) * vault.lockedProfitDegradation();
+        if (lockedFundsRatio < 1e18) {
+            lockedProfit -= (lockedProfit * lockedFundsRatio) / 1e18;
+        } else {
+            lockedProfit = 0;
+        }
+        return lockedProfit;
+    }
+
+    /// @dev Yearn Vault V2 contract's free funds calculation logic
+    /// https://github.com/yearn/yearn-vaults/blob/97ca1b2e4fcf20f4be0ff456dabd020bfeb6697b/contracts/Vault.vy#L844-L847
+    function _yearnVaultV2_freeFunds(IYearnVaultV2 vault) internal view returns (uint256) {
+        return vault.totalAssets() - _yearnVaultV2_calculateLockedProfit(vault);
+    }
+
+    /// @dev Yearn Vault V2 contract's deposit() and _issueSharesForAmount() logic
+    /// https://github.com/yearn/yearn-vaults/blob/97ca1b2e4fcf20f4be0ff456dabd020bfeb6697b/contracts/Vault.vy#L849-L872
+    function _yearnVaultV2_previewDeposit(IYearnVaultV2 vault, uint256 assetsIn) internal view returns (uint256) {
+        uint256 totalSupply = vault.totalSupply();
+        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
+        if (totalSupply > 0) {
+            return Math.mulDiv(assetsIn, totalSupply, freeFunds, Math.Rounding.Down);
+        }
+        return assetsIn;
+    }
+
+    function _yearnVaultV2_previewMint(IYearnVaultV2 vault, uint256 sharesOut) internal view returns (uint256) {
+        uint256 totalSupply = vault.totalSupply();
+        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
+        if (totalSupply > 0) {
+            return Math.mulDiv(sharesOut, freeFunds, totalSupply, Math.Rounding.Up);
+        }
+        return sharesOut;
+    }
+
+    function _yearnVaultV2_previewRedeem(IYearnVaultV2 vault, uint256 sharesIn) internal view returns (uint256) {
+        uint256 totalSupply = vault.totalSupply();
+        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
+        if (totalSupply > 0) {
+            return Math.mulDiv(sharesIn, freeFunds, totalSupply, Math.Rounding.Down);
+        }
+        return 0;
+    }
+
+    function _yearnVaultV2_previewWithdraw(IYearnVaultV2 vault, uint256 assetsOut) internal view returns (uint256) {
+        uint256 totalSupply = vault.totalSupply();
+        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
+        if (totalSupply > 0) {
+            return Math.mulDiv(assetsOut, totalSupply, freeFunds, Math.Rounding.Up);
+        }
+        return 0;
+    }
 }
