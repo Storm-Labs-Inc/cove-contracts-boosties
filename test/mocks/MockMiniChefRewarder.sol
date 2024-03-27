@@ -14,7 +14,7 @@ contract MockMiniChefRewarder {
         for (uint256 i = 0; i < gasLoop; i++) {
             spendGas[i] += 1;
         }
-        emit functionHit();
+        emit FunctionHit();
     }
 
     function setGasLoop(uint256 _gasLoop) external {
