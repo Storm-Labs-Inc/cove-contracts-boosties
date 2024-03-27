@@ -7,7 +7,8 @@ import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 import { ISignatureTransfer } from "permit2/interfaces/ISignatureTransfer.sol";
 import { IWETH9 } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
 import { IYearn4626RouterExt } from "./interfaces/IYearn4626RouterExt.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -23,6 +24,8 @@ import { IStakeDaoVault } from "./interfaces/deps/stakeDAO/IStakeDaoVault.sol";
  * The contract holds an immutable reference to a Permit2 contract to facilitate token transfers with permits.
  */
 contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
+    using SafeERC20 for IERC20;
+
     // slither-disable-next-line naming-convention
     IPermit2 private immutable _PERMIT2;
 
@@ -152,14 +155,18 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     // ------------- STAKEDAO FUNCTIONS  ------------- //
 
     /**
-     * @notice Redeems the specified `shares` of the StakeDAO Gauge. The assets withdrawn will be the
-     * the yearn vault tokens and will always be the same amount as the `shares` of StakeDAO gauge tokens burned.
+     * @notice Redeems the specified `shares` of the StakeDAO Gauge.
+     * @dev Assumes the assets withdrawn will be the the yearn vault tokens and will always be the same amount as the
+     * `shares` of the burned StakeDAO gauge tokens.
      * @param gauge The StakeDAO Gauge contract instance.
      * @param shares The amount of StakeDAO gauge tokens to burn.
      */
-    function redeemStakeDaoGauge(IStakeDaoGauge gauge, uint256 shares) public payable returns (uint256) {
-        address stakeDaoVault = gauge.staking_token();
-        IStakeDaoVault(stakeDaoVault).withdraw(shares);
+    function redeemStakeDaoGauge(IStakeDaoGauge gauge, uint256 shares, address to) public payable returns (uint256) {
+        IStakeDaoVault vault = IStakeDaoVault(gauge.staking_token());
+        vault.withdraw(shares);
+        if (to != address(this)) {
+            IERC20(vault.token()).safeTransfer(to, shares);
+        }
         return shares;
     }
 
@@ -184,7 +191,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     {
         if (transferDetails.to != address(this)) revert InvalidPermit2TransferTo();
         if (permit.permitted.amount != transferDetails.requestedAmount) revert InvalidPermit2TransferAmount();
-        IPermit2(_PERMIT2).permitTransferFrom(permit, transferDetails, msg.sender, signature);
+        _PERMIT2.permitTransferFrom(permit, transferDetails, msg.sender, signature);
     }
 
     // ------------- PREVIEW FUNCTIONS  ------------- //
