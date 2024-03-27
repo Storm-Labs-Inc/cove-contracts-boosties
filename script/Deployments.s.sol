@@ -24,6 +24,7 @@ import { TimelockController } from "@openzeppelin/contracts/governance/TimelockC
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { Yearn4626RouterExt } from "src/Yearn4626RouterExt.sol";
 import { PeripheryPayments } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -101,11 +102,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(yearnStakingDelegateAddress, deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
-        deployWethYethCoveStrategy(yearnStakingDelegateAddress);
-        deployEthYfiCoveStrategy(yearnStakingDelegateAddress);
-        deployEthDyfiCoveStrategy(yearnStakingDelegateAddress);
-        deployCrvYcrvCoveStrategy(yearnStakingDelegateAddress);
-        deployPrismaYprismaCoveStrategy(yearnStakingDelegateAddress);
+        deployCoveStrategiesAndGauges(yearnStakingDelegateAddress);
         // Deploy Rewards Gauge for CoveYFI
         deployCoveYFIRewards();
         // Approve deposits in the router
@@ -175,6 +172,24 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return yearn4626RouterExt;
     }
 
+    function _populateApproveMulticall(
+        bytes[] memory data,
+        uint256 i,
+        CoveYearnGaugeFactory.GaugeInfo memory gi
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        bytes4 selector = PeripheryPayments.approve.selector;
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnVaultAsset, gi.yearnVault, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnVault, gi.yearnGauge, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnGauge, gi.coveYearnStrategy, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.coveYearnStrategy, gi.autoCompoundingGauge, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnGauge, gi.nonAutoCompoundingGauge, _MAX_UINT256);
+        return i;
+    }
+
     function approveDepositsInRouter() public broadcast {
         Yearn4626RouterExt yearn4626RouterExt = Yearn4626RouterExt(deployer.getAddress("Yearn4626RouterExt"));
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
@@ -184,258 +199,77 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // we should include the following approvals:
         // yearn4626RouterExt.approve(address token, address vaultAddress, type(uint256).max)
         bytes[] memory data = new bytes[](25);
+        uint256 i = 0;
         // ETH_YFI
-        CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE);
-        data[0] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_ETH_YFI_POOL_LP_TOKEN,
-            MAINNET_ETH_YFI_VAULT_V2,
-            type(uint256).max
-        );
-        data[1] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_VAULT_V2, MAINNET_ETH_YFI_GAUGE, type(uint256).max
-        );
-        data[2] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
-        );
-        data[3] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            gaugeInfo.coveYearnStrategy,
-            gaugeInfo.autoCompoundingGauge,
-            type(uint256).max
-        );
-        data[4] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_ETH_YFI_GAUGE,
-            gaugeInfo.nonAutoCompoundingGauge,
-            type(uint256).max
-        );
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE));
         // DYFI_ETH
-        gaugeInfo = factory.getGaugeInfo(MAINNET_DYFI_ETH_GAUGE);
-        data[5] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_DYFI_ETH_POOL_LP_TOKEN,
-            MAINNET_DYFI_ETH_VAULT_V2,
-            type(uint256).max
-        );
-        data[6] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_DYFI_ETH_VAULT_V2, MAINNET_DYFI_ETH_GAUGE, type(uint256).max
-        );
-        data[7] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_DYFI_ETH_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
-        );
-        data[8] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            gaugeInfo.coveYearnStrategy,
-            gaugeInfo.autoCompoundingGauge,
-            type(uint256).max
-        );
-        data[9] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_DYFI_ETH_GAUGE,
-            gaugeInfo.nonAutoCompoundingGauge,
-            type(uint256).max
-        );
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_DYFI_ETH_GAUGE));
         // WETH_YETH
-        gaugeInfo = factory.getGaugeInfo(MAINNET_WETH_YETH_GAUGE);
-        data[10] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_WETH_YETH_POOL_LP_TOKEN,
-            MAINNET_WETH_YETH_VAULT_V2,
-            type(uint256).max
-        );
-        data[11] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_WETH_YETH_VAULT_V2, MAINNET_WETH_YETH_GAUGE, type(uint256).max
-        );
-        data[12] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_WETH_YETH_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
-        );
-        data[13] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            gaugeInfo.coveYearnStrategy,
-            gaugeInfo.autoCompoundingGauge,
-            type(uint256).max
-        );
-        data[14] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_WETH_YETH_GAUGE,
-            gaugeInfo.nonAutoCompoundingGauge,
-            type(uint256).max
-        );
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_WETH_YETH_GAUGE));
         // PRISMA_YPRISMA
-        gaugeInfo = factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_GAUGE);
-        data[15] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_PRISMA_YPRISMA_POOL_LP_TOKEN,
-            MAINNET_PRISMA_YPRISMA_VAULT_V2,
-            type(uint256).max
-        );
-        data[16] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_PRISMA_YPRISMA_VAULT_V2,
-            MAINNET_PRISMA_YPRISMA_GAUGE,
-            type(uint256).max
-        );
-        data[17] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_PRISMA_YPRISMA_GAUGE,
-            gaugeInfo.coveYearnStrategy,
-            type(uint256).max
-        );
-        data[18] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            gaugeInfo.coveYearnStrategy,
-            gaugeInfo.autoCompoundingGauge,
-            type(uint256).max
-        );
-        data[19] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_PRISMA_YPRISMA_GAUGE,
-            gaugeInfo.nonAutoCompoundingGauge,
-            type(uint256).max
-        );
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_GAUGE));
         // CRV_YCRV
-        gaugeInfo = factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE);
-        data[20] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_CRV_YCRV_POOL_LP_TOKEN,
-            MAINNET_CRV_YCRV_VAULT_V2,
-            type(uint256).max
-        );
-        data[21] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_CRV_YCRV_VAULT_V2, MAINNET_CRV_YCRV_GAUGE, type(uint256).max
-        );
-        data[22] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector, MAINNET_CRV_YCRV_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
-        );
-        data[23] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            gaugeInfo.coveYearnStrategy,
-            gaugeInfo.autoCompoundingGauge,
-            type(uint256).max
-        );
-        data[24] = abi.encodeWithSelector(
-            PeripheryPayments.approve.selector,
-            MAINNET_CRV_YCRV_GAUGE,
-            gaugeInfo.nonAutoCompoundingGauge,
-            type(uint256).max
-        );
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE));
+        require(i == data.length, "Incorrect number of approves");
         yearn4626RouterExt.multicall(data);
     }
 
-    function deployWethYethCoveStrategy(address ysd)
-        public
+    function _deployCoveStrategyAndGauges(
+        address ysd,
+        address yearngauge,
+        uint256 maxDeposit,
+        CurveRouterSwapper.CurveSwapParams memory swapParams
+    )
+        internal
         broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_GAUGE).name()))
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(yearngauge).name()))
     {
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_GAUGE).name()),
+            string.concat("YearnGaugeStrategy-", IERC4626(yearngauge).name()), yearngauge, ysd, MAINNET_CURVE_ROUTER
+        );
+        // set params for harvest rewards swapping
+        strategy.setHarvestSwapParams(swapParams);
+        strategy.setMaxTotalAssets(maxDeposit);
+        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
+        ITokenizedStrategy(address(strategy)).setKeeper(manager);
+        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
+
+        // Deploy the reward gauges for the strategy via the factory
+        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
+        factory.deployCoveGauges(address(strategy));
+    }
+
+    function deployCoveStrategiesAndGauges(address ysd) public {
+        _deployCoveStrategyAndGauges(
+            ysd,
             MAINNET_WETH_YETH_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
+            MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT,
+            getMainnetWethYethGaugeCurveSwapParams()
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetWethYethGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
-    }
-
-    function deployEthYfiCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_ETH_YFI_GAUGE).name()))
-    {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_ETH_YFI_GAUGE).name()),
+        _deployCoveStrategyAndGauges(
+            ysd,
             MAINNET_ETH_YFI_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
+            MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT,
+            getMainnetEthYfiGaugeCurveSwapParams()
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetEthYfiGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
-    }
-
-    function deployEthDyfiCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_DYFI_ETH_GAUGE).name()))
-    {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_DYFI_ETH_GAUGE).name()),
+        _deployCoveStrategyAndGauges(
+            ysd,
             MAINNET_DYFI_ETH_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
+            MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT,
+            getMainnetDyfiEthGaugeCurveSwapParams()
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetDyfiEthGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
-    }
-
-    function deployCrvYcrvCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_GAUGE).name()))
-    {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_GAUGE).name()),
+        _deployCoveStrategyAndGauges(
+            ysd,
             MAINNET_CRV_YCRV_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
+            MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT,
+            getMainnetCrvYcrvPoolGaugeCurveSwapParams()
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetCrvYcrvPoolGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_CRV_YCRV_GAUGE_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
-    }
-
-    function deployPrismaYprismaCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_GAUGE).name()))
-    {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_GAUGE).name()),
+        _deployCoveStrategyAndGauges(
+            ysd,
             MAINNET_PRISMA_YPRISMA_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
+            MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT,
+            getMainnetPrismaYprismaPoolGaugeCurveSwapParams()
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetPrismaYprismaPoolGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_PRISMA_YPRISMA_GAUGE_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
     }
 
     function deployMasterRegistry() public broadcast deployIfMissing("MasterRegistry") returns (address) {
@@ -555,6 +389,20 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return factory;
     }
 
+    function _populateMasterRegistryMulticall(
+        bytes[] memory data,
+        uint256 i,
+        string memory name
+    )
+        internal
+        view
+        returns (uint256)
+    {
+        data[i++] =
+            abi.encodeWithSelector(MasterRegistry.addRegistry.selector, bytes32(bytes(name)), deployer.getAddress(name));
+        return i;
+    }
+
     function registerContractsInMasterRegistry() public broadcast {
         // Skip if YearnStakingDelegate is already registered
         MasterRegistry masterRegistry = MasterRegistry(deployer.getAddress("MasterRegistry"));
@@ -567,41 +415,18 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         }
 
         bytes[] memory data = new bytes[](9);
-        data[0] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector,
-            bytes32("YearnStakingDelegate"),
-            deployer.getAddress("YearnStakingDelegate")
-        );
-        data[1] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector,
-            bytes32("StakingDelegateRewards"),
-            deployer.getAddress("StakingDelegateRewards")
-        );
-        data[2] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("SwapAndLock"), deployer.getAddress("SwapAndLock")
-        );
-        data[3] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("DYFIRedeemer"), deployer.getAddress("DYFIRedeemer")
-        );
-        data[4] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("CoveYFI"), deployer.getAddress("CoveYFI")
-        );
-        data[5] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector,
-            bytes32("CoveYearnGaugeFactory"),
-            deployer.getAddress("CoveYearnGaugeFactory")
-        );
-        data[6] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("MiniChefV3"), deployer.getAddress("MiniChefV3")
-        );
-        data[7] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("CoveToken"), deployer.getAddress("CoveToken")
-        );
-        data[8] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector,
-            bytes32("Yearn4626RouterExt"),
-            deployer.getAddress("Yearn4626RouterExt")
-        );
+        uint256 i = 0;
+        i = _populateMasterRegistryMulticall(data, i, "YearnStakingDelegate");
+        i = _populateMasterRegistryMulticall(data, i, "StakingDelegateRewards");
+        i = _populateMasterRegistryMulticall(data, i, "SwapAndLock");
+        i = _populateMasterRegistryMulticall(data, i, "DYFIRedeemer");
+        i = _populateMasterRegistryMulticall(data, i, "CoveYFI");
+        i = _populateMasterRegistryMulticall(data, i, "CoveYearnGaugeFactory");
+        i = _populateMasterRegistryMulticall(data, i, "MiniChefV3");
+        i = _populateMasterRegistryMulticall(data, i, "CoveToken");
+        i = _populateMasterRegistryMulticall(data, i, "Yearn4626RouterExt");
+        require(i == data.length, "Incorrect number of contracts");
+
         masterRegistry.multicall(data);
     }
 
