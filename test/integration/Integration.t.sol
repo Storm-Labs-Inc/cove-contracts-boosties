@@ -55,8 +55,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         //// generic ////
         alice = createUser("alice");
         treasury = createUser("treasury");
-        vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
-        gauge = MAINNET_WETH_YETH_POOL_GAUGE;
+        vault = IVault(MAINNET_WETH_YETH_VAULT_V2);
+        gauge = MAINNET_WETH_YETH_GAUGE;
         rewardDistributor = createUser("rewardDistributor");
 
         // Deploy Contracts
