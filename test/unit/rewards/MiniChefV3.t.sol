@@ -553,7 +553,7 @@ contract MiniChefV3_Test is BaseTest {
         this._testFuzz_emergencyWithdraw_revertWhen_OutOfGas(gasToCall);
     }
 
-    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
+    function _testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
         // Amount of gas low enought to revert try call, but continue with rest of call
         gasToCall = bound(gasToCall, 43_991, 636_008);
         console.log("Gas to call: ", gasToCall);

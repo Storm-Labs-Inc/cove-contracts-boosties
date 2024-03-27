@@ -21,7 +21,7 @@
     "event-name-camelcase": "error",
     "func-param-name-mixedcase": "error",
     "modifier-name-mixedcase": "error",
-    "private-vars-leading-underscore": "warn",
+    "private-vars-leading-underscore": "off",
     "var-name-mixedcase": "off",
     "imports-on-top": "error",
     "const-name-snakecase": "error",
