@@ -164,9 +164,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         // send earned rewards to the staking delegate rewards contract
         airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), accruedRewards);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards from the staking delegate rewards contract
+        mockStakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         _mockChainlinkPriceFeedTimestamp();
@@ -282,9 +281,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         vm.prank(tpManagement);
         yearnGaugeStrategy.shutdownStrategy();
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards from the staking delegate rewards contract
+        mockStakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         _mockChainlinkPriceFeedTimestamp();

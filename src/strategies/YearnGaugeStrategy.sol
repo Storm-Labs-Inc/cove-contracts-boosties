@@ -157,10 +157,6 @@ contract YearnGaugeStrategy is BaseStrategy, CurveRouterSwapper, YearnGaugeStrat
      * @return _totalAssets The total assets after harvest and redeposit/idle balance update
      */
     function _harvestAndReport() internal override returns (uint256 _totalAssets) {
-        // Transfers unlocked dYfi rewards to this contract
-        address stakingDelegateRewards =
-            IYearnStakingDelegate(_YEARN_STAKING_DELEGATE).gaugeStakingRewards(address(asset));
-        IStakingDelegateRewards(stakingDelegateRewards).getReward(address(asset));
         // Check for any dYfi that has been redeemed for Yfi
         uint256 yfiBalance = IERC20(_YFI).balanceOf(address(this));
         // If dfi has been redeemed for Yfi, swap it for vault asset and deploy it to the strategy
