@@ -22,6 +22,8 @@ import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.so
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
+import { Yearn4626RouterExt } from "src/Yearn4626RouterExt.sol";
+import { PeripheryPayments } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -54,8 +56,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     uint256 public constant MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT = type(uint256).max;
     uint256 public constant MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
     uint256 public constant MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_CRV_YCRV_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_PRISMA_YPRISMA_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
@@ -106,6 +108,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         deployPrismaYprismaCoveStrategy(yearnStakingDelegateAddress);
         // Deploy Rewards Gauge for CoveYFI
         deployCoveYFIRewards();
+        // Approve deposits in the router
+        approveDepositsInRouter();
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
         // Verify the state of the deployment
@@ -148,11 +152,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYFIRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
         ysd.setSnapshotDelegate("veyfi.eth", manager);
-        ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_WETH_YETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
-        ysd.addGaugeRewards(MAINNET_CRV_YCRV_POOL_GAUGE, stakingDelegateRewards);
-        ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_POOL_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_CRV_YCRV_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_GAUGE, stakingDelegateRewards);
 
         // Move admin roles to the admin multisig
         ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -171,14 +175,162 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return yearn4626RouterExt;
     }
 
+    function approveDepositsInRouter() public broadcast {
+        Yearn4626RouterExt yearn4626RouterExt = Yearn4626RouterExt(deployer.getAddress("Yearn4626RouterExt"));
+        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
+
+        // For each curve LP token -> yearn vault -> yearn gauge -> yearn strategy -> compounding cove gauge
+        // and yearn gauge -> non-compounding cove gauge
+        // we should include the following approvals:
+        // yearn4626RouterExt.approve(address token, address vaultAddress, type(uint256).max)
+        bytes[] memory data = new bytes[](25);
+        // ETH_YFI
+        CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE);
+        data[0] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_ETH_YFI_POOL_LP_TOKEN,
+            MAINNET_ETH_YFI_VAULT_V2,
+            type(uint256).max
+        );
+        data[1] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_VAULT_V2, MAINNET_ETH_YFI_GAUGE, type(uint256).max
+        );
+        data[2] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_ETH_YFI_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
+        );
+        data[3] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            gaugeInfo.coveYearnStrategy,
+            gaugeInfo.autoCompoundingGauge,
+            type(uint256).max
+        );
+        data[4] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_ETH_YFI_GAUGE,
+            gaugeInfo.nonAutoCompoundingGauge,
+            type(uint256).max
+        );
+        // DYFI_ETH
+        gaugeInfo = factory.getGaugeInfo(MAINNET_DYFI_ETH_GAUGE);
+        data[5] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_DYFI_ETH_POOL_LP_TOKEN,
+            MAINNET_DYFI_ETH_VAULT_V2,
+            type(uint256).max
+        );
+        data[6] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_DYFI_ETH_VAULT_V2, MAINNET_DYFI_ETH_GAUGE, type(uint256).max
+        );
+        data[7] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_DYFI_ETH_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
+        );
+        data[8] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            gaugeInfo.coveYearnStrategy,
+            gaugeInfo.autoCompoundingGauge,
+            type(uint256).max
+        );
+        data[9] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_DYFI_ETH_GAUGE,
+            gaugeInfo.nonAutoCompoundingGauge,
+            type(uint256).max
+        );
+        // WETH_YETH
+        gaugeInfo = factory.getGaugeInfo(MAINNET_WETH_YETH_GAUGE);
+        data[10] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_WETH_YETH_POOL_LP_TOKEN,
+            MAINNET_WETH_YETH_VAULT_V2,
+            type(uint256).max
+        );
+        data[11] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_WETH_YETH_VAULT_V2, MAINNET_WETH_YETH_GAUGE, type(uint256).max
+        );
+        data[12] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_WETH_YETH_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
+        );
+        data[13] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            gaugeInfo.coveYearnStrategy,
+            gaugeInfo.autoCompoundingGauge,
+            type(uint256).max
+        );
+        data[14] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_WETH_YETH_GAUGE,
+            gaugeInfo.nonAutoCompoundingGauge,
+            type(uint256).max
+        );
+        // PRISMA_YPRISMA
+        gaugeInfo = factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_GAUGE);
+        data[15] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_PRISMA_YPRISMA_POOL_LP_TOKEN,
+            MAINNET_PRISMA_YPRISMA_VAULT_V2,
+            type(uint256).max
+        );
+        data[16] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_PRISMA_YPRISMA_VAULT_V2,
+            MAINNET_PRISMA_YPRISMA_GAUGE,
+            type(uint256).max
+        );
+        data[17] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_PRISMA_YPRISMA_GAUGE,
+            gaugeInfo.coveYearnStrategy,
+            type(uint256).max
+        );
+        data[18] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            gaugeInfo.coveYearnStrategy,
+            gaugeInfo.autoCompoundingGauge,
+            type(uint256).max
+        );
+        data[19] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_PRISMA_YPRISMA_GAUGE,
+            gaugeInfo.nonAutoCompoundingGauge,
+            type(uint256).max
+        );
+        // CRV_YCRV
+        gaugeInfo = factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE);
+        data[20] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_CRV_YCRV_POOL_LP_TOKEN,
+            MAINNET_CRV_YCRV_VAULT_V2,
+            type(uint256).max
+        );
+        data[21] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_CRV_YCRV_VAULT_V2, MAINNET_CRV_YCRV_GAUGE, type(uint256).max
+        );
+        data[22] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector, MAINNET_CRV_YCRV_GAUGE, gaugeInfo.coveYearnStrategy, type(uint256).max
+        );
+        data[23] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            gaugeInfo.coveYearnStrategy,
+            gaugeInfo.autoCompoundingGauge,
+            type(uint256).max
+        );
+        data[24] = abi.encodeWithSelector(
+            PeripheryPayments.approve.selector,
+            MAINNET_CRV_YCRV_GAUGE,
+            gaugeInfo.nonAutoCompoundingGauge,
+            type(uint256).max
+        );
+        yearn4626RouterExt.multicall(data);
+    }
+
     function deployWethYethCoveStrategy(address ysd)
         public
         broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_POOL_GAUGE).name()))
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_GAUGE).name()))
     {
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_POOL_GAUGE).name()),
-            MAINNET_WETH_YETH_POOL_GAUGE,
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_GAUGE).name()),
+            MAINNET_WETH_YETH_GAUGE,
             ysd,
             MAINNET_CURVE_ROUTER
         );
@@ -243,17 +395,17 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     function deployCrvYcrvCoveStrategy(address ysd)
         public
         broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_POOL_GAUGE).name()))
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_GAUGE).name()))
     {
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_POOL_GAUGE).name()),
-            MAINNET_CRV_YCRV_POOL_GAUGE,
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_GAUGE).name()),
+            MAINNET_CRV_YCRV_GAUGE,
             ysd,
             MAINNET_CURVE_ROUTER
         );
         // set params for harvest rewards swapping
         strategy.setHarvestSwapParams(getMainnetCrvYcrvPoolGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT);
+        strategy.setMaxTotalAssets(MAINNET_CRV_YCRV_GAUGE_STRATEGY_MAX_DEPOSIT);
         ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
         ITokenizedStrategy(address(strategy)).setKeeper(manager);
         ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
@@ -266,17 +418,17 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     function deployPrismaYprismaCoveStrategy(address ysd)
         public
         broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_POOL_GAUGE).name()))
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_GAUGE).name()))
     {
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_POOL_GAUGE).name()),
-            MAINNET_PRISMA_YPRISMA_POOL_GAUGE,
+            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_GAUGE).name()),
+            MAINNET_PRISMA_YPRISMA_GAUGE,
             ysd,
             MAINNET_CURVE_ROUTER
         );
         // set params for harvest rewards swapping
         strategy.setHarvestSwapParams(getMainnetPrismaYprismaPoolGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT);
+        strategy.setMaxTotalAssets(MAINNET_PRISMA_YPRISMA_GAUGE_STRATEGY_MAX_DEPOSIT);
         ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
         ITokenizedStrategy(address(strategy)).setKeeper(manager);
         ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
@@ -414,7 +566,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             console.log("Registering contracts in MasterRegistry");
         }
 
-        bytes[] memory data = new bytes[](6);
+        bytes[] memory data = new bytes[](9);
         data[0] = abi.encodeWithSelector(
             MasterRegistry.addRegistry.selector,
             bytes32("YearnStakingDelegate"),
@@ -438,6 +590,17 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             MasterRegistry.addRegistry.selector,
             bytes32("CoveYearnGaugeFactory"),
             deployer.getAddress("CoveYearnGaugeFactory")
+        );
+        data[6] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector, bytes32("MiniChefV3"), deployer.getAddress("MiniChefV3")
+        );
+        data[7] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector, bytes32("CoveToken"), deployer.getAddress("CoveToken")
+        );
+        data[8] = abi.encodeWithSelector(
+            MasterRegistry.addRegistry.selector,
+            bytes32("Yearn4626RouterExt"),
+            deployer.getAddress("Yearn4626RouterExt")
         );
         masterRegistry.multicall(data);
     }
