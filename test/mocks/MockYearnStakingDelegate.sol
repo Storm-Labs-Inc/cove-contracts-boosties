@@ -12,6 +12,7 @@ contract MockYearnStakingDelegate {
 
     mapping(address user => mapping(address token => uint256)) public balanceOf;
     mapping(address token => uint256) public totalDeposited;
+    mapping(address token => uint256) public depositLimit;
 
     function deposit(address gauge, uint256 amount) external {
         // Effects
@@ -55,5 +56,23 @@ contract MockYearnStakingDelegate {
 
     function gaugeStakingRewards() external view returns (address) {
         return _mockgaugeStakingRewards;
+    }
+
+    function setDepositLimit(address gaugeToken, uint256 limit) external {
+        // Effects
+        depositLimit[gaugeToken] = limit;
+    }
+
+    function availableDepositLimit(address gaugeToken) external view returns (uint256) {
+        uint256 currentTotalDeposited = totalDeposited[gaugeToken];
+        uint256 currentDepositLimit = depositLimit[gaugeToken];
+        if (currentTotalDeposited >= currentDepositLimit) {
+            return 0;
+        }
+        // Return the difference between the max total assets and the current total assets, an underflow is not possible
+        // due to the above check
+        unchecked {
+            return currentDepositLimit - currentTotalDeposited;
+        }
     }
 }
