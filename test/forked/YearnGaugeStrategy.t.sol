@@ -15,6 +15,7 @@ import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateReward
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { AggregatorV3Interface } from "src/interfaces/deps/chainlink/AggregatorV3Interface.sol";
 import { DYFIRedeemer } from "src/DYFIRedeemer.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
 contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
@@ -38,8 +39,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         //// generic ////
         alice = createUser("alice");
         manager = createUser("manager");
-        vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
-        gauge = MAINNET_WETH_YETH_POOL_GAUGE;
+        vault = IVault(MAINNET_WETH_YETH_VAULT_V2);
+        gauge = MAINNET_WETH_YETH_GAUGE;
 
         // Deploy Mock Contracts
         mockYearnStakingDelegate = new MockYearnStakingDelegate();
@@ -72,8 +73,12 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
             curveSwapParams.swapParams[1] = [uint256(0), 0, 4, 1, 2];
             // set params for harvest rewards swapping
             yearnGaugeStrategy.setHarvestSwapParams(curveSwapParams);
-            yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
             vm.stopPrank();
+            vm.mockCall(
+                address(mockYearnStakingDelegate),
+                abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, gauge),
+                abi.encode(type(uint256).max)
+            );
         }
     }
 
@@ -164,9 +169,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         // send earned rewards to the staking delegate rewards contract
         airdrop(ERC20(MAINNET_DYFI), address(mockStakingDelegateRewards), accruedRewards);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards from the staking delegate rewards contract
+        mockStakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         _mockChainlinkPriceFeedTimestamp();
@@ -282,9 +286,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         vm.prank(tpManagement);
         yearnGaugeStrategy.shutdownStrategy();
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards from the staking delegate rewards contract
+        mockStakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         _mockChainlinkPriceFeedTimestamp();

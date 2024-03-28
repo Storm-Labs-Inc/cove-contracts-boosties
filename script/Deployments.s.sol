@@ -22,6 +22,9 @@ import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.so
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
+import { Yearn4626RouterExt } from "src/Yearn4626RouterExt.sol";
+import { PeripheryPayments } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
+import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
@@ -50,12 +53,12 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
     // RewardForwarder configuration
     uint256 public constant COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
-    // Cove strategy deposit limit configuration
-    uint256 public constant MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    // YearnStakingDelegate deposit limit configuration
+    uint256 public constant MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_ETH_YFI_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
@@ -99,13 +102,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(yearnStakingDelegateAddress, deployer.getAddress("CoveToken"));
         // Deploy Cove Strategies for Yearn Gauges
-        deployWethYethCoveStrategy(yearnStakingDelegateAddress);
-        deployEthYfiCoveStrategy(yearnStakingDelegateAddress);
-        deployEthDyfiCoveStrategy(yearnStakingDelegateAddress);
-        deployCrvYcrvCoveStrategy(yearnStakingDelegateAddress);
-        deployPrismaYprismaCoveStrategy(yearnStakingDelegateAddress);
+        deployCoveStrategiesAndGauges(yearnStakingDelegateAddress);
         // Deploy Rewards Gauge for CoveYFI
         deployCoveYFIRewards();
+        // Approve deposits in the router
+        approveDepositsInRouter();
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
         // Verify the state of the deployment
@@ -141,18 +142,20 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 "StakingDelegateRewards", MAINNET_DYFI, address(ysd), admin, timeLock, options
             )
         );
-        address swapAndLock = address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), broadcaster, options));
         deployer.deploy_DYFIRedeemer("DYFIRedeemer", admin, options);
-        deployer.deploy_CoveYFI("CoveYFI", address(ysd), admin, options);
+        address coveYfi = address(deployer.deploy_CoveYFI("CoveYFI", address(ysd), admin, options));
+        address swapAndLock =
+            address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), coveYfi, broadcaster, options));
+
         // Admin transactions
         SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYFIRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
         ysd.setSnapshotDelegate("veyfi.eth", manager);
-        ysd.addGaugeRewards(MAINNET_WETH_YETH_POOL_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_WETH_YETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
-        ysd.addGaugeRewards(MAINNET_CRV_YCRV_POOL_GAUGE, stakingDelegateRewards);
-        ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_POOL_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_CRV_YCRV_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_GAUGE, stakingDelegateRewards);
 
         // Move admin roles to the admin multisig
         ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -171,66 +174,64 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return yearn4626RouterExt;
     }
 
-    function deployWethYethCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_POOL_GAUGE).name()))
+    function _populateApproveMulticall(
+        bytes[] memory data,
+        uint256 i,
+        CoveYearnGaugeFactory.GaugeInfo memory gi
+    )
+        internal
+        pure
+        returns (uint256)
     {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_WETH_YETH_POOL_GAUGE).name()),
-            MAINNET_WETH_YETH_POOL_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
-        );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetWethYethGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
+        bytes4 selector = PeripheryPayments.approve.selector;
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnVaultAsset, gi.yearnVault, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnVault, gi.yearnGauge, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnGauge, gi.coveYearnStrategy, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.coveYearnStrategy, gi.autoCompoundingGauge, _MAX_UINT256);
+        data[i++] = abi.encodeWithSelector(selector, gi.yearnGauge, gi.nonAutoCompoundingGauge, _MAX_UINT256);
+        return i;
     }
 
-    function deployEthYfiCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_ETH_YFI_GAUGE).name()))
-    {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_ETH_YFI_GAUGE).name()),
-            MAINNET_ETH_YFI_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
-        );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetEthYfiGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
+    function approveDepositsInRouter() public broadcast {
+        Yearn4626RouterExt yearn4626RouterExt = Yearn4626RouterExt(deployer.getAddress("Yearn4626RouterExt"));
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
+
+        // For each curve LP token -> yearn vault -> yearn gauge -> yearn strategy -> compounding cove gauge
+        // and yearn gauge -> non-compounding cove gauge
+        // we should include the following approvals:
+        // yearn4626RouterExt.approve(address token, address vaultAddress, type(uint256).max)
+        bytes[] memory data = new bytes[](25);
+        uint256 i = 0;
+        // ETH_YFI
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE));
+        // DYFI_ETH
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_DYFI_ETH_GAUGE));
+        // WETH_YETH
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_WETH_YETH_GAUGE));
+        // PRISMA_YPRISMA
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_GAUGE));
+        // CRV_YCRV
+        i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE));
+        require(i == data.length, "Incorrect number of approves");
+        yearn4626RouterExt.multicall(data);
     }
 
-    function deployEthDyfiCoveStrategy(address ysd)
-        public
+    function _deployCoveStrategyAndGauges(
+        address ysd,
+        address yearngauge,
+        uint256 maxDeposit,
+        CurveRouterSwapper.CurveSwapParams memory swapParams
+    )
+        internal
         broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_DYFI_ETH_GAUGE).name()))
+        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(yearngauge).name()))
     {
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_DYFI_ETH_GAUGE).name()),
-            MAINNET_DYFI_ETH_GAUGE,
-            ysd,
-            MAINNET_CURVE_ROUTER
+            string.concat("YearnGaugeStrategy-", IERC4626(yearngauge).name()), yearngauge, ysd, MAINNET_CURVE_ROUTER
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetDyfiEthGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT);
+        // Set the curve swap params for harvest rewards swapping to the asset, gauge token
+        strategy.setHarvestSwapParams(swapParams);
+        // Set the tokenized strategy roles
         ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
         ITokenizedStrategy(address(strategy)).setKeeper(manager);
         ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
@@ -238,52 +239,40 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(yearngauge);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
+        // Set deposit limit for the gauge token
+        YearnStakingDelegate(ysd).setDepositLimit(yearngauge, maxDeposit);
     }
 
-    function deployCrvYcrvCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_POOL_GAUGE).name()))
-    {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_CRV_YCRV_POOL_GAUGE).name()),
-            MAINNET_CRV_YCRV_POOL_GAUGE,
+    function deployCoveStrategiesAndGauges(address ysd) public {
+        _deployCoveStrategyAndGauges(
             ysd,
-            MAINNET_CURVE_ROUTER
+            MAINNET_WETH_YETH_GAUGE,
+            MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT,
+            getMainnetWethYethGaugeCurveSwapParams()
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetCrvYcrvPoolGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
-    }
-
-    function deployPrismaYprismaCoveStrategy(address ysd)
-        public
-        broadcast
-        deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_POOL_GAUGE).name()))
-    {
-        YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
-            string.concat("YearnGaugeStrategy-", IERC4626(MAINNET_PRISMA_YPRISMA_POOL_GAUGE).name()),
-            MAINNET_PRISMA_YPRISMA_POOL_GAUGE,
+        _deployCoveStrategyAndGauges(
+            ysd, MAINNET_ETH_YFI_GAUGE, MAINNET_ETH_YFI_GAUGE_MAX_DEPOSIT, getMainnetEthYfiGaugeCurveSwapParams()
+        );
+        _deployCoveStrategyAndGauges(
+            ysd, MAINNET_DYFI_ETH_GAUGE, MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT, getMainnetDyfiEthGaugeCurveSwapParams()
+        );
+        _deployCoveStrategyAndGauges(
             ysd,
-            MAINNET_CURVE_ROUTER
+            MAINNET_CRV_YCRV_GAUGE,
+            MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT,
+            getMainnetCrvYcrvPoolGaugeCurveSwapParams()
         );
-        // set params for harvest rewards swapping
-        strategy.setHarvestSwapParams(getMainnetPrismaYprismaPoolGaugeCurveSwapParams());
-        strategy.setMaxTotalAssets(MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT);
-        ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
-        ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
-
-        // Deploy the reward gauges for the strategy via the factory
-        CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
-        factory.deployCoveGauges(address(strategy));
+        _deployCoveStrategyAndGauges(
+            ysd,
+            MAINNET_PRISMA_YPRISMA_GAUGE,
+            MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT,
+            getMainnetPrismaYprismaPoolGaugeCurveSwapParams()
+        );
     }
 
     function deployMasterRegistry() public broadcast deployIfMissing("MasterRegistry") returns (address) {
@@ -309,7 +298,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         );
         address coveYFI = deployer.getAddress("CoveYFI");
         coveRewardsGauge.initialize(coveYFI);
-        coveRewardsGaugeRewardForwarder.initialize(address(coveRewardsGauge));
+        coveRewardsGaugeRewardForwarder.initialize(address(coveRewardsGauge), admin, manager);
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
@@ -403,6 +392,20 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return factory;
     }
 
+    function _populateMasterRegistryMulticall(
+        bytes[] memory data,
+        uint256 i,
+        string memory name
+    )
+        internal
+        view
+        returns (uint256)
+    {
+        data[i++] =
+            abi.encodeWithSelector(MasterRegistry.addRegistry.selector, bytes32(bytes(name)), deployer.getAddress(name));
+        return i;
+    }
+
     function registerContractsInMasterRegistry() public broadcast {
         // Skip if YearnStakingDelegate is already registered
         MasterRegistry masterRegistry = MasterRegistry(deployer.getAddress("MasterRegistry"));
@@ -414,31 +417,19 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             console.log("Registering contracts in MasterRegistry");
         }
 
-        bytes[] memory data = new bytes[](6);
-        data[0] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector,
-            bytes32("YearnStakingDelegate"),
-            deployer.getAddress("YearnStakingDelegate")
-        );
-        data[1] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector,
-            bytes32("StakingDelegateRewards"),
-            deployer.getAddress("StakingDelegateRewards")
-        );
-        data[2] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("SwapAndLock"), deployer.getAddress("SwapAndLock")
-        );
-        data[3] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("DYFIRedeemer"), deployer.getAddress("DYFIRedeemer")
-        );
-        data[4] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector, bytes32("CoveYFI"), deployer.getAddress("CoveYFI")
-        );
-        data[5] = abi.encodeWithSelector(
-            MasterRegistry.addRegistry.selector,
-            bytes32("CoveYearnGaugeFactory"),
-            deployer.getAddress("CoveYearnGaugeFactory")
-        );
+        bytes[] memory data = new bytes[](9);
+        uint256 i = 0;
+        i = _populateMasterRegistryMulticall(data, i, "YearnStakingDelegate");
+        i = _populateMasterRegistryMulticall(data, i, "StakingDelegateRewards");
+        i = _populateMasterRegistryMulticall(data, i, "SwapAndLock");
+        i = _populateMasterRegistryMulticall(data, i, "DYFIRedeemer");
+        i = _populateMasterRegistryMulticall(data, i, "CoveYFI");
+        i = _populateMasterRegistryMulticall(data, i, "CoveYearnGaugeFactory");
+        i = _populateMasterRegistryMulticall(data, i, "MiniChefV3");
+        i = _populateMasterRegistryMulticall(data, i, "CoveToken");
+        i = _populateMasterRegistryMulticall(data, i, "Yearn4626RouterExt");
+        require(i == data.length, "Incorrect number of contracts");
+
         masterRegistry.multicall(data);
     }
 
@@ -474,6 +465,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", TIMELOCK_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", PAUSER_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", DEPOSITOR_ROLE, 10);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);

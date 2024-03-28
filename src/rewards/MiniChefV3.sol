@@ -507,19 +507,15 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
                 unpaidRewards_ = pendingReward_ - rewardAmount;
             }
             user.unpaidRewards = unpaidRewards_;
-        }
-
-        emit Harvest(msg.sender, pid, rewardAmount);
-
-        if (pendingReward_ != 0) {
             if (rewardAmount != 0) {
+                emit Harvest(msg.sender, pid, rewardAmount);
                 REWARD_TOKEN.safeTransfer(to, rewardAmount);
             }
         }
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onReward(pid, msg.sender, to, pendingReward_, user.amount);
+            _rewarder.onReward(pid, msg.sender, to, rewardAmount, user.amount);
         }
     }
 
@@ -546,9 +542,15 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
 
         IMiniChefV3Rewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            try _rewarder.onReward(pid, msg.sender, to, 0, 0) { }
-            catch {
-                // slither-disable-next-line reentrancy-events
+            bytes memory data = abi.encodeCall(IMiniChefV3Rewarder.onReward, (pid, msg.sender, to, 0, 0));
+            uint256 gasBefore = gasleft();
+            // slither-disable-next-line missing-zero-check,return-bomb,low-level-calls
+            (bool success,) = address(_rewarder).call{ gas: gasBefore }(data);
+            if (gasleft() < gasBefore / 63) {
+                revert Errors.InsufficientGas();
+            }
+            if (!success) {
+                //slither-disable-next-line reentrancy-events
                 emit LogRewarderEmergencyWithdrawFaulty(msg.sender, pid, amount, to);
             }
         }

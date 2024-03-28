@@ -41,9 +41,13 @@ interface IYearnStakingDelegate {
     function setExitRewardSplit(uint128 treasuryPct, uint128 coveYfiPct) external;
     function setSwapAndLock(address swapAndLock) external;
     function balanceOf(address user, address gauge) external view returns (uint256);
+    function totalDeposited(address gauge) external view returns (uint256);
+    function depositLimit(address gauge) external view returns (uint256);
+    function availableDepositLimit(address gauge) external view returns (uint256);
     function gaugeStakingRewards(address gauge) external view returns (address);
     function gaugeRewardReceivers(address gauge) external view returns (address);
     function getGaugeRewardSplit(address gauge) external view returns (RewardSplit memory);
     function getBoostRewardSplit() external view returns (BoostRewardSplit memory);
     function getExitRewardSplit() external view returns (ExitRewardSplit memory);
+    function treasury() external view returns (address);
 }

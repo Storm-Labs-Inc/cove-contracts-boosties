@@ -15,11 +15,12 @@ import { ERC20RewardsGauge_EchidnaTest } from "test/invariant/ERC20RewardsGauge.
 /// @dev This contract is used to test the additional properties of ERC20RewardsGauge
 ///     along with CryticERC4626PropertyTests.
 contract YSDRewardsGauge_EchidnaTest is ERC20RewardsGauge_EchidnaTest {
+    TestERC20Token internal _asset;
     MockYearnStakingDelegate internal _stakingDelegate;
     MockYearnGaugeStrategy internal _gaugeStrategy;
 
     constructor() {
-        TestERC20Token _asset = new TestERC20Token("Test Token", "TT", 18);
+        _asset = new TestERC20Token("Test Token", "TT", 18);
         _stakingDelegate = new MockYearnStakingDelegate();
         _gaugeStrategy = new MockYearnGaugeStrategy();
         YSDRewardsGauge gaugeImpl = new YSDRewardsGauge();
@@ -40,27 +41,33 @@ contract YSDRewardsGauge_EchidnaTest is ERC20RewardsGauge_EchidnaTest {
         initialize(address(_rewardsGauge), address(_asset), false);
     }
 
-    /// @notice Verify that maxTotalAssets() always returns associated strategy's maxTotalAssets() minus totalAssets()
-    function verify_maxTotalAssetsProperties() public {
-        uint256 globalMaxAssets = _gaugeStrategy.maxTotalAssets();
-        uint256 totalAssetsInStrategy = _gaugeStrategy.totalAssets();
-        uint256 expectedMaxTotalAssets =
-            totalAssetsInStrategy >= globalMaxAssets ? 0 : globalMaxAssets - totalAssetsInStrategy;
-        uint256 maxTotalAssets = YSDRewardsGauge(address(_rewardsGauge)).maxTotalAssets();
-        emit LogUint256("maxTotalAssets", maxTotalAssets);
-        emit LogUint256("expectedMaxTotalAssets", expectedMaxTotalAssets);
-
-        assertEq(maxTotalAssets, expectedMaxTotalAssets, "maxTotalAssets() must return the correct value");
+    function setMaxDeposit(uint256 maxDeposit) public {
+        try _stakingDelegate.setDepositLimit(address(_asset), maxDeposit) { }
+        catch {
+            assertWithMsg(false, "setDepositLimit() must not revert");
+        }
+        try _stakingDelegate.depositLimit(address(_asset)) returns (uint256 depositLimit) {
+            assertEq(depositLimit, maxDeposit, "depositLimit() must return the set value");
+        } catch {
+            assertWithMsg(false, "depositLimit() must not revert");
+        }
     }
 
-    /// @notice Handler for setting the total assets in the strategy. This mimics the result of depositing or
-    /// withdrawing from the associated strategy
-    function setStrategyTotalAssets(uint256 assets) public {
-        _gaugeStrategy.setTotalAssets(assets);
+    function verify_maxDeposit_whenUnpaused(address depositor) public override {
+        require(!_rewardsGauge.paused(), "require gauge to be not paused for this test");
+        assertEq(
+            _rewardsGauge.maxDeposit(depositor),
+            _stakingDelegate.availableDepositLimit(address(_asset)),
+            "maxDeposit() must return the same value as availableDepositLimit()"
+        );
     }
 
-    /// @notice Handler for setting the max total assets in the strategy.
-    function setStrategyMaxTotalAssets(uint256 assets) public {
-        _gaugeStrategy.setMaxTotalAssets(assets);
+    function verify_maxMint_whenUnpaused(address depositor) public override {
+        require(!_rewardsGauge.paused(), "require gauge to be not paused for this test");
+        assertEq(
+            _rewardsGauge.maxMint(depositor),
+            _stakingDelegate.availableDepositLimit(address(_asset)),
+            "maxMint() must return the same value as availableDepositLimit()"
+        );
     }
 }

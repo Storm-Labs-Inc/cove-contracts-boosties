@@ -10,11 +10,13 @@ import { IYearnStakingDelegate, YearnStakingDelegate } from "src/YearnStakingDel
 import { Errors } from "src/libraries/Errors.sol";
 import { IGauge } from "src/interfaces/deps/yearn/veYFI/IGauge.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import { CoveYFI } from "src/CoveYFI.sol";
 
 contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
     using SafeERC20 for IERC20;
 
     YearnStakingDelegate public yearnStakingDelegate;
+    address public coveYfi;
     address public gauge;
     address public vault;
     address public stakingDelegateRewards;
@@ -49,9 +51,9 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         // create an address that will act as a coveYfiRewardFowarder
         coveYfiRewardFowarder = createUser("coveYfiRewardFowarder");
 
-        vault = MAINNET_WETH_YETH_POOL_VAULT;
+        vault = MAINNET_WETH_YETH_VAULT_V2;
 
-        gauge = MAINNET_WETH_YETH_POOL_GAUGE;
+        gauge = MAINNET_WETH_YETH_GAUGE;
 
         // Give admin some dYFI
         airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
@@ -59,13 +61,16 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         address receiver = setUpGaugeRewardReceiverImplementation(admin);
         yearnStakingDelegate = new YearnStakingDelegate(receiver, treasury, admin, pauser, timelock);
         stakingDelegateRewards = setUpStakingDelegateRewards(admin, MAINNET_DYFI, address(yearnStakingDelegate));
-        swapAndLock = setUpSwapAndLock(admin, address(yearnStakingDelegate));
+        coveYfi = address(new CoveYFI(address(yearnStakingDelegate), admin));
+        swapAndLock = setUpSwapAndLock(admin, address(yearnStakingDelegate), coveYfi);
 
         // Setup approvals for YFI spending
         vm.startPrank(alice);
         IERC20(MAINNET_YFI).approve(MAINNET_VE_YFI, type(uint256).max);
         IERC20(MAINNET_YFI).approve(address(yearnStakingDelegate), type(uint256).max);
         vm.stopPrank();
+
+        _grantDepositorRole(wrappedStrategy);
     }
 
     // Need a special function to airdrop to the gauge since it relies on totalSupply for calculation
@@ -125,6 +130,11 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         IERC20(gauge).approve(address(yearnStakingDelegate), amount);
         yearnStakingDelegate.deposit(gauge, amount);
         vm.stopPrank();
+    }
+
+    function _grantDepositorRole(address user) internal {
+        vm.prank(timelock);
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, user);
     }
 
     function testFuzz_constructor(address anyGauge) public {
@@ -235,6 +245,15 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         assertEq(yearnStakingDelegate.balanceOf(wrappedStrategy, gauge), amount, "deposit failed");
         assertEq(IERC20(gauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
         assertEq(IERC20(gauge).balanceOf(wrappedStrategy), 0, "deposit failed");
+    }
+
+    function testFuzz_deposit_revertWhen_CallerIsNotDepositor(address user, uint256 amount) public {
+        vm.assume(!yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, user));
+        amount = bound(amount, 1, type(uint128).max);
+        _setGaugeRewards();
+        vm.expectRevert(_formatAccessControlError(user, DEPOSITOR_ROLE));
+        vm.prank(user);
+        yearnStakingDelegate.deposit(gauge, amount);
     }
 
     function testFuzz_deposit_revertWhen_GaugeRewardsNotYetAdded(uint256 amount) public {
@@ -557,5 +576,33 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.TreasuryPctTooHigh.selector));
         yearnStakingDelegate.setGaugeRewardSplit(gauge, treasuryPct, coveYfiPct, userPct, lockPct);
         vm.stopPrank();
+    }
+
+    function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
+        vm.startPrank(admin);
+        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
+        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
+    }
+
+    function test_grantRole_TimelockRole() public {
+        vm.startPrank(timelock);
+        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, alice));
+        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
+        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, alice));
+    }
+
+    function test_grantRole_DepositorRole_revertWhen_CallerIsNotTimelock() public {
+        vm.startPrank(admin);
+        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, alice);
+    }
+
+    function test_grantRole_DepositorRole() public {
+        vm.startPrank(timelock);
+        assertFalse(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, alice));
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, alice);
+        assertTrue(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, alice));
     }
 }
