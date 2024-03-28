@@ -209,6 +209,9 @@ library Errors {
     /// @notice Error for when the 'to' address is invalid.
     error InvalidTo();
 
+    /// @notice Error esure the has enough remaining gas.
+    error InsufficientGas();
+
     /// TESTING ///
 
     /// @notice Error for when there is not enough balance to take away.
