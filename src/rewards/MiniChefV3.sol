@@ -507,12 +507,8 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
                 unpaidRewards_ = pendingReward_ - rewardAmount;
             }
             user.unpaidRewards = unpaidRewards_;
-        }
-
-        emit Harvest(msg.sender, pid, rewardAmount);
-
-        if (pendingReward_ != 0) {
             if (rewardAmount != 0) {
+                emit Harvest(msg.sender, pid, rewardAmount);
                 REWARD_TOKEN.safeTransfer(to, rewardAmount);
             }
         }

@@ -38,8 +38,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
         //// generic ////
         alice = createUser("alice");
         manager = createUser("manager");
-        vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
-        gauge = MAINNET_WETH_YETH_POOL_GAUGE;
+        vault = IVault(MAINNET_WETH_YETH_VAULT_V2);
+        gauge = MAINNET_WETH_YETH_GAUGE;
 
         // Deploy Mock Contracts
         mockYearnStakingDelegate = new MockYearnStakingDelegate();

@@ -207,10 +207,26 @@ contract Router_ForkedTest is BaseTest {
     function test_redeemStakeDaoGauge() public {
         uint256 shareAmount = 1 ether;
         airdrop(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE), address(router), shareAmount, false);
-        router.redeemStakeDaoGauge(IStakeDaoGauge(MAINNET_STAKE_DAO_ETH_YFI_GAUGE), shareAmount);
+
+        assertEq(
+            router.redeemStakeDaoGauge(IStakeDaoGauge(MAINNET_STAKE_DAO_ETH_YFI_GAUGE), shareAmount, user), shareAmount
+        );
 
         assertEq(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE).balanceOf(address(router)), 0);
         assertEq(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE).balanceOf(user), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(user), shareAmount);
+    }
+
+    function test_redeemStakeDaoGauge_ToRouter() public {
+        uint256 shareAmount = 1 ether;
+        airdrop(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE), address(router), shareAmount, false);
+
+        assertEq(
+            router.redeemStakeDaoGauge(IStakeDaoGauge(MAINNET_STAKE_DAO_ETH_YFI_GAUGE), shareAmount, address(router)),
+            shareAmount
+        );
+
+        assertEq(IERC20(MAINNET_STAKE_DAO_ETH_YFI_GAUGE).balanceOf(address(router)), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), shareAmount);
     }
 
@@ -273,7 +289,7 @@ contract Router_ForkedTest is BaseTest {
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
-        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+        path[2] = MAINNET_CRV_YCRV_GAUGE; // Intentional mismatch for the test
 
         vm.expectRevert(Yearn4626RouterExt.PreviewVaultMismatch.selector);
         router.previewDeposits(path, assetInAmount);
@@ -337,7 +353,7 @@ contract Router_ForkedTest is BaseTest {
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
-        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+        path[2] = MAINNET_CRV_YCRV_GAUGE; // Intentional mismatch for the test
 
         vm.expectRevert(Yearn4626RouterExt.PreviewVaultMismatch.selector);
         router.previewMints(path, shareOutAmount);
@@ -412,7 +428,7 @@ contract Router_ForkedTest is BaseTest {
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_GAUGE;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
-        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+        path[2] = MAINNET_CRV_YCRV_GAUGE; // Intentional mismatch for the test
 
         vm.expectRevert(Yearn4626RouterExt.PreviewVaultMismatch.selector);
         router.previewWithdraws(path, assetOutAmount);
@@ -487,7 +503,7 @@ contract Router_ForkedTest is BaseTest {
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_GAUGE;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
-        path[2] = MAINNET_CRV_YCRV_POOL_GAUGE; // Intentional mismatch for the test
+        path[2] = MAINNET_CRV_YCRV_GAUGE; // Intentional mismatch for the test
 
         vm.expectRevert(Yearn4626RouterExt.PreviewVaultMismatch.selector);
         router.previewRedeems(path, shareInAmount);
