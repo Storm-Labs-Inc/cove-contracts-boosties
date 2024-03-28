@@ -621,7 +621,7 @@ contract MiniChefV3_Test is BaseTest {
         vm.expectEmit();
         emit FunctionHit();
         miniChef.emergencyWithdraw{ gas: gasToCall }(pid, alice);
-        assertEq(MockMiniChefRewarder(rewarder).spendGas(0), 2, "inner low level call was not reverted");
+        assertEq(MockMiniChefRewarder(rewarder).spendGas(0), 2, "inner low level call was reverted");
     }
 
     function test_harvest() public {
