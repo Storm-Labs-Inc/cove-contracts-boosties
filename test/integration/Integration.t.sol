@@ -355,9 +355,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -441,9 +440,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -601,9 +599,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -712,9 +709,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // warp blocks forward to profit locking is finished
         vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -803,9 +799,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
