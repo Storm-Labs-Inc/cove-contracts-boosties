@@ -5,6 +5,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 contract MockStakingDelegateRewards {
     address private immutable _REWARDS_TOKEN;
     address public receiver;
+    uint256 public lastUpdateUserBalanceCalled;
 
     constructor(address _rewardsToken) {
         _REWARDS_TOKEN = _rewardsToken;
@@ -34,5 +35,11 @@ contract MockStakingDelegateRewards {
 
     function setRewardReceiver(address receiver_) external {
         receiver = receiver_;
+    }
+
+    function updateUserBalance(address, address, uint256, uint256) external {
+        for (uint256 i = 0; i < 1000; i++) {
+            lastUpdateUserBalanceCalled = block.timestamp;
+        }
     }
 }
