@@ -202,9 +202,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
         // Then the strategy will deposit vaultAsset into the vault, and into the gauge
         airdrop(IERC20(vaultAsset), curveRouter, profitedVaultAssetAmount);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(manager);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        MockStakingDelegateRewards(stakingDelegateRewards).getReward(address(yearnGaugeStrategy), gauge);
         assertEq(
             IERC20(dYfi).balanceOf(address(yearnGaugeStrategy)),
             profitedVaultAssetAmount,
@@ -263,9 +262,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
         // Then the strategy will deposit vaultAsset into the vault, and into the gauge
         airdrop(IERC20(vaultAsset), curveRouter, profitedVaultAssetAmount);
 
-        // manager calls report on the wrapped strategy, this will receive dYfi rewards
-        vm.prank(manager);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        MockStakingDelegateRewards(stakingDelegateRewards).getReward(address(yearnGaugeStrategy), gauge);
         assertEq(IERC20(dYfi).balanceOf(address(yearnGaugeStrategy)), 1e18, "dYfi rewards should be received");
         // Call massRedeem() to swap received DYfi for Yfi
         _massRedeemStrategyDYfi();
@@ -406,9 +404,8 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.prank(manager);
         yearnGaugeStrategy.shutdownStrategy();
 
-        // manager calls report on the wrapped strategy, this will receive dYfi rewards
-        vm.prank(manager);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        MockStakingDelegateRewards(stakingDelegateRewards).getReward(address(yearnGaugeStrategy), gauge);
         assertEq(
             IERC20(dYfi).balanceOf(address(yearnGaugeStrategy)),
             profitedVaultAssetAmount,

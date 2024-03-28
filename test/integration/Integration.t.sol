@@ -45,11 +45,12 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
 
     // Addresses
     address public alice;
+    address public manager;
+    address public pauser;
     address public gauge;
     address public treasury;
     address public rewardDistributor;
     address public gaugeRewardReceiver;
-    address public pauser;
     address public timelock;
 
     function setUp() public override {
@@ -57,8 +58,10 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         //// generic ////
         alice = createUser("alice");
         treasury = createUser("treasury");
-        vault = IVault(MAINNET_WETH_YETH_POOL_VAULT);
-        gauge = MAINNET_WETH_YETH_POOL_GAUGE;
+        manager = createUser("manager");
+        pauser = createUser("pauser");
+        vault = IVault(MAINNET_WETH_YETH_VAULT_V2);
+        gauge = MAINNET_WETH_YETH_GAUGE;
         rewardDistributor = createUser("rewardDistributor");
         pauser = createUser("pauser");
         timelock = createUser("timelock");
@@ -87,7 +90,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             coveYfiRewardsGauge = ERC20RewardsGauge(_cloneContract(erc20RewardsGaugeImplementation));
             coveYfiRewardsGauge.initialize(address(coveYfi));
             coveYfiRewardForwarder = RewardForwarder(_cloneContract(rewardForwarderImplementation));
-            coveYfiRewardForwarder.initialize(address(coveYfiRewardsGauge));
+            coveYfiRewardForwarder.initialize(address(coveYfiRewardsGauge), admin, manager);
             coveYfiRewardsGauge.addReward(MAINNET_YFI, address(coveYfiRewardForwarder));
             coveYfiRewardsGauge.addReward(MAINNET_DYFI, address(coveYfiRewardForwarder));
             vm.label(address(coveYfiRewardForwarder), "coveYfiRewardForwarder");
@@ -135,17 +138,17 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
             // CoveToken
             coveToken = new CoveToken(admin);
             // RewardsGauges
-            coveYearnGaugeFactory = new CoveYearnGaugeFactory(
-                admin,
-                address(yearnStakingDelegate),
-                address(coveToken),
-                address(rewardForwarderImplementation),
-                address(erc20RewardsGaugeImplementation),
-                address(ysdRewardsGaugeImplementation),
-                admin,
-                admin,
-                admin
-            );
+            coveYearnGaugeFactory = new CoveYearnGaugeFactory({
+                factoryAdmin: admin,
+                ysd: address(yearnStakingDelegate),
+                cove: address(coveToken),
+                rewardForwarderImpl_: address(rewardForwarderImplementation),
+                erc20RewardsGaugeImpl_: address(erc20RewardsGaugeImplementation),
+                ysdRewardsGaugeImpl_: address(ysdRewardsGaugeImplementation),
+                gaugeAdmin_: admin,
+                gaugeManager_: manager,
+                gaugePauser_: pauser
+            });
             vm.label(address(coveYearnGaugeFactory), "coveYearnGaugeFactory");
             coveYearnGaugeFactory.deployCoveGauges(address(yearnGaugeStrategy));
             CoveYearnGaugeFactory.GaugeInfo memory gaugeInfo = coveYearnGaugeFactory.getGaugeInfo(address(gauge));
@@ -360,9 +363,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -409,6 +411,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // Mint coveToken to be given as reward
         vm.prank(admin);
         coveToken.transfer(address(baseRewardForwarder), coveReward);
+        vm.prank(manager);
         RewardForwarder(baseRewardForwarder).forwardRewardToken(address(coveToken));
         coveReward = coveReward - erc20RewardsGauge.getRewardData(address(coveToken)).leftOver;
 
@@ -444,9 +447,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -492,6 +494,7 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // Mint coveToken to be given as reward
         vm.prank(admin);
         coveToken.transfer(address(ysdRewardForwarder), coveReward);
+        vm.prank(manager);
         RewardForwarder(ysdRewardForwarder).forwardRewardToken(address(coveToken));
         coveReward = coveReward - ysdRewardsGauge.getRewardData(address(coveToken)).leftOver;
 
@@ -529,16 +532,17 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        vm.startPrank(alice);
         // Get rewards gained by YearnStakingDelegate harvest and forwarded to the rewards forwarder
         stakingDelegateRewards.getReward(address(ysdRewardsGauge), gauge);
         // Forward the earned dYFI to the rewardsGauge
+        vm.prank(manager);
         RewardForwarder(ysdRewardForwarder).forwardRewardToken(address(MAINNET_DYFI));
         totalRewardAmount = totalRewardAmount - ysdRewardsGauge.getRewardData(MAINNET_DYFI).leftOver;
         // Warp forward 1 week for the rewards to be claimable
         uint256 periodFinish = ysdRewardsGauge.getRewardData(MAINNET_DYFI).periodFinish;
         vm.warp(periodFinish);
         uint256 dYFIBalanceBefore = IERC20(MAINNET_DYFI).balanceOf(alice);
+        vm.startPrank(alice);
         ysdRewardsGauge.claimRewards(alice, alice);
         assertApproxEqRel(
             dYFIBalanceBefore + totalRewardAmount,
@@ -600,9 +604,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -710,9 +713,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         // warp blocks forward to profit locking is finished
         vm.warp(block.timestamp + IStrategy(address(yearnGaugeStrategy)).profitMaxUnlockTime());
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
@@ -799,9 +801,8 @@ contract YearnGaugeStrategy_IntegrationTest is YearnV3BaseTest {
         uint256 stakingDelegateperiodFinish = stakingDelegateRewards.periodFinish(gauge);
         vm.warp(stakingDelegateperiodFinish);
 
-        // manager calls report on the wrapped strategy
-        vm.prank(tpManagement);
-        yearnGaugeStrategy.report();
+        // Claim rewards for the strategy
+        stakingDelegateRewards.getReward(address(yearnGaugeStrategy), gauge);
         assertGt(IERC20(MAINNET_DYFI).balanceOf(address(yearnGaugeStrategy)), 0, "dYfi rewards should be received");
 
         // manager calls report on the wrapped strategy
