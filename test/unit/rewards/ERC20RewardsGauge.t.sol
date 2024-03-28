@@ -201,8 +201,26 @@ contract ERC20RewardsGauge_Test is BaseTest {
         airdrop(dummyGaugeAsset, alice, amount);
         vm.startPrank(alice);
         dummyGaugeAsset.approve(address(rewardsGauge), amount);
-        vm.expectRevert("Pausable: paused");
+        vm.expectRevert("ERC4626: deposit more than max");
         rewardsGauge.deposit(amount, alice);
+    }
+
+    function test_maxDeposit() public {
+        assertEq(rewardsGauge.maxDeposit(address(0)), type(uint256).max, "maxDeposit should return max uint256");
+        // pause
+        vm.prank(pauser);
+        rewardsGauge.pause();
+        assertTrue(rewardsGauge.paused(), "deposits should be paused");
+        assertEq(rewardsGauge.maxDeposit(address(0)), 0, "maxDeposit should return 0 when paused");
+    }
+
+    function test_maxMint() public {
+        assertEq(rewardsGauge.maxMint(address(0)), type(uint256).max, "maxMint should return max uint256");
+        // pause
+        vm.prank(pauser);
+        rewardsGauge.pause();
+        assertTrue(rewardsGauge.paused(), "deposits should be paused");
+        assertEq(rewardsGauge.maxMint(address(0)), 0, "maxMint should return 0 when paused");
     }
 
     function test_pause_revertWhen_notPauser() public {

@@ -9,7 +9,7 @@ import { MockYearnStakingDelegate } from "test/mocks/MockYearnStakingDelegate.so
 import { BaseRewardsGauge } from "src/rewards/BaseRewardsGauge.sol";
 import { MockStakingDelegateRewards } from "test/mocks/MockStakingDelegateRewards.sol";
 import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IYearnStakingDelegate } from "src/interfaces/IYearnStakingDelegate.sol";
 
 contract YSDRewardsGauge_Test is BaseTest {
     YSDRewardsGauge public rewardsGaugeImplementation;
@@ -38,17 +38,10 @@ contract YSDRewardsGauge_Test is BaseTest {
         // clone the implementation
         rewardsGauge = YSDRewardsGauge(_cloneContract(address(rewardsGaugeImplementation)));
         vm.label(address(rewardsGauge), "rewardsGauge");
-        vm.prank(admin);
 
         // Mock YearnGaugeStrategy for establishing max deposit limit
         strategy = YearnGaugeStrategy(createUser("strategy"));
-        vm.mockCall(
-            address(strategy),
-            abi.encodeWithSelector(YearnGaugeStrategy.maxTotalAssets.selector),
-            abi.encode(type(uint256).max)
-        );
-        vm.mockCall(address(strategy), abi.encodeWithSelector(IERC4626.totalAssets.selector), abi.encode(0));
-
+        vm.prank(admin);
         rewardsGauge.initialize(address(dummyGaugeAsset), address(ysd), address(strategy));
     }
 
@@ -99,6 +92,12 @@ contract YSDRewardsGauge_Test is BaseTest {
         vm.assume(amount > 0);
         // alice gets some mockgauge tokens by depositing dummy token
         airdrop(dummyGaugeAsset, alice, amount);
+        // set availableDepositLimit to max
+        vm.mockCall(
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(type(uint256).max)
+        );
         vm.startPrank(alice);
         dummyGaugeAsset.approve(address(rewardsGauge), amount);
         rewardsGauge.deposit(amount, alice);
@@ -115,11 +114,55 @@ contract YSDRewardsGauge_Test is BaseTest {
         airdrop(dummyGaugeAsset, alice, amount);
         vm.startPrank(alice);
         dummyGaugeAsset.approve(address(rewardsGauge), amount);
+        // set availableDepositLimit to 0
         vm.mockCall(
-            address(strategy), abi.encodeWithSelector(YearnGaugeStrategy.maxTotalAssets.selector), abi.encode(0)
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(0)
         );
-        vm.expectRevert(YSDRewardsGauge.MaxTotalAssetsExceeded.selector);
+        vm.expectRevert("ERC4626: deposit more than max");
         rewardsGauge.deposit(amount, alice);
+    }
+
+    function testFuzz_deposit_revertWhen_Paused(uint256 amount) public {
+        vm.assume(amount > 0);
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.prank(admin);
+        rewardsGauge.pause();
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(rewardsGauge), amount);
+        vm.expectRevert("ERC4626: deposit more than max");
+        rewardsGauge.deposit(amount, alice);
+    }
+
+    function test_maxDeposit() public {
+        // set availableDepositLimit to max
+        vm.mockCall(
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(type(uint256).max)
+        );
+        assertEq(rewardsGauge.maxDeposit(address(0)), type(uint256).max, "maxDeposit was not set correctly");
+
+        vm.prank(admin);
+        // pause
+        rewardsGauge.pause();
+        assertEq(rewardsGauge.maxDeposit(address(0)), 0, "maxDeposit was not set correctly");
+    }
+
+    function test_maxMint() public {
+        // set availableDepositLimit to max
+        vm.mockCall(
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(type(uint256).max)
+        );
+        assertEq(rewardsGauge.maxMint(address(0)), type(uint256).max, "maxMint was not set correctly");
+
+        vm.prank(admin);
+        // pause
+        rewardsGauge.pause();
+        assertEq(rewardsGauge.maxMint(address(0)), 0, "maxMint was not set correctly");
     }
 
     function testFuzz_withdraw(uint256 amount) public {
@@ -127,6 +170,12 @@ contract YSDRewardsGauge_Test is BaseTest {
         amount = bound(amount, 0, type(uint256).max - 1); // avoid overflow in ERC4626._convertToShares
         // alice gets some mockgauge tokens by depositing dummy token
         airdrop(dummyGaugeAsset, alice, amount);
+        // set availableDepositLimit to max
+        vm.mockCall(
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(type(uint256).max)
+        );
         vm.startPrank(alice);
         dummyGaugeAsset.approve(address(rewardsGauge), amount);
         rewardsGauge.deposit(amount, alice);
@@ -143,6 +192,12 @@ contract YSDRewardsGauge_Test is BaseTest {
         // alice and bob gets some mockgauge tokens by depositing dummy token
         airdrop(dummyGaugeAsset, alice, amount);
         airdrop(dummyGaugeAsset, bob, amount);
+        // set availableDepositLimit to max
+        vm.mockCall(
+            address(ysd),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, address(dummyGaugeAsset)),
+            abi.encode(type(uint256).max)
+        );
         // alice deposits
         vm.startPrank(alice);
         dummyGaugeAsset.approve(address(rewardsGauge), amount);

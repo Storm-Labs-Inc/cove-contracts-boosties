@@ -3,8 +3,6 @@ pragma solidity 0.8.18;
 
 import { IYearnStakingDelegate } from "../interfaces/IYearnStakingDelegate.sol";
 import { IStakingDelegateRewards } from "../interfaces/IStakingDelegateRewards.sol";
-import { YearnGaugeStrategy } from "../strategies/YearnGaugeStrategy.sol";
-import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { BaseRewardsGauge } from "./BaseRewardsGauge.sol";
 import {
     SafeERC20Upgradeable,
@@ -60,18 +58,31 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     }
 
     /**
-     * @notice Calculates the maximum total assets that can be deposited into the gauge.
-     * @dev Determines the maximum assets that can be managed by the gauge based on the strategy's limits.
+     * @notice Returns the maximum amount of assets that can be deposited into the gauge.
+     * @dev Overrides the {BaseRewardsGauge-maxDeposit} function to include interaction with the YearnStakingDelegate.
      * @return The maximum amount of assets that can be deposited.
      */
-    function maxTotalAssets() public view virtual returns (uint256) {
-        uint256 maxAssets = YearnGaugeStrategy(coveYearnStrategy).maxTotalAssets();
-        uint256 totalAssetsInStrategy = ITokenizedStrategy(coveYearnStrategy).totalAssets();
-        if (totalAssetsInStrategy >= maxAssets) {
+    function maxDeposit(address) public view virtual override(BaseRewardsGauge) returns (uint256) {
+        if (paused()) {
             return 0;
-        } else {
-            return maxAssets - totalAssetsInStrategy;
         }
+        return _availableDepositLimit();
+    }
+
+    /**
+     * @notice Returns the maximum amount of shares that can be minted from the gauge
+     * @dev Overrides the {BaseRewardsGauge-maxMint} function to include interaction with the YearnStakingDelegate.
+     * @return The maximum amount of shares that can be minted.
+     */
+    function maxMint(address) public view virtual override(BaseRewardsGauge) returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+        return _availableDepositLimit();
+    }
+
+    function _availableDepositLimit() internal view returns (uint256) {
+        return IYearnStakingDelegate(yearnStakingDelegate).availableDepositLimit(asset());
     }
 
     /**
@@ -91,12 +102,9 @@ contract YSDRewardsGauge is BaseRewardsGauge {
     )
         internal
         virtual
-        override(BaseRewardsGauge)
+        override(ERC4626Upgradeable)
     {
-        if (totalAssets() + assets > maxTotalAssets()) {
-            revert MaxTotalAssetsExceeded();
-        }
-        BaseRewardsGauge._deposit(caller, receiver, assets, shares);
+        ERC4626Upgradeable._deposit(caller, receiver, assets, shares);
         IYearnStakingDelegate(yearnStakingDelegate).deposit(asset(), assets);
     }
 

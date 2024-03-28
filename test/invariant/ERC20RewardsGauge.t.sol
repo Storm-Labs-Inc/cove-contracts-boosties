@@ -109,4 +109,56 @@ contract ERC20RewardsGauge_EchidnaTest is CryticERC4626PropertyTests {
             );
         }
     }
+
+    /// @notice Verify that pausing works correctly
+    function verify_pause() public {
+        require(!_rewardsGauge.paused(), "require the gauge to be unpaused for this test to run");
+        try _rewardsGauge.pause() {
+            assertWithMsg(_rewardsGauge.paused(), "pause() must pause the gauge");
+        } catch {
+            assertWithMsg(false, "pause() must not revert");
+        }
+    }
+
+    /// @notice Verify that unpausing works correctly
+    function verify_unpause() public {
+        require(_rewardsGauge.paused(), "require the gauge to be paused for this test to run");
+        try _rewardsGauge.unpause() {
+            assertWithMsg(!_rewardsGauge.paused(), "unpause() must unpause the gauge");
+        } catch {
+            assertWithMsg(false, "unpause() must not revert");
+        }
+    }
+
+    /// @notice Verify that maxDeposit() returns 0 when the gauge is paused
+    function verify_maxDeposit_whenPaused(address depositor) public {
+        require(_rewardsGauge.paused(), "require the gauge to be paused for this test to run");
+        assertEq(_rewardsGauge.maxDeposit(depositor), 0, "maxDeposit() must return 0 when the gauge is paused");
+    }
+
+    /// @notice Verify that maxDeposit() returns max uint256 when the gauge is unpaused
+    function verify_maxDeposit_whenUnpaused(address depositor) public virtual {
+        require(!_rewardsGauge.paused(), "require the gauge to be unpaused for this test to run");
+        assertEq(
+            _rewardsGauge.maxDeposit(depositor),
+            type(uint256).max,
+            "maxDeposit() must return max uint256 when the gauge is unpaused"
+        );
+    }
+
+    /// @notice Verify that maxMint() returns 0 when the gauge is paused
+    function verify_maxMint_whenPaused(address depositor) public {
+        require(_rewardsGauge.paused(), "require the gauge to be paused for this test to run");
+        assertEq(_rewardsGauge.maxMint(depositor), 0, "maxMint() must return 0 when the gauge is paused");
+    }
+
+    /// @notice Verify that maxMint() returns max uint256 when the gauge is unpaused
+    function verify_maxMint_whenUnpaused(address depositor) public virtual {
+        require(!_rewardsGauge.paused(), "require the gauge to be unpaused for this test to run");
+        assertEq(
+            _rewardsGauge.maxMint(depositor),
+            type(uint256).max,
+            "maxMint() must return max uint256 when the gauge is unpaused"
+        );
+    }
 }
