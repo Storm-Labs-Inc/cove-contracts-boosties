@@ -6,3 +6,4 @@ ignore:
   - "src/deps/*"
   - "src/deps/**/*"
   - "src/interfaces/deps/**/*"
+  - "src/libraries/YearnVaultV2Helper.sol"
