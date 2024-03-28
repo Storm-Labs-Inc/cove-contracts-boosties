@@ -238,7 +238,8 @@ contract Router_ForkedTest is BaseTest {
 
     // ------------------ Preview tests ------------------
     function testFuzz_previewDeposits(uint256 assetInAmount) public {
-        assetInAmount = bound(assetInAmount, 2, 100e18);
+        // When a vault's pricePerShare > 1, depositing with asset amount of 1 will be reverted due to minting 0 shares.
+        assetInAmount = bound(assetInAmount, 2, 10_000e18);
 
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
@@ -321,7 +322,7 @@ contract Router_ForkedTest is BaseTest {
     }
 
     function testFuzz_previewMints(uint256 shareOutAmount) public {
-        shareOutAmount = bound(shareOutAmount, 1, 100e18);
+        shareOutAmount = bound(shareOutAmount, 1, 10_000e18);
 
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
@@ -603,6 +604,7 @@ contract Router_ForkedTest is BaseTest {
     }
 
     function testFuzz_previewRedeems(uint256 shareInAmount) public {
+        // Bound share in amount [1, totalSupply]
         shareInAmount = bound(shareInAmount, 1, IERC20(MAINNET_ETH_YFI_GAUGE).totalSupply());
 
         address[] memory path = new address[](3);
