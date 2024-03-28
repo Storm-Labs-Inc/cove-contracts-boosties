@@ -48,7 +48,14 @@ interface IYearn4626RouterExt is IYearn4626Router {
         payable
         returns (uint256 sharesIn);
 
-    function redeemStakeDaoGauge(IStakeDaoGauge gauge, uint256 shares) external payable returns (uint256 amountOut);
+    function redeemStakeDaoGauge(
+        IStakeDaoGauge gauge,
+        uint256 shares,
+        address to
+    )
+        external
+        payable
+        returns (uint256 amountOut);
 
     function previewDeposits(
         address[] calldata path,

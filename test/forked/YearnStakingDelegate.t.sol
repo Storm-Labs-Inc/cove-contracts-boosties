@@ -51,9 +51,9 @@ contract YearnStakingDelegate_ForkedTest is YearnV3BaseTest {
         // create an address that will act as a coveYfiRewardFowarder
         coveYfiRewardFowarder = createUser("coveYfiRewardFowarder");
 
-        vault = MAINNET_WETH_YETH_POOL_VAULT;
+        vault = MAINNET_WETH_YETH_VAULT_V2;
 
-        gauge = MAINNET_WETH_YETH_POOL_GAUGE;
+        gauge = MAINNET_WETH_YETH_GAUGE;
 
         // Give admin some dYFI
         airdrop(ERC20(MAINNET_DYFI), admin, DYFI_REWARD_AMOUNT);
