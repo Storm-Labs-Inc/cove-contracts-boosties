@@ -20,6 +20,8 @@ contract MiniChefV3_Test is BaseTest {
     address public bob;
     address public pauser;
 
+    event FunctionHit();
+
     function setUp() public override {
         super.setUp();
 
@@ -559,10 +561,8 @@ contract MiniChefV3_Test is BaseTest {
         vm.startPrank(alice);
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
-        (bool success, bytes memory data) =
-            address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
-        assertEq(success, false, "Emergency withdraw should revert");
-        assertEq(data.length, 0, "Did not revert with empty bytes (OutOfGas)");
+        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientGas.selector));
+        miniChef.emergencyWithdraw{ gas: gasToCall }(pid, alice);
     }
 
     /// forge-config: default.fuzz.runs = 1024
@@ -581,10 +581,8 @@ contract MiniChefV3_Test is BaseTest {
         vm.startPrank(alice);
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
-        (bool success, bytes memory data) =
-            address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
-        assertEq(success, false, "Emergency withdraw should revert");
-        assertEq(bytes4(data), Errors.InsufficientGas.selector, "Incorrect error code");
+        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientGas.selector));
+        miniChef.emergencyWithdraw{ gas: gasToCall }(pid, alice);
     }
 
     function testFuzz_emergencyWithdraw_passWhen_SufficientGas_SkipOnIsolate(uint256 gasToCall) public {
@@ -602,10 +600,9 @@ contract MiniChefV3_Test is BaseTest {
         vm.startPrank(alice);
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
-        (bool success, bytes memory data) =
-            address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
-        assertEq(success, true, "Emergency withdraw should revert");
-        assertEq(data.length, 0, "Did not succeed with empty bytes");
+        vm.expectEmit();
+        emit FunctionHit();
+        miniChef.emergencyWithdraw{ gas: gasToCall }(pid, alice);
     }
 
     function test_harvest() public {
