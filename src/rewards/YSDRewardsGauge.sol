@@ -59,19 +59,22 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         IStakingDelegateRewards(stakingDelegateRewards).setRewardReceiver(receiver);
     }
 
-    /**
-     * @notice Calculates the maximum total assets that can be deposited into the gauge.
-     * @dev Determines the maximum assets that can be managed by the gauge based on the strategy's limits.
-     * @return The maximum amount of assets that can be deposited.
-     */
-    function maxTotalAssets() public view virtual returns (uint256) {
-        uint256 maxAssets = YearnGaugeStrategy(coveYearnStrategy).maxTotalAssets();
-        uint256 totalAssetsInStrategy = ITokenizedStrategy(coveYearnStrategy).totalAssets();
-        if (totalAssetsInStrategy >= maxAssets) {
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        if (paused()) {
             return 0;
-        } else {
-            return maxAssets - totalAssetsInStrategy;
         }
+        return _availableDepositLimit();
+    }
+
+    function maxMint(address) public view virtual override returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+        return _availableDepositLimit();
+    }
+
+    function _availableDepositLimit() internal view returns (uint256) {
+        return IYearnStakingDelegate(yearnStakingDelegate).availableDepositLimit(asset());
     }
 
     /**
@@ -93,9 +96,6 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         virtual
         override(BaseRewardsGauge)
     {
-        if (totalAssets() + assets > maxTotalAssets()) {
-            revert MaxTotalAssetsExceeded();
-        }
         BaseRewardsGauge._deposit(caller, receiver, assets, shares);
         IYearnStakingDelegate(yearnStakingDelegate).deposit(asset(), assets);
     }

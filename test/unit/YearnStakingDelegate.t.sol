@@ -44,6 +44,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     // Addresses
     address public admin;
     address public alice;
+    address public ben;
     address public timelock;
     address public pauser;
     address public treasury;
@@ -55,14 +56,17 @@ contract YearnStakingDelegate_Test is BaseTest {
     event SwapAndLockSet(address swapAndLockContract);
     event TreasurySet(address newTreasury);
     event CoveYfiRewardForwarderSet(address forwarder);
-    event Deposit(address indexed sender, address indexed gauge, uint256 amount);
-    event Withdraw(address indexed sender, address indexed gauge, uint256 amount);
+    event Deposit(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
+    event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
+    event DepositLimitSet(address indexed gaugeToken, uint256 limit);
 
     function setUp() public override {
         super.setUp();
         admin = createUser("admin");
         // create alice who will be lock YFI via the yearnStakingDelegate
         alice = createUser("alice");
+        // create ben who does not have depositor role
+        ben = createUser("ben");
         // create timelock address for the yearnStakingDelegate
         timelock = createUser("timelock");
         // create pauser of the yearnStakingDelegate
@@ -100,6 +104,9 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.startPrank(alice);
         IERC20(yfi).approve(address(yearnStakingDelegate), type(uint256).max);
         vm.stopPrank();
+
+        // Grant the depositor role to alice
+        _grantDepositorRole(alice);
     }
 
     // Need a special function to airdrop to the gauge since it relies on totalSupply for calculation
@@ -168,13 +175,19 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function _depositGaugeTokensToYSD(address from, uint256 amount) internal {
+        uint256 currentTotalDeposited = yearnStakingDelegate.totalDeposited(testGauge);
         _airdropGaugeTokens(from, amount);
         vm.startPrank(from);
         IERC20(testGauge).approve(address(yearnStakingDelegate), amount);
         vm.expectEmit();
-        emit Deposit(from, testGauge, amount);
+        emit Deposit(from, testGauge, amount, currentTotalDeposited + amount);
         yearnStakingDelegate.deposit(testGauge, amount);
         vm.stopPrank();
+    }
+
+    function _grantDepositorRole(address user) internal {
+        vm.prank(timelock);
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, user);
     }
 
     function testFuzz_constructor(address anyGauge) public {
@@ -304,6 +317,35 @@ contract YearnStakingDelegate_Test is BaseTest {
         yearnStakingDelegate.earlyUnlock();
     }
 
+    function testFuzz_setDepositLimit(uint256 limit) public {
+        vm.assume(limit > 0);
+        _addTestGaugeRewards();
+        vm.expectEmit();
+        emit DepositLimitSet(testGauge, limit);
+        vm.prank(timelock);
+        yearnStakingDelegate.setDepositLimit(testGauge, limit);
+        assertEq(yearnStakingDelegate.depositLimit(testGauge), limit, "setDepositLimit failed");
+    }
+
+    function testFuzz_availableDepositLimit(uint256 amount) public {
+        vm.assume(amount > 1);
+        _addTestGaugeRewards();
+
+        uint256 availableDepositLimit = yearnStakingDelegate.availableDepositLimit(testGauge);
+        assertEq(availableDepositLimit, 0, "default availableDepositLimit should be 0");
+
+        vm.prank(timelock);
+        yearnStakingDelegate.setDepositLimit(testGauge, 1);
+        availableDepositLimit = yearnStakingDelegate.availableDepositLimit(testGauge);
+        assertEq(availableDepositLimit, 1, "setDepositLimit failed");
+
+        // Deposit more than the available limit
+        _depositGaugeTokensToYSD(alice, amount);
+
+        availableDepositLimit = yearnStakingDelegate.availableDepositLimit(testGauge);
+        assertEq(availableDepositLimit, 0, "availableDepositLimit failed");
+    }
+
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount > 0);
         _addTestGaugeRewards();
@@ -313,6 +355,15 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(yearnStakingDelegate.balanceOf(alice, testGauge), amount, "deposit failed");
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
         assertEq(IERC20(testGauge).balanceOf(alice), 0, "deposit failed");
+        assertEq(yearnStakingDelegate.totalDeposited(testGauge), amount, "deposit failed");
+    }
+
+    function testFuzz_deposit_revertWhen_CallerIsNotDepositor(address user, uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(!yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, user));
+        vm.expectRevert(_formatAccessControlError(user, DEPOSITOR_ROLE));
+        vm.prank(user);
+        yearnStakingDelegate.deposit(testGauge, amount);
     }
 
     function testFuzz_deposit_revertWhen_GaugeRewardsNotYetAdded(uint256 amount) public {
@@ -338,6 +389,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         vm.prank(pauser);
         yearnStakingDelegate.pause();
         assertTrue(yearnStakingDelegate.paused());
+        _grantDepositorRole(address(this));
         vm.expectRevert("Pausable: paused");
         yearnStakingDelegate.deposit(testGauge, 1e18);
     }
@@ -364,7 +416,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         // Start withdraw process
         vm.startPrank(alice);
         vm.expectEmit();
-        emit Withdraw(alice, testGauge, amount);
+        emit Withdraw(alice, testGauge, amount, 0);
         yearnStakingDelegate.withdraw(testGauge, amount);
         vm.stopPrank();
 
@@ -392,7 +444,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         // Start withdraw process
         vm.startPrank(alice);
         vm.expectEmit();
-        emit Withdraw(alice, testGauge, amount);
+        emit Withdraw(alice, testGauge, amount, 0);
         yearnStakingDelegate.withdraw(testGauge, amount);
         vm.stopPrank();
 
@@ -400,6 +452,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), 0, "withdraw failed");
         // Check the accounting is correct
         assertEq(yearnStakingDelegate.balanceOf(alice, testGauge), 0, "withdraw failed");
+        assertEq(yearnStakingDelegate.totalDeposited(testGauge), 0, "withdraw failed");
         // Check that wrappedStrategy has received the vault tokens
         assertEq(IERC20(testGauge).balanceOf(alice), amount, "withdraw failed");
     }
@@ -802,10 +855,30 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function test_grantRole_TimelockRole_revertWhen_CallerIsNotTimelock() public {
-        vm.prank(admin);
-        yearnStakingDelegate.grantRole(DEFAULT_ADMIN_ROLE, alice);
-        vm.expectRevert(_formatAccessControlError(alice, TIMELOCK_ROLE));
-        vm.prank(alice);
+        vm.startPrank(admin);
+        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
         yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
+    }
+
+    function test_grantRole_TimelockRole() public {
+        vm.startPrank(timelock);
+        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, alice));
+        yearnStakingDelegate.grantRole(TIMELOCK_ROLE, alice);
+        assertTrue(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, alice));
+    }
+
+    function test_grantRole_DepositorRole_revertWhen_CallerIsNotTimelock() public {
+        vm.startPrank(admin);
+        assertFalse(yearnStakingDelegate.hasRole(TIMELOCK_ROLE, admin));
+        vm.expectRevert(_formatAccessControlError(admin, TIMELOCK_ROLE));
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, alice);
+    }
+
+    function test_grantRole_DepositorRole() public {
+        vm.startPrank(timelock);
+        assertFalse(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, ben));
+        yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, ben);
+        assertTrue(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, ben));
     }
 }

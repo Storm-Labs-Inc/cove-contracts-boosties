@@ -441,8 +441,29 @@ abstract contract BaseRewardsGauge is
     }
 
     /**
-     * @dev Handles all flow of deposits for the gauge, includes a check if deposits are paused before depositing.
-     * Deposits can be paused in case of emergencies by the admin or pauser roles.
+     * @notice Returns the maximum amount of shares that can be minted. Returns 0 if the contract is paused.
+     * @return The maximum amount of shares that can be minted.
+     */
+    function maxMint(address) public view virtual override returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+        return type(uint256).max;
+    }
+
+    /**
+     * @notice Returns the maximum amount of assets that can be deposited. Returns 0 if the contract is paused.
+     * @return The maximum amount of assets that can be deposited.
+     */
+    function maxDeposit(address) public view virtual override returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+        return type(uint256).max;
+    }
+
+    /**
+     * @dev Handles all flow of deposits for the gauge
      */
     function _deposit(
         address caller,
@@ -453,7 +474,6 @@ abstract contract BaseRewardsGauge is
         internal
         virtual
         override(ERC4626Upgradeable)
-        whenNotPaused
     {
         super._deposit(caller, receiver, assets, shares);
     }
