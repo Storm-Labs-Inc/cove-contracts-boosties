@@ -11,6 +11,8 @@ import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { IStakeDaoGauge } from "src/interfaces/deps/stakeDAO/IStakeDaoGauge.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { ERC4626Mock } from "@openzeppelin/contracts/mocks/ERC4626Mock.sol";
+import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 
 contract Router_ForkedTest is BaseTest {
     Yearn4626RouterExt public router;
@@ -305,7 +307,48 @@ contract Router_ForkedTest is BaseTest {
         uint256[] memory assetsIn = router.previewMints(path, shareOutAmount);
         assertEq(assetsIn.length, 2);
         assertEq(assetsIn[0], 1 ether);
-        assertEq(assetsIn[1], 1 ether);
+        assertEq(assetsIn[1], 949_289_266_142_683_599);
+    }
+
+    function test_previewMints_Multiple4626() public {
+        ERC20Mock baseAsset = new ERC20Mock();
+        ERC4626Mock mock1 = new ERC4626Mock(address(baseAsset));
+        ERC4626Mock mock2 = new ERC4626Mock(address(mock1));
+        ERC4626Mock mock3 = new ERC4626Mock(address(mock2));
+
+        baseAsset.mint(address(this), 10e18);
+        baseAsset.approve(address(mock1), 10e18);
+        mock1.approve(address(mock2), 10e18);
+        mock2.approve(address(mock3), 10e18);
+
+        mock1.deposit(2e18, address(this));
+        baseAsset.transfer(address(mock1), 1e18);
+
+        mock2.deposit(1e18, address(this));
+        mock1.transfer(address(mock2), 1e18);
+
+        mock3.deposit(0.5e18, address(this));
+        mock2.transfer(address(mock3), 0.5e18);
+
+        uint256 expectedAssetIn2 = mock3.previewMint(1e18);
+        uint256 expectedAssetIn1 = mock2.previewMint(expectedAssetIn2);
+        uint256 expectedBaseAssetIn = mock1.previewMint(expectedAssetIn1);
+
+        assertEq(expectedBaseAssetIn, 5_999_999_999_999_999_995);
+        assertEq(expectedAssetIn1, 3_999_999_999_999_999_997);
+        assertEq(expectedAssetIn2, 1_999_999_999_999_999_999);
+
+        address[] memory path = new address[](4);
+        path[0] = address(baseAsset);
+        path[1] = address(mock1);
+        path[2] = address(mock2);
+        path[3] = address(mock3);
+
+        uint256[] memory assetsIn = router.previewMints(path, 1e18);
+        assertEq(assetsIn.length, 3);
+        assertEq(assetsIn[0], expectedBaseAssetIn);
+        assertEq(assetsIn[1], expectedAssetIn1);
+        assertEq(assetsIn[2], expectedAssetIn2);
     }
 
     function test_previewMints_v2Vault() public {
@@ -314,9 +357,9 @@ contract Router_ForkedTest is BaseTest {
         path[0] = MAINNET_USDC;
         path[1] = MAINNET_YVUSDC_VAULT_V2;
 
-        uint256[] memory sharesOut = router.previewMints(path, assetInAmount);
-        assertEq(sharesOut.length, 1);
-        assertEq(sharesOut[0], 1_058_324);
+        uint256[] memory assetsIn = router.previewMints(path, assetInAmount);
+        assertEq(assetsIn.length, 1);
+        assertEq(assetsIn[0], 1_058_324);
     }
 
     function test_previewMints_revertWhen_PreviewPathIsTooShort() public {
@@ -368,8 +411,51 @@ contract Router_ForkedTest is BaseTest {
 
         uint256[] memory sharesIn = router.previewWithdraws(path, assetOutAmount);
         assertEq(sharesIn.length, 2);
-        assertEq(sharesIn[0], 999_999_999_999_999_999);
+        assertEq(sharesIn[0], 949_289_266_142_683_600);
         assertEq(sharesIn[1], 949_289_266_142_683_600);
+    }
+
+    function test_previewWithdraws_Multiple4626() public {
+        // asset to vault flow:
+        // baseAsset -> mock1 -> mock2 -> mock3
+        ERC20Mock baseAsset = new ERC20Mock();
+        ERC4626Mock mock1 = new ERC4626Mock(address(baseAsset));
+        ERC4626Mock mock2 = new ERC4626Mock(address(mock1));
+        ERC4626Mock mock3 = new ERC4626Mock(address(mock2));
+
+        baseAsset.mint(address(this), 10e18);
+        baseAsset.approve(address(mock1), 10e18);
+        mock1.approve(address(mock2), 10e18);
+        mock2.approve(address(mock3), 10e18);
+
+        mock1.deposit(2e18, address(this));
+        baseAsset.transfer(address(mock1), 1e18);
+
+        mock2.deposit(1e18, address(this));
+        mock1.transfer(address(mock2), 1e18);
+
+        mock3.deposit(0.5e18, address(this));
+        mock2.transfer(address(mock3), 0.5e18);
+
+        uint256 expectedShareIn1 = mock1.previewWithdraw(1e18);
+        uint256 expectedShareIn2 = mock2.previewWithdraw(expectedShareIn1);
+        uint256 expectedShareIn3 = mock3.previewWithdraw(expectedShareIn2);
+
+        assertEq(expectedShareIn3, 166_666_666_666_666_668);
+        assertEq(expectedShareIn2, 333_333_333_333_333_334);
+        assertEq(expectedShareIn1, 666_666_666_666_666_667);
+
+        address[] memory path = new address[](4);
+        path[0] = address(mock3);
+        path[1] = address(mock2);
+        path[2] = address(mock1);
+        path[3] = address(baseAsset);
+
+        uint256[] memory sharesIn = router.previewWithdraws(path, 1e18);
+        assertEq(sharesIn.length, 3);
+        assertEq(sharesIn[0], expectedShareIn3);
+        assertEq(sharesIn[1], expectedShareIn2);
+        assertEq(sharesIn[2], expectedShareIn1);
     }
 
     function test_previewWithdraws_v2Vault() public {
