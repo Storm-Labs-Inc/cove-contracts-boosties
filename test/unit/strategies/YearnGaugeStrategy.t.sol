@@ -85,8 +85,12 @@ contract YearnGaugeStrategy_Test is BaseTest {
         yearnGaugeStrategy.setPerformanceFeeRecipient(treasury);
         yearnGaugeStrategy.setKeeper(keeper);
         yearnGaugeStrategy.setHarvestSwapParams(generateMockCurveSwapParams(MAINNET_YFI, vaultAsset));
-        yearnGaugeStrategy.setMaxTotalAssets(type(uint256).max);
         vm.stopPrank();
+        vm.mockCall(
+            address(yearnStakingDelegate),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, gauge),
+            abi.encode(type(uint256).max)
+        );
     }
 
     function _depositFromUser(address from, uint256 amount) internal {
@@ -122,23 +126,6 @@ contract YearnGaugeStrategy_Test is BaseTest {
         );
     }
 
-    function testFuzz_setMaxTotalAssets(uint256 newMaxTotalAssets) public {
-        vm.prank(manager);
-        yearnGaugeStrategy.setMaxTotalAssets(newMaxTotalAssets);
-        assertEq(
-            yearnGaugeStrategy.maxTotalAssets(),
-            newMaxTotalAssets,
-            "setMaxTotalAssets did not set the new max total assets correctly"
-        );
-    }
-
-    function testFuzz_setMaxTotalAssets_revert_when_non_manager(address caller, uint256 newMaxTotalAssets) public {
-        vm.prank(caller);
-        vm.assume(caller != manager);
-        vm.expectRevert("!management");
-        yearnGaugeStrategy.setMaxTotalAssets(newMaxTotalAssets);
-    }
-
     function testFuzz_deposit(uint256 amount) public {
         vm.assume(amount != 0);
         vm.assume(amount < type(uint128).max);
@@ -160,7 +147,11 @@ contract YearnGaugeStrategy_Test is BaseTest {
         vm.assume(amount < type(uint128).max);
 
         vm.prank(manager);
-        yearnGaugeStrategy.setMaxTotalAssets(amount / 10);
+        vm.mockCall(
+            address(yearnStakingDelegate),
+            abi.encodeWithSelector(IYearnStakingDelegate.availableDepositLimit.selector, gauge),
+            abi.encode(amount / 10)
+        );
         airdrop(IERC20(gauge), alice, amount);
         vm.startPrank(alice);
         IERC20(gauge).approve(address(yearnGaugeStrategy), amount);

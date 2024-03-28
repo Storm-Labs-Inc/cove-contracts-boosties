@@ -22,7 +22,8 @@ import { PausableUpgradeable } from "@openzeppelin-upgradeable/contracts/securit
  * @notice Gauge contract for managing and distributing reward tokens to stakers.
  * @dev This contract handles the accounting of reward tokens, allowing users to claim their accrued rewards.
  * It supports multiple reward tokens and allows for the addition of new rewards by authorized distributors.
- * It doesn't support rebasing or fee on transfer tokens, or tokens with a max supply greater than `type(uint128).max`.
+ * It does not support rebasing or fee on transfer tokens, or tokens with a max supply greater than `type(uint128).max`.
+ * The total supply of the gauge will always be equal to the total assets held by the gauge.
  */
 abstract contract BaseRewardsGauge is
     IBaseRewardsGauge,
@@ -441,21 +442,27 @@ abstract contract BaseRewardsGauge is
     }
 
     /**
-     * @dev Handles all flow of deposits for the gauge, includes a check if deposits are paused before depositing.
-     * Deposits can be paused in case of emergencies by the admin or pauser roles.
+     * @notice Returns the maximum amount of shares that can be minted. Returns 0 if the contract is paused.
+     * @dev Assumes the total supply is equal to the total assets held by the gauge.
+     * @return The maximum amount of shares that can be minted.
      */
-    function _deposit(
-        address caller,
-        address receiver,
-        uint256 assets,
-        uint256 shares
-    )
-        internal
-        virtual
-        override(ERC4626Upgradeable)
-        whenNotPaused
-    {
-        super._deposit(caller, receiver, assets, shares);
+    function maxMint(address) public view virtual override(ERC4626Upgradeable) returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+        return type(uint256).max;
+    }
+
+    /**
+     * @notice Returns the maximum amount of assets that can be deposited. Returns 0 if the contract is paused.
+     * @dev Assumes the total supply is equal to the total assets held by the gauge.
+     * @return The maximum amount of assets that can be deposited.
+     */
+    function maxDeposit(address) public view virtual override(ERC4626Upgradeable) returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+        return type(uint256).max;
     }
 
     /**

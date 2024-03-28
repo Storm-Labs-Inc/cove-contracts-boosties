@@ -11,11 +11,14 @@ contract MockYearnStakingDelegate {
     address private constant _YFI = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
 
     mapping(address user => mapping(address token => uint256)) public balanceOf;
+    mapping(address token => uint256) public totalDeposited;
+    mapping(address token => uint256) public depositLimit;
 
     function deposit(address gauge, uint256 amount) external {
         // Effects
         uint256 newBalance = balanceOf[msg.sender][gauge] + amount;
         balanceOf[msg.sender][gauge] = newBalance;
+        totalDeposited[gauge] += amount;
         // Interactions
         IERC20(gauge).safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -24,6 +27,7 @@ contract MockYearnStakingDelegate {
         // Effects
         uint256 newBalance = balanceOf[msg.sender][gauge] - amount;
         balanceOf[msg.sender][gauge] = newBalance;
+        totalDeposited[gauge] -= amount;
         // Interactions
         IERC20(gauge).safeTransfer(msg.sender, amount);
     }
@@ -52,5 +56,23 @@ contract MockYearnStakingDelegate {
 
     function gaugeStakingRewards() external view returns (address) {
         return _mockgaugeStakingRewards;
+    }
+
+    function setDepositLimit(address gaugeToken, uint256 limit) external {
+        // Effects
+        depositLimit[gaugeToken] = limit;
+    }
+
+    function availableDepositLimit(address gaugeToken) external view returns (uint256) {
+        uint256 currentTotalDeposited = totalDeposited[gaugeToken];
+        uint256 currentDepositLimit = depositLimit[gaugeToken];
+        if (currentTotalDeposited >= currentDepositLimit) {
+            return 0;
+        }
+        // Return the difference between the max total assets and the current total assets, an underflow is not possible
+        // due to the above check
+        unchecked {
+            return currentDepositLimit - currentTotalDeposited;
+        }
     }
 }
