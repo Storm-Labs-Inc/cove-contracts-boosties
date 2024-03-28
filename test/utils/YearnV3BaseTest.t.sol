@@ -172,8 +172,8 @@ contract YearnV3BaseTest is BaseTest {
         return gaugeRewardReceiverImplementation;
     }
 
-    function setUpSwapAndLock(address owner, address yearnStakingDelegate) public returns (address) {
-        address swapAndLock = address(new SwapAndLock(yearnStakingDelegate, owner));
+    function setUpSwapAndLock(address owner, address yearnStakingDelegate, address coveYfi) public returns (address) {
+        address swapAndLock = address(new SwapAndLock(yearnStakingDelegate, coveYfi, owner));
         vm.label(swapAndLock, "SwapAndLock");
         return swapAndLock;
     }

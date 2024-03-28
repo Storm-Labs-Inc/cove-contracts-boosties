@@ -49,4 +49,5 @@ interface IYearnStakingDelegate {
     function getGaugeRewardSplit(address gauge) external view returns (RewardSplit memory);
     function getBoostRewardSplit() external view returns (BoostRewardSplit memory);
     function getExitRewardSplit() external view returns (ExitRewardSplit memory);
+    function treasury() external view returns (address);
 }
