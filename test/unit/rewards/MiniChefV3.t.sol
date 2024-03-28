@@ -546,14 +546,27 @@ contract MiniChefV3_Test is BaseTest {
         assertEq(lpToken.balanceOf(alice), amount, "LP tokens not returned to user after emergency withdrawal");
     }
 
-    /// forge-config: default.fuzz.runs = 1024
-    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
-        // Workaround for consistent gas usage with --isolate or --gas-report flag
-        // https://github.com/foundry-rs/foundry/issues/7499#issuecomment-2021163562
-        this._testFuzz_emergencyWithdraw_revertWhen_OutOfGas(gasToCall);
+    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas_SkipOnIsolate(uint256 gasToCall) public {
+        gasToCall = bound(gasToCall, 1, 43_990);
+        // Mock rewarder to spend gas when called
+        MockMiniChefRewarder rewarder = (new MockMiniChefRewarder());
+        rewarder.setGasLoop(1000);
+
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(rewarder)));
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        (bool success, bytes memory data) =
+            address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
+        assertEq(success, false, "Emergency withdraw should revert");
+        assertEq(data.length, 0, "Did not revert with empty bytes (OutOfGas)");
     }
 
-    function _testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
+    /// forge-config: default.fuzz.runs = 1024
+    function testFuzz_emergencyWithdraw_revertWhen_InsufficientGas_SkipOnIsolate(uint256 gasToCall) public {
         // Amount of gas low enough to revert the low level call, but continue with rest of call
         gasToCall = bound(gasToCall, 43_991, 636_008);
         console.log("Gas to call: ", gasToCall);
@@ -572,6 +585,27 @@ contract MiniChefV3_Test is BaseTest {
             address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
         assertEq(success, false, "Emergency withdraw should revert");
         assertEq(bytes4(data), Errors.InsufficientGas.selector, "Incorrect error code");
+    }
+
+    function testFuzz_emergencyWithdraw_passWhen_SufficientGas_SkipOnIsolate(uint256 gasToCall) public {
+        // Amount of gas low enough to revert the low level call, but continue with rest of call
+        gasToCall = bound(gasToCall, 636_009, 30_000_000);
+        console.log("Gas to call: ", gasToCall);
+        // Mock rewarder to spend gas when called
+        MockMiniChefRewarder rewarder = (new MockMiniChefRewarder());
+        rewarder.setGasLoop(1000);
+
+        miniChef.add(1000, lpToken, IMiniChefV3Rewarder(address(rewarder)));
+        uint256 pid = miniChef.poolLength() - 1;
+        uint256 amount = 1e18;
+        lpToken.mint(alice, amount);
+        vm.startPrank(alice);
+        lpToken.approve(address(miniChef), amount);
+        miniChef.deposit(pid, amount, alice);
+        (bool success, bytes memory data) =
+            address(miniChef).call{ gas: gasToCall }(abi.encodeCall(MiniChefV3.emergencyWithdraw, (pid, alice)));
+        assertEq(success, true, "Emergency withdraw should revert");
+        assertEq(data.length, 0, "Did not succeed with empty bytes");
     }
 
     function test_harvest() public {
