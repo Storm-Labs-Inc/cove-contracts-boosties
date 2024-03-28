@@ -40,19 +40,6 @@ contract YSDRewardsGauge_EchidnaTest is ERC20RewardsGauge_EchidnaTest {
         initialize(address(_rewardsGauge), address(_asset), false);
     }
 
-    /// @notice Verify that maxTotalAssets() always returns associated strategy's maxTotalAssets() minus totalAssets()
-    function verify_maxTotalAssetsProperties() public {
-        uint256 globalMaxAssets = _gaugeStrategy.maxTotalAssets();
-        uint256 totalAssetsInStrategy = _gaugeStrategy.totalAssets();
-        uint256 expectedMaxTotalAssets =
-            totalAssetsInStrategy >= globalMaxAssets ? 0 : globalMaxAssets - totalAssetsInStrategy;
-        uint256 maxTotalAssets = YSDRewardsGauge(address(_rewardsGauge)).maxTotalAssets();
-        emit LogUint256("maxTotalAssets", maxTotalAssets);
-        emit LogUint256("expectedMaxTotalAssets", expectedMaxTotalAssets);
-
-        assertEq(maxTotalAssets, expectedMaxTotalAssets, "maxTotalAssets() must return the correct value");
-    }
-
     /// @notice Handler for setting the total assets in the strategy. This mimics the result of depositing or
     /// withdrawing from the associated strategy
     function setStrategyTotalAssets(uint256 assets) public {

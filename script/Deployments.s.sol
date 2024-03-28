@@ -53,12 +53,12 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
     // RewardForwarder configuration
     uint256 public constant COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
-    // Cove strategy deposit limit configuration
-    uint256 public constant MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT = type(uint256).max;
+    // YearnStakingDelegate deposit limit configuration
+    uint256 public constant MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_ETH_YFI_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
@@ -227,9 +227,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
             string.concat("YearnGaugeStrategy-", IERC4626(yearngauge).name()), yearngauge, ysd, MAINNET_CURVE_ROUTER
         );
-        // set params for harvest rewards swapping
+        // Set the curve swap params for harvest rewards swapping to the asset, gauge token
         strategy.setHarvestSwapParams(swapParams);
-        strategy.setMaxTotalAssets(maxDeposit);
+        // Set the tokenized strategy roles
         ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
         ITokenizedStrategy(address(strategy)).setKeeper(manager);
         ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
@@ -237,37 +237,38 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
         factory.deployCoveGauges(address(strategy));
+
+        // Grant depositor role to the strategy and the ysd rewards gauge
+        CoveYearnGaugeFactory.GaugeInfo memory info = factory.getGaugeInfo(yearngauge);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.coveYearnStrategy);
+        YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
+        // Set deposit limit for the gauge token
+        YearnStakingDelegate(ysd).setDepositLimit(yearngauge, maxDeposit);
     }
 
     function deployCoveStrategiesAndGauges(address ysd) public {
         _deployCoveStrategyAndGauges(
             ysd,
             MAINNET_WETH_YETH_GAUGE,
-            MAINNET_WETH_YETH_POOL_STRATEGY_MAX_DEPOSIT,
+            MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT,
             getMainnetWethYethGaugeCurveSwapParams()
         );
         _deployCoveStrategyAndGauges(
-            ysd,
-            MAINNET_ETH_YFI_GAUGE,
-            MAINNET_ETH_YFI_GAUGE_STRATEGY_MAX_DEPOSIT,
-            getMainnetEthYfiGaugeCurveSwapParams()
+            ysd, MAINNET_ETH_YFI_GAUGE, MAINNET_ETH_YFI_GAUGE_MAX_DEPOSIT, getMainnetEthYfiGaugeCurveSwapParams()
         );
         _deployCoveStrategyAndGauges(
-            ysd,
-            MAINNET_DYFI_ETH_GAUGE,
-            MAINNET_DYFI_ETH_GAUGE_STRATEGY_MAX_DEPOSIT,
-            getMainnetDyfiEthGaugeCurveSwapParams()
+            ysd, MAINNET_DYFI_ETH_GAUGE, MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT, getMainnetDyfiEthGaugeCurveSwapParams()
         );
         _deployCoveStrategyAndGauges(
             ysd,
             MAINNET_CRV_YCRV_GAUGE,
-            MAINNET_CRV_YCRV_POOL_GAUGE_STRATEGY_MAX_DEPOSIT,
+            MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT,
             getMainnetCrvYcrvPoolGaugeCurveSwapParams()
         );
         _deployCoveStrategyAndGauges(
             ysd,
             MAINNET_PRISMA_YPRISMA_GAUGE,
-            MAINNET_PRISMA_YPRISMA_POOL_GAUGE_STRATEGY_MAX_DEPOSIT,
+            MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT,
             getMainnetPrismaYprismaPoolGaugeCurveSwapParams()
         );
     }
@@ -462,6 +463,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", TIMELOCK_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", PAUSER_ROLE, 1);
+        _verifyRoleCount("YearnStakingDelegate", DEPOSITOR_ROLE, 10);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);
