@@ -255,6 +255,9 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
      * @param path The array of addresses that represents the path from input to output.
      * @param sharesOut The amount of shares to mint from the last vault.
      * @return assetsIn The amount of assets required at each step. The length of the array is `path.length - 1`.
+     * @dev sharesOut is the expected result at the last vault, and the path = [tokenIn, vault0, vault1, ..., vaultN].
+     * First calculate the amount of assets in to get the desired sharesOut from the last vault, then using that amount
+     * as the next sharesOut to get the amount of assets in for the penultimate vault.
      */
     function previewMints(
         address[] calldata path,
@@ -267,8 +270,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 assetsInLength = path.length - 1;
         assetsIn = new uint256[](assetsInLength);
-        for (uint256 i; i < assetsInLength;) {
-            address vault = path[i + 1];
+        for (uint256 i = assetsInLength; i > 0;) {
+            address vault = path[i];
             if (!Address.isContract(vault)) {
                 revert PreviewNonVaultAddressInPath(vault);
             }
@@ -276,7 +279,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                assetsIn[i] = IERC4626(vault).previewMint(sharesOut);
+                assetsIn[i - 1] = IERC4626(vault).previewMint(sharesOut);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
@@ -287,26 +290,28 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 }
             }
 
-            if (vaultAsset != path[i]) {
+            if (vaultAsset != path[i - 1]) {
                 revert PreviewVaultMismatch();
             }
-            sharesOut = assetsIn[i];
+            sharesOut = assetsIn[i - 1];
 
-            /// @dev Increment the loop counter within an unchecked block to avoid redundant gas cost associated with
-            /// overflow checking.  This is safe because the loop's exit condition ensures that `i` will not exceed
-            /// `assetsInLength - 1`, preventing overflow.
+            /// @dev Decrement the loop counter within an unchecked block to avoid redundant gas cost associated with
+            /// underflow checking. This is safe because the loop's initialization and exit condition ensure that `i`
+            /// will not underflow.
             unchecked {
-                ++i;
+                --i;
             }
         }
     }
 
     /**
      * @notice Calculate the amount of shares required to withdraw a given amount of assets from a series of withdraws
-     * from
-     * ERC4626 vaults or Yearn Vault V2.
+     * from ERC4626 vaults or Yearn Vault V2.
      * @param path The array of addresses that represents the path from input to output.
      * @param assetsOut The amount of assets to withdraw from the last vault.
+     * @dev assetsOut is the desired result of the output token, and the path = [vault0, vault1, ..., vaultN, tokenOut].
+     * First calculate the amount of shares in to get the desired assetsOut from the last vault, then using that amount
+     * as the next assetsOut to get the amount of shares in for the penultimate vault.
      * @return sharesIn The amount of shares required at each step. The length of the array is `path.length - 1`.
      */
     function previewWithdraws(
@@ -320,7 +325,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if (path.length < 2) revert PreviewPathIsTooShort();
         uint256 sharesInLength = path.length - 1;
         sharesIn = new uint256[](sharesInLength);
-        for (uint256 i; i < sharesInLength;) {
+        for (uint256 i = path.length - 2;;) {
             address vault = path[i];
             if (!Address.isContract(vault)) {
                 revert PreviewNonVaultAddressInPath(vault);
@@ -350,13 +355,13 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i + 1]) {
                 revert PreviewVaultMismatch();
             }
+            if (i == 0) return sharesIn;
             assetsOut = sharesIn[i];
 
-            /// @dev Increment the loop counter without checking for overflow.  This is safe because the for loop
-            /// naturally ensures that `i` will not overflow as it is bounded by `sharesInLength`, which is derived from
-            /// the length of the `path` array.
+            /// @dev Decrement the loop counter without checking for overflow.  This is safe because the for loop
+            /// naturally ensures that `i` will not underflow as it is bounded by i == 0 check.
             unchecked {
-                ++i;
+                --i;
             }
         }
     }
