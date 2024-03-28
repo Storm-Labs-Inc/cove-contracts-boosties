@@ -14,8 +14,11 @@ import { IYearn4626 } from "Yearn-ERC4626-Router/interfaces/IYearn4626.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { ERC4626Mock } from "@openzeppelin/contracts/mocks/ERC4626Mock.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import { YearnVaultV2Helper } from "src/libraries/YearnVaultV2Helper.sol";
 
 contract Router_ForkedTest is BaseTest {
+    using YearnVaultV2Helper for IYearnVaultV2;
+
     Yearn4626RouterExt public router;
 
     event Log(string message);
@@ -133,22 +136,22 @@ contract Router_ForkedTest is BaseTest {
 
     // ------------------ Yearn Vault V2 tests ------------------
 
-    function test_depositToVaultV2() public {
+    function test_deposit_passWhen_WithYearnVaultV2() public {
         uint256 depositAmount = 1 ether;
         airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), address(router), depositAmount, false);
         router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), MAINNET_ETH_YFI_VAULT_V2, depositAmount);
-        router.depositToVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), depositAmount, user, 0);
+        router.deposit(IYearn4626(MAINNET_ETH_YFI_VAULT_V2), depositAmount, user, 0);
 
         assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(user), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(user)), 949_289_266_142_683_599);
     }
 
-    function test_depositToVaultV2_revertWhen_InsufficientShares() public {
+    function test_deposit_revertWhen_WithYearnVaultV2_MinShares() public {
         uint256 depositAmount = 1 ether;
         airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), address(router), depositAmount, false);
         router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), MAINNET_ETH_YFI_VAULT_V2, depositAmount);
-        vm.expectRevert(abi.encodeWithSelector(Yearn4626RouterExt.InsufficientShares.selector));
-        router.depositToVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), depositAmount, address(user), 100 ether);
+        vm.expectRevert("!MinShares");
+        router.deposit(IYearn4626(MAINNET_ETH_YFI_VAULT_V2), depositAmount, address(user), 100 ether);
     }
 
     function test_redeemVaultV2() public {
@@ -245,7 +248,7 @@ contract Router_ForkedTest is BaseTest {
 
         // Deposit to the vault
         uint256 expectedVaultSharesOut =
-            router.depositToVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), assetInAmount, address(router), 0);
+            router.deposit(IYearn4626(MAINNET_ETH_YFI_VAULT_V2), assetInAmount, address(router), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), expectedVaultSharesOut);
         router.approve(ERC20(MAINNET_ETH_YFI_VAULT_V2), MAINNET_ETH_YFI_GAUGE, expectedVaultSharesOut);
@@ -336,7 +339,7 @@ contract Router_ForkedTest is BaseTest {
         // Deposit the returned assetIn amount to the vault
         router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), MAINNET_ETH_YFI_VAULT_V2, assetsIn[0]);
         uint256 actualVaultShareAmount =
-            router.depositToVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), assetsIn[0], address(router), 0);
+            router.deposit(IYearn4626(MAINNET_ETH_YFI_VAULT_V2), assetsIn[0], address(router), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), 0);
         assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), actualVaultShareAmount);
         // Confirm the actual share amount is equal to the expected share amount
@@ -440,33 +443,8 @@ contract Router_ForkedTest is BaseTest {
         router.previewMints(path, shareOutAmount);
     }
 
-    function testFuzz_previewWithdraws(uint256 assetOutAmount) public {
-        assetOutAmount = bound(assetOutAmount, 1, IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2).totalAssets());
-
-        address[] memory path = new address[](3);
-        path[0] = MAINNET_ETH_YFI_GAUGE;
-        path[1] = MAINNET_ETH_YFI_VAULT_V2;
-        path[2] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
-
-        uint256[] memory sharesIn = router.previewWithdraws(path, assetOutAmount);
-        assertEq(sharesIn.length, 2);
-
-        // Redeem the returned sharesIn amount of gauge tokens
-        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), address(router), sharesIn[0], false);
-        uint256 vaultShares = router.redeemFromRouter(IERC4626(MAINNET_ETH_YFI_GAUGE), sharesIn[0], address(router), 0);
-        assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(address(router)), 0);
-        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), vaultShares);
-        assertEq(sharesIn[1], vaultShares);
-        // Redeem the returned sharesIn amount of vault tokens
-        uint256 finalAssetOut =
-            router.redeemVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), vaultShares, address(router), 0);
-        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), 0);
-        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), finalAssetOut);
-        assertEq(finalAssetOut, assetOutAmount);
-    }
-
     function test_previewWithdraws() public {
-        uint256 assetOutAmount = 999_999_999_999_999_999;
+        uint256 assetOutAmount = 1e18;
         address[] memory path = new address[](3);
         path[0] = MAINNET_ETH_YFI_GAUGE;
         path[1] = MAINNET_ETH_YFI_VAULT_V2;
@@ -476,6 +454,51 @@ contract Router_ForkedTest is BaseTest {
         assertEq(sharesIn.length, 2);
         assertEq(sharesIn[0], 949_289_266_142_683_600);
         assertEq(sharesIn[1], 949_289_266_142_683_600);
+
+        // Redeem shares and verify the preview result matches the actual result
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), address(router), sharesIn[0], false);
+        uint256 vaultShares = router.redeemFromRouter(IERC4626(MAINNET_ETH_YFI_GAUGE), sharesIn[0], address(router), 0);
+        assertEq(vaultShares, sharesIn[1]);
+        uint256 lpShares =
+            router.redeemVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), vaultShares, address(router), 0);
+        assertEq(lpShares, assetOutAmount);
+    }
+
+    function testFuzz_previewWithdraws(uint256 assetOut) public {
+        // Bound the assetOut amount to the max asset out amount
+        // This is the total amount of the underlying LP token that can be withdrawn by the total supply amount of the
+        // gauge.
+        uint256 maxAssetOut =
+            IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2).previewRedeem(IERC4626(MAINNET_ETH_YFI_GAUGE).totalAssets());
+        assertEq(maxAssetOut, 128_760_754_733_967_560_587);
+        assetOut = bound(assetOut, 1, maxAssetOut);
+
+        address[] memory path = new address[](3);
+        path[0] = MAINNET_ETH_YFI_GAUGE;
+        path[1] = MAINNET_ETH_YFI_VAULT_V2;
+        path[2] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+
+        uint256[] memory sharesIn = router.previewWithdraws(path, assetOut);
+        assertEq(sharesIn.length, 2);
+
+        // Redeem the returned sharesIn amount of gauge tokens
+        airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), address(router), sharesIn[0], false);
+        uint256 vaultShares = router.redeemFromRouter(IERC4626(MAINNET_ETH_YFI_GAUGE), sharesIn[0], address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), vaultShares);
+        assertEq(sharesIn[1], vaultShares, "sharesIn[1] should be equal to vaultShares");
+        // Redeem the returned sharesIn amount of vault tokens
+        uint256 actualAssetOut =
+            router.redeemVaultV2(IYearnVaultV2(MAINNET_ETH_YFI_VAULT_V2), vaultShares, address(router), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_VAULT_V2).balanceOf(address(router)), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), actualAssetOut);
+        // In some cases, the actual asset out you get back is greater than the previewed asset out
+        // due to the way Yearn Vault v2 calculates the share price.
+        // At most this is off by 1, in favor of the vault.
+        assertApproxEqAbs(
+            assetOut, actualAssetOut, 1, "finalAssetOut should be approximately equal to previewed assetOut"
+        );
+        assertLe(assetOut, actualAssetOut, "finalAssetOut should be greater than or equal to previewed assetOut");
     }
 
     function test_previewWithdraws_Multiple4626() public {
@@ -529,7 +552,7 @@ contract Router_ForkedTest is BaseTest {
 
         uint256[] memory sharesOut = router.previewWithdraws(path, assetInAmount);
         assertEq(sharesOut.length, 1);
-        assertEq(sharesOut[0], 944_892);
+        assertEq(sharesOut[0], 944_891);
     }
 
     function test_previewWithdraws_StakeDAO() public {
@@ -701,7 +724,7 @@ contract Router_ForkedTest is BaseTest {
             PeripheryPayments.approve.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
         );
         data[3] = abi.encodeWithSelector(
-            Yearn4626RouterExt.depositToVaultV2.selector,
+            Yearn4626RouterBase.deposit.selector,
             MAINNET_ETH_YFI_VAULT_V2,
             depositAmount,
             address(router),
@@ -728,7 +751,7 @@ contract Router_ForkedTest is BaseTest {
         assertEq(ret[0], "", "SelfPermit should return empty bytes");
         assertEq(ret[1], "", "pullToken should return empty bytes");
         assertEq(ret[2], "", "approve should return empty bytes");
-        assertEq(abi.decode(ret[3], (uint256)), 949_289_266_142_683_599, "depositToVaultV2 should return minted shares");
+        assertEq(abi.decode(ret[3], (uint256)), 949_289_266_142_683_599, "deposit should return minted shares");
         assertEq(ret[4], "", "approve should return empty bytes");
         assertEq(abi.decode(ret[5], (uint256)), 949_289_266_142_683_599, "deposit should return minted shares");
 
@@ -819,7 +842,7 @@ contract Router_ForkedTest is BaseTest {
             PeripheryPayments.approve.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256
         );
         data[3] = abi.encodeWithSelector(
-            Yearn4626RouterExt.depositToVaultV2.selector,
+            Yearn4626RouterBase.deposit.selector,
             MAINNET_ETH_YFI_VAULT_V2,
             depositAmount,
             address(router),

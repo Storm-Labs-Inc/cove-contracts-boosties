@@ -8,16 +8,6 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IStakeDaoGauge } from "./deps/stakeDAO/IStakeDaoGauge.sol";
 
 interface IYearn4626RouterExt is IYearn4626Router {
-    function depositToVaultV2(
-        IYearnVaultV2 vault,
-        uint256 amount,
-        address to,
-        uint256 minSharesOut
-    )
-        external
-        payable
-        returns (uint256 sharesOut);
-
     function redeemVaultV2(
         IYearnVaultV2 vault,
         uint256 shares,

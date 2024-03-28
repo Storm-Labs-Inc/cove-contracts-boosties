@@ -7,8 +7,8 @@ import { IPermit2 } from "permit2/interfaces/IPermit2.sol";
 import { ISignatureTransfer } from "permit2/interfaces/ISignatureTransfer.sol";
 import { IWETH9 } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
 import { IYearn4626RouterExt } from "./interfaces/IYearn4626RouterExt.sol";
-import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { YearnVaultV2Helper } from "./libraries/YearnVaultV2Helper.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -25,6 +25,7 @@ import { IStakeDaoVault } from "./interfaces/deps/stakeDAO/IStakeDaoVault.sol";
  */
 contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     using SafeERC20 for IERC20;
+    using YearnVaultV2Helper for IYearnVaultV2;
 
     // slither-disable-next-line naming-convention
     IPermit2 private immutable _PERMIT2;
@@ -59,30 +60,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     }
 
     // ------------- YEARN VAULT V2 FUNCTIONS ------------- //
-
-    /**
-     * @notice Deposits the specified `amount` of tokens into the Yearn Vault V2.
-     * @dev Calls the `deposit` function of the Yearn Vault V2 contract and checks if the returned shares are above the
-     * `minSharesOut`.
-     * Reverts with `InsufficientShares` if the condition is not met.
-     * @param vault The Yearn Vault V2 contract instance.
-     * @param amount The amount of tokens to deposit.
-     * @param to The address to which the shares will be minted.
-     * @param minSharesOut The minimum number of shares expected to be received.
-     * @return sharesOut The actual number of shares minted to the `to` address.
-     */
-    function depositToVaultV2(
-        IYearnVaultV2 vault,
-        uint256 amount,
-        address to,
-        uint256 minSharesOut
-    )
-        public
-        payable
-        returns (uint256 sharesOut)
-    {
-        if ((sharesOut = vault.deposit(amount, to)) < minSharesOut) revert InsufficientShares();
-    }
 
     /**
      * @notice Redeems the specified `shares` from the Yearn Vault V2.
@@ -230,7 +207,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesOut[i] = _yearnVaultV2_previewDeposit(IYearnVaultV2(vault), assetsIn);
+                    sharesOut[i] = IYearnVaultV2(vault).previewDeposit(assetsIn);
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -284,7 +261,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsIn[i] = _yearnVaultV2_previewMint(IYearnVaultV2(vault), sharesOut);
+                    assetsIn[i - 1] = IYearnVaultV2(vault).previewMint(sharesOut);
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -339,7 +316,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesIn[i] = _yearnVaultV2_previewWithdraw(IYearnVaultV2(vault), assetsOut);
+                    sharesIn[i] = IYearnVaultV2(vault).previewWithdraw(assetsOut);
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
@@ -398,7 +375,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsOut[i] = _yearnVaultV2_previewRedeem(IYearnVaultV2(vault), sharesIn);
+                    assetsOut[i] = IYearnVaultV2(vault).previewRedeem(sharesIn);
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
@@ -424,61 +401,4 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         }
     }
     // slither-disable-end calls-loop,low-level-calls
-
-    /// @dev Yearn Vault V2 contract's calculate locked profit logic
-    /// https://github.com/yearn/yearn-vaults/blob/97ca1b2e4fcf20f4be0ff456dabd020bfeb6697b/contracts/Vault.vy#L829-L842
-    function _yearnVaultV2_calculateLockedProfit(IYearnVaultV2 vault) internal view returns (uint256) {
-        uint256 lockedProfit = vault.lockedProfit();
-        uint256 lockedFundsRatio = (block.timestamp - vault.lastReport()) * vault.lockedProfitDegradation();
-        if (lockedFundsRatio < 1e18) {
-            lockedProfit -= (lockedProfit * lockedFundsRatio) / 1e18;
-        } else {
-            lockedProfit = 0;
-        }
-        return lockedProfit;
-    }
-
-    /// @dev Yearn Vault V2 contract's free funds calculation logic
-    /// https://github.com/yearn/yearn-vaults/blob/97ca1b2e4fcf20f4be0ff456dabd020bfeb6697b/contracts/Vault.vy#L844-L847
-    function _yearnVaultV2_freeFunds(IYearnVaultV2 vault) internal view returns (uint256) {
-        return vault.totalAssets() - _yearnVaultV2_calculateLockedProfit(vault);
-    }
-
-    /// @dev Yearn Vault V2 contract's deposit() and _issueSharesForAmount() logic
-    /// https://github.com/yearn/yearn-vaults/blob/97ca1b2e4fcf20f4be0ff456dabd020bfeb6697b/contracts/Vault.vy#L849-L872
-    function _yearnVaultV2_previewDeposit(IYearnVaultV2 vault, uint256 assetsIn) internal view returns (uint256) {
-        uint256 totalSupply = vault.totalSupply();
-        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
-        if (totalSupply > 0) {
-            return Math.mulDiv(assetsIn, totalSupply, freeFunds, Math.Rounding.Down);
-        }
-        return assetsIn;
-    }
-
-    function _yearnVaultV2_previewMint(IYearnVaultV2 vault, uint256 sharesOut) internal view returns (uint256) {
-        uint256 totalSupply = vault.totalSupply();
-        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
-        if (totalSupply > 0) {
-            return Math.mulDiv(sharesOut, freeFunds, totalSupply, Math.Rounding.Up);
-        }
-        return sharesOut;
-    }
-
-    function _yearnVaultV2_previewRedeem(IYearnVaultV2 vault, uint256 sharesIn) internal view returns (uint256) {
-        uint256 totalSupply = vault.totalSupply();
-        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
-        if (totalSupply > 0) {
-            return Math.mulDiv(sharesIn, freeFunds, totalSupply, Math.Rounding.Down);
-        }
-        return 0;
-    }
-
-    function _yearnVaultV2_previewWithdraw(IYearnVaultV2 vault, uint256 assetsOut) internal view returns (uint256) {
-        uint256 totalSupply = vault.totalSupply();
-        uint256 freeFunds = _yearnVaultV2_freeFunds(vault);
-        if (totalSupply > 0) {
-            return Math.mulDiv(assetsOut, totalSupply, freeFunds, Math.Rounding.Up);
-        }
-        return 0;
-    }
 }
