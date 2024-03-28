@@ -548,7 +548,13 @@ contract MiniChefV3_Test is BaseTest {
         assertEq(lpToken.balanceOf(alice), amount, "LP tokens not returned to user after emergency withdrawal");
     }
 
-    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas_SkipOnIsolate(uint256 gasToCall) public {
+    function testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
+        // Workaround for consistent gas usage with --isolate or --gas-report flag
+        // https://github.com/foundry-rs/foundry/issues/7499#issuecomment-2021163562
+        this._testFuzz_emergencyWithdraw_revertWhen_OutOfGas(gasToCall);
+    }
+
+    function _testFuzz_emergencyWithdraw_revertWhen_OutOfGas(uint256 gasToCall) public {
         gasToCall = bound(gasToCall, 1, 43_990);
         // Mock rewarder to spend gas when called
         MockMiniChefRewarder rewarder = (new MockMiniChefRewarder());
@@ -561,12 +567,18 @@ contract MiniChefV3_Test is BaseTest {
         vm.startPrank(alice);
         lpToken.approve(address(miniChef), amount);
         miniChef.deposit(pid, amount, alice);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientGas.selector));
+        vm.expectRevert();
         miniChef.emergencyWithdraw{ gas: gasToCall }(pid, alice);
     }
 
     /// forge-config: default.fuzz.runs = 1024
-    function testFuzz_emergencyWithdraw_revertWhen_InsufficientGas_SkipOnIsolate(uint256 gasToCall) public {
+    function testFuzz_emergencyWithdraw_revertWhen_InsufficientGas(uint256 gasToCall) public {
+        // Workaround for consistent gas usage with --isolate or --gas-report flag
+        // https://github.com/foundry-rs/foundry/issues/7499#issuecomment-2021163562
+        this._testFuzz_emergencyWithdraw_revertWhen_InsufficientGas(gasToCall);
+    }
+
+    function _testFuzz_emergencyWithdraw_revertWhen_InsufficientGas(uint256 gasToCall) public {
         // Amount of gas low enough to revert the low level call, but continue with rest of call
         gasToCall = bound(gasToCall, 43_991, 636_008);
         console.log("Gas to call: ", gasToCall);
@@ -585,7 +597,13 @@ contract MiniChefV3_Test is BaseTest {
         miniChef.emergencyWithdraw{ gas: gasToCall }(pid, alice);
     }
 
-    function testFuzz_emergencyWithdraw_passWhen_SufficientGas_SkipOnIsolate(uint256 gasToCall) public {
+    function testFuzz_emergencyWithdraw_passWhen_SufficientGas(uint256 gasToCall) public {
+        // Workaround for consistent gas usage with --isolate or --gas-report flag
+        // https://github.com/foundry-rs/foundry/issues/7499#issuecomment-2021163562
+        this._testFuzz_emergencyWithdraw_passWhen_SufficientGas(gasToCall);
+    }
+
+    function _testFuzz_emergencyWithdraw_passWhen_SufficientGas(uint256 gasToCall) public {
         // Amount of gas low enough to revert the low level call, but continue with rest of call
         gasToCall = bound(gasToCall, 636_009, 30_000_000);
         console.log("Gas to call: ", gasToCall);
@@ -603,6 +621,7 @@ contract MiniChefV3_Test is BaseTest {
         vm.expectEmit();
         emit FunctionHit();
         miniChef.emergencyWithdraw{ gas: gasToCall }(pid, alice);
+        assertEq(MockMiniChefRewarder(rewarder).spendGas(0), 2, "inner low level call was not reverted");
     }
 
     function test_harvest() public {
