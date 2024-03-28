@@ -59,6 +59,9 @@ contract YearnStakingDelegate_Test is BaseTest {
     event Deposit(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
     event DepositLimitSet(address indexed gaugeToken, uint256 limit);
+    event StakingDelegateRewardsFaulty(
+        address gauge, address user, uint256 currentBalance, uint256 currentTotalDeposited
+    );
 
     function setUp() public override {
         super.setUp();
@@ -402,6 +405,8 @@ contract YearnStakingDelegate_Test is BaseTest {
             ""
         );
         vm.warp(42);
+        vm.expectEmit();
+        emit StakingDelegateRewardsFaulty(alice, testGauge, 0, 0);
         yearnStakingDelegate.deposit{ gas: gasAmount }(testGauge, tokenAmount);
         assertEq(MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(), 0);
     }
