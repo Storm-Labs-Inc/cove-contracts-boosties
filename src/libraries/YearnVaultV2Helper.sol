@@ -11,6 +11,8 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
  * provides these functions for previewing share based deposit/mint/redeem/withdraw estimations.
  * @dev These functions are only to be used off-chain for previewing. Due to how Yearn Vault V2 contracts work,
  * share based withdraw/redeem estimations may not be accurate if the vault incurs a loss, thus share price changes.
+ * Coverage is currently disabled for this library due to forge limitations. TODO: Once the fix PR is merged,
+ * https://github.com/foundry-rs/foundry/pull/7510 coverage should be re-enabled.
  */
 library YearnVaultV2Helper {
     /**
