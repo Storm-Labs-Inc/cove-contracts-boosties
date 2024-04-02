@@ -165,9 +165,20 @@ contract YearnStakingDelegate is
      * @param newTotalDeposited The new total amount of the gauge tokens deposited across all users.
      */
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
-
+    /**
+     * @notice Emitted when the checkpointing of a user's balance fails
+     * @param stakingDelegateRewards The address of the StakingDelegateRewards contract.
+     * @param user The address of the user whose balance failed to checkpoint.
+     * @param gauge The address of the gauge token.
+     * @param currentUserBalance The current balance of gauge tokens deposited by the user.
+     * @param currentTotalDeposited The current total amount of the gauge tokens deposited across all users.
+     */
     event StakingDelegateRewardsFaulty(
-        address gauge, address user, uint256 currentBalance, uint256 currentTotalDeposited
+        address stakingDelegateRewards,
+        address user,
+        address gauge,
+        uint256 currentUserBalance,
+        uint256 currentTotalDeposited
     );
 
     /**
@@ -846,7 +857,7 @@ contract YearnStakingDelegate is
         }
         if (!success) {
             // slither-disable-next-line reentrancy-events
-            emit StakingDelegateRewardsFaulty(user, gauge, userBalance, currentTotalDeposited);
+            emit StakingDelegateRewardsFaulty(stakingDelegateReward, user, gauge, userBalance, currentTotalDeposited);
         }
     }
 }

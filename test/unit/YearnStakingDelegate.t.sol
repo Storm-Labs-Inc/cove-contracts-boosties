@@ -60,7 +60,11 @@ contract YearnStakingDelegate_Test is BaseTest {
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
     event DepositLimitSet(address indexed gaugeToken, uint256 limit);
     event StakingDelegateRewardsFaulty(
-        address gauge, address user, uint256 currentBalance, uint256 currentTotalDeposited
+        address stakingDelegateRewards,
+        address user,
+        address gauge,
+        uint256 currentBalance,
+        uint256 currentTotalDeposited
     );
 
     function setUp() public override {
@@ -366,7 +370,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function _testFuzz_deposit_revertWhen_InsufficientGas_InnerCallReverts(uint256 gasAmount) public {
-        gasAmount = bound(gasAmount, 1, 84_483);
+        gasAmount = bound(gasAmount, 1, 84_760);
         _addTestGaugeRewards();
 
         uint256 tokenAmount = 1e18;
@@ -390,7 +394,7 @@ contract YearnStakingDelegate_Test is BaseTest {
     }
 
     function _testFuzz_deposit_passWhen_InnerCallReverts(uint256 gasAmount) public {
-        gasAmount = bound(gasAmount, 84_484, 30_000_000);
+        gasAmount = bound(gasAmount, 84_761, 30_000_000);
         _addTestGaugeRewards();
 
         uint256 tokenAmount = 1e18;
@@ -406,7 +410,7 @@ contract YearnStakingDelegate_Test is BaseTest {
         );
         vm.warp(42);
         vm.expectEmit();
-        emit StakingDelegateRewardsFaulty(alice, testGauge, 0, 0);
+        emit StakingDelegateRewardsFaulty(stakingDelegateRewards, alice, testGauge, 0, 0);
         yearnStakingDelegate.deposit{ gas: gasAmount }(testGauge, tokenAmount);
         assertEq(MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(), 0);
     }
