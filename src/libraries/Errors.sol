@@ -65,6 +65,9 @@ library Errors {
     /// @notice Error for when Cove YFI reward forwarder is not set.
     error CoveYfiRewardForwarderNotSet();
 
+    /// @notice Error for when treasury fee is already disabled.
+    error TreasuryFeeAlreadyDisabled();
+
     //// STAKING DELEGATE REWARDS ////
 
     /// @notice Error for when a rescue operation is not allowed.
