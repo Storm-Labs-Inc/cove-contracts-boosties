@@ -433,6 +433,8 @@ abstract contract BaseRewardsGauge is
             /// @dev It is possible for `totalClaimed + totalClaimable` to overflow if using reward tokens with a max
             /// supply greater than `type(uint128).max`.  An overflow in the claimed amount of reward tokens could allow
             /// a user to withdraw more tokens than allocated, leading to a potential drain of the contract.
+            /// This can technically happen even if the supply is lower than 2**128 since tokens can be eventually
+            /// recycled into the rewards, but should be a extremely rare scenario.
             claimData[user][token] = claim ? totalClaimed + totalClaimable : totalClaimed + (totalClaimable << 128);
 
             if (claim) {

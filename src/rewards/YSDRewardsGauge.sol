@@ -78,7 +78,7 @@ contract YSDRewardsGauge is BaseRewardsGauge {
         if (paused()) {
             return 0;
         }
-        return _availableDepositLimit();
+        return convertToShares(_availableDepositLimit());
     }
 
     function _availableDepositLimit() internal view returns (uint256) {
