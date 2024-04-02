@@ -2,10 +2,13 @@
 pragma solidity 0.8.18;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC721 } from "@openzeppelin/contracts/interfaces/IERC721.sol";
 import { CommonBase } from "forge-std/Base.sol";
 import { console2 as console } from "forge-std/console2.sol";
 import { Constants } from "test/utils/Constants.sol";
-import { ISablierV2Batch, Batch } from "src/interfaces/deps/sablier/ISablierV2Batch.sol";
+import { ISablierV2Batch } from "src/interfaces/deps/sablier/ISablierV2Batch.sol";
+import { ISablierV2LockupLinear } from "src/interfaces/deps/sablier/ISablierV2LockupLinear.sol";
+import { Batch, LockupLinear } from "src/interfaces/deps/sablier/DataTypes.sol";
 
 contract SablierBatchCreator is CommonBase, Constants {
     /**
@@ -51,9 +54,22 @@ contract SablierBatchCreator is CommonBase, Constants {
         // Log out recipient, amount, and stream id
         console.log("Sablier V2 streams created:", streamIds.length);
         for (uint256 i = 0; i < streamIds.length; i++) {
-            console.log(
-                "  Stream ID: %d, Recipient: %s, Amount: %d", streamIds[i], batch[i].recipient, batch[i].totalAmount
-            );
+            LockupLinear.Stream memory stream =
+                ISablierV2LockupLinear(MAINNET_SABLIER_V2_LOCKUP_LINEAR).getStream(streamIds[i]);
+            require(batch[i].sender == stream.sender, "Sender mismatch");
+            address recipient = IERC721(MAINNET_SABLIER_V2_LOCKUP_LINEAR).ownerOf(streamIds[i]);
+            require(batch[i].recipient == recipient, "Recipient mismatch");
+            require(batch[i].totalAmount == stream.amounts.deposited, "Deposit mismatch");
+            require(batch[i].durations.cliff == stream.cliffTime - stream.startTime, "Cliff mismatch");
+            require(batch[i].durations.total == stream.endTime - stream.startTime, "Duration mismatch");
+            require(batch[i].cancelable == stream.isCancelable, "Cancelable mismatch");
+            require(batch[i].transferable == stream.isTransferable, "Transferable mismatch");
+            require(stream.isStream, "Stream not found");
+            require(!stream.isDepleted, "Stream depleted");
+            require(stream.asset == token, "Asset mismatch");
+            console.log("Stream ID: ", streamIds[i]);
+            console.log("  Recipient: ", recipient);
+            console.log("  Amount: ", stream.amounts.deposited);
         }
     }
 }

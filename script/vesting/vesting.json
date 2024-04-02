@@ -5,7 +5,7 @@
       "1_recepient": "0x000000000000000000000000000000000000dead",
       "2_totalAmount": 200000000000000000000000,
       "3_cancelable": true,
-      "4_trasnferable": true,
+      "4_transferable": false,
       "5_durations": {
         "0_cliff": 0,
         "1_total": 31449600
@@ -20,7 +20,7 @@
       "1_recepient": "0x000000000000000000000000000000000000dead",
       "2_totalAmount": 800000000000000000000000,
       "3_cancelable": true,
-      "4_trasnferable": true,
+      "4_transferable": false,
       "5_durations": {
         "0_cliff": 0,
         "1_total": 31449600
