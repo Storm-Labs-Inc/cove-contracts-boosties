@@ -84,7 +84,7 @@ contract YearnStakingDelegate is
     /// @dev Flag indicating whether to lock rewards perpetually.
     bool private _shouldPerpetuallyLock;
     /// @dev Boolean flag indicating whether the treasury fee is disabled.
-    bool private _isTreasuyFeeDisabled;
+    bool private _isTreasuryFeeDisabled;
     /// @dev Address of the contract that swaps and locks tokens.
     address private _swapAndLock;
     /// @dev Address of the contract that forwards YFI rewards to CoveYFI.
@@ -572,18 +572,18 @@ contract YearnStakingDelegate is
 
     /**
      * @notice Disable treasury fee, requiring any future reward split updates to have 0% treasury split. Only callable
-     * by TIMELOCK_ROLE.
+     * by TIMELOCK_ROLE or DEFAULT_ADMIN_ROLE.
      * @dev Boost reward and exit reward treasury fees are disabled immediately. Individual gauge reward splits will
      * need to be set after this call.
      */
-    function disableTreasuryFee() external onlyRole(TIMELOCK_ROLE) {
+    function disableTreasuryFee() external {
         if (!(hasRole(TIMELOCK_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
             revert Errors.Unauthorized();
         }
-        if (_isTreasuyFeeDisabled) {
+        if (_isTreasuryFeeDisabled) {
             revert Errors.TreasuryFeeAlreadyDisabled();
         }
-        _isTreasuyFeeDisabled = true;
+        _isTreasuryFeeDisabled = true;
         _setBoostRewardSplit(0, 1e18);
         _setExitRewardSplit(0, 1e18);
     }
@@ -704,8 +704,8 @@ contract YearnStakingDelegate is
      * @notice Get the treasury fee status
      * @return True if treasury fee is disabled
      */
-    function isTreasuyFeeDisabled() external view returns (bool) {
-        return _isTreasuyFeeDisabled;
+    function isTreasuryFeeDisabled() external view returns (bool) {
+        return _isTreasuryFeeDisabled;
     }
 
     /**
@@ -798,7 +798,7 @@ contract YearnStakingDelegate is
         if (uint256(treasuryPct) + coveYfiPct + userPct + lockPct != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
-        uint256 maxTreasuryPct = _isTreasuyFeeDisabled ? 0 : _MAX_TREASURY_PCT;
+        uint256 maxTreasuryPct = _isTreasuryFeeDisabled ? 0 : _MAX_TREASURY_PCT;
         if (treasuryPct > maxTreasuryPct) {
             revert Errors.TreasuryPctTooHigh();
         }
@@ -817,7 +817,7 @@ contract YearnStakingDelegate is
         if (uint256(treasuryPct) + coveYfiPct != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
-        uint256 maxTreasuryPct = _isTreasuyFeeDisabled ? 0 : _MAX_TREASURY_PCT;
+        uint256 maxTreasuryPct = _isTreasuryFeeDisabled ? 0 : _MAX_TREASURY_PCT;
         if (treasuryPct > maxTreasuryPct) {
             revert Errors.TreasuryPctTooHigh();
         }
@@ -835,7 +835,7 @@ contract YearnStakingDelegate is
         if (uint256(treasuryPct) + coveYfiPct != 1e18) {
             revert Errors.InvalidRewardSplit();
         }
-        uint256 maxTreasuryPct = _isTreasuyFeeDisabled ? 0 : _MAX_TREASURY_PCT;
+        uint256 maxTreasuryPct = _isTreasuryFeeDisabled ? 0 : _MAX_TREASURY_PCT;
         if (treasuryPct > maxTreasuryPct) {
             revert Errors.TreasuryPctTooHigh();
         }

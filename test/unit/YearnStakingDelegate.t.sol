@@ -201,6 +201,8 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(rewardSplit.coveYfi, 0);
         assertEq(rewardSplit.user, 0);
         assertEq(rewardSplit.lock, 0);
+        assertFalse(yearnStakingDelegate.paused());
+        assertFalse(yearnStakingDelegate.isTreasuryFeeDisabled());
         // Check for roles
         assertTrue(yearnStakingDelegate.hasRole(DEFAULT_ADMIN_ROLE, admin));
         assertTrue(yearnStakingDelegate.hasRole(PAUSER_ROLE, pauser));
@@ -880,5 +882,41 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertFalse(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, ben));
         yearnStakingDelegate.grantRole(DEPOSITOR_ROLE, ben);
         assertTrue(yearnStakingDelegate.hasRole(DEPOSITOR_ROLE, ben));
+    }
+
+    function test_disableTreasuryFee() public {
+        vm.startPrank(timelock);
+        assertFalse(yearnStakingDelegate.isTreasuryFeeDisabled());
+        yearnStakingDelegate.setExitRewardSplit(0.2e18, 0.8e18);
+        yearnStakingDelegate.setBoostRewardSplit(0.2e18, 0.8e18);
+        assertEq(yearnStakingDelegate.getExitRewardSplit().treasury, 0.2e18);
+        assertEq(yearnStakingDelegate.getBoostRewardSplit().treasury, 0.2e18);
+        yearnStakingDelegate.disableTreasuryFee();
+        assertTrue(yearnStakingDelegate.isTreasuryFeeDisabled());
+        assertEq(yearnStakingDelegate.getExitRewardSplit().treasury, 0);
+        assertEq(yearnStakingDelegate.getBoostRewardSplit().treasury, 0);
+    }
+
+    function test_disableTreasuryFee_revertWhen_TreasuryFeeAlreadyDisabled() public {
+        vm.startPrank(timelock);
+        yearnStakingDelegate.disableTreasuryFee();
+        vm.expectRevert(Errors.TreasuryFeeAlreadyDisabled.selector);
+        yearnStakingDelegate.disableTreasuryFee();
+    }
+
+    function testFuzz_disableTreasuryFee_revertWhen_CallerIsNotTimelockOrAdmin(address from) public {
+        vm.assume(from != timelock && from != admin);
+        vm.prank(from);
+        vm.expectRevert(Errors.Unauthorized.selector);
+        yearnStakingDelegate.disableTreasuryFee();
+    }
+
+    function test_disableTreasuryFee_setGaugeRewardSplit(uint64 treasurySplit) public {
+        treasurySplit = uint64(bound(treasurySplit, 1, 1e18));
+        uint64 userSplit = 1e18 - treasurySplit;
+        vm.startPrank(timelock);
+        yearnStakingDelegate.disableTreasuryFee();
+        vm.expectRevert(Errors.TreasuryPctTooHigh.selector);
+        yearnStakingDelegate.setGaugeRewardSplit(testGauge, treasurySplit, 0, userSplit, 0);
     }
 }
