@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.18;
 
 import { IYearn4626Router } from "Yearn-ERC4626-Router/interfaces/IYearn4626Router.sol";
