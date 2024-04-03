@@ -20,6 +20,7 @@ import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { Yearn4626RouterExt } from "src/Yearn4626RouterExt.sol";
@@ -35,6 +36,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     // Using default deployer function
     using DefaultDeployerFunction for Deployer;
 
+    address public broadcaster;
     address public admin;
     address public treasury;
     address public manager;
@@ -44,10 +46,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     address[] public coveYearnStrategies;
 
     // Expected cove token balances after deployment
-    // TODO: Update the expected balances before prod deployment
-    uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether;
-    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 1_000_000 ether;
-    uint256 public constant COVE_BALANCE_MULTISIG = 998_000_000 ether;
+    uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether; // TODO: determine cove staking reward amount
+    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 483_476_190.47e18;
+    uint256 public constant COVE_BALANCE_MULTISIG = 515_523_809.53e18; // TODO: determine multisig cove balance
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
     // TimelockController configuration
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
@@ -62,10 +63,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
 
     function deploy() public override {
         // Assume admin and treasury are the same Gnosis Safe
+        broadcaster = msg.sender;
+        vm.label(broadcaster, "broadcaster");
         admin = vm.envOr("ADMIN_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
         manager = vm.envOr("DEV_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
         pauser = vm.envOr("PAUSER_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 3)));
         treasury = admin; // TODO: Determine treasury multisig before prod deployment
+        deployer.setAutoBroadcast(true);
 
         vm.label(admin, "admin");
         vm.label(manager, "manager");
@@ -95,7 +99,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy MiniChefV3 farm
         deployMiniChefV3();
         // Deploy Vesting via Sablier
-        deploySablierStreams();
+        deploySablierStreams(admin);
         // Send the rest of the Cove tokens to admin
         sendCoveTokensToAdmin();
         address yearnStakingDelegateAddress = deployer.getAddress("YearnStakingDelegate");
@@ -113,7 +117,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         verifyPostDeploymentState();
     }
 
-    function deployTimelockController() public broadcast deployIfMissing("TimelockController") {
+    function deployTimelockController() public deployIfMissing("TimelockController") {
         // Only admin can propose new transactions
         address[] memory proposers = new address[](1);
         proposers[0] = admin;
@@ -123,6 +127,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         executors[1] = manager;
         executors[2] = broadcaster;
         // Deploy and save the TimelockController
+        vm.broadcast(broadcaster);
         address timelockController = address(
             new TimelockController{ salt: bytes32(options.salt) }(
                 COVE_TIMELOCK_CONTROLLER_MIN_DELAY, proposers, executors, address(0)
@@ -131,7 +136,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         deployer.save("TimelockController", timelockController, "TimelockController.sol:TimelockController");
     }
 
-    function deployYearnStakingDelegateStack() public broadcast deployIfMissing("YearnStakingDelegate") {
+    function deployYearnStakingDelegateStack() public deployIfMissing("YearnStakingDelegate") {
         address gaugeRewardReceiverImpl =
             address(deployer.deploy_GaugeRewardReceiver("GaugeRewardReceiverImplementation", options));
         YearnStakingDelegate ysd = deployer.deploy_YearnStakingDelegate(
@@ -148,6 +153,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             address(deployer.deploy_SwapAndLock("SwapAndLock", address(ysd), coveYfi, broadcaster, options));
 
         // Admin transactions
+        vm.startBroadcast();
         SwapAndLock(swapAndLock).setDYfiRedeemer(deployer.getAddress("DYFIRedeemer"));
         ysd.setSwapAndLock(swapAndLock);
         ysd.setSnapshotDelegate("veyfi.eth", manager);
@@ -163,9 +169,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         ysd.grantRole(TIMELOCK_ROLE, timeLock);
         SwapAndLock(swapAndLock).grantRole(DEFAULT_ADMIN_ROLE, admin);
         SwapAndLock(swapAndLock).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
+        vm.stopBroadcast();
     }
 
-    function deployYearn4626RouterExt() public broadcast deployIfMissing("Yearn4626RouterExt") returns (address) {
+    function deployYearn4626RouterExt() public deployIfMissing("Yearn4626RouterExt") returns (address) {
         address yearn4626RouterExt = address(
             deployer.deploy_Yearn4626RouterExt(
                 "Yearn4626RouterExt", "Yearn4626RouterExt", MAINNET_WETH, MAINNET_PERMIT2, options
@@ -192,7 +199,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return i;
     }
 
-    function approveDepositsInRouter() public broadcast {
+    function approveDepositsInRouter() public {
         Yearn4626RouterExt yearn4626RouterExt = Yearn4626RouterExt(deployer.getAddress("Yearn4626RouterExt"));
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
 
@@ -213,6 +220,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // CRV_YCRV
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE));
         require(i == data.length, "Incorrect number of approves");
+        vm.broadcast();
         yearn4626RouterExt.multicall(data);
     }
 
@@ -223,12 +231,12 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         CurveRouterSwapper.CurveSwapParams memory swapParams
     )
         internal
-        broadcast
         deployIfMissing(string.concat("YearnGaugeStrategy-", IERC4626(yearngauge).name()))
     {
         YearnGaugeStrategy strategy = deployer.deploy_YearnGaugeStrategy(
             string.concat("YearnGaugeStrategy-", IERC4626(yearngauge).name()), yearngauge, ysd, MAINNET_CURVE_ROUTER
         );
+        vm.startBroadcast();
         // Set the curve swap params for harvest rewards swapping to the asset, gauge token
         strategy.setHarvestSwapParams(swapParams);
         // Set the tokenized strategy roles
@@ -246,6 +254,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         YearnStakingDelegate(ysd).grantRole(DEPOSITOR_ROLE, info.nonAutoCompoundingGauge);
         // Set deposit limit for the gauge token
         YearnStakingDelegate(ysd).setDepositLimit(yearngauge, maxDeposit);
+        vm.stopBroadcast();
     }
 
     function deployCoveStrategiesAndGauges(address ysd) public {
@@ -275,28 +284,35 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         );
     }
 
-    function deployMasterRegistry() public broadcast deployIfMissing("MasterRegistry") returns (address) {
+    function deployMasterRegistry() public deployIfMissing("MasterRegistry") returns (address) {
         address masterRegistry = address(deployer.deploy_MasterRegistry("MasterRegistry", admin, broadcaster, options));
         return masterRegistry;
     }
 
-    function deployCoveToken() public broadcast deployIfMissing("CoveToken") returns (address) {
+    function deployCoveToken() public deployIfMissing("CoveToken") returns (address) {
         address cove = address(deployer.deploy_CoveToken("CoveToken", broadcaster, options));
         return cove;
     }
 
-    function deployCoveYFIRewards() public broadcast {
+    function deployCoveYFIRewards() public {
         address erc20RewardsGaugeImpl = deployer.getAddress("ERC20RewardsGaugeImpl");
+
+        vm.broadcast();
         ERC20RewardsGauge coveRewardsGauge = ERC20RewardsGauge(Clones.clone(erc20RewardsGaugeImpl));
+
         deployer.save("CoveRewardsGauge", address(coveRewardsGauge), "ERC20RewardsGauge.sol:ERC20RewardsGauge");
         address rewardForwarderImpl = deployer.getAddress("RewardForwarderImpl");
+
+        vm.broadcast();
         RewardForwarder coveRewardsGaugeRewardForwarder = RewardForwarder(Clones.clone(rewardForwarderImpl));
+
         deployer.save(
             "CoveRewardsGaugeRewardForwarder",
             address(coveRewardsGaugeRewardForwarder),
             "RewardForwarder.sol:RewardForwarder"
         );
         address coveYFI = deployer.getAddress("CoveYFI");
+        vm.startBroadcast();
         coveRewardsGauge.initialize(coveYFI);
         coveRewardsGaugeRewardForwarder.initialize(address(coveRewardsGauge), admin, manager);
         coveRewardsGauge.addReward(MAINNET_DYFI, address(coveRewardsGaugeRewardForwarder));
@@ -310,22 +326,24 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveRewardsGauge.renounceRole(MANAGER_ROLE, broadcaster);
         ysd.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         ysd.renounceRole(TIMELOCK_ROLE, broadcaster);
+        vm.stopBroadcast();
     }
 
     function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
         CoveToken coveToken = CoveToken(deployer.getAddress("CoveToken"));
-        bytes[] memory data = new bytes[](transferrers.length);
-        for (uint256 i = 0; i < transferrers.length; i++) {
+        bytes[] memory data = new bytes[](transferrers.length + 4);
+        uint256 i = 0;
+        for (; i < transferrers.length; i++) {
             data[i] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, transferrers[i]);
         }
+        data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, DEFAULT_ADMIN_ROLE, admin);
+        data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, TIMELOCK_ROLE, timeLock);
+        data[i++] = abi.encodeWithSelector(AccessControl.renounceRole.selector, DEFAULT_ADMIN_ROLE, broadcaster);
+        data[i++] = abi.encodeWithSelector(AccessControl.renounceRole.selector, TIMELOCK_ROLE, broadcaster);
         coveToken.multicall(data);
-        coveToken.grantRole(DEFAULT_ADMIN_ROLE, admin);
-        coveToken.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        coveToken.grantRole(TIMELOCK_ROLE, timeLock);
-        coveToken.renounceRole(TIMELOCK_ROLE, broadcaster);
     }
 
-    function deployMiniChefV3() public broadcast deployIfMissing("MiniChefV3") returns (address) {
+    function deployMiniChefV3() public deployIfMissing("MiniChefV3") returns (address) {
         address miniChefV3 = address(
             deployer.deploy_MiniChefV3({
                 name: "MiniChefV3",
@@ -336,18 +354,20 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             })
         );
         // Add Cove token as pid 0 in MiniChefV3 with allocPoint 1000
-        MiniChefV3(miniChefV3).add({
-            allocPoint: 1000,
-            lpToken_: IERC20(deployer.getAddress("CoveToken")),
-            rewarder_: IMiniChefV3Rewarder(address(0))
-        });
-        // Commit some rewards to the MiniChefV3
+        vm.startBroadcast();
         CoveToken(deployer.getAddress("CoveToken")).approve(miniChefV3, COVE_BALANCE_MINICHEF);
-        MiniChefV3(miniChefV3).commitReward(COVE_BALANCE_MINICHEF);
-        MiniChefV3(miniChefV3).grantRole(DEFAULT_ADMIN_ROLE, admin);
-        MiniChefV3(miniChefV3).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
-        MiniChefV3(miniChefV3).grantRole(TIMELOCK_ROLE, timeLock);
-        MiniChefV3(miniChefV3).renounceRole(TIMELOCK_ROLE, broadcaster);
+
+        uint256 i = 0;
+        bytes[] memory data = new bytes[](6);
+        data[i++] =
+            abi.encodeWithSelector(MiniChefV3.add.selector, 1000, IERC20(deployer.getAddress("CoveToken")), address(0));
+        data[i++] = abi.encodeWithSelector(MiniChefV3.commitReward.selector, COVE_BALANCE_MINICHEF);
+        data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, DEFAULT_ADMIN_ROLE, admin);
+        data[i++] = abi.encodeWithSelector(AccessControl.renounceRole.selector, DEFAULT_ADMIN_ROLE, broadcaster);
+        data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, TIMELOCK_ROLE, timeLock);
+        data[i++] = abi.encodeWithSelector(AccessControl.renounceRole.selector, TIMELOCK_ROLE, broadcaster);
+        MiniChefV3(miniChefV3).multicall(data);
+        vm.stopBroadcast();
 
         return miniChefV3;
     }
@@ -357,8 +377,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveToken.transfer(admin, coveToken.balanceOf(address(broadcaster)));
     }
 
-    function deploySablierStreams() public broadcast returns (uint256[] memory streamIds) {
-        streamIds = batchCreateStreams(IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
+    function deploySablierStreams(address streamOwner) public broadcast returns (uint256[] memory streamIds) {
+        streamIds =
+            batchCreateStreams(streamOwner, IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
     }
 
     function deployCoveYearnGaugeFactory(
@@ -366,7 +387,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         address cove
     )
         public
-        broadcast
         deployIfMissing("CoveYearnGaugeFactory")
         returns (address)
     {
