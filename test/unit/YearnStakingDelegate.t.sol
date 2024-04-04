@@ -59,6 +59,13 @@ contract YearnStakingDelegate_Test is BaseTest {
     event Deposit(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
     event DepositLimitSet(address indexed gaugeToken, uint256 limit);
+    event StakingDelegateRewardsFaulty(
+        address stakingDelegateRewards,
+        address user,
+        address gauge,
+        uint256 currentBalance,
+        uint256 currentTotalDeposited
+    );
 
     function setUp() public override {
         super.setUp();
@@ -356,6 +363,98 @@ contract YearnStakingDelegate_Test is BaseTest {
         assertEq(IERC20(testGauge).balanceOf(address(yearnStakingDelegate)), amount, "deposit failed");
         assertEq(IERC20(testGauge).balanceOf(alice), 0, "deposit failed");
         assertEq(yearnStakingDelegate.totalDeposited(testGauge), amount, "deposit failed");
+    }
+
+    function testFuzz_deposit_revertWhen_InsufficientGas_InnerCallReverts(uint256 gasAmount) public {
+        this._testFuzz_deposit_revertWhen_InsufficientGas_InnerCallReverts(gasAmount);
+    }
+
+    function _testFuzz_deposit_revertWhen_InsufficientGas_InnerCallReverts(uint256 gasAmount) public {
+        gasAmount = bound(gasAmount, 1, 84_760);
+        _addTestGaugeRewards();
+
+        uint256 tokenAmount = 1e18;
+        _airdropGaugeTokens(alice, tokenAmount);
+        vm.startPrank(alice);
+        IERC20(testGauge).approve(address(yearnStakingDelegate), tokenAmount);
+
+        assertEq(MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(), 0);
+        vm.mockCallRevert(
+            stakingDelegateRewards,
+            abi.encodeWithSelector(MockStakingDelegateRewards(stakingDelegateRewards).updateUserBalance.selector),
+            ""
+        );
+        vm.warp(42);
+        vm.expectRevert();
+        yearnStakingDelegate.deposit{ gas: gasAmount }(testGauge, tokenAmount);
+    }
+
+    function testFuzz_deposit_passWhen_InnerCallReverts(uint256 gasAmount) public {
+        this._testFuzz_deposit_passWhen_InnerCallReverts(gasAmount);
+    }
+
+    function _testFuzz_deposit_passWhen_InnerCallReverts(uint256 gasAmount) public {
+        gasAmount = bound(gasAmount, 84_761, 30_000_000);
+        _addTestGaugeRewards();
+
+        uint256 tokenAmount = 1e18;
+        _airdropGaugeTokens(alice, tokenAmount);
+        vm.startPrank(alice);
+        IERC20(testGauge).approve(address(yearnStakingDelegate), tokenAmount);
+
+        assertEq(MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(), 0);
+        vm.mockCallRevert(
+            stakingDelegateRewards,
+            abi.encodeWithSelector(MockStakingDelegateRewards(stakingDelegateRewards).updateUserBalance.selector),
+            ""
+        );
+        vm.warp(42);
+        vm.expectEmit();
+        emit StakingDelegateRewardsFaulty(stakingDelegateRewards, alice, testGauge, 0, 0);
+        yearnStakingDelegate.deposit{ gas: gasAmount }(testGauge, tokenAmount);
+        assertEq(MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(), 0);
+    }
+
+    function testFuzz_deposit_revertWhen_InsufficientGas(uint256 gasAmount) public {
+        this._testFuzz_deposit_revertWhen_InsufficientGas(gasAmount);
+    }
+
+    function _testFuzz_deposit_revertWhen_InsufficientGas(uint256 gasAmount) public {
+        gasAmount = bound(gasAmount, 1, 319_032);
+        _addTestGaugeRewards();
+
+        uint256 tokenAmount = 1e18;
+        _airdropGaugeTokens(alice, tokenAmount);
+        vm.startPrank(alice);
+        IERC20(testGauge).approve(address(yearnStakingDelegate), tokenAmount);
+
+        assertEq(MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(), 0);
+        vm.warp(42);
+        vm.expectRevert();
+        yearnStakingDelegate.deposit{ gas: gasAmount }(testGauge, tokenAmount);
+    }
+
+    function testFuzz_deposit_passWhen_SuppliedEnoughGas(uint256 gasAmount) public {
+        this._testFuzz_deposit_passWhen_SuppliedEnoughGas(gasAmount);
+    }
+
+    function _testFuzz_deposit_passWhen_SuppliedEnoughGas(uint256 gasAmount) public {
+        gasAmount = bound(gasAmount, 319_033, 30_000_000);
+        _addTestGaugeRewards();
+
+        uint256 tokenAmount = 1e18;
+        _airdropGaugeTokens(alice, tokenAmount);
+        vm.startPrank(alice);
+        IERC20(testGauge).approve(address(yearnStakingDelegate), tokenAmount);
+
+        assertEq(MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(), 0);
+        vm.warp(42);
+        yearnStakingDelegate.deposit{ gas: gasAmount }(testGauge, tokenAmount);
+        assertEq(
+            MockStakingDelegateRewards(stakingDelegateRewards).lastUpdateUserBalanceCalled(),
+            42,
+            "inner call did not succeed"
+        );
     }
 
     function testFuzz_deposit_revertWhen_CallerIsNotDepositor(address user, uint256 amount) public {
