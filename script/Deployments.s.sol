@@ -122,8 +122,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         approveDepositsInRouter();
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
-        // Verify the state of the deployment
-        verifyPostDeploymentState();
     }
 
     function deployTimelockController() public deployIfMissing("TimelockController") {
@@ -460,7 +458,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         masterRegistry.multicall(data);
     }
 
-    function verifyPostDeploymentState() public view {
+    function verifyPostDeploymentState() public {
+        broadcaster = vm.envAddress("DEPLOYER_ADDRESS");
+        admin = vm.envOr("COMMUNITY_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
+        manager = vm.envOr("OPS_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
+        pauser = vm.envOr("PAUSER_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 3)));
+        treasury = admin;
+        timeLock = deployer.getAddress("TimelockController");
         /// CoveToken initial state and balances verification
         IERC20 coveToken = IERC20(deployer.getAddress("CoveToken"));
         // Verify minichef v3 balance
@@ -532,6 +536,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         /// SwapAndLock
         _verifyRole("SwapAndLock", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("SwapAndLock", DEFAULT_ADMIN_ROLE, 1);
+        console.log("verifyPostDeploymentState() successful");
     }
 
     function _verifyRole(string memory contractName, bytes32 role, address user) internal view {
@@ -545,10 +550,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             contractInstance.getRoleMemberCount(role) == count,
             string.concat("Incorrect role count for: ", contractName)
         );
-    }
-
-    function getCurrentDeployer() external view returns (Deployer) {
-        return deployer;
     }
 }
 // example run in current setup: DEPLOYMENT_CONTEXT=localhost forge script script/Deployments.s.sol --rpc-url
