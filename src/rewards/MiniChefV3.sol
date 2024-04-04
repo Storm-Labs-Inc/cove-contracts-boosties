@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.18;
 
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
@@ -546,11 +546,14 @@ contract MiniChefV3 is Multicall, AccessControlEnumerable, Rescuable, SelfPermit
             uint256 gasBefore = gasleft();
             // slither-disable-next-line missing-zero-check,return-bomb,low-level-calls
             (bool success,) = address(_rewarder).call{ gas: gasBefore }(data);
-            if (gasleft() < gasBefore / 63) {
+            // Protect against griefing via specifying low gas to trigger a revert in the callee
+            // https://ronan.eth.limo/blog/ethereum-gas-dangers/
+            // https://www.rareskills.io/post/eip-150-and-the-63-64-rule-for-gas
+            if (gasleft() <= gasBefore / 63) {
                 revert Errors.InsufficientGas();
             }
             if (!success) {
-                //slither-disable-next-line reentrancy-events
+                // slither-disable-next-line reentrancy-events
                 emit LogRewarderEmergencyWithdrawFaulty(msg.sender, pid, amount, to);
             }
         }
