@@ -44,7 +44,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     address[] public coveYearnStrategies;
 
     // Expected cove token balances after deployment
-    uint256 public constant COVE_BALANCE_MINICHEF = 0 ether; // TODO: determine cove staking reward amount
+    uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether; // TODO: determine cove staking reward amount
     uint256 public constant COVE_BALANCE_LINEAR_VESTING = 483_476_190.47e18;
     uint256 public constant COVE_BALANCE_MULTISIG = 516_523_809.53e18; // TODO: determine multisig cove balance
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
@@ -341,8 +341,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             rewarder_: IMiniChefV3Rewarder(address(0))
         });
         // Commit some rewards to the MiniChefV3
-        // CoveToken(deployer.getAddress("CoveToken")).approve(miniChefV3, COVE_BALANCE_MINICHEF);
-        // MiniChefV3(miniChefV3).commitReward(COVE_BALANCE_MINICHEF);
+        CoveToken(deployer.getAddress("CoveToken")).approve(miniChefV3, COVE_BALANCE_MINICHEF);
+        MiniChefV3(miniChefV3).commitReward(COVE_BALANCE_MINICHEF);
         MiniChefV3(miniChefV3).grantRole(DEFAULT_ADMIN_ROLE, admin);
         MiniChefV3(miniChefV3).renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
         MiniChefV3(miniChefV3).grantRole(TIMELOCK_ROLE, timeLock);
