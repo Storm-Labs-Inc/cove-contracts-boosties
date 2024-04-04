@@ -234,6 +234,7 @@ contract CoveToken is ERC20Permit, IERC6372, ERC20Votes, AccessControlEnumerable
     }
 
     // solhint-disable-next-line func-name-mixedcase
+    // slither-disable-next-line naming-convention
     function CLOCK_MODE() public pure override(IERC6372, ERC20Votes) returns (string memory) {
         return "mode=timestamp";
     }
@@ -242,6 +243,7 @@ contract CoveToken is ERC20Permit, IERC6372, ERC20Votes, AccessControlEnumerable
         ERC20Votes._mint(account, amount);
     }
 
+    // slither-disable-next-line dead-code
     function _burn(address account, uint256 amount) internal override(ERC20, ERC20Votes) {
         ERC20Votes._burn(account, amount);
     }
