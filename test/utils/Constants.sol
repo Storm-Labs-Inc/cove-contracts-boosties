@@ -15,6 +15,9 @@ contract Constants is CommonBase {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
 
+    /// @dev Included to enable compilation of the script without a $MNEMONIC environment variable.
+    string public constant TEST_MNEMONIC = "test test test test test test test test test test test junk";
+
     // Ethereum mainnet addresses
     // Tokens
     address public constant MAINNET_DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
