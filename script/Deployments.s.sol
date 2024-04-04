@@ -46,7 +46,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     // Expected cove token balances after deployment
     uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether; // TODO: determine cove staking reward amount
     uint256 public constant COVE_BALANCE_LINEAR_VESTING = 483_476_190.47e18;
-    uint256 public constant COVE_BALANCE_MULTISIG = 516_523_809.53e18; // TODO: determine multisig cove balance
+    uint256 public constant COVE_BALANCE_MULTISIG = 515_523_809.53e18; // TODO: determine multisig cove balance
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
     // TimelockController configuration
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
