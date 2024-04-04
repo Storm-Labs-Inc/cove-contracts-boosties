@@ -5,7 +5,7 @@ singleQuote: false
 tabWidth: 2
 trailingComma: "all"
 useTabs: false
-# overrides:
-#   - files: ["*.sol"]
-#     options:
-#       tabWidth: 4
+overrides:
+  - files: ["README.md"]
+    options:
+      proseWrap: "preserve"
