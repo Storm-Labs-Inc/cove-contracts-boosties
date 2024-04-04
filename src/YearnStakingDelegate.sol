@@ -165,6 +165,21 @@ contract YearnStakingDelegate is
      * @param newTotalDeposited The new total amount of the gauge tokens deposited across all users.
      */
     event Withdraw(address indexed sender, address indexed gauge, uint256 amount, uint256 newTotalDeposited);
+    /**
+     * @notice Emitted when the checkpointing of a user's balance fails
+     * @param stakingDelegateRewards The address of the StakingDelegateRewards contract.
+     * @param user The address of the user whose balance failed to checkpoint.
+     * @param gauge The address of the gauge token.
+     * @param currentUserBalance The current balance of gauge tokens deposited by the user.
+     * @param currentTotalDeposited The current total amount of the gauge tokens deposited across all users.
+     */
+    event StakingDelegateRewardsFaulty(
+        address stakingDelegateRewards,
+        address user,
+        address gauge,
+        uint256 currentUserBalance,
+        uint256 currentTotalDeposited
+    );
 
     /**
      * @dev Initializes the contract by setting up roles and initializing state variables.
@@ -829,9 +844,20 @@ contract YearnStakingDelegate is
         internal
     {
         // In case of error, we don't want to block the entire tx so we try-catch
-        // solhint-disable-next-line no-empty-blocks
-        try StakingDelegateRewards(stakingDelegateReward).updateUserBalance(
-            user, gauge, userBalance, currentTotalDeposited
-        ) { } catch { }
+        bytes memory data =
+            abi.encodeCall(StakingDelegateRewards.updateUserBalance, (user, gauge, userBalance, currentTotalDeposited));
+        uint256 gasBefore = gasleft();
+        // slither-disable-next-line missing-zero-check,return-bomb,low-level-calls
+        (bool success,) = address(stakingDelegateReward).call{ gas: gasBefore }(data);
+        // Protect against griefing via specifying low gas to trigger a revert in the callee
+        // https://ronan.eth.limo/blog/ethereum-gas-dangers/
+        // https://www.rareskills.io/post/eip-150-and-the-63-64-rule-for-gas
+        if (gasleft() <= gasBefore / 63) {
+            revert Errors.InsufficientGas();
+        }
+        if (!success) {
+            // slither-disable-next-line reentrancy-events
+            emit StakingDelegateRewardsFaulty(stakingDelegateReward, user, gauge, userBalance, currentTotalDeposited);
+        }
     }
 }
