@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.18;
 
 ///@notice This cheat codes interface is named _CheatCodes so you can use the CheatCodes interface in other testing

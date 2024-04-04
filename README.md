@@ -18,6 +18,15 @@ The testing suite includes unit, integration, fork, and invariant tests.
 
 For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
 
+> [!IMPORTANT]
+> You acknowledge that there are potential uses of the [Licensed Work] that
+> could be deemed illegal or noncompliant under U.S. law. You agree that you
+> will not use the [Licensed Work] for any activities that are or may
+> reasonably be expected to be deemed illegal or noncompliant under U.S. law.
+> You also agree that you, and not [Storm Labs], are responsible for any
+> illegal or noncompliant uses of the [Licensed Work] that you facilitate,
+> enable, engage in, support, promote, or are otherwise involved with.
+
 ## Prerequisites
 
 Ensure you have the following installed:

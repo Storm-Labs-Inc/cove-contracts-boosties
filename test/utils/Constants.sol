@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.18;
 
 import { CommonBase } from "forge-std/Base.sol";
@@ -14,6 +14,9 @@ contract Constants is CommonBase {
     bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
+
+    /// @dev Included to enable compilation of the script without a $MNEMONIC environment variable.
+    string public constant TEST_MNEMONIC = "test test test test test test test test test test test junk";
 
     // Ethereum mainnet addresses
     // Tokens
