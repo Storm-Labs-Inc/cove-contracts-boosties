@@ -134,6 +134,27 @@ pnpm deploy:local
 - If trying to deploy new contract either use the default deployer functions or generate them
   with`$./forge-deploy gen-deployer`.
 
+### Mainnet
+
+First ensure the `.env` file is set up with the correct addresses for the mainnet deployment.
+
+Add the deployer account to the `cast` wallet management:
+
+```sh
+cast wallet import deployer --interactive
+```
+
+This will prompt you to enter the private key and the password for the deployer account. Then deploy the contracts to
+the mainnet:
+
+```sh
+pnpm deploy:prod
+```
+
+- Deployments will be in `deployments/<chainId>`.
+
+Once the script finishes running, commit the new deployments to the repository.
+
 ## Contract Architecture
 
 ### Boosties

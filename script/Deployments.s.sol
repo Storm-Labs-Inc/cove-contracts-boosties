@@ -45,10 +45,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
 
     address[] public coveYearnStrategies;
 
-    // Expected cove token balances after deployment
-    uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether; // TODO: determine cove staking reward amount
-    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 483_476_190.47e18;
-    uint256 public constant COVE_BALANCE_MULTISIG = 515_523_809.53e18; // TODO: determine multisig cove balance
+    // TODO: Update the expected balances before prod deployment
+    uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether;
+    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 1_000_000 ether;
+    uint256 public constant COVE_BALANCE_MULTISIG = 998_000_000 ether;
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
     // TimelockController configuration
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
@@ -62,19 +62,28 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
 
     function deploy() public override {
-        // Assume admin and treasury are the same Gnosis Safe
         broadcaster = msg.sender;
-        vm.label(broadcaster, "broadcaster");
-        admin = vm.envOr("ADMIN_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
-        manager = vm.envOr("DEV_MULTISIG", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
-        pauser = vm.envOr("PAUSER_ACCOUNT", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 3)));
+        require(broadcaster == vm.envAddress("DEPLOYER_ADDRESS"), "Deployer address mismatch");
+        admin = vm.envOr("COMMUNITY_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
+        manager = vm.envOr("OPS_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
+        pauser = vm.envOr("PAUSER_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 3)));
         treasury = admin; // TODO: Determine treasury multisig before prod deployment
-        deployer.setAutoBroadcast(true);
 
+        vm.label(broadcaster, "broadcaster");
         vm.label(admin, "admin");
         vm.label(manager, "manager");
         vm.label(pauser, "pauser");
-        vm.label(timeLock, "timeLock");
+
+        console.log("==========================================================");
+        console.log("Using below addresses for deployment:");
+        console.log("  Broadcaster:", broadcaster);
+        console.log("  Admin:", admin);
+        console.log("  Manager:", manager);
+        console.log("  Pauser:", pauser);
+        console.log("  Treasury:", treasury);
+        console.log("==========================================================");
+
+        deployer.setAutoBroadcast(true);
 
         deployTimelockController();
 
@@ -99,7 +108,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy MiniChefV3 farm
         deployMiniChefV3();
         // Deploy Vesting via Sablier
-        deploySablierStreams(admin);
+        deploySablierStreams();
         // Send the rest of the Cove tokens to admin
         sendCoveTokensToAdmin();
         address yearnStakingDelegateAddress = deployer.getAddress("YearnStakingDelegate");
@@ -377,9 +386,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveToken.transfer(admin, coveToken.balanceOf(address(broadcaster)));
     }
 
-    function deploySablierStreams(address streamOwner) public broadcast returns (uint256[] memory streamIds) {
-        streamIds =
-            batchCreateStreams(streamOwner, IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
+    function deploySablierStreams() public broadcast returns (uint256[] memory streamIds) {
+        streamIds = batchCreateStreams(IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
     }
 
     function deployCoveYearnGaugeFactory(
