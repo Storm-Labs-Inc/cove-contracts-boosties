@@ -200,7 +200,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // and yearn gauge -> non-compounding cove gauge
         // we should include the following approvals:
         // yearn4626RouterExt.approve(address token, address vaultAddress, type(uint256).max)
-        bytes[] memory data = new bytes[](25);
+        bytes[] memory data = new bytes[](27);
         uint256 i = 0;
         // ETH_YFI
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE));
@@ -212,6 +212,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_GAUGE));
         // CRV_YCRV
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE));
+        address coveYfi = deployer.getAddress("CoveYFI");
+        address coveYfiRewardsGauge = deployer.getAddress("CoveYFIRewardsGauge");
+        data[i++] = abi.encodeWithSelector(PeripheryPayments.approve.selector, MAINNET_YFI, coveYfi, _MAX_UINT256);
+        data[i++] =
+            abi.encodeWithSelector(PeripheryPayments.approve.selector, coveYfi, coveYfiRewardsGauge, _MAX_UINT256);
         require(i == data.length, "Incorrect number of approves");
         yearn4626RouterExt.multicall(data);
     }
@@ -288,7 +293,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     function deployCoveYFIRewards() public broadcast {
         address erc20RewardsGaugeImpl = deployer.getAddress("ERC20RewardsGaugeImpl");
         ERC20RewardsGauge coveRewardsGauge = ERC20RewardsGauge(Clones.clone(erc20RewardsGaugeImpl));
-        deployer.save("CoveRewardsGauge", address(coveRewardsGauge), "ERC20RewardsGauge.sol:ERC20RewardsGauge");
+        deployer.save("CoveYFIRewardsGauge", address(coveRewardsGauge), "ERC20RewardsGauge.sol:ERC20RewardsGauge");
         address rewardForwarderImpl = deployer.getAddress("RewardForwarderImpl");
         RewardForwarder coveRewardsGaugeRewardForwarder = RewardForwarder(Clones.clone(rewardForwarderImpl));
         deployer.save(
