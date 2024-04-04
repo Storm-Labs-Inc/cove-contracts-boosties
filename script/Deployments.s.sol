@@ -208,7 +208,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return i;
     }
 
-    function approveDepositsInRouter() public {
+    function approveDepositsInRouter() public broadcast {
         Yearn4626RouterExt yearn4626RouterExt = Yearn4626RouterExt(deployer.getAddress("Yearn4626RouterExt"));
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
 
@@ -229,7 +229,6 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // CRV_YCRV
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE));
         require(i == data.length, "Incorrect number of approves");
-        vm.broadcast();
         yearn4626RouterExt.multicall(data);
     }
 
