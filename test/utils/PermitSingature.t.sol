@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.18;
 
 import { YearnV3BaseTest, console } from "test/utils/YearnV3BaseTest.t.sol";
