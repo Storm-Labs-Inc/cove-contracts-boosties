@@ -122,6 +122,8 @@ pnpm semgrep
 
 ## Deploying contracts to a live network
 
+`DEPLOYER_ADDRESS` in the .env file will be used as sender for the script. Ensure this is defined before deploying.
+
 ### Local mainnet fork
 
 Fork mainnet on the local network using anvil with the provided script:
@@ -161,6 +163,7 @@ pnpm deploy:prod
 ```
 
 - Deployments will be in `deployments/<chainId>`.
+- Ensure `DEPLOYER_ADDRESS` is set to the same public address as the deployer wallet account.
 
 Once the script finishes running, commit the new deployments to the repository.
 
