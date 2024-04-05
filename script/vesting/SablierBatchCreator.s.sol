@@ -21,13 +21,13 @@ contract SablierBatchCreator is CommonBase, Constants {
     }
 
     /**
-     * @notice Using forge deploy a set of streams using the SablierV2Batch contract
+     * @notice Deploy a set of streams using the SablierV2Batch contract
      * @param token The token to be streamed
      * @param filePath The path to the JSON file containing the streams data
      * The file format should be as follows:
      * [
-     *     "totalLocked": 1000000000000000000,
-     *     "data" : [{
+     *     "vestingTotal": 1000000000000000000,
+     *     "vestingData" : [{
      *             "0_recipient": "0x000000000000000000000000000000000000dead",
      *             "1_amount": 1000000000000000000,
      *             "2_duration": 63072000
@@ -47,8 +47,8 @@ contract SablierBatchCreator is CommonBase, Constants {
         string memory root = vm.projectRoot();
         string memory path = string.concat(root, filePath);
         string memory json = vm.readFile(path);
-        VestingJsonData[] memory vestingData = abi.decode(vm.parseJson(json, ".data"), (VestingJsonData[]));
-        uint256 totalLocked = abi.decode(vm.parseJson(json, ".totalLocked"), (uint256));
+        VestingJsonData[] memory vestingData = abi.decode(vm.parseJson(json, ".vestingData"), (VestingJsonData[]));
+        uint256 vestingTotal = abi.decode(vm.parseJson(json, ".vestingTotal"), (uint256));
         console.log("Vesting data length: %d", vestingData.length);
         Batch.CreateWithDurations[] memory batch = new Batch.CreateWithDurations[](vestingData.length);
         uint256 countedTotalAmount = 0;
@@ -65,10 +65,17 @@ contract SablierBatchCreator is CommonBase, Constants {
             });
         }
         require(
-            totalLocked == countedTotalAmount, "Total locked amount does not match the sum of the individual amounts"
+            vestingTotal == countedTotalAmount,
+            string(
+                abi.encodePacked(
+                    "`vestingTotal` does not match the sum of the individual amounts: ",
+                    vm.toString(vestingTotal),
+                    " != ",
+                    vm.toString(countedTotalAmount)
+                )
+            )
         );
         console.log("Total amount: %d", countedTotalAmount);
-        token.approve(MAINNET_SABLIER_V2_BATCH, totalLocked);
         streamIds = ISablierV2Batch(MAINNET_SABLIER_V2_BATCH).createWithDurations(
             MAINNET_SABLIER_V2_LOCKUP_LINEAR, token, batch
         );
