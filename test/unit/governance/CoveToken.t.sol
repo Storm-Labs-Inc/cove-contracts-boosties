@@ -347,7 +347,7 @@ contract CoveToken_Test is BaseTest {
         uint256 t0 = block.timestamp;
 
         // Move time forward by 1 week
-        vm.roll(block.number + 100);
+        vm.roll(block.number + _WEEK / 12);
         vm.warp(block.timestamp + _WEEK);
 
         // 1 week after delegation, votes should still be the same
@@ -365,7 +365,7 @@ contract CoveToken_Test is BaseTest {
         assertEq(coveToken.getPastVotes(owner, t0), 1_000_000_000 ether, "Owner should have 1_000_000_000 votes at t0");
 
         // Move time forward by 1 week
-        vm.roll(block.number + 100);
+        vm.roll(block.number + _WEEK / 12);
         vm.warp(block.timestamp + _WEEK);
 
         // 1 week after transfer, votes should still be the same
