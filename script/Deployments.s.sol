@@ -216,7 +216,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
         // and yearn gauge -> non-compounding cove gauge
         // we should include the following approvals:
         // yearn4626RouterExt.approve(address token, address vaultAddress, type(uint256).max)
-        bytes[] memory data = new bytes[](25);
+        bytes[] memory data = new bytes[](27);
         uint256 i = 0;
         // ETH_YFI
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_ETH_YFI_GAUGE));
@@ -228,6 +228,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_PRISMA_YPRISMA_GAUGE));
         // CRV_YCRV
         i = _populateApproveMulticall(data, i, factory.getGaugeInfo(MAINNET_CRV_YCRV_GAUGE));
+        address coveYfi = deployer.getAddress("CoveYFI");
+        address coveYfiRewardsGauge = deployer.getAddress("CoveYFIRewardsGauge");
+        data[i++] = abi.encodeWithSelector(PeripheryPayments.approve.selector, MAINNET_YFI, coveYfi, _MAX_UINT256);
+        data[i++] =
+            abi.encodeWithSelector(PeripheryPayments.approve.selector, coveYfi, coveYfiRewardsGauge, _MAX_UINT256);
         require(i == data.length, "Incorrect number of approves");
         yearn4626RouterExt.multicall(data);
     }
@@ -307,13 +312,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
 
         vm.broadcast();
         ERC20RewardsGauge coveRewardsGauge = ERC20RewardsGauge(Clones.clone(erc20RewardsGaugeImpl));
+        deployer.save("CoveYFIRewardsGauge", address(coveRewardsGauge), "ERC20RewardsGauge.sol:ERC20RewardsGauge");
 
-        deployer.save("CoveRewardsGauge", address(coveRewardsGauge), "ERC20RewardsGauge.sol:ERC20RewardsGauge");
         address rewardForwarderImpl = deployer.getAddress("RewardForwarderImpl");
-
         vm.broadcast();
         RewardForwarder coveRewardsGaugeRewardForwarder = RewardForwarder(Clones.clone(rewardForwarderImpl));
-
         deployer.save(
             "CoveRewardsGaugeRewardForwarder",
             address(coveRewardsGaugeRewardForwarder),
@@ -448,13 +451,14 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
             console.log("Registering contracts in MasterRegistry");
         }
 
-        bytes[] memory data = new bytes[](9);
+        bytes[] memory data = new bytes[](10);
         uint256 i = 0;
         i = _populateMasterRegistryMulticall(data, i, "YearnStakingDelegate");
         i = _populateMasterRegistryMulticall(data, i, "StakingDelegateRewards");
         i = _populateMasterRegistryMulticall(data, i, "SwapAndLock");
         i = _populateMasterRegistryMulticall(data, i, "DYFIRedeemer");
         i = _populateMasterRegistryMulticall(data, i, "CoveYFI");
+        i = _populateMasterRegistryMulticall(data, i, "CoveYFIRewardsGauge");
         i = _populateMasterRegistryMulticall(data, i, "CoveYearnGaugeFactory");
         i = _populateMasterRegistryMulticall(data, i, "MiniChefV3");
         i = _populateMasterRegistryMulticall(data, i, "CoveToken");
