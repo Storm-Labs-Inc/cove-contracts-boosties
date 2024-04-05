@@ -48,7 +48,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
 
     // Expected cove token balances after deployment
     uint256 public constant COVE_BALANCE_MINICHEF = 0 ether;
-    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 451_690_476.18e18;
+    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 451_648_333_333_333e12;
     uint256 public constant COVE_BALANCE_COMMUNITY_MULTISIG = 325_000_000e18;
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
     // TimelockController configuration
