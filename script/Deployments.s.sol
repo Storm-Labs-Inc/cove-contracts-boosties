@@ -60,6 +60,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     uint256 public constant MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT = type(uint256).max;
     uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
     uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_YVUSDC_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_YVDAI_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    uint256 public constant MAINNET_YVWETH_GAUGE_MAX_DEPOSIT = type(uint256).max;
 
     function deploy() public override {
         broadcaster = msg.sender;
@@ -169,6 +172,9 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_CRV_YCRV_GAUGE, stakingDelegateRewards);
         ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_YVUSDC_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_YVDAI_GAUGE, stakingDelegateRewards);
+        ysd.addGaugeRewards(MAINNET_YVWETH_GAUGE, stakingDelegateRewards);
 
         // Move admin roles to the admin multisig
         ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -292,6 +298,15 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             MAINNET_PRISMA_YPRISMA_GAUGE,
             MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT,
             getMainnetPrismaYprismaPoolGaugeCurveSwapParams()
+        );
+        _deployCoveStrategyAndGauges(
+            ysd, MAINNET_YVUSDC_GAUGE, MAINNET_YVUSDC_GAUGE_MAX_DEPOSIT, getMainnetYvusdcGaugeCurveSwapParams()
+        );
+        _deployCoveStrategyAndGauges(
+            ysd, MAINNET_YVDAI_GAUGE, MAINNET_YVDAI_GAUGE_MAX_DEPOSIT, getMainnetYvdaiGaugeCurveSwapParams()
+        );
+        _deployCoveStrategyAndGauges(
+            ysd, MAINNET_YVWETH_GAUGE, MAINNET_YVWETH_GAUGE_MAX_DEPOSIT, getMainnetYvwethGaugeCurveSwapParams()
         );
     }
 
@@ -509,7 +524,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         _verifyRoleCount("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", TIMELOCK_ROLE, 1);
         _verifyRoleCount("YearnStakingDelegate", PAUSER_ROLE, 1);
-        _verifyRoleCount("YearnStakingDelegate", DEPOSITOR_ROLE, 10);
+        _verifyRoleCount("YearnStakingDelegate", DEPOSITOR_ROLE, 16);
         /// StakingDelegateRewards
         _verifyRole("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, admin);
         _verifyRoleCount("StakingDelegateRewards", DEFAULT_ADMIN_ROLE, 1);
