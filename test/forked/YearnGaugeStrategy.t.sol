@@ -124,6 +124,8 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
             "yearn staking delegate deposit failed"
         );
         assertEq(yearnGaugeStrategy.totalSupply(), expectedShares, "totalSupply did not update correctly");
+        assertEq(yearnGaugeStrategy.totalAssets(), amount, "totalAssets did not update correctly");
+        assertEq(yearnGaugeStrategy.pricePerShare(), 1e18, "pricePerShare should be 1e18");
     }
 
     function testFuzz_withdraw(uint256 amount) public {
@@ -196,6 +198,7 @@ contract YearnGaugeStrategy_ForkedTest is YearnV3BaseTest {
             "all assets should be deployed"
         );
         assertEq(afterTotalAssets, beforeTotalAssets + profit, "report did not increase total assets");
+        assertGe(yearnGaugeStrategy.pricePerShare(), 1e18, "pricePerShare should be greater");
     }
 
     function testFuzz_report_passWhen_noProfits(uint256 amount) public {

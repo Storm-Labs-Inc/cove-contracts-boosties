@@ -316,7 +316,7 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         vm.broadcast();
         RewardForwarder coveRewardsGaugeRewardForwarder = RewardForwarder(Clones.clone(rewardForwarderImpl));
         deployer.save(
-            "CoveRewardsGaugeRewardForwarder",
+            "CoveYFIRewardsGaugeRewardForwarder",
             address(coveRewardsGaugeRewardForwarder),
             "RewardForwarder.sol:RewardForwarder"
         );
@@ -328,7 +328,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         coveRewardsGaugeRewardForwarder.approveRewardToken(MAINNET_DYFI);
         // The YearnStakingDelegate will forward the rewards allotted to the treasury to the
         YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
-        ysd.setTreasury(address(coveRewardsGaugeRewardForwarder));
+        ysd.setTreasury(treasury);
+        ysd.setCoveYfiRewardForwarder(address(coveRewardsGaugeRewardForwarder));
         coveRewardsGauge.grantRole(DEFAULT_ADMIN_ROLE, admin);
         coveRewardsGauge.grantRole(MANAGER_ROLE, manager);
         coveRewardsGauge.renounceRole(DEFAULT_ADMIN_ROLE, broadcaster);
@@ -492,6 +493,14 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             ) == manager,
             "ysd.setSnapshotDelegate failed"
         );
+        // Verify YSD storage variables
+        YearnStakingDelegate ysd = YearnStakingDelegate(deployer.getAddress("YearnStakingDelegate"));
+        require(ysd.treasury() == treasury, "ysd.treasury is incorrect");
+        require(
+            ysd.coveYfiRewardForwarder() == deployer.getAddress("CoveYFIRewardsGaugeRewardForwarder"),
+            "ysd.coveYfiRewardForwarder is incorrect"
+        );
+        require(ysd.swapAndLock() == deployer.getAddress("SwapAndLock"), "ysd.swapAndLock is incorrect");
         // Verify roles have been properly set
         /// YearnStakingDelegate
         _verifyRole("YearnStakingDelegate", DEFAULT_ADMIN_ROLE, admin);
