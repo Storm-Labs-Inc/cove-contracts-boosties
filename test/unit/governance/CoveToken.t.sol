@@ -325,4 +325,58 @@ contract CoveToken_Test is BaseTest {
         vm.prank(alice);
         coveToken.grantRole(TIMELOCK_ROLE, alice);
     }
+
+    function test_getVotes() public {
+        // Set block number to 100
+        vm.roll(100);
+
+        // 0 Votes before any delegation
+        assertEq(coveToken.getVotes(owner), 0, "Owner should have 0 votes");
+        assertEq(coveToken.getVotes(alice), 0, "Alice should have 0 votes");
+
+        // Owner delegates to self
+        vm.startPrank(owner);
+        coveToken.delegate(owner);
+
+        // Check for votes after delegation
+        assertEq(
+            coveToken.getVotes(owner),
+            1_000_000_000 ether,
+            "Owner should have 1_000_000_000 votes after self-delegation"
+        );
+        uint256 t0 = block.timestamp;
+
+        // Move time forward by 1 week
+        vm.roll(block.number + 100);
+        vm.warp(block.timestamp + _WEEK);
+
+        // 1 week after delegation, votes should still be the same
+        assertEq(coveToken.getVotes(owner), 1_000_000_000 ether, "Owner should have 1_000_000_000 votes after 1 week");
+
+        // Transfer 500_000_000 tokens to Alice
+        coveToken.transfer(alice, 500_000_000 ether);
+
+        // Owner should have 500_000_000 votes after transfer
+        // Alice should have 0 votes before delegation
+        assertEq(coveToken.getVotes(owner), 500_000_000 ether, "Owner should have 500_000_000 votes after transfer");
+        assertEq(coveToken.getVotes(alice), 0, "Alice should have 0 votes before delegation");
+        uint256 t1 = block.timestamp;
+
+        assertEq(coveToken.getPastVotes(owner, t0), 1_000_000_000 ether, "Owner should have 1_000_000_000 votes at t0");
+
+        // Move time forward by 1 week
+        vm.roll(block.number + 100);
+        vm.warp(block.timestamp + _WEEK);
+
+        // 1 week after transfer, votes should still be the same
+        assertEq(coveToken.getVotes(owner), 500_000_000 ether, "Owner should still have 500_000_000 votes");
+        assertEq(coveToken.getPastVotes(owner, t0 - 1), 0 ether, "Owner should have 0 votes before t0");
+        assertEq(coveToken.getPastVotes(owner, t0), 1_000_000_000 ether, "Owner should have 1_000_000_000 votes at t0");
+        assertEq(
+            coveToken.getPastVotes(owner, t1 - 1),
+            1_000_000_000 ether,
+            "Owner should have 1_000_000_000 votes at t1 - 1"
+        );
+        assertEq(coveToken.getPastVotes(owner, t1), 500_000_000 ether, "Owner should have 500_000_000 votes at t1");
+    }
 }
