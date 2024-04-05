@@ -422,13 +422,14 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             console.log("Registering contracts in MasterRegistry");
         }
 
-        bytes[] memory data = new bytes[](9);
+        bytes[] memory data = new bytes[](10);
         uint256 i = 0;
         i = _populateMasterRegistryMulticall(data, i, "YearnStakingDelegate");
         i = _populateMasterRegistryMulticall(data, i, "StakingDelegateRewards");
         i = _populateMasterRegistryMulticall(data, i, "SwapAndLock");
         i = _populateMasterRegistryMulticall(data, i, "DYFIRedeemer");
         i = _populateMasterRegistryMulticall(data, i, "CoveYFI");
+        i = _populateMasterRegistryMulticall(data, i, "CoveYFIRewardsGauge");
         i = _populateMasterRegistryMulticall(data, i, "CoveYearnGaugeFactory");
         i = _populateMasterRegistryMulticall(data, i, "MiniChefV3");
         i = _populateMasterRegistryMulticall(data, i, "CoveToken");
