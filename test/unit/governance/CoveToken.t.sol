@@ -36,6 +36,8 @@ contract CoveToken_Test is BaseTest {
         assertTrue(coveToken.allowedSender(owner), "Owner should be allowed to transfer");
         assertEq(coveToken.paused(), true, "Contract should be paused");
         assertEq(coveToken.balanceOf(owner), 1_000_000_000 ether, "Owner should have initial supply");
+        assertEq(coveToken.CLOCK_MODE(), "mode=timestamp", "CLOCK_MODE should be mode=timestamp");
+        assertEq(coveToken.clock(), block.timestamp, "Clock should return the current block timestamp");
     }
 
     function test_availableSupplyToMint() public {

@@ -228,7 +228,7 @@ contract CoveToken is IERC6372, ERC20Votes, AccessControlEnumerable, Pausable, M
     }
 
     // Overrides
-    // Overrides IERC6372 functions to make the token & governor timestamp-based
+    /// @dev Overrides IERC6372 functions to make the token & governor timestamp-based
     function clock() public view override(IERC6372, ERC20Votes) returns (uint48) {
         return uint48(block.timestamp);
     }
