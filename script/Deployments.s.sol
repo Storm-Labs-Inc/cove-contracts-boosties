@@ -15,6 +15,7 @@ import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
 import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
 import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
+import { GasliteDropSender } from "script/vesting/GasliteDropSender.s.sol";
 import { CoveToken } from "src/governance/CoveToken.sol";
 import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
@@ -30,7 +31,7 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
 
-contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsConstants {
+contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender, CurveSwapParamsConstants {
     // Using generated functions
     using DeployerFunctions for Deployer;
     // Using default deployer function
@@ -45,10 +46,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
 
     address[] public coveYearnStrategies;
 
-    // TODO: Update the expected balances before prod deployment
-    uint256 public constant COVE_BALANCE_MINICHEF = 1_000_000 ether;
-    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 1_000_000 ether;
-    uint256 public constant COVE_BALANCE_MULTISIG = 998_000_000 ether;
+    // Expected cove token balances after deployment
+    uint256 public constant COVE_BALANCE_MINICHEF = 0 ether;
+    uint256 public constant COVE_BALANCE_LINEAR_VESTING = 45_164_833_331e16;
+    uint256 public constant COVE_BALANCE_COMMUNITY_MULTISIG = 325_000_000e18;
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
     // TimelockController configuration
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
@@ -62,8 +63,8 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
     uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
 
     function deploy() public override {
-        broadcaster = msg.sender;
-        require(broadcaster == vm.envAddress("DEPLOYER_ADDRESS"), "Deployer address mismatch");
+        broadcaster = vm.envAddress("DEPLOYER_ADDRESS");
+        require(broadcaster == msg.sender, "Deployer address mismatch. Is --sender set?");
         admin = vm.envOr("COMMUNITY_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
         manager = vm.envOr("OPS_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
         pauser = vm.envOr("PAUSER_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 3)));
@@ -99,18 +100,14 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         // Deploy Cove Token
         deployCoveToken();
         // Allow admin, and manager, and sablier batch contract, and the vesting contract to transfer cove tokens
-        address[] memory allowedSenders = new address[](4);
-        allowedSenders[0] = admin;
-        allowedSenders[1] = manager;
-        allowedSenders[2] = MAINNET_SABLIER_V2_BATCH;
-        allowedSenders[3] = MAINNET_SABLIER_V2_LOCKUP_LINEAR;
-        allowlistCoveTokenTransfers(allowedSenders);
+        allowlistCoveTokenTransfers();
         // Deploy MiniChefV3 farm
         deployMiniChefV3();
-        // Deploy Vesting via Sablier
-        deploySablierStreams();
-        // Send the rest of the Cove tokens to admin
-        sendCoveTokensToAdmin();
+        // Deploy vesting streams using Sablier
+        deploySablierStreams(admin);
+        // Batch transfer tokens to no vesting recipients
+        transferNoVestingTokens();
+
         address yearnStakingDelegateAddress = deployer.getAddress("YearnStakingDelegate");
         // Deploy CoveYearnGaugeFactory
         deployCoveYearnGaugeFactory(yearnStakingDelegateAddress, deployer.getAddress("CoveToken"));
@@ -122,6 +119,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         approveDepositsInRouter();
         // Register contracts in the Master Registry
         registerContractsInMasterRegistry();
+        // Verify deployments. Note that this is not actually checking the state after deployment, but rather
+        // the state after simulating the deployment.
+        // In order to verify the state after deployment, we would need to call the verifyPostDeploymentState function
+        // after this script run is complete.
+        verifyPostDeploymentState();
     }
 
     function deployTimelockController() public deployIfMissing("TimelockController") {
@@ -339,17 +341,26 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         vm.stopBroadcast();
     }
 
-    function allowlistCoveTokenTransfers(address[] memory transferrers) public broadcast {
+    function allowlistCoveTokenTransfers() public broadcast {
         CoveToken coveToken = CoveToken(deployer.getAddress("CoveToken"));
-        bytes[] memory data = new bytes[](transferrers.length + 4);
+        string memory json = vm.readFile(string.concat(vm.projectRoot(), "/script/vesting/vesting.json"));
+        uint256 vestingTotal = abi.decode(vm.parseJson(json, ".vestingTotal"), (uint256));
+        uint256 noVestingTotal = abi.decode(vm.parseJson(json, ".noVestingTotal"), (uint256));
+
         uint256 i = 0;
-        for (; i < transferrers.length; i++) {
-            data[i] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, transferrers[i]);
-        }
+        bytes[] memory data = new bytes[](11);
+        data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, admin);
+        data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, manager);
+        data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, MAINNET_SABLIER_V2_BATCH);
+        data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, MAINNET_SABLIER_V2_LOCKUP_LINEAR);
+        data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, MAINNET_GASLITE_AIRDROP);
+        data[i++] = abi.encodeWithSelector(IERC20.approve.selector, MAINNET_SABLIER_V2_BATCH, vestingTotal);
+        data[i++] = abi.encodeWithSelector(IERC20.approve.selector, MAINNET_GASLITE_AIRDROP, noVestingTotal);
         data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, DEFAULT_ADMIN_ROLE, admin);
         data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, TIMELOCK_ROLE, timeLock);
         data[i++] = abi.encodeWithSelector(AccessControl.renounceRole.selector, DEFAULT_ADMIN_ROLE, broadcaster);
         data[i++] = abi.encodeWithSelector(AccessControl.renounceRole.selector, TIMELOCK_ROLE, broadcaster);
+        require(i == data.length, "Incorrect number of calls");
         coveToken.multicall(data);
     }
 
@@ -363,15 +374,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
                 options: options
             })
         );
-        // Add Cove token as pid 0 in MiniChefV3 with allocPoint 1000
+        // Grant and renounce roles
         vm.startBroadcast();
-        CoveToken(deployer.getAddress("CoveToken")).approve(miniChefV3, COVE_BALANCE_MINICHEF);
-
         uint256 i = 0;
-        bytes[] memory data = new bytes[](6);
-        data[i++] =
-            abi.encodeWithSelector(MiniChefV3.add.selector, 1000, IERC20(deployer.getAddress("CoveToken")), address(0));
-        data[i++] = abi.encodeWithSelector(MiniChefV3.commitReward.selector, COVE_BALANCE_MINICHEF);
+        bytes[] memory data = new bytes[](4);
         data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, DEFAULT_ADMIN_ROLE, admin);
         data[i++] = abi.encodeWithSelector(AccessControl.renounceRole.selector, DEFAULT_ADMIN_ROLE, broadcaster);
         data[i++] = abi.encodeWithSelector(AccessControl.grantRole.selector, TIMELOCK_ROLE, timeLock);
@@ -382,13 +388,13 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
         return miniChefV3;
     }
 
-    function sendCoveTokensToAdmin() public broadcast {
-        CoveToken coveToken = CoveToken(deployer.getAddress("CoveToken"));
-        coveToken.transfer(admin, coveToken.balanceOf(address(broadcaster)));
+    function deploySablierStreams(address streamOwner) public broadcast returns (uint256[] memory streamIds) {
+        streamIds =
+            batchCreateStreams(streamOwner, IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
     }
 
-    function deploySablierStreams() public broadcast returns (uint256[] memory streamIds) {
-        streamIds = batchCreateStreams(IERC20(deployer.getAddress("CoveToken")), "/script/vesting/vesting.json");
+    function transferNoVestingTokens() public broadcast {
+        batchSendTokens(deployer.getAddress("CoveToken"), "/script/vesting/vesting.json");
     }
 
     function deployCoveYearnGaugeFactory(
@@ -482,8 +488,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, CurveSwapParamsCo
             coveToken.balanceOf(MAINNET_SABLIER_V2_LOCKUP_LINEAR) == COVE_BALANCE_LINEAR_VESTING,
             "CoveToken balance in SablierV2LockupLinear is incorrect"
         );
-        // Verify multisig balance
-        require(coveToken.balanceOf(admin) == COVE_BALANCE_MULTISIG, "CoveToken balance in admin multisig is incorrect");
+        // Verify community multisig balance
+        require(
+            coveToken.balanceOf(admin) == COVE_BALANCE_COMMUNITY_MULTISIG,
+            "CoveToken balance in admin multisig is incorrect"
+        );
         // Verify deployer holds no cove tokens
         require(coveToken.balanceOf(broadcaster) == COVE_BALANCE_DEPLOYER, "CoveToken balance in deployer is incorrect");
         // Verify Snapshot delegation for "veyfi.eth" space is set to manager
