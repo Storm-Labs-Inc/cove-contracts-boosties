@@ -53,17 +53,24 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
     uint256 public constant COVE_BALANCE_DEPLOYER = 0;
     // TimelockController configuration
     uint256 public constant COVE_TIMELOCK_CONTROLLER_MIN_DELAY = 2 days;
-    // RewardForwarder configuration
-    uint256 public constant COVE_REWARDS_GAUGE_REWARD_FORWARDER_TREASURY_BPS = 2000; // 20%
     // YearnStakingDelegate deposit limit configuration
-    uint256 public constant MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_ETH_YFI_GAUGE_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_YVUSDC_GAUGE_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_YVDAI_GAUGE_MAX_DEPOSIT = type(uint256).max;
-    uint256 public constant MAINNET_YVWETH_GAUGE_MAX_DEPOSIT = type(uint256).max;
+    // Uses prices from 2024-04-05 https://ydaemon.yearn.fi/1/vaults/all
+    // 3309.51020404021 per share
+    uint256 public constant MAINNET_WETH_YETH_POOL_GAUGE_MAX_DEPOSIT = 15_107_975_778_095_684_727;
+    // 10774.5554986603 per share
+    uint256 public constant MAINNET_ETH_YFI_GAUGE_MAX_DEPOSIT = 4_640_562_666_944_075_957;
+    // 9167.78282460771 per share
+    uint256 public constant MAINNET_DYFI_ETH_GAUGE_MAX_DEPOSIT = 5_453_881_375_308_375_405;
+    // 0.524406882043953 per share
+    uint256 public constant MAINNET_CRV_YCRV_POOL_GAUGE_MAX_DEPOSIT = 95_345_812_025_039_872_615_675;
+    // 0.247822 per share
+    uint256 public constant MAINNET_PRISMA_YPRISMA_POOL_GAUGE_MAX_DEPOSIT = 201_757_713_197_375_535_666_728;
+    // 1.000414 per share
+    uint256 public constant MAINNET_YVUSDC_GAUGE_MAX_DEPOSIT = 49_979_308_566_253_571_021_597;
+    // 1.001508607327890578 per share
+    uint256 public constant MAINNET_YVDAI_GAUGE_MAX_DEPOSIT = 49_924_683_256_995_879_966_907;
+    // 3323.166018754453467644 per share
+    uint256 public constant MAINNET_YVWETH_GAUGE_MAX_DEPOSIT = 15_045_892_897_863_814_738;
 
     function deploy() public override {
         broadcaster = vm.envAddress("DEPLOYER_ADDRESS");
@@ -170,13 +177,24 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
         ysd.setSwapAndLock(swapAndLock);
         ysd.setSnapshotDelegate("veyfi.eth", manager);
         ysd.addGaugeRewards(MAINNET_WETH_YETH_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_WETH_YETH_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
         ysd.addGaugeRewards(MAINNET_DYFI_ETH_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_DYFI_ETH_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
         ysd.addGaugeRewards(MAINNET_ETH_YFI_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_ETH_YFI_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
         ysd.addGaugeRewards(MAINNET_CRV_YCRV_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_CRV_YCRV_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
         ysd.addGaugeRewards(MAINNET_PRISMA_YPRISMA_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_PRISMA_YPRISMA_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
         ysd.addGaugeRewards(MAINNET_YVUSDC_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_YVUSDC_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
         ysd.addGaugeRewards(MAINNET_YVDAI_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_YVDAI_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
         ysd.addGaugeRewards(MAINNET_YVWETH_GAUGE, stakingDelegateRewards);
+        ysd.setGaugeRewardSplit(MAINNET_YVWETH_GAUGE, 0.05e18, 0.05e18, 0.85e18, 0.05e18);
+
+        ysd.setBoostRewardSplit(0.05e18, 0.95e18);
+        ysd.setExitRewardSplit(0.05e18, 0.95e18);
 
         // Move admin roles to the admin multisig
         ysd.grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -259,9 +277,11 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
         // Set the curve swap params for harvest rewards swapping to the asset, gauge token
         strategy.setHarvestSwapParams(swapParams);
         // Set the tokenized strategy roles
+        ITokenizedStrategy(address(strategy)).setPerformanceFee(0);
         ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(manager);
+        ITokenizedStrategy(address(strategy)).setKeeper(MAINNET_DEFENDER_RELAYER);
         ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
+        ITokenizedStrategy(address(strategy)).setPendingManagement(manager);
 
         // Deploy the reward gauges for the strategy via the factory
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
@@ -363,9 +383,10 @@ contract Deployments is BaseDeployScript, SablierBatchCreator, GasliteDropSender
         uint256 noVestingTotal = abi.decode(vm.parseJson(json, ".noVestingTotal"), (uint256));
 
         uint256 i = 0;
-        bytes[] memory data = new bytes[](11);
+        bytes[] memory data = new bytes[](12);
         data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, admin);
         data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, manager);
+        data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, MAINNET_COVE_COMPANY_MULTISIG);
         data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, MAINNET_SABLIER_V2_BATCH);
         data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, MAINNET_SABLIER_V2_LOCKUP_LINEAR);
         data[i++] = abi.encodeWithSelector(CoveToken.addAllowedSender.selector, MAINNET_GASLITE_AIRDROP);

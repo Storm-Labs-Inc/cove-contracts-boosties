@@ -123,6 +123,10 @@ contract Constants is CommonBase {
     // Gaslite
     address public constant MAINNET_GASLITE_AIRDROP = 0x09350F89e2D7B6e96bA730783c2d76137B045FEF;
 
+    // Cove Addresses
+    address public constant MAINNET_COVE_COMPANY_MULTISIG = 0x519A6Aef94158A90B25846aBa1FA06AFeF8D2323;
+    address public constant MAINNET_DEFENDER_RELAYER = 0xc5ccE4661eb87B95Df717b4d25a76eA137F081f7;
+
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     // keccak256("TokenPermissions(address token,uint256 amount)");
