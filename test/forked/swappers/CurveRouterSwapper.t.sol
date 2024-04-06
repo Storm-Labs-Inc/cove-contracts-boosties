@@ -361,4 +361,43 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         // Assert YFI is all used up
         assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
     }
+
+    function test_swap_mainnetYvusdcGaugeCurveSwapParams() public {
+        airdrop(ERC20(MAINNET_YFI), address(swapper), 1000 * 10 ** ERC20(MAINNET_YFI).decimals());
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetYvusdcGaugeCurveSwapParams();
+
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert lp token was received
+        assertGt(ERC20(MAINNET_USDC).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
+
+    function test_swap_mainnetYvdaiGaugeCurveSwapParams() public {
+        airdrop(ERC20(MAINNET_YFI), address(swapper), 1000 * 10 ** ERC20(MAINNET_YFI).decimals());
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetYvdaiGaugeCurveSwapParams();
+
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert lp token was received
+        assertGt(ERC20(MAINNET_DAI).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
+
+    function test_swap_mainnetYvwethGaugeCurveSwapParams() public {
+        airdrop(ERC20(MAINNET_YFI), address(swapper), 1000 * 10 ** ERC20(MAINNET_YFI).decimals());
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetYvwethGaugeCurveSwapParams();
+
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert lp token was received
+        assertGt(ERC20(MAINNET_WETH).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
 }
