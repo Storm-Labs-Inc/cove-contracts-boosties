@@ -30,6 +30,7 @@ abstract contract BaseTest is Test, Constants {
 
     //// HELPER CONTRACTS
     VyperDeployer public vyperDeployer;
+    Deployer public deployer = getDeployer();
 
     //// SETUP FUNCTION ////
     function setUp() public virtual {
@@ -100,6 +101,7 @@ abstract contract BaseTest is Test, Constants {
         string memory rpcURL = vm.rpcUrl(network);
         uint256 forkId = vm.createSelectFork(rpcURL, blockNumber);
         forks[network] = Fork({ forkId: forkId, blockNumber: blockNumber });
+        deployer = getDeployer();
         console2.log("Started fork ", network, " at block ", block.number);
         console2.log("with id", forkId);
         return forkId;
@@ -114,6 +116,7 @@ abstract contract BaseTest is Test, Constants {
         string memory rpcURL = vm.rpcUrl(network);
         uint256 forkId = vm.createSelectFork(rpcURL);
         forks[network] = Fork({ forkId: forkId, blockNumber: block.number });
+        deployer = getDeployer();
         console2.log("Started fork ", network, "at block ", block.number);
         console2.log("with id", forkId);
         return forkId;
@@ -262,6 +265,13 @@ abstract contract BaseTest is Test, Constants {
         return (permit, transferDetails, signature);
     }
 
+    /**
+     * @notice Returns the deployer contract. If the contract is not deployed, it etches it and initializes it.
+     * @dev This is intentionally not marked as persistent because the deployment context will depend on chain ID. For
+     * example, if a test changes the chain ID, this function needs to be called again to re-deploy and re-initialize
+     * the deployer contract.
+     * @return The deployer contract address.
+     */
     function getDeployer() public returns (Deployer) {
         address addr = 0x666f7267652d6465706C6f790000000000000000;
         if (addr.code.length > 0) {
@@ -270,8 +280,8 @@ abstract contract BaseTest is Test, Constants {
         bytes memory code = vm.getDeployedCode("Deployer.sol:GlobalDeployer");
         vm.etch(addr, code);
         vm.allowCheatcodes(addr);
-        GlobalDeployer deployer = GlobalDeployer(addr);
-        deployer.init();
-        return deployer;
+        GlobalDeployer deployer_ = GlobalDeployer(addr);
+        deployer_.init();
+        return deployer_;
     }
 }
