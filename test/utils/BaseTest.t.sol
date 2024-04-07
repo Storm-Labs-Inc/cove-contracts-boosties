@@ -12,6 +12,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { ISignatureTransfer } from "src/Yearn4626RouterExt.sol";
+import { GlobalDeployer, Deployer } from "forge-deploy/Deployer.sol";
 
 abstract contract BaseTest is Test, Constants {
     //// VARIABLES ////
@@ -259,5 +260,18 @@ abstract contract BaseTest is Test, Constants {
         signature = bytes.concat(r, s, bytes1(v));
 
         return (permit, transferDetails, signature);
+    }
+
+    function getDeployer() public returns (Deployer) {
+        address addr = 0x666f7267652d6465706C6f790000000000000000;
+        if (addr.code.length > 0) {
+            return Deployer(addr);
+        }
+        bytes memory code = vm.getDeployedCode("Deployer.sol:GlobalDeployer");
+        vm.etch(addr, code);
+        vm.allowCheatcodes(addr);
+        GlobalDeployer deployer = GlobalDeployer(addr);
+        deployer.init();
+        return deployer;
     }
 }
