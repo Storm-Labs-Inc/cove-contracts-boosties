@@ -7,7 +7,7 @@ import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol"
 import { Yearn4626RouterExt } from "src/Yearn4626RouterExt.sol";
 import { PeripheryPayments } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
 
-contract OpsMultisig20240407 is BaseDeployScript {
+contract Deployer20240408 is BaseDeployScript {
     function deploy() public override {
         vm.startBroadcast(MAINNET_COVE_DEPLOYER);
         CoveYearnGaugeFactory factory = CoveYearnGaugeFactory(deployer.getAddress("CoveYearnGaugeFactory"));
