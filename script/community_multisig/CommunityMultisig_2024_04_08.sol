@@ -24,6 +24,7 @@ contract CommunityMultisig20240408 is BaseDeployScript {
         // For the CoveYfi rewards gauge forwader
         address coveYfiRewardsGaugeRewardForwarder = deployer.getAddress("CoveYFIRewardsGaugeRewardForwarder");
         AccessControl(coveYfiRewardsGaugeRewardForwarder).grantRole(MANAGER_ROLE, MAINNET_DEFENDER_RELAYER);
+        AccessControl(coveYfiRewardsGaugeRewardForwarder).grantRole(MANAGER_ROLE, MAINNET_COVE_COMMUNITY_MULTISIG);
 
         // For other rewards gauge forwarders
         address coveToken = deployer.getAddress("CoveToken");
