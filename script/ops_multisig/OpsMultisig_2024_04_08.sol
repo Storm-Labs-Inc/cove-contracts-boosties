@@ -12,17 +12,22 @@ import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
- * @notice Add YFI as a reward token for the CoveYFI rewards gauge
+ * @notice Add YFI and COVE token as a reward token for the CoveYFI rewards gauge.
+ * This makes CoveYFI rewards gauge distribute dYFI, YFI, and COVE.
  */
 contract OpsMultisig20240408 is BaseDeployScript {
     function deploy() public override {
         vm.startBroadcast(MAINNET_COVE_OPS_MULTISIG);
         address coveYfiRewardsGauge = deployer.getAddress("CoveYfiRewardsGauge");
+        address coveToken = deployer.getAddress("CoveToken");
         address coveYfiRewardsGaugeRewardForwarder = deployer.getAddress("CoveYFIRewardsGaugeRewardForwarder");
 
         // Add YFI as a reward token for the CoveYFI rewards gauge
         ERC20RewardsGauge(coveYfiRewardsGauge).addReward(MAINNET_YFI, coveYfiRewardsGaugeRewardForwarder);
         RewardForwarder(coveYfiRewardsGaugeRewardForwarder).approveRewardToken(MAINNET_YFI);
+
+        ERC20RewardsGauge(coveYfiRewardsGauge).addReward(coveToken, coveYfiRewardsGaugeRewardForwarder);
+        RewardForwarder(coveYfiRewardsGaugeRewardForwarder).approveRewardToken(coveToken);
 
         require(
             ERC20RewardsGauge(coveYfiRewardsGauge).getRewardData(MAINNET_DYFI).distributor
@@ -31,6 +36,11 @@ contract OpsMultisig20240408 is BaseDeployScript {
         );
         require(
             ERC20RewardsGauge(coveYfiRewardsGauge).getRewardData(MAINNET_YFI).distributor
+                == coveYfiRewardsGaugeRewardForwarder,
+            "Invalid reward token"
+        );
+        require(
+            ERC20RewardsGauge(coveYfiRewardsGauge).getRewardData(coveToken).distributor
                 == coveYfiRewardsGaugeRewardForwarder,
             "Invalid reward token"
         );
