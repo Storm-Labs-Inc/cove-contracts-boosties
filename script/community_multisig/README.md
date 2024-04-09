@@ -3,7 +3,7 @@
 ## Run the script against a forked network
 
 ```bash
-forge script script/ops_multisig/OpsMultisig_2024_04_07.sol --fork-url $MAINNET_RPC_URL -vvvv
+forge script script/community_multisig/CommunityMultisig_2024_04_08.sol --fork-url $MAINNET_RPC_URL -vvvv
 ```
 
 If the script is successful, it will output the path to the broadcast json file in `broadcast/` directory.
