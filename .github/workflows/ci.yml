@@ -56,7 +56,7 @@ jobs:
         run: forge build --build-info
 
       - name: Run Slither
-        uses: crytic/slither-action@v0.3.1
+        uses: crytic/slither-action@v0.3.2
         id: slither
         with:
           fail-on: all
@@ -65,10 +65,11 @@ jobs:
           slither-args:
             --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
           slither-config: slither.config.json
+          slither-version: 0.10.1
 
       - name: Create/update checklist as PR comment
         uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         env:
           REPORT: ${{ steps.slither.outputs.stdout }}
         with:
