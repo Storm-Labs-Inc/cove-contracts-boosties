@@ -124,6 +124,7 @@ contract Constants is CommonBase {
     address public constant MAINNET_GASLITE_AIRDROP = 0x09350F89e2D7B6e96bA730783c2d76137B045FEF;
 
     // Cove Addresses
+    address public constant MAINNET_COVE_DEPLOYER = 0x8842fe65A7Db9BB5De6d50e49aF19496da09F9b5;
     address public constant MAINNET_COVE_COMPANY_MULTISIG = 0x519A6Aef94158A90B25846aBa1FA06AFeF8D2323;
     address public constant MAINNET_DEFENDER_RELAYER = 0xc5ccE4661eb87B95Df717b4d25a76eA137F081f7;
     address public constant MAINNET_COVE_COMMUNITY_MULTISIG = 0x7Bd578354b0B2f02E656f1bDC0e41a80f860534b;
