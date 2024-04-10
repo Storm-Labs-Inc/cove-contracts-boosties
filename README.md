@@ -16,7 +16,7 @@ staking platform for Yearn), a governance token, and auxiliary contracts.
 
 The testing suite includes unit, integration, fork, and invariant tests.
 
-For detailed documentation, visit the [GitBook](https://docs.cove.finance/).
+For more detailed information, visit the [documentation](https://docs.cove.finance/).
 
 > [!IMPORTANT]
 > You acknowledge that there are potential uses of the [Licensed Work] that

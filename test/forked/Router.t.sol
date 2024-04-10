@@ -15,6 +15,7 @@ import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { ERC4626Mock } from "@openzeppelin/contracts/mocks/ERC4626Mock.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 import { YearnVaultV2Helper } from "src/libraries/YearnVaultV2Helper.sol";
+import { Deployer } from "forge-deploy/Deployer.sol";
 
 contract Router_ForkedTest is BaseTest {
     using YearnVaultV2Helper for IYearnVaultV2;
@@ -864,5 +865,23 @@ contract Router_ForkedTest is BaseTest {
         vm.expectRevert(); // have to use generic revert for now
         vm.prank(user);
         router.multicall(data);
+    }
+
+    function test_deposit_mainnet_CoveYFI() public {
+        // Fork the block after the initial deployment
+        forkNetworkAt("mainnet", 19_597_744);
+        router = Yearn4626RouterExt(deployer.getAddress("Yearn4626RouterExt"));
+        address coveYFI = deployer.getAddress("CoveYFI");
+
+        airdrop(IERC20(MAINNET_YFI), address(router), 10e18, false);
+
+        // First YFI lock must be at least 1e18. Anything less is reverted with generic revert error in veYFI contract.
+        vm.expectRevert();
+        router.deposit(IYearn4626(coveYFI), 1e17, address(this), 1e17);
+
+        // Subsequent YFI locks can be any amount after initial 1e18.
+        router.deposit(IYearn4626(coveYFI), 1e18, address(this), 1e18);
+        router.deposit(IYearn4626(coveYFI), 0.01e18, address(this), 0.01e18);
+        assertEq(IERC20(coveYFI).totalSupply(), 1.01e18);
     }
 }
