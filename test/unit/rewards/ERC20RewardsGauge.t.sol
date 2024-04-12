@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.18;
 
-import { BaseTest } from "test/utils/BaseTest.t.sol";
+import { BaseTest, console2 } from "test/utils/BaseTest.t.sol";
 import { ERC20RewardsGauge, BaseRewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
@@ -267,6 +267,49 @@ contract ERC20RewardsGauge_Test is BaseTest {
         assertEq(rewardData.lastUpdate, block.timestamp);
         assertEq(rewardData.integral, 0);
         assertEq(rewardData.leftOver, rewardAmount % _WEEK);
+        console2.log("total supply: ", rewardsGauge.totalSupply());
+    }
+
+    function testFuzz_depositRewardToken_claimAfterNoDepositsForRewardDuration(
+        uint256 rewardAmount,
+        uint256 amount
+    )
+        public
+    {
+        amount = bound(amount, 1, type(uint128).max);
+        rewardAmount = bound(rewardAmount, Math.max(1e9, amount / 1e15), type(uint128).max);
+        airdrop(dummyRewardToken, admin, rewardAmount);
+        vm.prank(manager);
+        rewardsGauge.addReward(address(dummyRewardToken), admin);
+        vm.startPrank(admin);
+        dummyRewardToken.approve(address(rewardsGauge), rewardAmount);
+        vm.expectEmit();
+        emit RewardTokenDeposited(address(dummyRewardToken), rewardAmount, rewardAmount / _WEEK, block.timestamp);
+        rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
+        BaseRewardsGauge.Reward memory rewardData = rewardsGauge.getRewardData(address(dummyRewardToken));
+        assertEq(rewardData.distributor, admin);
+        assertEq(rewardData.periodFinish, block.timestamp + 1 weeks);
+        assertEq(rewardData.rate, rewardAmount / _WEEK);
+        assertEq(rewardData.lastUpdate, block.timestamp);
+        assertEq(rewardData.integral, 0);
+        assertEq(rewardData.leftOver, rewardAmount % _WEEK);
+        assertEq(rewardsGauge.totalSupply(), 0);
+        // Warp to after rewards are done distributing
+        vm.warp(rewardData.periodFinish + 1);
+        // User deposits now
+        // alice gets some mockgauge tokens by depositing dummy token
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(rewardsGauge), amount);
+        rewardsGauge.deposit(amount, alice);
+        assertEq(rewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
+        // alice's claimable rewards should be 0 at this block
+        assertApproxEqRel(
+            rewardAmount,
+            rewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            0.005 * 1e18,
+            "alice should receive unclaimed rewards"
+        );
     }
 
     function testFuzz_depositRewardToken_withPartialRewardRemaining(
