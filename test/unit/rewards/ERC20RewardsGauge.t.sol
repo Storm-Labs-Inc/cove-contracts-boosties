@@ -270,48 +270,6 @@ contract ERC20RewardsGauge_Test is BaseTest {
         console2.log("total supply: ", rewardsGauge.totalSupply());
     }
 
-    function testFuzz_depositRewardToken_claimAfterNoDepositsForRewardDuration(
-        uint256 rewardAmount,
-        uint256 amount
-    )
-        public
-    {
-        amount = bound(amount, 1, type(uint128).max);
-        rewardAmount = bound(rewardAmount, Math.max(1e9, amount / 1e15), type(uint128).max);
-        airdrop(dummyRewardToken, admin, rewardAmount);
-        vm.prank(manager);
-        rewardsGauge.addReward(address(dummyRewardToken), admin);
-        vm.startPrank(admin);
-        dummyRewardToken.approve(address(rewardsGauge), rewardAmount);
-        vm.expectEmit();
-        emit RewardTokenDeposited(address(dummyRewardToken), rewardAmount, rewardAmount / _WEEK, block.timestamp);
-        rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
-        BaseRewardsGauge.Reward memory rewardData = rewardsGauge.getRewardData(address(dummyRewardToken));
-        assertEq(rewardData.distributor, admin);
-        assertEq(rewardData.periodFinish, block.timestamp + 1 weeks);
-        assertEq(rewardData.rate, rewardAmount / _WEEK);
-        assertEq(rewardData.lastUpdate, block.timestamp);
-        assertEq(rewardData.integral, 0);
-        assertEq(rewardData.leftOver, rewardAmount % _WEEK);
-        assertEq(rewardsGauge.totalSupply(), 0);
-        // Warp to after rewards are done distributing
-        vm.warp(rewardData.periodFinish + 1);
-        // User deposits now
-        // alice gets some mockgauge tokens by depositing dummy token
-        airdrop(dummyGaugeAsset, alice, amount);
-        vm.startPrank(alice);
-        dummyGaugeAsset.approve(address(rewardsGauge), amount);
-        rewardsGauge.deposit(amount, alice);
-        assertEq(rewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
-        // alice's claimable rewards should be 0 at this block
-        assertApproxEqRel(
-            rewardAmount,
-            rewardsGauge.claimableReward(alice, address(dummyRewardToken)),
-            0.005 * 1e18,
-            "alice should receive unclaimed rewards"
-        );
-    }
-
     function testFuzz_depositRewardToken_withPartialRewardRemaining(
         uint256 rewardAmount0,
         uint256 rewardAmount1
@@ -467,6 +425,73 @@ contract ERC20RewardsGauge_Test is BaseTest {
         uint256 integral = rewardsGauge.getRewardData(address(dummyRewardToken)).integral;
         assertEq(integral, 0);
         assertEq(dummyRewardToken.balanceOf(alice), 0);
+    }
+
+    function testFuzz_claimeRewards_afterZeroDepositsForRewardDuration(uint256 rewardAmount, uint256 amount) public {
+        amount = bound(amount, 1, type(uint128).max);
+        rewardAmount = bound(rewardAmount, Math.max(1e9, amount / 1e15), type(uint128).max);
+        airdrop(dummyRewardToken, admin, rewardAmount);
+        vm.prank(manager);
+        rewardsGauge.addReward(address(dummyRewardToken), admin);
+        vm.startPrank(admin);
+        dummyRewardToken.approve(address(rewardsGauge), rewardAmount);
+        vm.expectEmit();
+        emit RewardTokenDeposited(address(dummyRewardToken), rewardAmount, rewardAmount / _WEEK, block.timestamp);
+        rewardsGauge.depositRewardToken(address(dummyRewardToken), rewardAmount);
+        BaseRewardsGauge.Reward memory rewardData = rewardsGauge.getRewardData(address(dummyRewardToken));
+        assertEq(rewardData.distributor, admin);
+        assertEq(rewardData.periodFinish, block.timestamp + 1 weeks);
+        assertEq(rewardData.rate, rewardAmount / _WEEK);
+        assertEq(rewardData.lastUpdate, block.timestamp);
+        assertEq(rewardData.integral, 0);
+        assertEq(rewardData.leftOver, rewardAmount % _WEEK);
+        assertEq(rewardsGauge.totalSupply(), 0);
+        // Warp to after rewards are done distributing
+        vm.warp(rewardData.periodFinish + 1);
+        // User deposits now
+        // alice gets some mockgauge tokens by depositing dummy token
+        airdrop(dummyGaugeAsset, alice, amount);
+        vm.startPrank(alice);
+        dummyGaugeAsset.approve(address(rewardsGauge), amount);
+        rewardsGauge.deposit(amount, alice);
+        assertEq(rewardsGauge.balanceOf(alice), amount, "alice should have received shares 1:1");
+        // alice's claimable rewards should be 0 at this block
+        assertApproxEqRel(
+            rewardAmount,
+            rewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            0.005 * 1e18,
+            "alice should receive unclaimed rewards"
+        );
+        uint256 aliceBalanceBefore = dummyRewardToken.balanceOf(alice);
+        // alice claims rewards
+        rewardsGauge.claimRewards(alice, alice);
+        // alice's claimable rewards should be 0 after claiming
+        assertEq(
+            0,
+            rewardsGauge.claimableReward(alice, address(dummyRewardToken)),
+            "alice should have 0 claimable rewards after claiming"
+        );
+        uint256 newAliceBalance = dummyRewardToken.balanceOf(alice) - aliceBalanceBefore;
+        // alices balance should be close to the reward amount
+        assertApproxEqRel(
+            rewardAmount,
+            newAliceBalance,
+            0.005 * 1e18,
+            "alice should have received the full reward amount minus the adjustment"
+        );
+        // check that the integral was updated after claiming
+        uint256 integral = rewardsGauge.getRewardData(address(dummyRewardToken)).integral;
+        assertGt(integral, 0);
+        // alices claimed rewards should have increase by the claimed amount
+        assertEq(
+            rewardsGauge.claimedReward(alice, address(dummyRewardToken)),
+            newAliceBalance,
+            "alice should have claimed rewards equal to the total amount of reward tokens deposited"
+        );
+        // check that claimable rewards was correct
+        assertApproxEqRel(
+            newAliceBalance, rewardAmount, 0.005 * 1e18, "claimable rewards should be equal to the claimed amount"
+        );
     }
 
     function testFuzz_claimRewards_multipleRewards(uint256 amount, uint256[8] memory rewardAmounts) public {
