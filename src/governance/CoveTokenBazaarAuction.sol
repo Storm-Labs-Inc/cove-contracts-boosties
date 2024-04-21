@@ -56,6 +56,7 @@ contract CoveTokenBazaarAuction is ERC20, Ownable {
      * @notice Deploys this contract with the initial owner and minting the total supply to the owner.
      * @param owner_ The address of the initial owner.
      */
+    // slither-disable-next-line locked-ether
     constructor(address owner_) payable Ownable() ERC20("Cove DAO Bazaar Auction Token", "COVE-BAZAAR") {
         // Checks
         if (owner_ == address(0)) {
