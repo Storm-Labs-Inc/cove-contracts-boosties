@@ -3,7 +3,7 @@ pragma solidity 0.8.18;
 
 import { Errors } from "src/libraries/Errors.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step, Ownable } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
  * @title CoveTokenBazaarAuction
@@ -14,7 +14,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  * - Receivers: None
  * It inherits from OpenZeppelin's ERC20 and Ownable contracts.
  */
-contract CoveTokenBazaarAuction is ERC20, Ownable {
+contract CoveTokenBazaarAuction is ERC20, Ownable2Step {
     /// @notice Mapping to track addresses allowed to receive transfers.
     mapping(address => bool) public allowedReceiver;
     /// @notice Mapping to track addresses allowed to initiate transfers.
@@ -62,7 +62,7 @@ contract CoveTokenBazaarAuction is ERC20, Ownable {
         if (owner_ == address(0)) {
             revert Errors.ZeroAddress();
         }
-        _transferOwnership(owner_);
+        _transferOwnership(owner_); // Transfer ownership to the provided address
         _addToAllowedSender(address(0)); // Allow minting
         _addToAllowedSender(owner_); // Allow transfers from owner for distribution
         _addToAllowedSender(_BAZAAR_UNCAPPED_AUCTION_FACTORY); // Allow transfers from Bazaar Uncapped Auction Factory
