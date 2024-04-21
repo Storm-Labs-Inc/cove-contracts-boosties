@@ -9,7 +9,10 @@ import { Ownable2Step, Ownable } from "@openzeppelin/contracts/access/Ownable2St
  * @title CoveTokenBazaarAuction
  * @notice ERC20 token with capped supply and owner controlled allowlisting mechanism for transfers.
  * @dev Intended usage of the allowlisting mechanism is:
- * - Senders: Bazaar Uncapped Auction Factory for creating the auction, Bazaar Uncapped Auction for users to claim
+ * - Senders:
+ *   - Community multisig for creating the auction
+ *   - Bazaar Uncapped Auction Factory for creating the auction
+ *   - Bazaar Uncapped Auction for users to claim
  * tokens
  * - Receivers: None
  * It inherits from OpenZeppelin's ERC20 and Ownable contracts.
@@ -22,7 +25,7 @@ contract CoveTokenBazaarAuction is ERC20, Ownable2Step {
     /// @notice State variable to make the events orderable for external observers if they are called in the same block.
     uint256 private _eventId;
     /// @notice Total supply of the token.
-    uint256 private constant _TOTAL_SUPPLY = 95_000_000 ether;
+    uint256 private constant _TOTAL_SUPPLY = 1_000_000_000 ether;
     /// @notice Address of the Bazaar Uncapped Auction Factory contract.
     /// https://etherscan.io/address/0x47612eabFbE65329AeD1ab1BF3FCbAE493aEf460
     address private constant _BAZAAR_UNCAPPED_AUCTION_FACTORY = 0x47612eabFbE65329AeD1ab1BF3FCbAE493aEf460;
@@ -64,7 +67,7 @@ contract CoveTokenBazaarAuction is ERC20, Ownable2Step {
         }
         _transferOwnership(owner_); // Transfer ownership to the provided address
         _addToAllowedSender(address(0)); // Allow minting
-        _addToAllowedSender(owner_); // Allow transfers from owner for distribution
+        _addToAllowedSender(owner_); // Allow transfers from owner for sending to Bazaar Uncapped Auction Factory
         _addToAllowedSender(_BAZAAR_UNCAPPED_AUCTION_FACTORY); // Allow transfers from Bazaar Uncapped Auction Factory
         _mint(owner_, _TOTAL_SUPPLY); // Mint total supply to owner
     }

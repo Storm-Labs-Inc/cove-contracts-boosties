@@ -12,7 +12,7 @@ contract CoveTokenBazaarAuction_Test is BaseTest {
     address public bob;
     uint256 public deployTimestamp;
 
-    uint256 public constant TOTAL_SUPPLY = 95_000_000 ether;
+    uint256 public constant TOTAL_SUPPLY = 1_000_000_000 ether;
     bytes public constant OWNER_ERROR_MESSAGE = "Ownable: caller is not the owner";
     address public constant BAZAAR_AUCTION_FACTORY = 0x47612eabFbE65329AeD1ab1BF3FCbAE493aEf460;
 
