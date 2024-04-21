@@ -68,7 +68,7 @@ contract CoveTokenBazaarAuction_Test is BaseTest {
         coveTokenBazaarAuction.addAllowedReceiver(user);
     }
 
-    function testFuzz_addAllowedReceiver_revertWhen_CallerIsNotTimelock(address user) public {
+    function testFuzz_addAllowedReceiver_revertWhen_CallerIsNotOwner(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.expectRevert(OWNER_ERROR_MESSAGE);
         vm.startPrank(user);
@@ -101,7 +101,7 @@ contract CoveTokenBazaarAuction_Test is BaseTest {
         coveTokenBazaarAuction.transfer(user, amount);
     }
 
-    function testFuzz_removeFromAllowedReceiver_revertWhen_CallerIsNotTimelock(address user) public {
+    function testFuzz_removeFromAllowedReceiver_revertWhen_CallerIsNotOwner(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(owner);
         coveTokenBazaarAuction.addAllowedReceiver(user);
@@ -141,7 +141,7 @@ contract CoveTokenBazaarAuction_Test is BaseTest {
         coveTokenBazaarAuction.transfer(owner, amount);
     }
 
-    function testFuzz_addAllowedSender_revertWhen_CallerIsNotTimelock(address user) public {
+    function testFuzz_addAllowedSender_revertWhen_CallerIsNotOwner(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(user);
         vm.expectRevert(OWNER_ERROR_MESSAGE);
@@ -163,7 +163,7 @@ contract CoveTokenBazaarAuction_Test is BaseTest {
         coveTokenBazaarAuction.transfer(alice, amount);
     }
 
-    function testFuzz_removeFromAllowedSender_revertWhen_CallerIsNotTimelock(address user) public {
+    function testFuzz_removeFromAllowedSender_revertWhen_CallerIsNotOwner(address user) public {
         vm.assume(user != address(0) && user != owner);
         vm.startPrank(owner);
         coveTokenBazaarAuction.addAllowedSender(user);
