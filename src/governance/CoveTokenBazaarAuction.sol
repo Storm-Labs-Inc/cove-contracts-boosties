@@ -53,8 +53,7 @@ contract CoveTokenBazaarAuction is ERC20, Ownable {
     event ReceiverDisallowed(address indexed target, uint256 eventId);
 
     /**
-     * @notice Deploys this contract with the initial owner and minting allowed after a specified time.
-     * @dev The contract is paused upon deployment and the initial supply is minted to the owner.
+     * @notice Deploys this contract with the initial owner and minting the total supply to the owner.
      * @param owner_ The address of the initial owner.
      */
     constructor(address owner_) payable Ownable() ERC20("Cove DAO Bazaar Auction Token", "COVE-BAZAAR") {
