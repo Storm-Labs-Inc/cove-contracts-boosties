@@ -6,7 +6,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title CoveBazaarAuctionToken
+ * @title CoveTokenBazaarAuction
  * @notice ERC20 token with capped supply and owner controlled allowlisting mechanism for transfers.
  * @dev Intended usage of the allowlisting mechanism is:
  * - Senders: Bazaar Uncapped Auction Factory for creating the auction, Bazaar Uncapped Auction for users to claim
@@ -14,7 +14,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  * - Receivers: None
  * It inherits from OpenZeppelin's ERC20 and Ownable contracts.
  */
-contract CoveBazaarAuctionToken is ERC20, Ownable {
+contract CoveTokenBazaarAuction is ERC20, Ownable {
     /// @notice Mapping to track addresses allowed to receive transfers.
     mapping(address => bool) public allowedReceiver;
     /// @notice Mapping to track addresses allowed to initiate transfers.
