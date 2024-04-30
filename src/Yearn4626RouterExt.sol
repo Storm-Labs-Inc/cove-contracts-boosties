@@ -83,11 +83,9 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (path.length == 0) revert InvalidPathLength();
             uint256 last = path.length - 1;
             for (uint256 i; i < path.length;) {
-                address receiver;
+                address receiver = address(this);
                 if (i == last) {
                     receiver = to;
-                } else {
-                    receiver = address(this);
                 }
                 // slither-disable-next-line calls-loop
                 assetsIn = sharesOut = IERC4626(path[i]).deposit(assetsIn, receiver);
@@ -123,11 +121,9 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (length != isYearnVaultV2.length) revert InvalidPathLength();
             uint256 last = length - 1;
             for (uint256 i; i < length;) {
-                address receiver;
+                address receiver = address(this);
                 if (i == last) {
                     receiver = to;
-                } else {
-                    receiver = address(this);
                 }
                 if (isYearnVaultV2[i]) {
                     // slither-disable-next-line calls-loop
