@@ -54,13 +54,13 @@ contract Deployments is BaseDeployScript {
 
         approveDepositsInRouter();
 
-        registerContractsInMasterRegistry();
+        // registerContractsInMasterRegistry();
     }
 
     function deployYearn4626RouterExt() public deployIfMissing("Yearn4626RouterExt2") returns (address) {
         address yearn4626RouterExt = address(
             deployer.deploy_Yearn4626RouterExt(
-                "Yearn4626RouterExt2", "Yearn4626RouterExt2", MAINNET_WETH, MAINNET_PERMIT2, options
+                "Yearn4626RouterExt2", "Yearn4626RouterExt", MAINNET_WETH, MAINNET_PERMIT2, options
             )
         );
         return yearn4626RouterExt;
