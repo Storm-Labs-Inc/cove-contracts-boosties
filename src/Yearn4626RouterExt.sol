@@ -82,8 +82,7 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         if (path.length < 1) revert InvalidPathLength();
         for (uint256 i; i < path.length;) {
             // slither-disable-next-line calls-loop
-            sharesOut = IERC4626(path[i]).deposit(assetsIn, i == (path.length - 1) ? to : address(this));
-            assetsIn = sharesOut;
+            assetsIn = sharesOut = IERC4626(path[i]).deposit(assetsIn, i == (path.length - 1) ? to : address(this));
             unchecked {
                 ++i;
             }
@@ -111,18 +110,18 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         payable
         returns (uint256 assetsOut)
     {
-        if (path.length < 1) revert InvalidPathLength();
-        if (path.length != isYearnVaultV2.length) revert InvalidPathLength();
-        for (uint256 i; i < path.length;) {
+        uint256 length = path.length;
+        if (length < 1) revert InvalidPathLength();
+        if (length != isYearnVaultV2.length) revert InvalidPathLength();
+        for (uint256 i; i < length;) {
             if (isYearnVaultV2[i]) {
                 // slither-disable-next-line calls-loop
-                assetsOut = IYearnVaultV2(path[i]).withdraw(sharesIn, i == (path.length - 1) ? to : address(this));
+                sharesIn = assetsOut = IYearnVaultV2(path[i]).withdraw(sharesIn, i == (length - 1) ? to : address(this));
             } else {
                 // slither-disable-next-line calls-loop
-                assetsOut =
-                    IERC4626(path[i]).redeem(sharesIn, i == (path.length - 1) ? to : address(this), address(this));
+                sharesIn = assetsOut =
+                    IERC4626(path[i]).redeem(sharesIn, i == (length - 1) ? to : address(this), address(this));
             }
-            sharesIn = assetsOut;
             unchecked {
                 ++i;
             }
@@ -273,12 +272,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                sharesOut[i] = IERC4626(vault).previewDeposit(assetsIn);
+                assetsIn = sharesOut[i] = IERC4626(vault).previewDeposit(assetsIn);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesOut[i] = IYearnVaultV2(vault).previewDeposit(assetsIn);
+                    assetsIn = sharesOut[i] = IYearnVaultV2(vault).previewDeposit(assetsIn);
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -286,7 +285,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i]) {
                 revert PreviewVaultMismatch();
             }
-            assetsIn = sharesOut[i];
 
             /// @dev Increment the loop index `i` without checking for overflow.
             /// This is safe because the loop's termination condition ensures that `i` will not exceed
@@ -327,12 +325,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                assetsIn[i - 1] = IERC4626(vault).previewMint(sharesOut);
+                sharesOut = assetsIn[i - 1] = IERC4626(vault).previewMint(sharesOut);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsIn[i - 1] = IYearnVaultV2(vault).previewMint(sharesOut);
+                    sharesOut = assetsIn[i - 1] = IYearnVaultV2(vault).previewMint(sharesOut);
                 } else {
                     revert PreviewNonVaultAddressInPath(vault);
                 }
@@ -341,7 +339,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i - 1]) {
                 revert PreviewVaultMismatch();
             }
-            sharesOut = assetsIn[i - 1];
 
             /// @dev Decrement the loop counter within an unchecked block to avoid redundant gas cost associated with
             /// underflow checking. This is safe because the loop's initialization and exit condition ensure that `i`
@@ -382,12 +379,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                sharesIn[i] = IERC4626(vault).previewWithdraw(assetsOut);
+                assetsOut = sharesIn[i] = IERC4626(vault).previewWithdraw(assetsOut);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    sharesIn[i] = IYearnVaultV2(vault).previewWithdraw(assetsOut);
+                    assetsOut = sharesIn[i] = IYearnVaultV2(vault).previewWithdraw(assetsOut);
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
@@ -404,7 +401,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
                 revert PreviewVaultMismatch();
             }
             if (i == 0) return sharesIn;
-            assetsOut = sharesIn[i];
 
             /// @dev Decrement the loop counter without checking for overflow.  This is safe because the for loop
             /// naturally ensures that `i` will not underflow as it is bounded by i == 0 check.
@@ -441,12 +437,12 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             (bool success, bytes memory data) = vault.staticcall(abi.encodeCall(IERC4626.asset, ()));
             if (success) {
                 vaultAsset = abi.decode(data, (address));
-                assetsOut[i] = IERC4626(vault).previewRedeem(sharesIn);
+                sharesIn = assetsOut[i] = IERC4626(vault).previewRedeem(sharesIn);
             } else {
                 (success, data) = vault.staticcall(abi.encodeCall(IYearnVaultV2.token, ()));
                 if (success) {
                     vaultAsset = abi.decode(data, (address));
-                    assetsOut[i] = IYearnVaultV2(vault).previewRedeem(sharesIn);
+                    sharesIn = assetsOut[i] = IYearnVaultV2(vault).previewRedeem(sharesIn);
                 } else {
                     // StakeDAO gauge token
                     // StakeDaoGauge.staking_token().token() is the yearn vault v2 token
@@ -462,7 +458,6 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
             if (vaultAsset != path[i + 1]) {
                 revert PreviewVaultMismatch();
             }
-            sharesIn = assetsOut[i];
 
             /// @dev The unchecked block is used here to prevent overflow checking for the loop increment, which is not
             /// necessary since the loop's exit condition ensures `i` will not exceed `assetsOutLength`.
