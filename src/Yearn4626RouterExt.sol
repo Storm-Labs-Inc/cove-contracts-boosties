@@ -79,15 +79,22 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         payable
         returns (uint256 sharesOut)
     {
-        if (path.length < 1) revert InvalidPathLength();
-        for (uint256 i; i < path.length;) {
-            // slither-disable-next-line calls-loop
-            assetsIn = sharesOut = IERC4626(path[i]).deposit(assetsIn, i == (path.length - 1) ? to : address(this));
-            unchecked {
+        unchecked {
+            if (path.length == 0) revert InvalidPathLength();
+            uint256 last = path.length - 1;
+            for (uint256 i; i < path.length;) {
+                address receiver;
+                if (i == last) {
+                    receiver = to;
+                } else {
+                    receiver = address(this);
+                }
+                // slither-disable-next-line calls-loop
+                assetsIn = sharesOut = IERC4626(path[i]).deposit(assetsIn, receiver);
                 ++i;
             }
+            if (sharesOut < minSharesOut) revert InsufficientShares();
         }
-        if (sharesOut < minSharesOut) revert InsufficientShares();
     }
 
     /**
@@ -110,23 +117,29 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
         payable
         returns (uint256 assetsOut)
     {
-        uint256 length = path.length;
-        if (length < 1) revert InvalidPathLength();
-        if (length != isYearnVaultV2.length) revert InvalidPathLength();
-        for (uint256 i; i < length;) {
-            if (isYearnVaultV2[i]) {
-                // slither-disable-next-line calls-loop
-                sharesIn = assetsOut = IYearnVaultV2(path[i]).withdraw(sharesIn, i == (length - 1) ? to : address(this));
-            } else {
-                // slither-disable-next-line calls-loop
-                sharesIn = assetsOut =
-                    IERC4626(path[i]).redeem(sharesIn, i == (length - 1) ? to : address(this), address(this));
-            }
-            unchecked {
+        unchecked {
+            uint256 length = path.length;
+            if (length == 0) revert InvalidPathLength();
+            if (length != isYearnVaultV2.length) revert InvalidPathLength();
+            uint256 last = length - 1;
+            for (uint256 i; i < length;) {
+                address receiver;
+                if (i == last) {
+                    receiver = to;
+                } else {
+                    receiver = address(this);
+                }
+                if (isYearnVaultV2[i]) {
+                    // slither-disable-next-line calls-loop
+                    sharesIn = assetsOut = IYearnVaultV2(path[i]).withdraw(sharesIn, receiver);
+                } else {
+                    // slither-disable-next-line calls-loop
+                    sharesIn = assetsOut = IERC4626(path[i]).redeem(sharesIn, receiver, address(this));
+                }
                 ++i;
             }
+            if (assetsOut < minAssetsOut) revert InsufficientAssets();
         }
-        if (assetsOut < minAssetsOut) revert InsufficientAssets();
     }
 
     // ------------- YEARN VAULT V2 FUNCTIONS ------------- //
