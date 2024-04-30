@@ -6,27 +6,9 @@ import { console2 as console } from "forge-std/console2.sol";
 // generated from looking at contracts with ./forge-deploy gen-deployer
 import { DeployerFunctions, DefaultDeployerFunction, Deployer } from "generated/deployer/DeployerFunctions.g.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
-import { YearnStakingDelegate } from "src/YearnStakingDelegate.sol";
-import { YearnGaugeStrategy } from "src/strategies/YearnGaugeStrategy.sol";
 import { CoveYearnGaugeFactory } from "src/registries/CoveYearnGaugeFactory.sol";
-import { SwapAndLock } from "src/SwapAndLock.sol";
-import { ERC20RewardsGauge } from "src/rewards/ERC20RewardsGauge.sol";
-import { RewardForwarder } from "src/rewards/RewardForwarder.sol";
-import { ITokenizedStrategy } from "lib/tokenized-strategy/src/interfaces/ITokenizedStrategy.sol";
-import { IERC4626, IERC20 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { SablierBatchCreator } from "script/vesting/SablierBatchCreator.s.sol";
-import { GasliteDropSender } from "script/vesting/GasliteDropSender.s.sol";
-import { CoveToken } from "src/governance/CoveToken.sol";
-import { MiniChefV3, IMiniChefV3Rewarder } from "src/rewards/MiniChefV3.sol";
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
-import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
-import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
-import { ISnapshotDelegateRegistry } from "src/interfaces/deps/snapshot/ISnapshotDelegateRegistry.sol";
 import { Yearn4626RouterExt } from "src/Yearn4626RouterExt.sol";
 import { PeripheryPayments } from "Yearn-ERC4626-Router/external/PeripheryPayments.sol";
-import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 
 // Could also import the default deployer functions
 // import "forge-deploy/DefaultDeployerFunction.sol";
