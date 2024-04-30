@@ -754,6 +754,50 @@ contract Router_ForkedTest is BaseTest {
         assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user), 949_289_266_142_683_599);
     }
 
+    function test_serializedDeposits_lpTokenToYearnGauge() public {
+        router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), MAINNET_ETH_YFI_VAULT_V2, _MAX_UINT256);
+        router.approve(ERC20(MAINNET_ETH_YFI_VAULT_V2), MAINNET_ETH_YFI_GAUGE, _MAX_UINT256);
+
+        uint256 depositAmount = 1 ether;
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount, false);
+
+        // Generate a permit signature
+        uint256 currentNonce = IERC20Permit(MAINNET_ETH_YFI_POOL_LP_TOKEN).nonces(user);
+        uint256 deadline = block.timestamp + 1000;
+        (uint8 v, bytes32 r, bytes32 s) = _generatePermitSignature(
+            MAINNET_ETH_YFI_POOL_LP_TOKEN, user, userPriv, address(router), depositAmount, currentNonce, deadline
+        );
+
+        bytes[] memory data = new bytes[](3);
+
+        data[0] = abi.encodeWithSelector(
+            SelfPermit.selfPermit.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, deadline, v, r, s
+        );
+        data[1] = abi.encodeWithSelector(
+            PeripheryPayments.pullToken.selector, MAINNET_ETH_YFI_POOL_LP_TOKEN, depositAmount, address(router)
+        );
+        address[] memory vaults = new address[](2);
+        vaults[0] = MAINNET_ETH_YFI_VAULT_V2;
+        vaults[1] = MAINNET_ETH_YFI_GAUGE;
+
+        data[2] = abi.encodeWithSelector(
+            Yearn4626RouterExt.serializedDeposits.selector,
+            vaults,
+            depositAmount,
+            address(user),
+            949_289_266_142_683_599
+        );
+
+        vm.prank(user);
+        bytes[] memory ret = router.multicall(data);
+
+        assertEq(ret[0], "", "SelfPermit should return empty bytes");
+        assertEq(ret[1], "", "pullToken should return empty bytes");
+        assertEq(abi.decode(ret[2], (uint256)), 949_289_266_142_683_599, "deposit should return minted shares");
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(user), 0);
+        assertEq(IERC20(MAINNET_ETH_YFI_GAUGE).balanceOf(user), 949_289_266_142_683_599);
+    }
+
     function test_yearnGaugeToLPToken() public {
         uint256 shareAmount = 949_289_266_142_683_599;
         airdrop(IERC20(MAINNET_ETH_YFI_GAUGE), user, shareAmount, false);
@@ -883,5 +927,233 @@ contract Router_ForkedTest is BaseTest {
         router.deposit(IYearn4626(coveYFI), 1e18, address(this), 1e18);
         router.deposit(IYearn4626(coveYFI), 0.01e18, address(this), 0.01e18);
         assertEq(IERC20(coveYFI).totalSupply(), 1.01e18);
+    }
+
+    // ------------------- Serialized Deposits -------------------
+    function test_serializedDeposits() public {
+        // Fork the block after initial harvests
+        forkNetworkAt("mainnet", 19_768_757);
+        vm.deal({ account: user, newBalance: 100 ether });
+        _labelEthereumAddresses();
+        router = new Yearn4626RouterExt("Yearn-4626-Router-Ext", MAINNET_WETH, MAINNET_PERMIT2);
+        vm.label(address(router), "4626Router");
+        address coveEthYfiRewardsGauge = 0xf750c238cE033afC224C2E57d0fcb86E64Db0221;
+        address coveEthYfiStrategy = 0x552868611d2641144454140DdED98E6160b3Bfc9;
+
+        uint256 depositAmount = 1 ether;
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount, false);
+
+        address[] memory vaults = new address[](4);
+        vaults[0] = MAINNET_ETH_YFI_VAULT_V2;
+        vaults[1] = MAINNET_ETH_YFI_GAUGE;
+        vaults[2] = coveEthYfiStrategy;
+        vaults[3] = coveEthYfiRewardsGauge;
+
+        router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), vaults[0], _MAX_UINT256);
+        router.approve(ERC20(vaults[0]), vaults[1], _MAX_UINT256);
+        router.approve(ERC20(vaults[1]), vaults[2], _MAX_UINT256);
+        router.approve(ERC20(vaults[2]), vaults[3], _MAX_UINT256);
+
+        vm.startPrank(user);
+
+        // Mimic permit + pullToken behavior
+        IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).transfer(address(router), depositAmount);
+
+        // Calculate minAmount
+        address[] memory previewPath = new address[](5);
+        previewPath[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        previewPath[1] = MAINNET_ETH_YFI_VAULT_V2;
+        previewPath[2] = MAINNET_ETH_YFI_GAUGE;
+        previewPath[3] = coveEthYfiStrategy;
+        previewPath[4] = coveEthYfiRewardsGauge;
+
+        uint256 minAmount = router.previewDeposits(previewPath, depositAmount)[3];
+        assertEq(minAmount, 940_603_944_009_841_362);
+
+        // Call the serialized deposit function
+        router.serializedDeposits(vaults, depositAmount, user, minAmount);
+
+        // Check no dust was left behind
+        assertEq(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(address(router)), 0, "Router should have 0 LP tokens");
+        assertEq(IERC20(vaults[0]).balanceOf(address(router)), 0, "Router should have 0 vault tokens");
+        assertEq(IERC20(vaults[1]).balanceOf(address(router)), 0, "Router should have 0 gauge tokens");
+        assertEq(IERC20(vaults[2]).balanceOf(address(router)), 0, "Router should have 0 strategy tokens");
+        assertEq(IERC20(vaults[3]).balanceOf(address(router)), 0, "Router should have 0 cove rewards gauge tokens");
+        assertGe(
+            IERC20(vaults[3]).balanceOf(user),
+            minAmount,
+            "User should have at least minAmount of cove rewards gauge tokens"
+        );
+    }
+
+    function test_serializedDeposits_revertWhen_InsufficientShares() public {
+        // Fork the block after initial harvests
+        forkNetworkAt("mainnet", 19_768_757);
+        vm.deal({ account: user, newBalance: 100 ether });
+        _labelEthereumAddresses();
+        router = new Yearn4626RouterExt("Yearn-4626-Router-Ext", MAINNET_WETH, MAINNET_PERMIT2);
+        vm.label(address(router), "4626Router");
+        address coveEthYfiRewardsGauge = 0xf750c238cE033afC224C2E57d0fcb86E64Db0221;
+        address coveEthYfiStrategy = 0x552868611d2641144454140DdED98E6160b3Bfc9;
+
+        uint256 depositAmount = 1 ether;
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount, false);
+
+        address[] memory vaults = new address[](4);
+        vaults[0] = MAINNET_ETH_YFI_VAULT_V2;
+        vaults[1] = MAINNET_ETH_YFI_GAUGE;
+        vaults[2] = coveEthYfiStrategy;
+        vaults[3] = coveEthYfiRewardsGauge;
+
+        router.approve(ERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), vaults[0], _MAX_UINT256);
+        router.approve(ERC20(vaults[0]), vaults[1], _MAX_UINT256);
+        router.approve(ERC20(vaults[1]), vaults[2], _MAX_UINT256);
+        router.approve(ERC20(vaults[2]), vaults[3], _MAX_UINT256);
+
+        vm.startPrank(user);
+
+        // Calculate minAmount
+        address[] memory previewPath = new address[](5);
+        previewPath[0] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+        previewPath[1] = MAINNET_ETH_YFI_VAULT_V2;
+        previewPath[2] = MAINNET_ETH_YFI_GAUGE;
+        previewPath[3] = coveEthYfiStrategy;
+        previewPath[4] = coveEthYfiRewardsGauge;
+
+        uint256 minAmount = router.previewDeposits(previewPath, depositAmount)[3];
+        assertEq(minAmount, 940_603_944_009_841_362);
+
+        // Mimic permit + pullToken behavior
+        IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).transfer(address(router), depositAmount);
+
+        // Call the serialized deposit function
+        vm.expectRevert(Yearn4626RouterExt.InsufficientShares.selector);
+        router.serializedDeposits(vaults, depositAmount, user, minAmount + 1);
+    }
+
+    function test_serializedDeposits_revertWhen_InvalidPathLength() public {
+        uint256 depositAmount = 1 ether;
+        airdrop(IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN), user, depositAmount, false);
+
+        address[] memory vaults = new address[](0);
+
+        vm.expectRevert(Yearn4626RouterExt.InvalidPathLength.selector);
+        router.serializedDeposits(vaults, depositAmount, user, 0);
+    }
+
+    // ------------------- Serialized Redeems -------------------
+    function test_serializedRedeems() public {
+        // Fork the block after initial harvests
+        forkNetworkAt("mainnet", 19_768_757);
+        vm.deal({ account: user, newBalance: 100 ether });
+        _labelEthereumAddresses();
+        router = new Yearn4626RouterExt("Yearn-4626-Router-Ext", MAINNET_WETH, MAINNET_PERMIT2);
+        vm.label(address(router), "4626Router");
+
+        uint256 shareAmount = 1e18;
+        address coveEthYfiRewardsGauge = 0xf750c238cE033afC224C2E57d0fcb86E64Db0221;
+        address coveEthYfiStrategy = 0x552868611d2641144454140DdED98E6160b3Bfc9;
+        airdrop(IERC20(coveEthYfiRewardsGauge), user, shareAmount, false);
+
+        address[] memory vaults = new address[](4);
+        vaults[0] = coveEthYfiRewardsGauge;
+        vaults[1] = coveEthYfiStrategy;
+        vaults[2] = MAINNET_ETH_YFI_GAUGE;
+        vaults[3] = MAINNET_ETH_YFI_VAULT_V2;
+
+        bool[] memory isV2 = new bool[](4);
+        isV2[0] = false;
+        isV2[1] = false;
+        isV2[2] = false;
+        isV2[3] = true;
+
+        vm.startPrank(user);
+
+        // mimic permit + pullToken behavior
+        IERC20(coveEthYfiRewardsGauge).transfer(address(router), shareAmount);
+
+        // Calculate minAmount
+        address[] memory previewPath = new address[](5);
+        previewPath[0] = coveEthYfiRewardsGauge;
+        previewPath[1] = coveEthYfiStrategy;
+        previewPath[2] = MAINNET_ETH_YFI_GAUGE;
+        previewPath[3] = MAINNET_ETH_YFI_VAULT_V2;
+        previewPath[4] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+
+        uint256 minAmount = router.previewRedeems(previewPath, shareAmount)[3];
+        assertEq(minAmount, 1_063_146_722_239_915_663);
+
+        // Call the serialized redeem function
+        router.serializedRedeems(vaults, isV2, shareAmount, user, minAmount);
+
+        // Check no dust was left behind
+        assertEq(IERC20(vaults[0]).balanceOf(address(router)), 0, "Router should have 0 cove rewards gauge tokens");
+        assertEq(IERC20(vaults[1]).balanceOf(address(router)), 0, "Router should have 0 strategy tokens");
+        assertEq(IERC20(vaults[2]).balanceOf(address(router)), 0, "Router should have 0 gauge tokens");
+        assertEq(IERC20(vaults[3]).balanceOf(address(router)), 0, "Router should have 0 vault tokens");
+        assertGe(
+            IERC20(MAINNET_ETH_YFI_POOL_LP_TOKEN).balanceOf(user),
+            minAmount,
+            "User should have at least minAmount of the final asset"
+        );
+    }
+
+    function test_serializedRedeems_revertWhen_InsufficientAssets() public {
+        // Fork the block after initial harvests
+        forkNetworkAt("mainnet", 19_768_757);
+        vm.deal({ account: user, newBalance: 100 ether });
+        _labelEthereumAddresses();
+        router = new Yearn4626RouterExt("Yearn-4626-Router-Ext", MAINNET_WETH, MAINNET_PERMIT2);
+        vm.label(address(router), "4626Router");
+
+        uint256 shareAmount = 1e18;
+        address coveEthYfiRewardsGauge = 0xf750c238cE033afC224C2E57d0fcb86E64Db0221;
+        address coveEthYfiStrategy = 0x552868611d2641144454140DdED98E6160b3Bfc9;
+        airdrop(IERC20(coveEthYfiRewardsGauge), user, shareAmount, false);
+
+        address[] memory vaults = new address[](4);
+        vaults[0] = coveEthYfiRewardsGauge;
+        vaults[1] = coveEthYfiStrategy;
+        vaults[2] = MAINNET_ETH_YFI_GAUGE;
+        vaults[3] = MAINNET_ETH_YFI_VAULT_V2;
+
+        bool[] memory isV2 = new bool[](4);
+        isV2[0] = false;
+        isV2[1] = false;
+        isV2[2] = false;
+        isV2[3] = true;
+
+        vm.startPrank(user);
+
+        // mimic permit + pullToken behavior
+        IERC20(coveEthYfiRewardsGauge).transfer(address(router), shareAmount);
+
+        // Calculate minAmount
+        address[] memory previewPath = new address[](5);
+        previewPath[0] = coveEthYfiRewardsGauge;
+        previewPath[1] = coveEthYfiStrategy;
+        previewPath[2] = MAINNET_ETH_YFI_GAUGE;
+        previewPath[3] = MAINNET_ETH_YFI_VAULT_V2;
+        previewPath[4] = MAINNET_ETH_YFI_POOL_LP_TOKEN;
+
+        uint256 minAmount = router.previewRedeems(previewPath, shareAmount)[3];
+        assertEq(minAmount, 1_063_146_722_239_915_663);
+
+        vm.expectRevert(Yearn4626RouterExt.InsufficientAssets.selector);
+        router.serializedRedeems(vaults, isV2, shareAmount, user, minAmount + 1);
+    }
+
+    function test_serializedRedeems_revertWhen_InvalidPathLength() public {
+        uint256 depositAmount = 1 ether;
+        address[] memory vaults = new address[](0);
+
+        vm.expectRevert(Yearn4626RouterExt.InvalidPathLength.selector);
+        router.serializedRedeems(vaults, new bool[](0), depositAmount, user, 0);
+    }
+
+    function test_serializedRedeems_revertWhen_InvalidPathLength_ArrayMismatch() public {
+        vm.expectRevert(Yearn4626RouterExt.InvalidPathLength.selector);
+        uint256 depositAmount = 1 ether;
+        router.serializedRedeems(new address[](1), new bool[](0), depositAmount, user, 0);
     }
 }
