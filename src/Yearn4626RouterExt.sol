@@ -40,6 +40,8 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     error InvalidPermit2TransferTo();
     /// @notice Error for when the amount in the Permit2 transfer is not the same as the requested amount.
     error InvalidPermit2TransferAmount();
+    /// @notice Error for when the serialized deposit path is too short.
+    error InvalidPathLength();
     /// @notice Error for when the path is too short to preview the deposits/mints/withdraws/redeems.
     error PreviewPathIsTooShort();
     /// @notice Error for when the address in the path is not a vault.
@@ -57,6 +59,75 @@ contract Yearn4626RouterExt is IYearn4626RouterExt, Yearn4626Router {
     // slither-disable-next-line locked-ether
     constructor(string memory name_, address weth_, address permit2_) payable Yearn4626Router(name_, IWETH9(weth_)) {
         _PERMIT2 = IPermit2(permit2_);
+    }
+
+    /**
+     * @notice Deposits the specified `amount` of assets into series of ERC4626 vaults or Yearn Vault V2.
+     * @param path The array of addresses that represents the vaults to deposit into.
+     * @param assetsIn The amount of assets to deposit into the first vault.
+     * @param to The address to which the shares will be transferred.
+     * @param minSharesOut The minimum amount of shares expected to be received.
+     * @return sharesOut The actual amount of shares received by the `to` address.
+     */
+    function serializedDeposits(
+        address[] calldata path,
+        uint256 assetsIn,
+        address to,
+        uint256 minSharesOut
+    )
+        external
+        payable
+        returns (uint256 sharesOut)
+    {
+        if (path.length < 1) revert InvalidPathLength();
+        for (uint256 i; i < path.length - 1;) {
+            // slither-disable-next-line calls-loop
+            sharesOut = IERC4626(path[i]).deposit(assetsIn, i == (path.length - 1) ? to : address(this));
+            assetsIn = sharesOut;
+            unchecked {
+                ++i;
+            }
+        }
+        if (sharesOut < minSharesOut) revert InsufficientShares();
+    }
+
+    /**
+     * @notice Redeems the specified `shares` from a series of ERC4626 vaults or Yearn Vault V2.
+     * @param path The array of addresses that represents the vaults to redeem from.
+     * @param isYearnVaultV2 The array of boolean values that represent whether the vault is a Yearn Vault V2.
+     * @param sharesIn The amount of shares to redeem from the first vault.
+     * @param to The address to which the assets will be transferred.
+     * @param minAssetsOut The minimum amount of assets expected to be received.
+     * @return assetsOut The actual amount of assets received by the `to` address.
+     */
+    function serializedRedeems(
+        address[] calldata path,
+        bool[] calldata isYearnVaultV2,
+        uint256 sharesIn,
+        address to,
+        uint256 minAssetsOut
+    )
+        external
+        payable
+        returns (uint256 assetsOut)
+    {
+        if (path.length < 1) revert InvalidPathLength();
+        if (path.length != isYearnVaultV2.length) revert InvalidPathLength();
+        for (uint256 i; i < path.length - 1;) {
+            if (isYearnVaultV2[i]) {
+                // slither-disable-next-line calls-loop
+                assetsOut = IYearnVaultV2(path[i]).withdraw(sharesIn, i == (path.length - 1) ? to : address(this));
+            } else {
+                // slither-disable-next-line calls-loop
+                assetsOut =
+                    IERC4626(path[i]).redeem(sharesIn, i == (path.length - 1) ? to : address(this), address(this));
+            }
+            sharesIn = assetsOut;
+            unchecked {
+                ++i;
+            }
+        }
+        if (assetsOut < minAssetsOut) revert InsufficientAssets();
     }
 
     // ------------- YEARN VAULT V2 FUNCTIONS ------------- //
