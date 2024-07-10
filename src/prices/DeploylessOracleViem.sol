@@ -59,13 +59,13 @@ contract DeploylessOracleViem {
         address coveNonCompoundingGauge;
     }
 
-    address constant _COVE_YEARN_GAUGE_FACTORY = 0x842b22Eb2A1C1c54344eDdbE6959F787c2d15844;
+    address private constant _COVE_YEARN_GAUGE_FACTORY = 0x842b22Eb2A1C1c54344eDdbE6959F787c2d15844;
 
     constructor() { }
 
     function getAllPrices() public view returns (LogPricesHelper[] memory h) {
         CoveYearnGaugeFactory.GaugeInfo[] memory gaugeInfo =
-            CoveYearnGaugeFactory(COVE_YEARN_GAUGE_FACTORY).getAllGaugeInfo(100, 0);
+            CoveYearnGaugeFactory(_COVE_YEARN_GAUGE_FACTORY).getAllGaugeInfo(100, 0);
 
         h = new LogPricesHelper[](gaugeInfo.length);
         for (uint256 i = 0; i < gaugeInfo.length; i++) {
