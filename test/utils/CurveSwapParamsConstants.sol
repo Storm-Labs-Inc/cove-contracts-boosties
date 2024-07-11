@@ -169,7 +169,7 @@ contract CurveSwapParamsConstants is Constants {
 
         // i, j, swap_type, pool_type, n_coins
         // YFI -> coveyfi/yfi pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
-        curveSwapParams.swapParams[0] = [uint256(1), 0, 4, 1, 2];
+        curveSwapParams.swapParams[0] = [uint256(1), 0, 4, 10, 2];
         return curveSwapParams;
     }
 }

@@ -75,6 +75,7 @@ contract Constants is CommonBase {
     // Curve
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
     address public constant MAINNET_CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
+    address public constant MAINNET_CURVE_ROUTER_NG = 0x16C6521Dff6baB339122a0FE25a9116693265353;
 
     // Balancer
     address public constant MAINNET_BALANCER_FLASH_LOAN_PROVIDER = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
@@ -113,7 +114,7 @@ contract Constants is CommonBase {
     /// @dev pool type 3, [crvUSD, ETH/WETH, CRV]
     address public constant MAINNET_TRICRV_POOL = 0x4eBdF703948ddCEA3B11f675B4D1Fba9d2414A14;
     address public constant MAINNET_TRICRV_POOL_LP_TOKEN = MAINNET_TRICRV_POOL;
-    /// @dev pool type 1, [COVEYFI, YFI]
+    /// @dev pool type 10, [COVEYFI, YFI]
     address public constant MAINNET_COVEYFI_YFI_POOL = 0xa3f152837492340dAAf201F4dFeC6cD73A8a9760;
     address public constant MAINNET_COVEYFI_YFI_POOL_LP_TOKEN = MAINNET_COVEYFI_YFI_POOL;
 
