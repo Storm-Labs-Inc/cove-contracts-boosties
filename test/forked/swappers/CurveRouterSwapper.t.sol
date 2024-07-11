@@ -8,10 +8,6 @@ import { CurveRouterSwapper } from "src/swappers/CurveRouterSwapper.sol";
 import { MockCurveRouterSwapper } from "test/mocks/MockCurveRouterSwapper.sol";
 import { CurveSwapParamsConstants } from "test/utils/CurveSwapParamsConstants.sol";
 
-interface ICurvePool {
-    function add_liquidity(uint256[2] calldata amounts, uint256 min_mint_amount) external;
-}
-
 contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
     address public alice;
     MockCurveRouterSwapper public swapper;
