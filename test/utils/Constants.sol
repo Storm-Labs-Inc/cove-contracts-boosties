@@ -63,6 +63,8 @@ contract Constants is CommonBase {
     address public constant MAINNET_YVDAI_GAUGE = 0x128e72DfD8b00cbF9d12cB75E846AC87B83DdFc9;
     address public constant MAINNET_YVWETH_VAULT_V3 = 0xc56413869c6CDf96496f2b1eF801fEDBdFA7dDB0;
     address public constant MAINNET_YVWETH_GAUGE = 0x5943F7090282Eb66575662EADf7C60a717a7cE4D;
+    address public constant MAINNET_COVEYFI_YFI_VAULT_V2 = 0x6A5694C1b37fFA30690b6b60D8Cf89c937d408aD;
+    address public constant MAINNET_COVEYFI_YFI_GAUGE = 0x97A597CBcA514AfCc29cD300f04F98d9DbAA3624;
 
     // Yearn Vaults that are not an asset of a yearn gauge
     address public constant MAINNET_YVUSDC_VAULT_V2 = 0xa354F35829Ae975e850e23e9615b11Da1B3dC4DE;
@@ -111,6 +113,9 @@ contract Constants is CommonBase {
     /// @dev pool type 3, [crvUSD, ETH/WETH, CRV]
     address public constant MAINNET_TRICRV_POOL = 0x4eBdF703948ddCEA3B11f675B4D1Fba9d2414A14;
     address public constant MAINNET_TRICRV_POOL_LP_TOKEN = MAINNET_TRICRV_POOL;
+    /// @dev pool type 1, [COVEYFI, YFI]
+    address public constant MAINNET_COVEYFI_YFI_POOL = 0xa3f152837492340dAAf201F4dFeC6cD73A8a9760;
+    address public constant MAINNET_COVEYFI_YFI_POOL_LP_TOKEN = MAINNET_COVEYFI_YFI_POOL;
 
     // Uniswap
     address public constant MAINNET_PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
