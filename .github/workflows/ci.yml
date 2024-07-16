@@ -225,3 +225,5 @@ jobs:
           submodules: false
       - name: Run codespell
         uses: codespell-project/actions-codespell@v2
+        with:
+          skip: ./deployments

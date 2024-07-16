@@ -13,7 +13,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
     MockCurveRouterSwapper public swapper;
 
     function setUp() public override {
-        forkNetworkAt("mainnet", 19_309_223);
+        forkNetworkAt("mainnet", 20_285_549);
         super.setUp();
         _labelEthereumAddresses();
 
@@ -181,7 +181,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 2, 3]; // USDC -> ETH
         curveSwapParams.swapParams[2] = [uint256(0), 1, 1, 2, 2]; // ETH -> YFI
         uint256 amount = 1000 * 10 ** ERC20(MAINNET_USDT).decimals();
-        uint256 expected = 0.118e18;
+        uint256 expected = 172_765_798_500_221_477;
         uint256 returnVal = swapper.swap(curveSwapParams, amount, expected, address(swapper));
         assertApproxEqRel(returnVal, expected, 0.01e18);
         // Assert balances match the return value
@@ -397,6 +397,20 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         swapper.swap(curveSwapParams, amount, 0, address(swapper));
         // Assert lp token was received
         assertGt(ERC20(MAINNET_WETH).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
+
+    function test_swap_mainnetCoveyfiYfiGaugeCurveSwapParams() public {
+        swapper = new MockCurveRouterSwapper(MAINNET_CURVE_ROUTER_NG);
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        airdrop(ERC20(MAINNET_YFI), address(swapper), amount);
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetCoveyfiYfiGaugeCurveSwapParams();
+
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert lp token was received
+        assertGt(ERC20(MAINNET_COVEYFI_YFI_POOL_LP_TOKEN).balanceOf(address(swapper)), 0);
         // Assert YFI is all used up
         assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
     }

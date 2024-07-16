@@ -155,4 +155,21 @@ contract CurveSwapParamsConstants is Constants {
         curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
         return curveSwapParams;
     }
+
+    function getMainnetCoveyfiYfiGaugeCurveSwapParams()
+        public
+        pure
+        returns (CurveRouterSwapper.CurveSwapParams memory)
+    {
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
+        // [token_from, pool, token_to, pool, ...]
+        curveSwapParams.route[0] = MAINNET_YFI;
+        curveSwapParams.route[1] = MAINNET_COVEYFI_YFI_POOL;
+        curveSwapParams.route[2] = MAINNET_COVEYFI_YFI_POOL_LP_TOKEN; // expect the lp token back
+
+        // i, j, swap_type, pool_type, n_coins
+        // YFI -> coveyfi/yfi pool lp token, swap type is 4 to notify the swap router to call add_liquidity()
+        curveSwapParams.swapParams[0] = [uint256(1), 0, 4, 10, 2];
+        return curveSwapParams;
+    }
 }
