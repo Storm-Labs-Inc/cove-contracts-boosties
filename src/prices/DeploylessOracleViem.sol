@@ -27,6 +27,10 @@ interface ICurveV2 {
     function token() external view returns (address);
 }
 
+interface ICurveNG {
+    function price_oracle(uint256) external view returns (uint256);
+}
+
 interface ICurveLPToken {
     function minter() external view returns (address);
 }
@@ -60,6 +64,23 @@ contract DeploylessOracleViem {
     }
 
     address private constant _COVE_YEARN_GAUGE_FACTORY = 0x842b22Eb2A1C1c54344eDdbE6959F787c2d15844;
+    address private constant _CHAINLINK_ETH_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address private constant _CHAINLINK_CRV_PRICE_FEED = 0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f;
+    address private constant _CHAINLINK_DAI_PRICE_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+    address private constant _CHAINLINK_USDC_PRICE_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address private constant _CHAINLINK_YFI_PRICE_FEED = 0xA027702dbb89fbd58938e4324ac03B58d812b0E1;
+
+    address private constant _MAINNET_ETH_YFI_GAUGE = 0x7Fd8Af959B54A677a1D8F92265Bd0714274C56a3;
+    address private constant _MAINNET_DYFI_ETH_GAUGE = 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc;
+    address private constant _MAINNET_WETH_YETH_GAUGE = 0x81d93531720d86f0491DeE7D03f30b3b5aC24e59;
+    address private constant _MAINNET_PRISMA_YPRISMA_GAUGE = 0x6130E6cD924a40b24703407F246966D7435D4998;
+    address private constant _MAINNET_CRV_YCRV_GAUGE = 0x107717C98C8125A94D3d2Cc82b86a1b705f3A27C;
+    address private constant _MAINNET_YVUSDC_GAUGE = 0x622fA41799406B120f9a40dA843D358b7b2CFEE3;
+    address private constant _MAINNET_YVDAI_GAUGE = 0x128e72DfD8b00cbF9d12cB75E846AC87B83DdFc9;
+    address private constant _MAINNET_YVWETH_GAUGE = 0x5943F7090282Eb66575662EADf7C60a717a7cE4D;
+    address private constant _MAINNET_COVEYFI_YFI_GAUGE = 0x97A597CBcA514AfCc29cD300f04F98d9DbAA3624;
+
+    address private constant _CURVE_ETH_PRISMA_POOL = 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B;
 
     constructor() { }
 
@@ -100,37 +121,40 @@ contract DeploylessOracleViem {
 
     function _calculateAssetPrice(LogPricesHelper[] memory h, uint256 i) internal view {
         // Chainlink price
-        uint256 ethPrice = _getChainlinkPrice(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+        uint256 ethPrice = _getChainlinkPrice(_CHAINLINK_ETH_PRICE_FEED);
 
-        if (h[i].yearnGauge == 0x7Fd8Af959B54A677a1D8F92265Bd0714274C56a3) {
+        if (h[i].yearnGauge == _MAINNET_ETH_YFI_GAUGE) {
             // Curve pooled coin price
             uint256 yfiPrice = _getCoin1Price(h[i].vaultAsset, ethPrice);
             // Calculate Curve LP Price
             h[i].vaultAssetPriceInUSD = _getCurveLPTokenPrice(h[i].vaultAsset, ethPrice, yfiPrice);
-        } else if (h[i].yearnGauge == 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc) {
+        } else if (h[i].yearnGauge == _MAINNET_DYFI_ETH_GAUGE) {
             // Curve pooled coin price
             uint256 dyfiPrice = _getCoin0Price(h[i].vaultAsset, ethPrice);
             // Calculate Curve LP Price
             h[i].vaultAssetPriceInUSD = _getCurveLPTokenPrice(h[i].vaultAsset, dyfiPrice, ethPrice);
-        } else if (h[i].yearnGauge == 0x81d93531720d86f0491DeE7D03f30b3b5aC24e59) {
+        } else if (h[i].yearnGauge == _MAINNET_WETH_YETH_GAUGE) {
             // Curve pooled coin price
             uint256 yethPrice = _getCoin1Price(h[i].vaultAsset, ethPrice);
             // Calculate Curve LP Price
             h[i].vaultAssetPriceInUSD = _getCurveLPTokenPrice(h[i].vaultAsset, ethPrice, yethPrice);
-        } else if (h[i].yearnGauge == 0x6130E6cD924a40b24703407F246966D7435D4998) {
-            uint256 prismaPrice = _getCoin1Price(0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B, ethPrice);
+        } else if (h[i].yearnGauge == _MAINNET_PRISMA_YPRISMA_GAUGE) {
+            uint256 prismaPrice = _getCoin1Price(_CURVE_ETH_PRISMA_POOL, ethPrice);
             uint256 yPrismaPrice = _getCoin1Price(h[i].vaultAsset, prismaPrice);
             h[i].vaultAssetPriceInUSD = _getCurveLPTokenPrice(h[i].vaultAsset, prismaPrice, yPrismaPrice);
-        } else if (h[i].yearnGauge == 0x107717C98C8125A94D3d2Cc82b86a1b705f3A27C) {
-            uint256 crvPrice = _getChainlinkPrice(0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f);
+        } else if (h[i].yearnGauge == _MAINNET_CRV_YCRV_GAUGE) {
+            uint256 crvPrice = _getChainlinkPrice(_CHAINLINK_CRV_PRICE_FEED);
             uint256 yCrvPrice = _getCoin1Price(h[i].vaultAsset, crvPrice);
             h[i].vaultAssetPriceInUSD = _getCurveLPTokenPrice(h[i].vaultAsset, crvPrice, yCrvPrice);
-        } else if (h[i].yearnGauge == 0x622fA41799406B120f9a40dA843D358b7b2CFEE3) {
-            h[i].vaultAssetPriceInUSD = _getChainlinkPrice(0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6);
-        } else if (h[i].yearnGauge == 0x128e72DfD8b00cbF9d12cB75E846AC87B83DdFc9) {
-            h[i].vaultAssetPriceInUSD = _getChainlinkPrice(0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9);
-        } else if (h[i].yearnGauge == 0x5943F7090282Eb66575662EADf7C60a717a7cE4D) {
+        } else if (h[i].yearnGauge == _MAINNET_YVUSDC_GAUGE) {
+            h[i].vaultAssetPriceInUSD = _getChainlinkPrice(_CHAINLINK_USDC_PRICE_FEED);
+        } else if (h[i].yearnGauge == _MAINNET_YVDAI_GAUGE) {
+            h[i].vaultAssetPriceInUSD = _getChainlinkPrice(_CHAINLINK_DAI_PRICE_FEED);
+        } else if (h[i].yearnGauge == _MAINNET_YVWETH_GAUGE) {
             h[i].vaultAssetPriceInUSD = ethPrice;
+        } else if (h[i].yearnGauge == _MAINNET_COVEYFI_YFI_GAUGE) {
+            uint256 yfiPrice = _getChainlinkPrice(_CHAINLINK_YFI_PRICE_FEED);
+            h[i].vaultAssetPriceInUSD = _getCoin0Price(h[i].vaultAsset, yfiPrice);
         }
     }
 
@@ -159,8 +183,13 @@ contract DeploylessOracleViem {
         try ICurveV2(curvePoolOrLPToken).price_oracle() returns (uint256 po) {
             priceOracle = po;
         } catch {
-            // Reverted. Assume this is a curve LP token.
-            priceOracle = ICurveV2(ICurveLPToken(curvePoolOrLPToken).minter()).price_oracle();
+            // Assume this is an NG curve pool and try getting price oracle of coin 0
+            try ICurveNG(curvePoolOrLPToken).price_oracle(0) returns (uint256 po) {
+                priceOracle = po;
+            } catch {
+                // Reverted. Assume this is a curve LP token.
+                priceOracle = ICurveV2(ICurveLPToken(curvePoolOrLPToken).minter()).price_oracle();
+            }
         }
     }
 
