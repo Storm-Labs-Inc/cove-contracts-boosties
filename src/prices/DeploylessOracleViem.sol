@@ -69,6 +69,7 @@ contract DeploylessOracleViem {
     address private constant _CHAINLINK_DAI_PRICE_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
     address private constant _CHAINLINK_USDC_PRICE_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address private constant _CHAINLINK_YFI_PRICE_FEED = 0xA027702dbb89fbd58938e4324ac03B58d812b0E1;
+    address private constant _CHAINLINK_CRVUSD_PRICE_FEED = 0xEEf0C605546958c1f899b6fB336C20671f9cD49F;
 
     address private constant _MAINNET_ETH_YFI_GAUGE = 0x7Fd8Af959B54A677a1D8F92265Bd0714274C56a3;
     address private constant _MAINNET_DYFI_ETH_GAUGE = 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc;
@@ -79,6 +80,9 @@ contract DeploylessOracleViem {
     address private constant _MAINNET_YVDAI_GAUGE = 0x128e72DfD8b00cbF9d12cB75E846AC87B83DdFc9;
     address private constant _MAINNET_YVWETH_GAUGE = 0x5943F7090282Eb66575662EADf7C60a717a7cE4D;
     address private constant _MAINNET_COVEYFI_YFI_GAUGE = 0x97A597CBcA514AfCc29cD300f04F98d9DbAA3624;
+    address private constant _MAINNET_YVDAI_2_GAUGE = 0x38E3d865e34f7367a69f096C80A4fc329DB38BF4;
+    address private constant _MAINNET_YVWETH_2_GAUGE = 0x8E2485942B399EA41f3C910c1Bb8567128f79859;
+    address private constant _MAINNET_CRVUSD_2_GAUGE = 0x71c3223D6f836f84cAA7ab5a68AAb6ECe21A9f3b;
 
     address private constant _CURVE_ETH_PRISMA_POOL = 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B;
 
@@ -155,6 +159,12 @@ contract DeploylessOracleViem {
         } else if (h[i].yearnGauge == _MAINNET_COVEYFI_YFI_GAUGE) {
             uint256 yfiPrice = _getChainlinkPrice(_CHAINLINK_YFI_PRICE_FEED);
             h[i].vaultAssetPriceInUSD = _getCoin0Price(h[i].vaultAsset, yfiPrice);
+        } else if (h[i].yearnGauge == _MAINNET_YVDAI_2_GAUGE) {
+            h[i].vaultAssetPriceInUSD = _getChainlinkPrice(_CHAINLINK_DAI_PRICE_FEED);
+        } else if (h[i].yearnGauge == _MAINNET_YVWETH_2_GAUGE) {
+            h[i].vaultAssetPriceInUSD = ethPrice;
+        } else if (h[i].yearnGauge == _MAINNET_CRVUSD_2_GAUGE) {
+            h[i].vaultAssetPriceInUSD = _getChainlinkPrice(_CHAINLINK_CRVUSD_PRICE_FEED);
         }
     }
 

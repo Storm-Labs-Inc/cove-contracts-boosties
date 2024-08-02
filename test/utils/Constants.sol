@@ -211,6 +211,7 @@ contract Constants is CommonBase {
         vm.label(MAINNET_YVUSDS_VAULT_V3_1, "YVUSDS_VAULT_V3_1");
         vm.label(MAINNET_YVUSDS_1_GAUGE, "YVUSDS_1_GAUGE");
         vm.label(MAINNET_DYFI_REDEMPTION, "DYFI_REDEMPTION");
+        vm.label(MAINNET_PRISMA_YPRISMA_POOL, "PRISMA_YPRISMA_POOL");
         // StakeDAO
         vm.label(MAINNET_STAKE_DAO_ETH_YFI_GAUGE, "STAKE_DAO_ETH_YFI_GAUGE");
         // Curve
@@ -219,6 +220,7 @@ contract Constants is CommonBase {
         vm.label(MAINNET_CURVE_ROUTER_NG, "CURVE_ROUTER_NG");
         vm.label(MAINNET_CURVE_ROUTER_NG_V1_2, "CURVE_ROUTER_NG_V1_2");
         vm.label(MAINNET_ETH_YFI_POOL_LP_TOKEN, "CURVE_ETH_YFI_LP_TOKEN");
+
         // Curve Pools
         vm.label(MAINNET_CRV3POOL, "CRV3POOL");
         vm.label(MAINNET_DYFI_ETH_POOL, "DYFI_ETH_POOL");
@@ -234,6 +236,10 @@ contract Constants is CommonBase {
         vm.label(MAINNET_COVEYFI_YFI_POOL, "COVEYFI_YFI_POOL");
         vm.label(MAINNET_SCRVUSD_SUSDS_POOL, "SCRVUSD_SUSDS_POOL");
         vm.label(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, "TOKENIZED_STRATEGY_IMPLEMENTATION");
+        vm.label(MAINNET_ETH_YFI_POOL_LP_TOKEN, "CURVE_ETH_YFI_LP_TOKEN");
+        vm.label(MAINNET_CRV_YCRV_POOL, "CURVE_CRV_YCRV_POOL");
+        vm.label(MAINNET_DYFI_ETH_POOL_LP_TOKEN, "CURVE_DYFI_ETH_POOL_LP_TOKEN");
+
         // Uniswap
         vm.label(MAINNET_PERMIT2, "PERMIT2");
         // Sablier V2

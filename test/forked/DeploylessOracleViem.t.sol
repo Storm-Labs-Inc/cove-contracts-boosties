@@ -29,10 +29,39 @@ contract DeploylessOracleViem_ForkedTest is BaseTest {
         for (uint256 i = 0; i < prices.length; i++) {
             DeploylessOracleViem.LogPricesHelper memory price = prices[i];
 
-            // Check that addresses are not zero
-            assertTrue(price.yearnGauge != address(0), "Yearn gauge address is zero");
-            assertTrue(price.yearnVault != address(0), "Yearn vault address is zero");
-            assertTrue(price.vaultAsset != address(0), "Vault asset address is zero");
+            // Check yearn gauge address
+            assertTrue(
+                price.yearnGauge == MAINNET_ETH_YFI_GAUGE || price.yearnGauge == MAINNET_DYFI_ETH_GAUGE
+                    || price.yearnGauge == MAINNET_WETH_YETH_GAUGE || price.yearnGauge == MAINNET_PRISMA_YPRISMA_GAUGE
+                    || price.yearnGauge == MAINNET_CRV_YCRV_GAUGE || price.yearnGauge == MAINNET_YVUSDC_GAUGE
+                    || price.yearnGauge == MAINNET_YVDAI_GAUGE || price.yearnGauge == MAINNET_YVWETH_GAUGE
+                    || price.yearnGauge == MAINNET_COVEYFI_YFI_GAUGE || price.yearnGauge == MAINNET_YVDAI_2_GAUGE
+                    || price.yearnGauge == MAINNET_YVWETH_2_GAUGE || price.yearnGauge == MAINNET_YVCRVUSD_2_GAUGE,
+                "Unexpected yearn gauge address"
+            );
+
+            // Check yearn vault address
+            assertTrue(
+                price.yearnVault == MAINNET_ETH_YFI_VAULT_V2 || price.yearnVault == MAINNET_DYFI_ETH_VAULT_V2
+                    || price.yearnVault == MAINNET_WETH_YETH_VAULT_V2 || price.yearnVault == MAINNET_PRISMA_YPRISMA_VAULT_V2
+                    || price.yearnVault == MAINNET_CRV_YCRV_VAULT_V2 || price.yearnVault == MAINNET_YVUSDC_VAULT_V3
+                    || price.yearnVault == MAINNET_YVDAI_VAULT_V3 || price.yearnVault == MAINNET_YVWETH_VAULT_V3
+                    || price.yearnVault == MAINNET_COVEYFI_YFI_VAULT_V2 || price.yearnVault == MAINNET_YVDAI_VAULT_V3_2
+                    || price.yearnVault == MAINNET_YVWETH_VAULT_V3_2 || price.yearnVault == MAINNET_YVCRVUSD_VAULT_V3_2,
+                "Unexpected yearn vault address"
+            );
+
+            // Check vault asset address
+            assertTrue(
+                price.vaultAsset == MAINNET_YFI || price.vaultAsset == MAINNET_DAI || price.vaultAsset == MAINNET_WETH
+                    || price.vaultAsset == MAINNET_PRISMA || price.vaultAsset == MAINNET_YCRV
+                    || price.vaultAsset == MAINNET_USDC || price.vaultAsset == MAINNET_WETH_YETH_POOL
+                    || price.vaultAsset == MAINNET_ETH_YFI_POOL_LP_TOKEN
+                    || price.vaultAsset == MAINNET_DYFI_ETH_POOL_LP_TOKEN || price.vaultAsset == MAINNET_CRV_YCRV_POOL
+                    || price.vaultAsset == MAINNET_PRISMA_YPRISMA_POOL || price.vaultAsset == MAINNET_COVEYFI_YFI_POOL,
+                "Unexpected vault asset address"
+            );
+            // Check cove yearn strategy address
             assertTrue(price.coveYearnStrategy != address(0), "Cove Yearn strategy address is zero");
 
             // Check that names are not empty
