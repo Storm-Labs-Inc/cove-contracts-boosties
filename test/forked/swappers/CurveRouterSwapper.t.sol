@@ -13,7 +13,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
     MockCurveRouterSwapper public swapper;
 
     function setUp() public override {
-        forkNetworkAt("mainnet", 20_285_549);
+        forkNetworkAt("mainnet", 20_442_138);
         super.setUp();
         _labelEthereumAddresses();
 
@@ -106,7 +106,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         uint256 expected = 999 * 10 ** ERC20(MAINNET_USDC).decimals();
 
         // Assert return value is expected
-        uint256 returnVal = swapper.swap(curveSwapParams, amount, expected, address(swapper));
+        uint256 returnVal = swapper.swap(curveSwapParams, amount, 0, address(swapper));
         assertApproxEqRel(returnVal, expected, 0.01e18);
         // Assert balances match the return value
         assertEq(ERC20(MAINNET_USDC).balanceOf(address(swapper)), returnVal);
@@ -129,7 +129,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         curveSwapParams.swapParams[0] = [uint256(0), 2, 1, 1, 3]; // DAI -> USDT
         curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 3, 3]; // USDT -> WETH
         uint256 amount = 1000 * 10 ** ERC20(MAINNET_DAI).decimals();
-        uint256 expected = 0.321e18;
+        uint256 expected = 0.329e18;
 
         // Assert return value is expected
         uint256 returnVal = swapper.swap(curveSwapParams, amount, expected, address(swapper));
@@ -181,7 +181,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 2, 3]; // USDC -> ETH
         curveSwapParams.swapParams[2] = [uint256(0), 1, 1, 2, 2]; // ETH -> YFI
         uint256 amount = 1000 * 10 ** ERC20(MAINNET_USDT).decimals();
-        uint256 expected = 172_765_798_500_221_477;
+        uint256 expected = 184_220_632_912_974_240;
         uint256 returnVal = swapper.swap(curveSwapParams, amount, expected, address(swapper));
         assertApproxEqRel(returnVal, expected, 0.01e18);
         // Assert balances match the return value
@@ -411,6 +411,48 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         swapper.swap(curveSwapParams, amount, 0, address(swapper));
         // Assert lp token was received
         assertGt(ERC20(MAINNET_COVEYFI_YFI_POOL_LP_TOKEN).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
+
+    function test_swap_mainnetYvdai2GaugeCurveSwapParams() public {
+        swapper = new MockCurveRouterSwapper(MAINNET_CURVE_ROUTER_NG);
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        airdrop(ERC20(MAINNET_YFI), address(swapper), amount);
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetYvdai2GaugeCurveSwapParams();
+
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert DAI was received
+        assertGt(ERC20(MAINNET_DAI).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
+
+    function test_swap_mainnetYvweth2GaugeCurveSwapParams() public {
+        swapper = new MockCurveRouterSwapper(MAINNET_CURVE_ROUTER_NG);
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        airdrop(ERC20(MAINNET_YFI), address(swapper), amount);
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetYvweth2GaugeCurveSwapParams();
+
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert WETH was received
+        assertGt(ERC20(MAINNET_WETH).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
+
+    function test_swap_mainnetYvcrvusd2GaugeCurveSwapParams() public {
+        swapper = new MockCurveRouterSwapper(MAINNET_CURVE_ROUTER_NG);
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        airdrop(ERC20(MAINNET_YFI), address(swapper), amount);
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetYvcrvusd2GaugeCurveSwapParams();
+
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert CRVUSD was received
+        assertGt(ERC20(MAINNET_CRVUSD).balanceOf(address(swapper)), 0);
         // Assert YFI is all used up
         assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
     }
