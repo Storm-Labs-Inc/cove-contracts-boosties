@@ -33,6 +33,7 @@ contract Constants is CommonBase {
     address public constant MAINNET_YCRV = 0xFCc5c47bE19d06BF83eB04298b026F81069ff65b;
     address public constant MAINNET_PRISMA = 0xdA47862a83dac0c112BA89c6abC2159b95afd71C;
     address public constant MAINNET_YPRISMA = 0x9d5b5925Fb3C8fEE6BC6b5d4f3b6eaA2f3d2dF3b;
+    address public constant MAINNET_CRVUSD = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
 
     // Snapshot
     address public constant MAINNET_SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;

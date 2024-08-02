@@ -172,4 +172,33 @@ contract CurveSwapParamsConstants is Constants {
         curveSwapParams.swapParams[0] = [uint256(1), 0, 4, 10, 2];
         return curveSwapParams;
     }
+
+    function getMainnetYvdai2GaugeCurveSwapParams() public pure returns (CurveRouterSwapper.CurveSwapParams memory) {
+        return getMainnetYvdaiGaugeCurveSwapParams();
+    }
+
+    function getMainnetYvweth2GaugeCurveSwapParams() public pure returns (CurveRouterSwapper.CurveSwapParams memory) {
+        return getMainnetYvwethGaugeCurveSwapParams();
+    }
+
+    function getMainnetYvcrvusd2GaugeCurveSwapParams()
+        public
+        pure
+        returns (CurveRouterSwapper.CurveSwapParams memory)
+    {
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams;
+        // [token_from, pool, token_to, pool, ...]
+        curveSwapParams.route[0] = MAINNET_YFI;
+        curveSwapParams.route[1] = MAINNET_ETH_YFI_POOL;
+        curveSwapParams.route[2] = MAINNET_WETH;
+        curveSwapParams.route[3] = MAINNET_TRICRV_POOL;
+        curveSwapParams.route[4] = MAINNET_CRVUSD;
+
+        // i, j, swap_type, pool_type, n_coins
+        // YFI -> WETH
+        curveSwapParams.swapParams[0] = [uint256(1), 0, 1, 2, 2];
+        // WETH -> CRVUSD
+        curveSwapParams.swapParams[1] = [uint256(1), 0, 1, 3, 3];
+        return curveSwapParams;
+    }
 }
