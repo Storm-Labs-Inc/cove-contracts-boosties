@@ -10,10 +10,9 @@ contract DeploylessOracleViem_ForkedTest is BaseTest {
 
     function setUp() public override {
         // Fork mainnet
-        forkNetworkAt("mainnet", 20_320_259);
+        forkNetworkAt("mainnet", 20_458_500);
         _labelEthereumAddresses();
         super.setUp();
-        vm.createSelectFork(vm.rpcUrl("mainnet"));
 
         // Deploy the oracle
         oracle = new DeploylessOracleViem();
