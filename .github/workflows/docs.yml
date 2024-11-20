@@ -12,7 +12,7 @@ env:
 jobs:
   deploy:
     name: Deploy forge doc to GitHub Pages
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       contents: write # To push a branch
       pages: write # To push to a GitHub Pages site
