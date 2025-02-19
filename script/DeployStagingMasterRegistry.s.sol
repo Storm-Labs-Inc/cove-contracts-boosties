@@ -12,14 +12,10 @@ contract DeployStagingMasterRegistry is BaseDeployScript {
     // Using default deployer function
     using DefaultDeployerFunction for Deployer;
 
-    address public broadcaster;
     address public stagingMasterRegistry;
-    address public constant COVE_STAGING_COMMUNITY_MULTISIG = 0xC8edE693E4B8cdf4F3C42bf141D9054050E5a728;
-    address public constant COVE_STAGING_OPS_MULTISIG = 0xaAc26aee89DeEFf5D0BE246391FABDfa547dc70C;
 
     function deploy() public override {
-        broadcaster = vm.envAddress("DEPLOYER_ADDRESS");
-        require(broadcaster == msg.sender, "Deployer address mismatch. Is --sender set?");
+        require(MAINNET_COVE_DEPLOYER == msg.sender, "Sender must be mainnet deployer");
         deployer.setAutoBroadcast(true);
 
         // Deploy Staging Master Registry

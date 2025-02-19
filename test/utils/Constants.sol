@@ -142,6 +142,8 @@ contract Constants is CommonBase {
     address public constant MAINNET_DEFENDER_RELAYER = 0xc5ccE4661eb87B95Df717b4d25a76eA137F081f7;
     address public constant MAINNET_COVE_COMMUNITY_MULTISIG = 0x7Bd578354b0B2f02E656f1bDC0e41a80f860534b;
     address public constant MAINNET_COVE_OPS_MULTISIG = 0x71BDC5F3AbA49538C76d58Bc2ab4E3A1118dAe4c;
+    address public constant COVE_STAGING_COMMUNITY_MULTISIG = 0xC8edE693E4B8cdf4F3C42bf141D9054050E5a728;
+    address public constant COVE_STAGING_OPS_MULTISIG = 0xaAc26aee89DeEFf5D0BE246391FABDfa547dc70C;
 
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
