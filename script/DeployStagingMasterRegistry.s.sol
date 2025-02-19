@@ -28,7 +28,7 @@ contract DeployStagingMasterRegistry is BaseDeployScript {
     function deployStagingMasterRegistry() public deployIfMissing("Staging_MasterRegistry") returns (address) {
         return address(
             deployer.deploy_MasterRegistry(
-                "Staging_MasterRegistry", COVE_STAGING_COMMUNITY_MULTISIG, COVE_STAGING_OPS_MULTISIG, options
+                "Staging_MasterRegistry", COVE_STAGING_COMMUNITY_MULTISIG, MAINNET_COVE_DEPLOYER, options
             )
         );
     }
@@ -36,7 +36,7 @@ contract DeployStagingMasterRegistry is BaseDeployScript {
     function verifyPostDeploymentState() public view {
         // Verify roles have been properly set for MasterRegistry
         _verifyRole("Staging_MasterRegistry", DEFAULT_ADMIN_ROLE, COVE_STAGING_COMMUNITY_MULTISIG);
-        _verifyRole("Staging_MasterRegistry", MANAGER_ROLE, COVE_STAGING_OPS_MULTISIG);
+        _verifyRole("Staging_MasterRegistry", MANAGER_ROLE, MAINNET_COVE_DEPLOYER);
         _verifyRoleCount("Staging_MasterRegistry", DEFAULT_ADMIN_ROLE, 1);
         _verifyRoleCount("Staging_MasterRegistry", MANAGER_ROLE, 2);
     }
