@@ -7,7 +7,7 @@ import { Constants } from "test/utils/Constants.sol";
 /**
  * @title Curve Swap Params Constants
  * @notice Contains constant parameters for Curve swaps
- * v1,2 expects
+ * CurveRouterNGv1.2 expects below params
  * def exchange(
  *     _route: address[11],
  *     _swap_params: uint256[5][5],
