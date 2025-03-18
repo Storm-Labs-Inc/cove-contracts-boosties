@@ -13,7 +13,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
     MockCurveRouterSwapper public swapper;
 
     function setUp() public override {
-        forkNetworkAt("mainnet", 20_442_138);
+        forkNetworkAt("mainnet", 22_076_633);
         super.setUp();
         _labelEthereumAddresses();
 
@@ -453,6 +453,21 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         swapper.swap(curveSwapParams, amount, 0, address(swapper));
         // Assert CRVUSD was received
         assertGt(ERC20(MAINNET_CRVUSD).balanceOf(address(swapper)), 0);
+        // Assert YFI is all used up
+        assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
+    }
+
+    // New test for USDs integration
+    function test_swap_mainnetUsdsGaugeCurveSwapParams() public {
+        swapper = new MockCurveRouterSwapper(MAINNET_CURVE_ROUTER_NG_V1_2);
+        uint256 amount = 1000 * 10 ** ERC20(MAINNET_YFI).decimals();
+        airdrop(ERC20(MAINNET_YFI), address(swapper), amount);
+        swapper.approveTokenForSwap(MAINNET_YFI);
+        CurveRouterSwapper.CurveSwapParams memory curveSwapParams = getMainnetYvusdsGaugeCurveSwapParams();
+
+        swapper.swap(curveSwapParams, amount, 0, address(swapper));
+        // Assert USDs was received
+        assertGt(ERC20(MAINNET_USDS).balanceOf(address(swapper)), 0);
         // Assert YFI is all used up
         assertEq(ERC20(MAINNET_YFI).balanceOf(address(swapper)), 0);
     }

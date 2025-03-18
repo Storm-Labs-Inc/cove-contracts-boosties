@@ -60,3 +60,6 @@ lcov.info
 crytic-export/
 # echidna corpus
 echidna/echidna-corpus
+
+.cursor/
+memory-bank/

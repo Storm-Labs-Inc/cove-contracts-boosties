@@ -34,6 +34,9 @@ contract Constants is CommonBase {
     address public constant MAINNET_PRISMA = 0xdA47862a83dac0c112BA89c6abC2159b95afd71C;
     address public constant MAINNET_YPRISMA = 0x9d5b5925Fb3C8fEE6BC6b5d4f3b6eaA2f3d2dF3b;
     address public constant MAINNET_CRVUSD = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
+    address public constant MAINNET_SCRVUSD = 0x0655977FEb2f289A4aB78af67BAB0d17aAb84367;
+    address public constant MAINNET_USDS = 0xdC035D45d973E3EC169d2276DDab16f1e407384F;
+    address public constant MAINNET_SUSDS = 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD;
 
     // Snapshot
     address public constant MAINNET_SNAPSHOT_DELEGATE_REGISTRY = 0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446;
@@ -72,6 +75,8 @@ contract Constants is CommonBase {
     address public constant MAINNET_YVWETH_2_GAUGE = 0x8E2485942B399EA41f3C910c1Bb8567128f79859;
     address public constant MAINNET_YVCRVUSD_VAULT_V3_2 = 0xBF319dDC2Edc1Eb6FDf9910E39b37Be221C8805F;
     address public constant MAINNET_YVCRVUSD_2_GAUGE = 0x71c3223D6f836f84cAA7ab5a68AAb6ECe21A9f3b;
+    address public constant MAINNET_YVUSDS_VAULT_V3_1 = 0x182863131F9a4630fF9E27830d945B1413e347E8;
+    address public constant MAINNET_YVUSDS_1_GAUGE = 0xd57aEa3686d623dA2dCEbc87010a4F2F38Ac7B15;
 
     // Yearn Vaults that are not an asset of a yearn gauge
     address public constant MAINNET_YVUSDC_VAULT_V2 = 0xa354F35829Ae975e850e23e9615b11Da1B3dC4DE;
@@ -83,6 +88,7 @@ contract Constants is CommonBase {
     address public constant MAINNET_CURVE_CRYPTO_FACTORY = 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99;
     address public constant MAINNET_CURVE_ROUTER = 0xF0d4c12A5768D806021F80a262B4d39d26C58b8D;
     address public constant MAINNET_CURVE_ROUTER_NG = 0x16C6521Dff6baB339122a0FE25a9116693265353;
+    address public constant MAINNET_CURVE_ROUTER_NG_V1_2 = 0x45312ea0eFf7E09C83CBE249fa1d7598c4C8cd4e;
 
     // Balancer
     address public constant MAINNET_BALANCER_FLASH_LOAN_PROVIDER = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
@@ -124,7 +130,9 @@ contract Constants is CommonBase {
     /// @dev pool type 10, [COVEYFI, YFI]
     address public constant MAINNET_COVEYFI_YFI_POOL = 0xa3f152837492340dAAf201F4dFeC6cD73A8a9760;
     address public constant MAINNET_COVEYFI_YFI_POOL_LP_TOKEN = MAINNET_COVEYFI_YFI_POOL;
-
+    /// @dev pool type 10, [scrvUSD, sUSDS]
+    address public constant MAINNET_SCRVUSD_SUSDS_POOL = 0xfD1627E3f3469C8392C8c3A261D8F0677586e5e1;
+    address public constant MAINNET_SCRVUSD_SUSDS_POOL_LP_TOKEN = MAINNET_SCRVUSD_SUSDS_POOL;
     // Uniswap
     address public constant MAINNET_PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
@@ -165,6 +173,10 @@ contract Constants is CommonBase {
         vm.label(MAINNET_WETH, "WETH");
         vm.label(MAINNET_YFI, "YFI");
         vm.label(MAINNET_FRAX, "FRAX");
+        vm.label(MAINNET_CRVUSD, "CRVUSD");
+        vm.label(MAINNET_SCRVUSD, "SCRVUSD");
+        vm.label(MAINNET_USDS, "USDS");
+        vm.label(MAINNET_SUSDS, "SUSDS");
         // Snapshot
         vm.label(MAINNET_SNAPSHOT_DELEGATE_REGISTRY, "SNAPSHOT_DELEGATE_REGISTRY");
         // Yearn
@@ -195,12 +207,16 @@ contract Constants is CommonBase {
         vm.label(MAINNET_YVWETH_2_GAUGE, "YVWETH_2_GAUGE");
         vm.label(MAINNET_YVCRVUSD_VAULT_V3_2, "YVCRVUSD_VAULT_V3_2");
         vm.label(MAINNET_YVCRVUSD_2_GAUGE, "YVCRVUSD_2_GAUGE");
+        vm.label(MAINNET_YVUSDS_VAULT_V3_1, "YVUSDS_VAULT_V3_1");
+        vm.label(MAINNET_YVUSDS_1_GAUGE, "YVUSDS_1_GAUGE");
         vm.label(MAINNET_DYFI_REDEMPTION, "DYFI_REDEMPTION");
         // StakeDAO
         vm.label(MAINNET_STAKE_DAO_ETH_YFI_GAUGE, "STAKE_DAO_ETH_YFI_GAUGE");
         // Curve
         vm.label(MAINNET_CURVE_CRYPTO_FACTORY, "CURVE_CRYPTO_FACTORY");
         vm.label(MAINNET_CURVE_ROUTER, "CURVE_ROUTER");
+        vm.label(MAINNET_CURVE_ROUTER_NG, "CURVE_ROUTER_NG");
+        vm.label(MAINNET_CURVE_ROUTER_NG_V1_2, "CURVE_ROUTER_NG_V1_2");
         vm.label(MAINNET_ETH_YFI_POOL_LP_TOKEN, "CURVE_ETH_YFI_LP_TOKEN");
         // Curve Pools
         vm.label(MAINNET_CRV3POOL, "CRV3POOL");
@@ -210,6 +226,12 @@ contract Constants is CommonBase {
         vm.label(MAINNET_ETH_YFI_POOL, "YFI_ETH_POOL");
         vm.label(MAINNET_FRAX_USDC_POOL, "FRAX_USDC_POOL");
         vm.label(MAINNET_WETH_YETH_POOL, "ETH_WETH_YETH_POOL");
+        vm.label(MAINNET_PRISMA_YPRISMA_POOL, "PRISMA_YPRISMA_POOL");
+        vm.label(MAINNET_CRV_YCRV_POOL, "CRV_YCRV_POOL");
+        vm.label(MAINNET_ETH_PRISMA_POOL, "ETH_PRISMA_POOL");
+        vm.label(MAINNET_TRICRV_POOL, "TRICRV_POOL");
+        vm.label(MAINNET_COVEYFI_YFI_POOL, "COVEYFI_YFI_POOL");
+        vm.label(MAINNET_SCRVUSD_SUSDS_POOL, "SCRVUSD_SUSDS_POOL");
         vm.label(MAINNET_TOKENIZED_STRATEGY_IMPLEMENTATION, "TOKENIZED_STRATEGY_IMPLEMENTATION");
         // Uniswap
         vm.label(MAINNET_PERMIT2, "PERMIT2");
