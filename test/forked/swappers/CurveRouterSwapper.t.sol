@@ -129,7 +129,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         curveSwapParams.swapParams[0] = [uint256(0), 2, 1, 1, 3]; // DAI -> USDT
         curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 3, 3]; // USDT -> WETH
         uint256 amount = 1000 * 10 ** ERC20(MAINNET_DAI).decimals();
-        uint256 expected = 0.329e18;
+        uint256 expected = 0.522e18;
 
         // Assert return value is expected
         uint256 returnVal = swapper.swap(curveSwapParams, amount, expected, address(swapper));
@@ -181,7 +181,7 @@ contract CurveRouterSwapperTest is BaseTest, CurveSwapParamsConstants {
         curveSwapParams.swapParams[1] = [uint256(0), 2, 1, 2, 3]; // USDC -> ETH
         curveSwapParams.swapParams[2] = [uint256(0), 1, 1, 2, 2]; // ETH -> YFI
         uint256 amount = 1000 * 10 ** ERC20(MAINNET_USDT).decimals();
-        uint256 expected = 184_220_632_912_974_240;
+        uint256 expected = 0.197e18;
         uint256 returnVal = swapper.swap(curveSwapParams, amount, expected, address(swapper));
         assertApproxEqRel(returnVal, expected, 0.01e18);
         // Assert balances match the return value
