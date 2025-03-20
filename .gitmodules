@@ -23,7 +23,7 @@
 	url = https://github.com/yearn/Yearn-ERC4626-Router
 [submodule "lib/forge-deploy"]
 	path = lib/forge-deploy
-	url = https://github.com/Abracadabra-money/forge-deploy
+	url = https://github.com/Storm-Labs-Inc/forge-deploy
 [submodule "lib/tokenized-strategy"]
 	path = lib/tokenized-strategy
 	url = https://github.com/yearn/tokenized-strategy
