@@ -90,7 +90,7 @@ contract Deployer20250115 is BaseDeployScript, CurveSwapParamsConstants {
         YearnGaugeStrategy(address(strategy)).setDYfiRedeemer(deployer.getAddress("DYfiRedeemer"));
         ITokenizedStrategy(address(strategy)).setPerformanceFee(0);
         ITokenizedStrategy(address(strategy)).setPerformanceFeeRecipient(treasury);
-        ITokenizedStrategy(address(strategy)).setKeeper(MAINNET_DEFENDER_RELAYER);
+        ITokenizedStrategy(address(strategy)).setKeeper(BOOSTIES_SILVERBACK_AWS_ACCOUNT);
         ITokenizedStrategy(address(strategy)).setEmergencyAdmin(admin);
         ITokenizedStrategy(address(strategy)).setPendingManagement(manager);
 
