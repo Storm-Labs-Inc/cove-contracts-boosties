@@ -70,6 +70,7 @@ contract DeploylessOracleViem {
     address private constant _CHAINLINK_USDC_PRICE_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address private constant _CHAINLINK_YFI_PRICE_FEED = 0xA027702dbb89fbd58938e4324ac03B58d812b0E1;
     address private constant _CHAINLINK_CRVUSD_PRICE_FEED = 0xEEf0C605546958c1f899b6fB336C20671f9cD49F;
+    address private constant _CHAINLINK_USDS_PRICE_FEED = 0xfF30586cD0F29eD462364C7e81375FC0C71219b1;
 
     address private constant _MAINNET_ETH_YFI_GAUGE = 0x7Fd8Af959B54A677a1D8F92265Bd0714274C56a3;
     address private constant _MAINNET_DYFI_ETH_GAUGE = 0x28da6dE3e804bDdF0aD237CFA6048f2930D0b4Dc;
@@ -83,6 +84,7 @@ contract DeploylessOracleViem {
     address private constant _MAINNET_YVDAI_2_GAUGE = 0x38E3d865e34f7367a69f096C80A4fc329DB38BF4;
     address private constant _MAINNET_YVWETH_2_GAUGE = 0x8E2485942B399EA41f3C910c1Bb8567128f79859;
     address private constant _MAINNET_CRVUSD_2_GAUGE = 0x71c3223D6f836f84cAA7ab5a68AAb6ECe21A9f3b;
+    address private constant _MAINNET_YVUSDS_1_GAUGE = 0xd57aEa3686d623dA2dCEbc87010a4F2F38Ac7B15;
 
     address private constant _CURVE_ETH_PRISMA_POOL = 0x322135Dd9cBAE8Afa84727d9aE1434b5B3EBA44B;
 
@@ -165,6 +167,8 @@ contract DeploylessOracleViem {
             h[i].vaultAssetPriceInUSD = ethPrice;
         } else if (h[i].yearnGauge == _MAINNET_CRVUSD_2_GAUGE) {
             h[i].vaultAssetPriceInUSD = _getChainlinkPrice(_CHAINLINK_CRVUSD_PRICE_FEED);
+        } else if (h[i].yearnGauge == _MAINNET_YVUSDS_1_GAUGE) {
+            h[i].vaultAssetPriceInUSD = _getChainlinkPrice(_CHAINLINK_USDS_PRICE_FEED);
         }
     }
 

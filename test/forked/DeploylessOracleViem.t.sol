@@ -10,7 +10,7 @@ contract DeploylessOracleViem_ForkedTest is BaseTest {
 
     function setUp() public override {
         // Fork mainnet
-        forkNetworkAt("mainnet", 20_458_500);
+        forkNetworkAt("mainnet", 22_118_574);
         _labelEthereumAddresses();
         super.setUp();
 
@@ -38,6 +38,7 @@ contract DeploylessOracleViem_ForkedTest is BaseTest {
         _includes(prices, MAINNET_YVDAI_2_GAUGE);
         _includes(prices, MAINNET_YVWETH_2_GAUGE);
         _includes(prices, MAINNET_YVCRVUSD_2_GAUGE);
+        _includes(prices, MAINNET_YVUSDS_1_GAUGE);
         for (uint256 i = 0; i < prices.length; i++) {
             DeploylessOracleViem.LogPricesHelper memory price = prices[i];
             // Check cove yearn strategy address
@@ -61,7 +62,7 @@ contract DeploylessOracleViem_ForkedTest is BaseTest {
         }
     }
 
-    function _includes(DeploylessOracleViem.LogPricesHelper[] memory priceData, address lookup) public {
+    function _includes(DeploylessOracleViem.LogPricesHelper[] memory priceData, address lookup) public view {
         for (uint256 i = 0; i < priceData.length; i++) {
             if (priceData[i].yearnGauge == lookup) {
                 console.log("Found yearn gauge: %s", lookup);
