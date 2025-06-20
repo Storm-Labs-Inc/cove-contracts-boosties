@@ -4,6 +4,7 @@ pragma solidity 0.8.18;
 import { BaseDeployScript } from "script/BaseDeployScript.s.sol";
 import { DeployerFunctions, DefaultDeployerFunction, Deployer } from "generated/deployer/DeployerFunctions.g.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { MasterRegistry } from "src/MasterRegistry.sol";
 import { DYFIRedeemerV2 } from "src/DYFIRedeemerV2.sol";
 
 contract DeployDYFIRedeemerV2 is BaseDeployScript {
@@ -23,6 +24,11 @@ contract DeployDYFIRedeemerV2 is BaseDeployScript {
 
         // Deploy DYFIRedeemerV2
         dYfiRedeemerV2 = deployDYFIRedeemerV2();
+
+        // Registry in MasterRegistry
+        address masterRegistry = deployer.getAddress("MasterRegistry");
+        vm.broadcast();
+        MasterRegistry(masterRegistry).updateRegistry("DYFIRedeemer", dYfiRedeemerV2);
 
         // Verify deployments
         verifyPostDeploymentState();

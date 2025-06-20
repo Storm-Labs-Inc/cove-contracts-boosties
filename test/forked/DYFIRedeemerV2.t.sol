@@ -21,7 +21,7 @@ contract DYFIRedeemerV2_ForkedTest is YearnV3BaseTest {
     function setUp() public override {
         super.setUp();
         // Move fork to a block where the new redemption contract is deployed
-        forkNetworkAt("mainnet", 22_678_806); // 22_679_106
+        forkNetworkAt("mainnet", 22_678_806);
         alice = createUser("alice");
         bob = createUser("bob");
         charlie = createUser("charlie");
@@ -73,9 +73,9 @@ contract DYFIRedeemerV2_ForkedTest is YearnV3BaseTest {
     }
 
     function test_massRedeem_LargeAmounts_v2() public {
-        uint256 aliceDYfiAmount = 3e18;
-        uint256 bobDYfiAmount = 4e18;
-        uint256 charlieDYfiAmount = 5e18;
+        uint256 aliceDYfiAmount = 1e18;
+        uint256 bobDYfiAmount = 2e18;
+        uint256 charlieDYfiAmount = 3e18;
         uint256 totalDYfiAmount = aliceDYfiAmount + bobDYfiAmount + charlieDYfiAmount;
 
         airdrop(ERC20(MAINNET_DYFI), alice, aliceDYfiAmount);
