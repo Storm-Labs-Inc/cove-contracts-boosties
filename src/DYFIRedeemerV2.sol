@@ -304,7 +304,7 @@ contract DYFIRedeemerV2 is IDYFIRedeemer, AccessControlEnumerable, ReentrancyGua
             revert Errors.PriceFeedIncorrectRound();
         }
         // slither-disable-next-line timestamp
-        if (timeStamp + 86400 < block.timestamp) {
+        if (timeStamp + 86_400 < block.timestamp) {
             revert Errors.PriceFeedOutdated();
         }
         return uint256(price);

@@ -21,7 +21,7 @@ contract DYFIRedeemerV2_ForkedTest is YearnV3BaseTest {
     function setUp() public override {
         super.setUp();
         // Move fork to a block where the new redemption contract is deployed
-        forkNetworkAt("mainnet", 22_678_806);
+        forkNetworkAt("mainnet", 22_746_908);
         alice = createUser("alice");
         bob = createUser("bob");
         charlie = createUser("charlie");
