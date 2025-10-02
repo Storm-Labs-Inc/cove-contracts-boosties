@@ -4,7 +4,6 @@
 Yearn-ERC4626-Router/=lib/Yearn-ERC4626-Router/src/
 ds-test/=lib/forge-std/lib/ds-test/src/
 forge-deploy/=lib/forge-deploy/contracts/
-forge-std-1.9.6/=dependencies/forge-std-1.9.6/
 forge-std/=lib/forge-std/src/
 permit2/=lib/permit2/src/
 script/=script/

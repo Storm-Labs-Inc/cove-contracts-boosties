@@ -5,6 +5,8 @@ import { BaseDeployScript } from "script/BaseDeployScript.s.sol";
 import { DeployerFunctions, DefaultDeployerFunction, Deployer } from "generated/deployer/DeployerFunctions.g.sol";
 import { MasterRegistry } from "src/MasterRegistry.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import { DeployOptions } from "generated/deployer/DeployerFunctions.g.sol";
+import { console2 as console } from "forge-std/console2.sol";
 
 contract DeployBaseMasterRegistries is BaseDeployScript {
     // Using generated functions
@@ -16,31 +18,28 @@ contract DeployBaseMasterRegistries is BaseDeployScript {
     address public masterRegistry;
 
     // Base network deployer address
-    address public constant BASE_COVE_DEPLOYER = 0x8842fe65A7Db9BB5De6d50e49aF19496da09F9b5;
+    address public constant BASE_COVE_DEPLOYER = MAINNET_COVE_DEPLOYER;
 
-    // Placeholder addresses for staging
-    address public constant STAGING_ADMIN = 0x1111111111111111111111111111111111111111;
-    address public constant STAGING_MANAGER = 0x2222222222222222222222222222222222222222;
+    // Base and Mainnet have the same multisig addresses
+    // Staging addresses
+    address public constant STAGING_ADMIN = COVE_STAGING_COMMUNITY_MULTISIG;
+    address public constant STAGING_MANAGER = BASE_COVE_DEPLOYER;
 
-    // Production addresses (can be overridden via env vars)
-    address public admin;
-    address public manager;
+    // Production addresses
+    address public constant PRODUCTION_ADMIN = MAINNET_COVE_COMMUNITY_MULTISIG;
+    address public constant PRODUCTION_MANAGER = BASE_COVE_DEPLOYER;
 
     function deploy() public override {
         require(BASE_COVE_DEPLOYER == msg.sender, "Sender must be base deployer");
         deployer.setAutoBroadcast(true);
 
-        // Load production addresses from env or use test derivation
-        admin = vm.envOr("COMMUNITY_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 1)));
-        manager = vm.envOr("OPS_MULTISIG_ADDRESS", vm.rememberKey(vm.deriveKey(TEST_MNEMONIC, 2)));
-
         // Deploy Staging Master Registry
         stagingMasterRegistry = deployStagingMasterRegistry();
-        vm.label(stagingMasterRegistry, "Staging_MasterRegistry");
+        console.log("Staging Master Registry deployed to:", stagingMasterRegistry);
 
         // Deploy Production Master Registry
         masterRegistry = deployMasterRegistry();
-        vm.label(masterRegistry, "MasterRegistry");
+        console.log("Production Master Registry deployed to:", masterRegistry);
 
         // Verify deployments
         verifyPostDeploymentState();
@@ -52,7 +51,8 @@ contract DeployBaseMasterRegistries is BaseDeployScript {
     }
 
     function deployMasterRegistry() public deployIfMissing("MasterRegistry") returns (address) {
-        return address(deployer.deploy_MasterRegistry("MasterRegistry", admin, BASE_COVE_DEPLOYER, options));
+        // Base and Mainnet have the same multisig addresses
+        return address(deployer.deploy_MasterRegistry("MasterRegistry", PRODUCTION_ADMIN, PRODUCTION_MANAGER, options));
     }
 
     function verifyPostDeploymentState() public view {
@@ -64,9 +64,9 @@ contract DeployBaseMasterRegistries is BaseDeployScript {
         _verifyRoleCount("Staging_MasterRegistry", MANAGER_ROLE, 2);
 
         // Verify roles have been properly set for MasterRegistry
-        _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, admin);
-        _verifyRole("MasterRegistry", MANAGER_ROLE, admin);
-        _verifyRole("MasterRegistry", MANAGER_ROLE, BASE_COVE_DEPLOYER);
+        _verifyRole("MasterRegistry", DEFAULT_ADMIN_ROLE, PRODUCTION_ADMIN);
+        _verifyRole("MasterRegistry", MANAGER_ROLE, PRODUCTION_ADMIN);
+        _verifyRole("MasterRegistry", MANAGER_ROLE, PRODUCTION_MANAGER);
         _verifyRoleCount("MasterRegistry", DEFAULT_ADMIN_ROLE, 1);
         _verifyRoleCount("MasterRegistry", MANAGER_ROLE, 2);
     }
