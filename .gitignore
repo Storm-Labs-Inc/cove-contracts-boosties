@@ -49,6 +49,7 @@ lcov.info
 /deployments/localhost
 /deployments/31337
 /deployments/1-fork
+/deployments/8453-fork
 
 
 # forge-deploy cli binary
